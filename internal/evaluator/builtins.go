@@ -2,7 +2,7 @@ package evaluator
 
 import (
 	"fmt"
-	"slug/object"
+	"slug/internal/object"
 )
 
 var builtins = map[string]*object.Builtin{

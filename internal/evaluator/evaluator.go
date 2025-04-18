@@ -2,8 +2,8 @@ package evaluator
 
 import (
 	"fmt"
-	"slug/ast"
-	"slug/object"
+	"slug/internal/ast"
+	"slug/internal/object"
 )
 
 var (

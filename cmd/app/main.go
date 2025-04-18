@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 	"os/user"
-	"slug/evaluator"
-	"slug/lexer"
-	"slug/object"
-	"slug/parser"
-	"slug/repl"
+	"slug/internal/evaluator"
+	"slug/internal/lexer"
+	"slug/internal/object"
+	"slug/internal/parser"
+	"slug/internal/repl"
 )
 
 func main() {

@@ -1,9 +1,9 @@
 package evaluator
 
 import (
-	"slug/lexer"
-	"slug/object"
-	"slug/parser"
+	"slug/internal/lexer"
+	"slug/internal/object"
+	"slug/internal/parser"
 	"testing"
 )
 

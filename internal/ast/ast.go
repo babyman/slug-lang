@@ -2,7 +2,7 @@ package ast
 
 import (
 	"bytes"
-	"slug/token"
+	"slug/internal/token"
 	"strings"
 )
 

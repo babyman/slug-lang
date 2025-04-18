@@ -2,9 +2,9 @@ package parser
 
 import (
 	"fmt"
-	"slug/ast"
-	"slug/lexer"
-	"slug/token"
+	"slug/internal/ast"
+	"slug/internal/lexer"
+	"slug/internal/token"
 	"strconv"
 )
 

@@ -1,7 +1,7 @@
 package ast
 
 import (
-	"slug/token"
+	"slug/internal/token"
 	"testing"
 )
 

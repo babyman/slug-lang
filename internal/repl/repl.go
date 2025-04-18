@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"slug/evaluator"
-	"slug/lexer"
-	"slug/object"
-	"slug/parser"
+	"slug/internal/evaluator"
+	"slug/internal/lexer"
+	"slug/internal/object"
+	"slug/internal/parser"
 )
 
 const PROMPT = ">> "
