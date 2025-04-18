@@ -1,0 +1,11 @@
+# IntelliJ IDEA settings directory
+.idea/
+
+# Binary output directory
+bin/
+
+# OSX System Files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
