@@ -98,17 +98,23 @@ func (l *Lexer) skipWhitespace() {
 		switch l.ch {
 		case ' ', '\t', '\n', '\r':
 			l.readChar()
+		case '#':
+			l.skipToLineEnd()
 		case '/':
 			if l.peekChar() == '/' {
-				for l.ch != '\n' && l.ch != 0 {
-					l.readChar()
-				}
+				l.skipToLineEnd()
 			} else {
 				return
 			}
 		default:
 			return
 		}
+	}
+}
+
+func (l *Lexer) skipToLineEnd() {
+	for l.ch != '\n' && l.ch != 0 {
+		l.readChar()
 	}
 }
 
