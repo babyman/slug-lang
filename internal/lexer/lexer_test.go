@@ -24,8 +24,9 @@ if (5 < 10) {
 	return false;
 }
 // comment
+# alt comment
 10 == 10; // comment
-10 != 9;
+10 != 9; # alt comment
 "foobar"
 "foo bar"
 [1, 2];
