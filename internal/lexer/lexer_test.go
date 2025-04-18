@@ -23,14 +23,15 @@ if (5 < 10) {
 } else {
 	return false;
 }
-
-10 == 10;
+// comment
+10 == 10; // comment
 10 != 9;
 "foobar"
 "foo bar"
 [1, 2];
 {"foo": "bar"}
-`
+// comment at eof
+//`
 
 	tests := []struct {
 		expectedType    token.TokenType

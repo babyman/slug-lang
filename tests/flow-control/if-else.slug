@@ -1,0 +1,10 @@
+let f = fn(a) {
+    if(a == 1) {
+        "a";
+    } else {
+        "c";
+    }
+}
+
+puts(f(1));
+puts(f(2));

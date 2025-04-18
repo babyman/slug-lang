@@ -2,7 +2,7 @@ BINARY_NAME=slug
 OS := $(shell uname)
 
 run:
-	go run ./cmd/app/
+	go run ./cmd/app/ $(ARGS)
 
 
 test:

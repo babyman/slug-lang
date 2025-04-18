@@ -94,8 +94,21 @@ func (l *Lexer) NextToken() token.Token {
 }
 
 func (l *Lexer) skipWhitespace() {
-	for l.ch == ' ' || l.ch == '\t' || l.ch == '\n' || l.ch == '\r' {
-		l.readChar()
+	for {
+		switch l.ch {
+		case ' ', '\t', '\n', '\r':
+			l.readChar()
+		case '/':
+			if l.peekChar() == '/' {
+				for l.ch != '\n' && l.ch != 0 {
+					l.readChar()
+				}
+			} else {
+				return
+			}
+		default:
+			return
+		}
 	}
 }
 
