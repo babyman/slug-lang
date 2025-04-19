@@ -89,7 +89,11 @@ func (l *Lexer) NextToken() token.Token {
 	return tok
 }
 
-func (l *Lexer) handleCompoundToken(t token.TokenType, ch1 byte, t1 token.TokenType) token.Token {
+func (l *Lexer) handleCompoundToken(
+	t token.TokenType,
+	ch1 byte,
+	t1 token.TokenType,
+) token.Token {
 	if l.peekChar() == ch1 {
 		ch := l.ch
 		l.readChar()
@@ -100,8 +104,13 @@ func (l *Lexer) handleCompoundToken(t token.TokenType, ch1 byte, t1 token.TokenT
 	}
 }
 
-func (l *Lexer) handleCompoundToken2(t token.TokenType, ch1 byte, t1 token.TokenType, ch2 byte, t2 token.TokenType) token.Token {
-
+func (l *Lexer) handleCompoundToken2(
+	t token.TokenType,
+	ch1 byte,
+	t1 token.TokenType,
+	ch2 byte,
+	t2 token.TokenType,
+) token.Token {
 	if l.peekChar() == ch1 {
 		ch := l.ch
 		l.readChar()

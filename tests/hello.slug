@@ -1,1 +1,1 @@
-puts("Hello Slug!");
+println("Hello Slug!");
