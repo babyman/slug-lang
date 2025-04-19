@@ -35,10 +35,18 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.ASTERISK, l.ch)
 	case '%':
 		tok = newToken(token.PERCENT, l.ch)
+	case '~':
+		tok = newToken(token.COMPLEMENT, l.ch)
+	case '&':
+		tok = l.handleCompoundToken(token.BITWISE_AND, '&', token.LOGICAL_AND)
+	case '|':
+		tok = l.handleCompoundToken(token.BITWISE_OR, '|', token.LOGICAL_OR)
+	case '^':
+		tok = newToken(token.BITWISE_XOR, l.ch)
 	case '<':
-		tok = l.handleCompoundToken(token.LT, '=', token.LT_EQ)
+		tok = l.handleCompoundToken2(token.LT, '=', token.LT_EQ, '<', token.SHIFT_LEFT)
 	case '>':
-		tok = l.handleCompoundToken(token.GT, '=', token.GT_EQ)
+		tok = l.handleCompoundToken2(token.GT, '=', token.GT_EQ, '>', token.SHIFT_RIGHT)
 	case ';':
 		tok = newToken(token.SEMICOLON, l.ch)
 	case ':':
@@ -81,14 +89,31 @@ func (l *Lexer) NextToken() token.Token {
 	return tok
 }
 
-func (l *Lexer) handleCompoundToken(oneChar token.TokenType, peekCh byte, twoChar token.TokenType) token.Token {
-	if l.peekChar() == peekCh {
+func (l *Lexer) handleCompoundToken(t token.TokenType, ch1 byte, t1 token.TokenType) token.Token {
+	if l.peekChar() == ch1 {
 		ch := l.ch
 		l.readChar()
 		literal := string(ch) + string(l.ch)
-		return token.Token{Type: twoChar, Literal: literal}
+		return token.Token{Type: t1, Literal: literal}
 	} else {
-		return newToken(oneChar, l.ch)
+		return newToken(t, l.ch)
+	}
+}
+
+func (l *Lexer) handleCompoundToken2(t token.TokenType, ch1 byte, t1 token.TokenType, ch2 byte, t2 token.TokenType) token.Token {
+
+	if l.peekChar() == ch1 {
+		ch := l.ch
+		l.readChar()
+		literal := string(ch) + string(l.ch)
+		return token.Token{Type: t1, Literal: literal}
+	} else if l.peekChar() == ch2 {
+		ch := l.ch
+		l.readChar()
+		literal := string(ch) + string(l.ch)
+		return token.Token{Type: t2, Literal: literal}
+	} else {
+		return newToken(t, l.ch)
 	}
 }
 

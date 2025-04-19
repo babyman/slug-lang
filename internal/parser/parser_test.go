@@ -147,6 +147,7 @@ func TestParsingPrefixExpressions(t *testing.T) {
 	}{
 		{"!5;", "!", 5},
 		{"-15;", "-", 15},
+		{"~5;", "~", 5},
 		{"!foobar;", "!", "foobar"},
 		{"-foobar;", "-", "foobar"},
 		{"!true;", "!", true},
@@ -196,6 +197,11 @@ func TestParsingInfixExpressions(t *testing.T) {
 		{"5 * 5;", 5, "*", 5},
 		{"5 / 5;", 5, "/", 5},
 		{"5 % 5;", 5, "%", 5},
+		{"5 & 5;", 5, "&", 5},
+		{"5 | 5;", 5, "|", 5},
+		{"5 ^ 5;", 5, "^", 5},
+		{"5 << 5;", 5, "<<", 5},
+		{"5 >> 5;", 5, ">>", 5},
 		{"5 > 5;", 5, ">", 5},
 		{"5 < 5;", 5, "<", 5},
 		{"5 >= 5;", 5, ">=", 5},
@@ -216,6 +222,8 @@ func TestParsingInfixExpressions(t *testing.T) {
 		{"true == true", true, "==", true},
 		{"true != false", true, "!=", false},
 		{"false == false", false, "==", false},
+		{"false && false", false, "&&", false},
+		{"false || false", false, "||", false},
 	}
 
 	for _, tt := range infixTests {

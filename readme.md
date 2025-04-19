@@ -13,39 +13,33 @@ Types
 - List
 - Null
 
-Precedence and Associativity
+Operator Precedence and Associativity
 ===
 
-Needs update 
-
-| Prec | Operator  | Description                        | Associates |
-|------|-----------|------------------------------------|------------|
-| 1    | () [] .   | Grouping, Subscript, Method call   | Left       |
-| 2    | - ! ~     | Negate, Not, Complement*           | Right      |
-| 3    | * / %     | Multiply, Divide, Modulo           | Left       |
-| 4    | + -       | Add, Subtract                      | Left       |
-| 5    | .. ...    | Inclusive range*, Exclusive range* | Left       |
-| 6    | << >>     | Left shift*, Right shift*          | Left       |
-| 7    | &         | Bitwise and*                       | Left       |
-| 8    | ^         | Bitwise xor*                       | Left       |
-| 9    | \|        | Bitwise or*                        | Left       |
-| 10   | < <= > >= | Comparison                         | Left       |
-| 11   | is        | Type test*                         | Left       |
-| 12   | == !=     | Equals, Not equal                  | Left       |
-| 13   | &&        | Logical and                        | Left       |
-| 14   | \|\|      | Logical or                         | Left       |
-| 15   | ?:        | Conditional*                       | Right      |
-| 16   | =         | Assignment, Setter                 | Right      |
-
-* - not implemented
+| Prec | Operator  | Description                      | Associates |
+|------|-----------|----------------------------------|------------|
+| 1    | () [] .   | Grouping, Subscript, Method call | Left       |
+| 2    | - ! ~     | Negate, Not, Complement          | Right      |
+| 3    | * / %     | Multiply, Divide, Modulo         | Left       |
+| 4    | + -       | Add, Subtract                    | Left       |
+| 6    | << >>     | Left shift, Right shift          | Left       |
+| 7    | &         | Bitwise and                      | Left       |
+| 8    | ^         | Bitwise xor                      | Left       |
+| 9    | \|        | Bitwise or                       | Left       |
+| 10   | < <= > >= | Comparison                       | Left       |
+| 12   | == !=     | Equals, Not equal                | Left       |
+| 13   | &&        | Logical and                      | Left       |
+| 14   | \|\|      | Logical or                       | Left       |
+| 15   | ?:        | Conditional*                     | Right      |
+| 16   | =         | Assignment                       | Right      |
 
 Comments
 ===
 
 `//` is supported since the language follows `C` language style conventions.
 
-`#` is supported to allow easy execution as a shell script with the inclusion of `#!`.  For example 
-if `SLUG_HOME` is exported and `slug` is on the users path. 
+`#` is supported to allow easy execution as a shell script with the inclusion of `#!`. For example
+if `SLUG_HOME` is exported and `slug` is on the users path.
 
 ```shell
 # slug home

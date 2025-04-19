@@ -25,6 +25,16 @@ const (
 	GT    = ">"
 	GT_EQ = ">="
 
+	COMPLEMENT  = "~"
+	BITWISE_AND = "&"
+	BITWISE_OR  = "|"
+	BITWISE_XOR = "^"
+	SHIFT_LEFT  = "<<"
+	SHIFT_RIGHT = ">>"
+
+	LOGICAL_AND = "&&"
+	LOGICAL_OR  = "||"
+
 	EQ     = "=="
 	NOT_EQ = "!="
 

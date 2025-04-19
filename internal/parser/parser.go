@@ -9,10 +9,16 @@ import (
 )
 
 const (
-	_ int = iota
-	LOWEST
-	EQUALS      // ==
-	LESSGREATER // > or <
+	_           int = iota
+	LOWEST          // assignment
+	LOGICAL_OR      // logical or
+	LOGICAL_AND     // logical and
+	EQUALS          // ==
+	COMPARISON      // > or <
+	BITWISE_OR
+	BITWISE_XOR
+	BITWISE_AND // bitwise operators
+	SHIFT       // bit shifting
 	SUM         // +
 	PRODUCT     // *
 	PREFIX      // -X or !X
@@ -21,19 +27,26 @@ const (
 )
 
 var precedences = map[token.TokenType]int{
-	token.EQ:       EQUALS,
-	token.NOT_EQ:   EQUALS,
-	token.LT:       LESSGREATER,
-	token.LT_EQ:    LESSGREATER,
-	token.GT:       LESSGREATER,
-	token.GT_EQ:    LESSGREATER,
-	token.PLUS:     SUM,
-	token.MINUS:    SUM,
-	token.SLASH:    PRODUCT,
-	token.ASTERISK: PRODUCT,
-	token.PERCENT:  PRODUCT,
-	token.LPAREN:   CALL,
-	token.LBRACKET: INDEX,
+	token.EQ:          EQUALS,
+	token.NOT_EQ:      EQUALS,
+	token.LOGICAL_AND: LOGICAL_AND,
+	token.LOGICAL_OR:  LOGICAL_OR,
+	token.BITWISE_AND: BITWISE_AND,
+	token.BITWISE_OR:  BITWISE_OR,
+	token.BITWISE_XOR: BITWISE_XOR,
+	token.SHIFT_LEFT:  SHIFT,
+	token.SHIFT_RIGHT: SHIFT,
+	token.LT:          COMPARISON,
+	token.LT_EQ:       COMPARISON,
+	token.GT:          COMPARISON,
+	token.GT_EQ:       COMPARISON,
+	token.PLUS:        SUM,
+	token.MINUS:       SUM,
+	token.SLASH:       PRODUCT,
+	token.ASTERISK:    PRODUCT,
+	token.PERCENT:     PRODUCT,
+	token.LPAREN:      CALL,
+	token.LBRACKET:    INDEX,
 }
 
 type (
@@ -64,6 +77,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.STRING, p.parseStringLiteral)
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
+	p.registerPrefix(token.COMPLEMENT, p.parsePrefixExpression)
 	p.registerPrefix(token.TRUE, p.parseBoolean)
 	p.registerPrefix(token.FALSE, p.parseBoolean)
 	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
@@ -80,6 +94,13 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerInfix(token.PERCENT, p.parseInfixExpression)
 	p.registerInfix(token.EQ, p.parseInfixExpression)
 	p.registerInfix(token.NOT_EQ, p.parseInfixExpression)
+	p.registerInfix(token.LOGICAL_AND, p.parseInfixExpression)
+	p.registerInfix(token.LOGICAL_OR, p.parseInfixExpression)
+	p.registerInfix(token.BITWISE_AND, p.parseInfixExpression)
+	p.registerInfix(token.BITWISE_OR, p.parseInfixExpression)
+	p.registerInfix(token.BITWISE_XOR, p.parseInfixExpression)
+	p.registerInfix(token.SHIFT_RIGHT, p.parseInfixExpression)
+	p.registerInfix(token.SHIFT_LEFT, p.parseInfixExpression)
 	p.registerInfix(token.LT, p.parseInfixExpression)
 	p.registerInfix(token.LT_EQ, p.parseInfixExpression)
 	p.registerInfix(token.GT, p.parseInfixExpression)

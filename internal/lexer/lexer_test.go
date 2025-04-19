@@ -15,7 +15,7 @@ let add = fn(x, y) {
 };
 
 let result = add(five, ten);
-!-/*%5;
+!-/*%~5;
 5 < 10 > 5;
 5 <= 10 >= 5;
 
@@ -28,6 +28,11 @@ if (5 < 10) {
 # alt comment
 10 == 10; // comment
 10 != 9; # alt comment
+true && false;
+true || false;
+10 & 9;
+10 | 9;
+10 ^ 9;
 "foobar"
 "foo bar"
 [1, 2];
@@ -80,6 +85,7 @@ if (5 < 10) {
 		{token.SLASH, "/"},
 		{token.ASTERISK, "*"},
 		{token.PERCENT, "%"},
+		{token.COMPLEMENT, "~"},
 		{token.INT, "5"},
 		{token.SEMICOLON, ";"},
 		{token.INT, "5"},
@@ -117,6 +123,26 @@ if (5 < 10) {
 		{token.SEMICOLON, ";"},
 		{token.INT, "10"},
 		{token.NOT_EQ, "!="},
+		{token.INT, "9"},
+		{token.SEMICOLON, ";"},
+		{token.TRUE, "true"},
+		{token.LOGICAL_AND, "&&"},
+		{token.FALSE, "false"},
+		{token.SEMICOLON, ";"},
+		{token.TRUE, "true"},
+		{token.LOGICAL_OR, "||"},
+		{token.FALSE, "false"},
+		{token.SEMICOLON, ";"},
+		{token.INT, "10"},
+		{token.BITWISE_AND, "&"},
+		{token.INT, "9"},
+		{token.SEMICOLON, ";"},
+		{token.INT, "10"},
+		{token.BITWISE_OR, "|"},
+		{token.INT, "9"},
+		{token.SEMICOLON, ";"},
+		{token.INT, "10"},
+		{token.BITWISE_XOR, "^"},
 		{token.INT, "9"},
 		{token.SEMICOLON, ";"},
 		{token.STRING, "foobar"},
