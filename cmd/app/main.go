@@ -56,7 +56,13 @@ func executeFile(filename string) error {
 	}
 
 	env := object.NewEnvironment()
-	_ = evaluator.Eval(program, env)
+	evaluated := evaluator.Eval(program, env)
+	if evaluated != nil && evaluated.Type() != object.NULL_OBJ {
+		fmt.Println(evaluated.Inspect())
+		if evaluated.Type() == object.ERROR_OBJ {
+			os.Exit(1)
+		}
+	}
 
 	return nil
 }

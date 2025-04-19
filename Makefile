@@ -6,7 +6,11 @@ run:
 
 
 test:
-	go test ./...
+	go test ./... || exit 1
+	@for file in $(shell find ./tests -name "*.slug"); do \
+		echo "Running tests for $$file"; \
+		go run ./cmd/app/ $$file || exit 1; \
+	done
 
 
 clean:

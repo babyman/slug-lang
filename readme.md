@@ -6,12 +6,12 @@ An interpreted programming language.
 Types
 ===
 
-- Integer
-- Boolean
-- String
-- Map
-- List
-- Null
+- `Integer`
+- `Boolean`: true or false
+- `String`
+- `Map`
+- `List`
+- `Null`
 
 Operator Precedence and Associativity
 ===
@@ -51,5 +51,5 @@ The following shell script works.
 
 ```shell
 #!/usr/bin/env slug
-puts("Hello from a Slug script!")
+puts("Hello Slug!")
 ```

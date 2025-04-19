@@ -23,6 +23,28 @@ var builtins = map[string]*object.Builtin{
 		}
 	},
 	},
+	"assert": &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) < 1 || len(args) > 2 {
+				return newError("wrong number of arguments. got=%d, want=1",
+					len(args))
+			}
+			if args[0].Type() != object.BOOLEAN_OBJ {
+				return newError("first argument to `assert` must be BOOLEAN, got %s",
+					args[0].Type())
+			}
+
+			test := args[0].(*object.Boolean)
+			if !test.Value {
+				if len(args) == 2 {
+					return newError(fmt.Sprintf("Assertion failed: %s", args[1].Inspect()))
+				}
+				return newError("Assertion failed")
+			}
+
+			return NULL
+		},
+	},
 	"puts": &object.Builtin{
 		Fn: func(args ...object.Object) object.Object {
 			for _, arg := range args {
