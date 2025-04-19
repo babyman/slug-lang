@@ -22,27 +22,13 @@ func (l *Lexer) NextToken() token.Token {
 
 	switch l.ch {
 	case '=':
-		if l.peekChar() == '=' {
-			ch := l.ch
-			l.readChar()
-			literal := string(ch) + string(l.ch)
-			tok = token.Token{Type: token.EQ, Literal: literal}
-		} else {
-			tok = newToken(token.ASSIGN, l.ch)
-		}
+		tok = l.handleCompoundToken(token.ASSIGN, '=', token.EQ)
 	case '+':
 		tok = newToken(token.PLUS, l.ch)
 	case '-':
 		tok = newToken(token.MINUS, l.ch)
 	case '!':
-		if l.peekChar() == '=' {
-			ch := l.ch
-			l.readChar()
-			literal := string(ch) + string(l.ch)
-			tok = token.Token{Type: token.NOT_EQ, Literal: literal}
-		} else {
-			tok = newToken(token.BANG, l.ch)
-		}
+		tok = l.handleCompoundToken(token.BANG, '=', token.NOT_EQ)
 	case '/':
 		tok = newToken(token.SLASH, l.ch)
 	case '*':
@@ -50,9 +36,9 @@ func (l *Lexer) NextToken() token.Token {
 	case '%':
 		tok = newToken(token.PERCENT, l.ch)
 	case '<':
-		tok = newToken(token.LT, l.ch)
+		tok = l.handleCompoundToken(token.LT, '=', token.LT_EQ)
 	case '>':
-		tok = newToken(token.GT, l.ch)
+		tok = l.handleCompoundToken(token.GT, '=', token.GT_EQ)
 	case ';':
 		tok = newToken(token.SEMICOLON, l.ch)
 	case ':':
@@ -93,6 +79,17 @@ func (l *Lexer) NextToken() token.Token {
 
 	l.readChar()
 	return tok
+}
+
+func (l *Lexer) handleCompoundToken(oneChar token.TokenType, peekCh byte, twoChar token.TokenType) token.Token {
+	if l.peekChar() == peekCh {
+		ch := l.ch
+		l.readChar()
+		literal := string(ch) + string(l.ch)
+		return token.Token{Type: twoChar, Literal: literal}
+	} else {
+		return newToken(oneChar, l.ch)
+	}
 }
 
 func (l *Lexer) skipWhitespace() {
