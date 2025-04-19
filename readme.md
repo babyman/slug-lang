@@ -6,12 +6,12 @@ An interpreted programming language.
 Types
 ===
 
-- `Integer`
+- `Null`
 - `Boolean`: true or false
+- `Integer`
 - `String`
 - `Map`
 - `List`
-- `Null`
 
 Operator Precedence and Associativity
 ===

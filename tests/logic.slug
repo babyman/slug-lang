@@ -1,0 +1,13 @@
+// logic checks
+
+// and
+// --------
+assert(true && true, "true && true");
+assert(true && false == false, "true && false == false");
+assert(!(true && false), "true && false");
+
+// or
+// --------
+assert(true || true, "true || true");
+assert(true || false, "true || false");
+

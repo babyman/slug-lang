@@ -1,0 +1,19 @@
+// simple equality checks
+
+// booleans
+// --------
+assert(true, "true is true");
+assert(true != false, "true != false");
+
+// numbers
+// --------
+assert(1 == 1, "1 should equal 1");
+assert(1 != 2, "1 should not equal 2");
+assert(2 != 1, "2 should not equal 1");
+
+// string
+// --------
+assert("a" == "a", "string a == a");
+assert("b" != "a", "string b != a");
+assert("a" != "b", "string a != b");
+

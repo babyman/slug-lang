@@ -1,0 +1,15 @@
+//
+// Fibonacci sequence calculation using simple recursion
+//
+
+let fib = fn(n) {
+    if (n < 2) {
+        return n;
+    } else {
+        return fib(n - 2) + fib(n - 1);
+    }
+}
+
+let out = fib(10);
+
+assert(out == 55, "Fibonacci 10 equals 55");
