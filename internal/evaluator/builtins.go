@@ -6,94 +6,41 @@ import (
 )
 
 var builtins = map[string]*object.Builtin{
-	"len": &object.Builtin{Fn: func(args ...object.Object) object.Object {
-		if len(args) != 1 {
-			return newError("wrong number of arguments. got=%d, want=1",
-				len(args))
-		}
+	"assert":  funcAssert(),
+	"first":   funcFirst(),
+	"last":    funcLast(),
+	"len":     funcLen(),
+	"push":    funcPush(),
+	"println": funcPrintLn(),
+	"rest":    funcRest(),
+}
 
-		switch arg := args[0].(type) {
-		case *object.Array:
-			return &object.Integer{Value: int64(len(arg.Elements))}
-		case *object.String:
-			return &object.Integer{Value: int64(len(arg.Value))}
-		default:
-			return newError("argument to `len` not supported, got %s",
-				args[0].Type())
-		}
-	},
-	},
-	"assert": &object.Builtin{
+func funcPush() *object.Builtin {
+	return &object.Builtin{
 		Fn: func(args ...object.Object) object.Object {
-			if len(args) < 1 || len(args) > 2 {
-				return newError("wrong number of arguments. got=%d, want=1",
-					len(args))
-			}
-			if args[0].Type() != object.BOOLEAN_OBJ {
-				return newError("first argument to `assert` must be BOOLEAN, got %s",
-					args[0].Type())
-			}
-
-			test := args[0].(*object.Boolean)
-			if !test.Value {
-				if len(args) == 2 {
-					return newError(fmt.Sprintf("Assertion failed: %s", args[1].Inspect()))
-				}
-				return newError("Assertion failed")
-			}
-
-			return NULL
-		},
-	},
-	"println": &object.Builtin{
-		Fn: func(args ...object.Object) object.Object {
-			for _, arg := range args {
-				fmt.Println(arg.Inspect())
-			}
-
-			return NULL
-		},
-	},
-	"first": &object.Builtin{
-		Fn: func(args ...object.Object) object.Object {
-			if len(args) != 1 {
-				return newError("wrong number of arguments. got=%d, want=1",
+			if len(args) != 2 {
+				return newError("wrong number of arguments. got=%d, want=2",
 					len(args))
 			}
 			if args[0].Type() != object.ARRAY_OBJ {
-				return newError("argument to `first` must be ARRAY, got %s",
-					args[0].Type())
-			}
-
-			arr := args[0].(*object.Array)
-			if len(arr.Elements) > 0 {
-				return arr.Elements[0]
-			}
-
-			return NULL
-		},
-	},
-	"last": &object.Builtin{
-		Fn: func(args ...object.Object) object.Object {
-			if len(args) != 1 {
-				return newError("wrong number of arguments. got=%d, want=1",
-					len(args))
-			}
-			if args[0].Type() != object.ARRAY_OBJ {
-				return newError("argument to `last` must be ARRAY, got %s",
+				return newError("argument to `push` must be ARRAY, got %s",
 					args[0].Type())
 			}
 
 			arr := args[0].(*object.Array)
 			length := len(arr.Elements)
-			if length > 0 {
-				return arr.Elements[length-1]
-			}
 
-			return NULL
+			newElements := make([]object.Object, length+1, length+1)
+			copy(newElements, arr.Elements)
+			newElements[length] = args[1]
+
+			return &object.Array{Elements: newElements}
 		},
-	},
-	"rest": &object.Builtin{
+	}
+}
+
+func funcRest() *object.Builtin {
+	return &object.Builtin{
 		Fn: func(args ...object.Object) object.Object {
 			if len(args) != 1 {
 				return newError("wrong number of arguments. got=%d, want=1",
@@ -114,26 +61,107 @@ var builtins = map[string]*object.Builtin{
 
 			return NULL
 		},
-	},
-	"push": &object.Builtin{
+	}
+}
+
+func funcLast() *object.Builtin {
+	return &object.Builtin{
 		Fn: func(args ...object.Object) object.Object {
-			if len(args) != 2 {
-				return newError("wrong number of arguments. got=%d, want=2",
+			if len(args) != 1 {
+				return newError("wrong number of arguments. got=%d, want=1",
 					len(args))
 			}
 			if args[0].Type() != object.ARRAY_OBJ {
-				return newError("argument to `push` must be ARRAY, got %s",
+				return newError("argument to `last` must be ARRAY, got %s",
 					args[0].Type())
 			}
 
 			arr := args[0].(*object.Array)
 			length := len(arr.Elements)
+			if length > 0 {
+				return arr.Elements[length-1]
+			}
 
-			newElements := make([]object.Object, length+1, length+1)
-			copy(newElements, arr.Elements)
-			newElements[length] = args[1]
-
-			return &object.Array{Elements: newElements}
+			return NULL
 		},
+	}
+}
+
+func funcFirst() *object.Builtin {
+	return &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments. got=%d, want=1",
+					len(args))
+			}
+			if args[0].Type() != object.ARRAY_OBJ {
+				return newError("argument to `first` must be ARRAY, got %s",
+					args[0].Type())
+			}
+
+			arr := args[0].(*object.Array)
+			if len(arr.Elements) > 0 {
+				return arr.Elements[0]
+			}
+
+			return NULL
+		},
+	}
+}
+
+func funcPrintLn() *object.Builtin {
+	return &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			for _, arg := range args {
+				fmt.Println(arg.Inspect())
+			}
+
+			return NULL
+		},
+	}
+}
+
+func funcAssert() *object.Builtin {
+	return &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) < 1 || len(args) > 2 {
+				return newError("wrong number of arguments. got=%d, want=1",
+					len(args))
+			}
+			if args[0].Type() != object.BOOLEAN_OBJ {
+				return newError("first argument to `assert` must be BOOLEAN, got %s",
+					args[0].Type())
+			}
+
+			test := args[0].(*object.Boolean)
+			if !test.Value {
+				if len(args) == 2 {
+					return newError(fmt.Sprintf("Assertion failed: %s", args[1].Inspect()))
+				}
+				return newError("Assertion failed")
+			}
+
+			return NULL
+		},
+	}
+}
+
+func funcLen() *object.Builtin {
+	return &object.Builtin{Fn: func(args ...object.Object) object.Object {
+		if len(args) != 1 {
+			return newError("wrong number of arguments. got=%d, want=1",
+				len(args))
+		}
+
+		switch arg := args[0].(type) {
+		case *object.Array:
+			return &object.Integer{Value: int64(len(arg.Elements))}
+		case *object.String:
+			return &object.Integer{Value: int64(len(arg.Value))}
+		default:
+			return newError("argument to `len` not supported, got %s",
+				args[0].Type())
+		}
 	},
+	}
 }
