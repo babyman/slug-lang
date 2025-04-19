@@ -192,10 +192,10 @@ func (ie *InfixExpression) String() string {
 }
 
 type IfExpression struct {
-	Token       token.Token // The 'if' token
-	Condition   Expression
-	Consequence *BlockStatement
-	Alternative *BlockStatement
+	Token      token.Token // The 'if' token
+	Condition  Expression
+	ThenBranch *BlockStatement
+	ElseBranch *BlockStatement
 }
 
 func (ie *IfExpression) expressionNode()      {}
@@ -206,11 +206,11 @@ func (ie *IfExpression) String() string {
 	out.WriteString("if")
 	out.WriteString(ie.Condition.String())
 	out.WriteString(" ")
-	out.WriteString(ie.Consequence.String())
+	out.WriteString(ie.ThenBranch.String())
 
-	if ie.Alternative != nil {
+	if ie.ElseBranch != nil {
 		out.WriteString("else ")
-		out.WriteString(ie.Alternative.String())
+		out.WriteString(ie.ElseBranch.String())
 	}
 
 	return out.String()

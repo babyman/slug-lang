@@ -448,23 +448,23 @@ func TestIfExpression(t *testing.T) {
 		return
 	}
 
-	if len(exp.Consequence.Statements) != 1 {
+	if len(exp.ThenBranch.Statements) != 1 {
 		t.Errorf("consequence is not 1 statements. got=%d\n",
-			len(exp.Consequence.Statements))
+			len(exp.ThenBranch.Statements))
 	}
 
-	consequence, ok := exp.Consequence.Statements[0].(*ast.ExpressionStatement)
+	consequence, ok := exp.ThenBranch.Statements[0].(*ast.ExpressionStatement)
 	if !ok {
 		t.Fatalf("Statements[0] is not ast.ExpressionStatement. got=%T",
-			exp.Consequence.Statements[0])
+			exp.ThenBranch.Statements[0])
 	}
 
 	if !testIdentifier(t, consequence.Expression, "x") {
 		return
 	}
 
-	if exp.Alternative != nil {
-		t.Errorf("exp.Alternative.Statements was not nil. got=%+v", exp.Alternative)
+	if exp.ElseBranch != nil {
+		t.Errorf("exp.ElseBranch.Statements was not nil. got=%+v", exp.ElseBranch)
 	}
 }
 
@@ -496,30 +496,30 @@ func TestIfElseExpression(t *testing.T) {
 		return
 	}
 
-	if len(exp.Consequence.Statements) != 1 {
+	if len(exp.ThenBranch.Statements) != 1 {
 		t.Errorf("consequence is not 1 statements. got=%d\n",
-			len(exp.Consequence.Statements))
+			len(exp.ThenBranch.Statements))
 	}
 
-	consequence, ok := exp.Consequence.Statements[0].(*ast.ExpressionStatement)
+	consequence, ok := exp.ThenBranch.Statements[0].(*ast.ExpressionStatement)
 	if !ok {
 		t.Fatalf("Statements[0] is not ast.ExpressionStatement. got=%T",
-			exp.Consequence.Statements[0])
+			exp.ThenBranch.Statements[0])
 	}
 
 	if !testIdentifier(t, consequence.Expression, "x") {
 		return
 	}
 
-	if len(exp.Alternative.Statements) != 1 {
-		t.Errorf("exp.Alternative.Statements does not contain 1 statements. got=%d\n",
-			len(exp.Alternative.Statements))
+	if len(exp.ElseBranch.Statements) != 1 {
+		t.Errorf("exp.ElseBranch.Statements does not contain 1 statements. got=%d\n",
+			len(exp.ElseBranch.Statements))
 	}
 
-	alternative, ok := exp.Alternative.Statements[0].(*ast.ExpressionStatement)
+	alternative, ok := exp.ElseBranch.Statements[0].(*ast.ExpressionStatement)
 	if !ok {
 		t.Fatalf("Statements[0] is not ast.ExpressionStatement. got=%T",
-			exp.Alternative.Statements[0])
+			exp.ElseBranch.Statements[0])
 	}
 
 	if !testIdentifier(t, alternative.Expression, "y") {

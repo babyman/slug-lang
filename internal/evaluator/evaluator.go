@@ -345,9 +345,9 @@ func evalIfExpression(
 	}
 
 	if isTruthy(condition) {
-		return Eval(ie.Consequence, env)
-	} else if ie.Alternative != nil {
-		return Eval(ie.Alternative, env)
+		return Eval(ie.ThenBranch, env)
+	} else if ie.ElseBranch != nil {
+		return Eval(ie.ElseBranch, env)
 	} else {
 		return NULL
 	}
