@@ -45,6 +45,7 @@ var precedences = map[token.TokenType]int{
 	token.SLASH:       PRODUCT,
 	token.ASTERISK:    PRODUCT,
 	token.PERCENT:     PRODUCT,
+	token.PERIOD:      CALL,
 	token.LPAREN:      CALL,
 	token.LBRACKET:    INDEX,
 }
@@ -106,6 +107,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerInfix(token.GT, p.parseInfixExpression)
 	p.registerInfix(token.GT_EQ, p.parseInfixExpression)
 
+	p.registerInfix(token.PERIOD, p.parseFunctionFirstCallExpression)
 	p.registerInfix(token.LPAREN, p.parseCallExpression)
 	p.registerInfix(token.LBRACKET, p.parseIndexExpression)
 
@@ -427,6 +429,44 @@ func (p *Parser) parseFunctionParameters() []*ast.Identifier {
 	}
 
 	return identifiers
+}
+
+func (p *Parser) parseFunctionFirstCallExpression(left ast.Expression) ast.Expression {
+
+	// Advance to the next token, which should be the function identifier
+	if !p.expectPeek(token.IDENT) {
+		msg := fmt.Sprintf("expected function identifier after '.', got %s instead", p.curToken.Type)
+		p.errors = append(p.errors, msg)
+		return nil
+	}
+
+	p.nextToken()
+
+	// Create a function identifier node
+	function := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+
+	// Ensure it's either the start of a call or raise an error
+	if !p.expectPeek(token.LPAREN) {
+		msg := fmt.Sprintf("expected '(' after function name, got %s instead", p.curToken.Type)
+		p.errors = append(p.errors, msg)
+		return nil
+	}
+
+	// Advance to the next token
+	p.nextToken()
+
+	// Parse the arguments inside the parentheses
+	args := p.parseExpressionList(token.RPAREN)
+
+	// Add the left-hand side as the first argument (lst in lst.map())
+	args = append([]ast.Expression{left}, args...)
+
+	// Return a CallExpression (e.g., map(lst, f))
+	return &ast.CallExpression{
+		Token:     function.Token,
+		Function:  function,
+		Arguments: args,
+	}
 }
 
 func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression {

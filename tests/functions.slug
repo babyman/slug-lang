@@ -1,0 +1,10 @@
+// declare a function
+let sqr = fn(a) { a * a };
+
+// function chaining works here because the code is extrapolated by the parser into:
+//
+// let n = sqr(sqr(2))
+//
+let n = 2.sqr().sqr()
+
+assert(n == 16, "got:" + n);

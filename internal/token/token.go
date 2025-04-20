@@ -39,6 +39,7 @@ const (
 	NOT_EQ = "!="
 
 	// Delimiters
+	PERIOD    = "."
 	COMMA     = ","
 	SEMICOLON = ";"
 	COLON     = ":"
