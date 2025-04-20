@@ -7,39 +7,18 @@ import (
 
 var builtins = map[string]*object.Builtin{
 	"assert":  funcAssert(),
-	"first":   funcFirst(),
-	"last":    funcLast(),
+	"head":    funcHead(),
 	"len":     funcLen(),
+	"peek":    funcPeek(),
+	"pop":     funcPop(),
 	"push":    funcPush(),
 	"println": funcPrintLn(),
-	"rest":    funcRest(),
+	"tail":    funcTail(),
 }
 
-func funcPush() *object.Builtin {
-	return &object.Builtin{
-		Fn: func(args ...object.Object) object.Object {
-			if len(args) != 2 {
-				return newError("wrong number of arguments. got=%d, want=2",
-					len(args))
-			}
-			if args[0].Type() != object.ARRAY_OBJ {
-				return newError("argument to `push` must be ARRAY, got %s",
-					args[0].Type())
-			}
-
-			arr := args[0].(*object.Array)
-			length := len(arr.Elements)
-
-			newElements := make([]object.Object, length+1)
-			copy(newElements, arr.Elements)
-			newElements[length] = args[1]
-
-			return &object.Array{Elements: newElements}
-		},
-	}
-}
-
-func funcRest() *object.Builtin {
+// funcPeek retrieves the last element of an array without modifying it.
+// Returns NULL if the array is empty or an error for invalid input.
+func funcPeek() *object.Builtin {
 	return &object.Builtin{
 		Fn: func(args ...object.Object) object.Object {
 			if len(args) != 1 {
@@ -47,32 +26,7 @@ func funcRest() *object.Builtin {
 					len(args))
 			}
 			if args[0].Type() != object.ARRAY_OBJ {
-				return newError("argument to `rest` must be ARRAY, got %s",
-					args[0].Type())
-			}
-
-			arr := args[0].(*object.Array)
-			length := len(arr.Elements)
-			if length > 0 {
-				newElements := make([]object.Object, length-1)
-				copy(newElements, arr.Elements[1:length])
-				return &object.Array{Elements: newElements}
-			}
-
-			return NULL
-		},
-	}
-}
-
-func funcLast() *object.Builtin {
-	return &object.Builtin{
-		Fn: func(args ...object.Object) object.Object {
-			if len(args) != 1 {
-				return newError("wrong number of arguments. got=%d, want=1",
-					len(args))
-			}
-			if args[0].Type() != object.ARRAY_OBJ {
-				return newError("argument to `last` must be ARRAY, got %s",
+				return newError("argument to `peek` must be ARRAY, got %s",
 					args[0].Type())
 			}
 
@@ -87,7 +41,34 @@ func funcLast() *object.Builtin {
 	}
 }
 
-func funcFirst() *object.Builtin {
+func funcPush() *object.Builtin {
+	return &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) < 2 {
+				return newError("wrong number of arguments. got=%d, want=2+",
+					len(args))
+			}
+			if args[0].Type() != object.ARRAY_OBJ {
+				return newError("argument to `push` must be ARRAY, got %s",
+					args[0].Type())
+			}
+
+			arr := args[0].(*object.Array)
+			items := args[1:]
+			length := len(arr.Elements)
+
+			newElements := make([]object.Object, length+len(items))
+			copy(newElements, arr.Elements)
+			for i, item := range items {
+				newElements[length+i] = item
+			}
+
+			return &object.Array{Elements: newElements}
+		},
+	}
+}
+
+func funcPop() *object.Builtin {
 	return &object.Builtin{
 		Fn: func(args ...object.Object) object.Object {
 			if len(args) != 1 {
@@ -95,13 +76,63 @@ func funcFirst() *object.Builtin {
 					len(args))
 			}
 			if args[0].Type() != object.ARRAY_OBJ {
-				return newError("argument to `first` must be ARRAY, got %s",
+				return newError("argument to `pop` must be LIST, got %s",
+					args[0].Type())
+			}
+
+			arr := args[0].(*object.Array)
+			length := len(arr.Elements)
+			if length > 0 {
+				popped := arr.Elements[length-1]
+				arr.Elements = arr.Elements[:length-1]
+				return popped
+			}
+
+			return NULL
+		},
+	}
+}
+
+func funcHead() *object.Builtin {
+	return &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments. got=%d, want=1",
+					len(args))
+			}
+			if args[0].Type() != object.ARRAY_OBJ {
+				return newError("argument to `head` must be ARRAY, got %s",
 					args[0].Type())
 			}
 
 			arr := args[0].(*object.Array)
 			if len(arr.Elements) > 0 {
 				return arr.Elements[0]
+			}
+
+			return NULL
+		},
+	}
+}
+
+func funcTail() *object.Builtin {
+	return &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments. got=%d, want=1",
+					len(args))
+			}
+			if args[0].Type() != object.ARRAY_OBJ {
+				return newError("argument to `tail` must be ARRAY, got %s",
+					args[0].Type())
+			}
+
+			arr := args[0].(*object.Array)
+			length := len(arr.Elements)
+			if length > 0 {
+				newElements := make([]object.Object, length-1)
+				copy(newElements, arr.Elements[1:length])
+				return &object.Array{Elements: newElements}
 			}
 
 			return NULL

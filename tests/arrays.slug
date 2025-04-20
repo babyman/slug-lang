@@ -1,0 +1,29 @@
+// declaration
+let list = ["slug", 42, fn(a) {a * a}];
+
+// length
+assert(len(list) == 3);
+
+// lists are zero indexed
+assert(head(list) == "slug");
+assert(list[0] == "slug");
+assert(list[1] == 42);
+
+// reference the last item
+assert(list[2](5) == 25);
+assert(list[len(list) - 1](5) == 25);
+assert(peek(list)(5) == 25);
+
+// **mutation alert**
+// pop removes and returns the last item in the list
+assert(pop(list)(5) == 25);
+assert(len(list) == 2);
+
+// adding items
+let l = [];
+let l = push(l, 1, 2, 3);
+let l = push(l, 4);
+assert(len(l) == 4, "list should have 4 items");
+
+// todo decide if list equality should be a memory reference compare
+// assert(tail(list) == tail(list), "lists are not equal");
