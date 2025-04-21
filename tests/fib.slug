@@ -12,4 +12,4 @@ var fib = fn(n) {
 
 var out = fib(10);
 
-assert(out == 55, "Fibonacci 10 equals 55");
+assertEqual(out, 55, "Fibonacci 10 equals 55");

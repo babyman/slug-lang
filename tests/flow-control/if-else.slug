@@ -6,5 +6,5 @@ var f = fn(a) {
     }
 }
 
-assert(f(1) == 10, "expected 10");
-assert(f(2) == 11);
+assertEqual(f(1), 10, "expected 10");
+assertEqual(f(2), 11);

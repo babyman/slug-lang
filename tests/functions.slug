@@ -45,4 +45,5 @@ var f = fn(h:t, sum = 0) {
 }
 var out = [1,2,3,4].f();
 assert(out == 10, "Sum expected 10, got: " + out);
+assertEqual(out, 10);
 

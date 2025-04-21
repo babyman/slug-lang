@@ -6,14 +6,15 @@ import (
 )
 
 var builtins = map[string]*object.Builtin{
-	"assert":  funcAssert(),
-	"head":    funcHead(),
-	"len":     funcLen(),
-	"peek":    funcPeek(),
-	"pop":     funcPop(),
-	"push":    funcPush(),
-	"println": funcPrintLn(),
-	"tail":    funcTail(),
+	"assert":      funcAssert(),
+	"assertEqual": funcAssertEqual(),
+	"head":        funcHead(),
+	"len":         funcLen(),
+	"peek":        funcPeek(),
+	"pop":         funcPop(),
+	"push":        funcPush(),
+	"println":     funcPrintLn(),
+	"tail":        funcTail(),
 }
 
 // funcPeek retrieves the last element of an array without modifying it.
@@ -170,6 +171,33 @@ func funcAssert() *object.Builtin {
 					return newError(fmt.Sprintf("Assertion failed: %s", args[1].Inspect()))
 				}
 				return newError("Assertion failed")
+			}
+
+			return NULL
+		},
+	}
+}
+
+func funcAssertEqual() *object.Builtin {
+	return &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) < 2 || len(args) > 3 {
+				return newError("wrong number of arguments. got=%d, want=2",
+					len(args))
+			}
+			if args[0].Type() != args[1].Type() {
+				return newError("arguments to `assertEqual` must be the same type, got %s and %s",
+					args[0].Type(), args[0].Type())
+			}
+
+			test := args[0].Inspect() == args[1].Inspect()
+			if !test {
+				if len(args) == 3 {
+					return newError(fmt.Sprintf("Assertion failed: %s != %s, %s",
+						args[0].Inspect(), args[1].Inspect(), args[2].Inspect()))
+				}
+				return newError(fmt.Sprintf("Assertion failed: %s != %s",
+					args[0].Inspect(), args[1].Inspect()))
 			}
 
 			return NULL
