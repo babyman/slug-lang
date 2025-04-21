@@ -187,7 +187,7 @@ func funcAssertEqual() *object.Builtin {
 			}
 			if args[0].Type() != args[1].Type() {
 				return newError("arguments to `assertEqual` must be the same type, got %s and %s",
-					args[0].Type(), args[0].Type())
+					args[0].Type(), args[1].Type())
 			}
 
 			test := args[0].Inspect() == args[1].Inspect()

@@ -495,7 +495,7 @@ func TestArrayIndexExpressions(t *testing.T) {
 		},
 		{
 			"[1, 2, 3][-1]",
-			nil,
+			3,
 		},
 	}
 

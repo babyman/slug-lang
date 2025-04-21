@@ -1,25 +1,47 @@
-// declaration
+// accessing elements by index
+// -----------------------
+var l = [2, 3, 4];
+
+assertEqual(l[0], 2)
+assertEqual(l[1], 3)
+assertEqual(l[2], 4)
+assertEqual(l[3], nil)
+
+assertEqual(l[-1], 4)
+assertEqual(l[-2], 3)
+assertEqual(l[-3], 2)
+assertEqual(l[-4], nil)
+
+// list can contain mixed types
+// -----------------------
 var list = ["slug", 42, fn(a) {a * a}];
 
 // length
+// -----------------------
 assertEqual(len(list), 3);
 
+
 // lists are zero indexed
+// -----------------------
 assertEqual(head(list), "slug");
 assertEqual(list[0], "slug");
 assertEqual(list[1], 42);
 
 // reference the last item
+// -----------------------
 assertEqual(list[2](5), 25);
 assertEqual(list[len(list) - 1](5), 25);
 assertEqual(peek(list)(5), 25);
 
 // **mutation alert**
 // pop removes and returns the last item in the list
+// -----------------------
 assertEqual(pop(list)(5), 25);
 assertEqual(len(list), 2);
 
 // adding items
+// -----------------------
+
 var l = [];
 var l = push(l, 1, 2, 3);
 var l = push(l, 4);

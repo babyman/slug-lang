@@ -1,0 +1,8 @@
+//
+// working wih Maps
+// -----------------------
+
+var m = {"name": "Angus", "age": 15};
+
+assertEqual(m["name"], "Angus");
+assertEqual(m["age"], 15);
