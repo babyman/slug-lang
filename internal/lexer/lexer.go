@@ -54,7 +54,13 @@ func (l *Lexer) NextToken() token.Token {
 	case ',':
 		tok = newToken(token.COMMA, l.ch)
 	case '.':
-		tok = newToken(token.PERIOD, l.ch)
+		if l.peekChar() == '.' && l.peekTwoChars() == '.' {
+			l.readChar()
+			l.readChar()
+			tok = token.Token{Type: token.ELLIPSIS, Literal: "..."}
+		} else {
+			tok = newToken(token.PERIOD, l.ch)
+		}
 	case '{':
 		tok = newToken(token.LBRACE, l.ch)
 	case '}':
@@ -169,6 +175,13 @@ func (l *Lexer) peekChar() byte {
 	} else {
 		return l.input[l.readPosition]
 	}
+}
+
+func (l *Lexer) peekTwoChars() byte {
+	if l.readPosition+1 >= len(l.input) {
+		return 0
+	}
+	return l.input[l.readPosition+1]
 }
 
 func (l *Lexer) readIdentifier() string {

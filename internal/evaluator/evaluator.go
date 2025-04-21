@@ -430,9 +430,51 @@ func extendFunctionEnv(
 	args []object.Object,
 ) *object.Environment {
 	env := object.NewEnclosedEnvironment(fn.Env)
+	numArgs := len(args)
 
-	for paramIdx, param := range fn.Parameters {
-		env.Set(param.Value, args[paramIdx])
+	for i, param := range fn.Parameters {
+
+		// Handle variadic arguments
+		if param.IsVariadic {
+			env.Set(param.Name.Value, &object.Array{
+				Elements: args[i:], // Remaining args as a list
+			})
+			break
+		}
+
+		// Handle destructuring (h:t)
+		if param.Destructure != nil {
+			if i >= numArgs {
+				env.Set(param.Destructure.Head.Value, NULL)
+				env.Set(param.Destructure.Tail.Value, NULL)
+			} else {
+				arg := args[i]
+
+				list := arg.(*object.Array)
+				if len(list.Elements) > 0 {
+					env.Set(param.Destructure.Head.Value, list.Elements[0])
+					env.Set(param.Destructure.Tail.Value, &object.Array{
+						Elements: list.Elements[1:],
+					})
+				} else {
+					env.Set(param.Destructure.Head.Value, NULL)
+					env.Set(param.Destructure.Tail.Value, &object.Array{})
+				}
+			}
+			break
+		}
+
+		// Handle default values
+		if i >= numArgs {
+			if param.Default != nil {
+				defaultValue := Eval(param.Default, env)
+				env.Set(param.Name.Value, defaultValue)
+			} else {
+				env.Set(param.Name.Value, NULL)
+			}
+		} else {
+			env.Set(param.Name.Value, args[i])
+		}
 	}
 
 	return env

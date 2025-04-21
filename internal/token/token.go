@@ -35,8 +35,9 @@ const (
 	LOGICAL_AND = "&&"
 	LOGICAL_OR  = "||"
 
-	EQ     = "=="
-	NOT_EQ = "!="
+	EQ       = "=="
+	NOT_EQ   = "!="
+	ELLIPSIS = "..."
 
 	// Delimiters
 	PERIOD    = "."

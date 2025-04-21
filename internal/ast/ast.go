@@ -218,7 +218,7 @@ func (ie *IfExpression) String() string {
 
 type FunctionLiteral struct {
 	Token      token.Token // The 'fn' token
-	Parameters []*Identifier
+	Parameters []*FunctionParameter
 	Body       *BlockStatement
 }
 
@@ -260,6 +260,56 @@ func (ce *CallExpression) String() string {
 	out.WriteString(ce.Function.String())
 	out.WriteString("(")
 	out.WriteString(strings.Join(args, ", "))
+	out.WriteString(")")
+
+	return out.String()
+}
+
+type FunctionParameter struct {
+	Name        *Identifier         // Parameter name
+	Default     Expression          // Default value (optional)
+	IsVariadic  bool                // Whether this is a variadic argument
+	Destructure *DestructureBinding // List destructuring binding (optional)
+}
+
+func (p *FunctionParameter) expressionNode()      {}
+func (p *FunctionParameter) TokenLiteral() string { return p.Name.Token.Literal }
+func (p *FunctionParameter) String() string {
+	var out bytes.Buffer
+
+	if p.Destructure != nil {
+		out.WriteString(p.Destructure.String())
+	} else {
+		out.WriteString("(")
+		if p.IsVariadic {
+			out.WriteString("...")
+		}
+		out.WriteString(p.Name.String())
+		if p.Default != nil {
+			out.WriteString("=")
+			out.WriteString(p.Default.String())
+		}
+		out.WriteString(")")
+	}
+
+	return out.String()
+}
+
+type DestructureBinding struct {
+	Token token.Token // The ':', for example
+	Head  *Identifier // The variable for the head (e.g., "h")
+	Tail  *Identifier // The variable for the tail (e.g., "t")
+}
+
+func (b *DestructureBinding) expressionNode()      {}
+func (b *DestructureBinding) TokenLiteral() string { return b.Token.Literal }
+func (b *DestructureBinding) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("(")
+	out.WriteString(b.Head.String())
+	out.WriteString(":")
+	out.WriteString(b.Tail.String())
 	out.WriteString(")")
 
 	return out.String()

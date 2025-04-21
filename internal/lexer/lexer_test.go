@@ -37,6 +37,8 @@ true || false;
 "foo bar"
 [1, 2];
 {"foo": "bar"}
+...
+..
 // comment at eof
 //`
 
@@ -158,6 +160,9 @@ true || false;
 		{token.COLON, ":"},
 		{token.STRING, "bar"},
 		{token.RBRACE, "}"},
+		{token.ELLIPSIS, "..."},
+		{token.PERIOD, "."},
+		{token.PERIOD, "."},
 		{token.EOF, ""},
 	}
 

@@ -1,10 +1,34 @@
 // declare a function
 let sqr = fn(a) { a * a };
 
+// function chaining
+// -----------------------
 // function chaining works here because the code is extrapolated by the parser into:
 //
 // let n = sqr(sqr(2))
 //
-let n = 2.sqr().sqr()
+let out = 2.sqr().sqr()
+assert(out == 16, "got:" + out);
 
-assert(n == 16, "got:" + n);
+//
+// default parameter value
+// -----------------------
+let f = fn(a, b = 1) { a + b };
+let out = 1.f()
+assert(out == 2, "expected 2, got " + out)
+let out = 1.f(10);
+assert(out == 11, "expected 11, got " + out)
+
+
+// vargs example
+// -----------------------
+let f = fn(a, ...b) { a + b.len() };
+let out = 1.f(0, 0, 0);
+assert(out == 4, "expected 4, got " + out)
+
+
+// list decomposition
+// -----------------------
+let f = fn(h:t) { h };
+let out = [3,2,1,2,3].f();
+assert(out == 3, "head expected, got " + out);

@@ -404,56 +404,90 @@ func (p *Parser) parseFunctionLiteral() ast.Expression {
 	return lit
 }
 
-func (p *Parser) parseFunctionParameters() []*ast.Identifier {
-	identifiers := []*ast.Identifier{}
+func (p *Parser) parseFunctionParameters() []*ast.FunctionParameter {
+	parameters := []*ast.FunctionParameter{}
 
 	if p.peekTokenIs(token.RPAREN) {
 		p.nextToken()
-		return identifiers
+		return parameters
 	}
 
 	p.nextToken()
 
-	ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-	identifiers = append(identifiers, ident)
+	for {
+		param := &ast.FunctionParameter{}
 
-	for p.peekTokenIs(token.COMMA) {
-		p.nextToken()
-		p.nextToken()
-		ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-		identifiers = append(identifiers, ident)
+		if p.curTokenIs(token.ELLIPSIS) {
+			// Handle variadic parameter (e.g., ...b)
+			p.nextToken()
+			param.IsVariadic = true
+			param.Name = p.parseIdentifier().(*ast.Identifier)
+			parameters = append(parameters, param)
+			break // Variadic must be the last parameter.
+		}
+
+		// Check for destructuring (e.g., h:t)
+		if p.peekTokenIs(token.COLON) {
+			param.Destructure = p.parseDestructureBinding()
+			parameters = append(parameters, param)
+		} else {
+			param.Name = p.parseIdentifier().(*ast.Identifier)
+		}
+
+		// Check for default value (e.g., b = 1)
+		if p.peekTokenIs(token.ASSIGN) {
+			p.nextToken() // consume identifier
+			p.nextToken() // consume =
+			param.Default = p.parseExpression(LOWEST)
+		}
+
+		parameters = append(parameters, param)
+
+		// Stop if no more parameters
+		if !p.peekTokenIs(token.COMMA) {
+			break
+		}
+		p.nextToken() // Consume comma
+		p.nextToken() // Move to the next token
 	}
 
 	if !p.expectPeek(token.RPAREN) {
 		return nil
 	}
 
-	return identifiers
+	return parameters
+}
+
+func (p *Parser) parseDestructureBinding() *ast.DestructureBinding {
+	head := p.parseIdentifier().(*ast.Identifier) // Parse `h`
+	p.nextToken()                                 // Consume `:`
+	p.nextToken()                                 // Parse `t`
+	tail := p.parseIdentifier().(*ast.Identifier)
+
+	return &ast.DestructureBinding{
+		Head: head,
+		Tail: tail,
+	}
 }
 
 func (p *Parser) parseFunctionFirstCallExpression(left ast.Expression) ast.Expression {
 
 	// Advance to the next token, which should be the function identifier
 	if !p.expectPeek(token.IDENT) {
-		msg := fmt.Sprintf("expected function identifier after '.', got %s instead", p.curToken.Type)
+		msg := fmt.Sprintf("expected function identifier after '.', got %s instead", p.peekToken.Type)
 		p.errors = append(p.errors, msg)
 		return nil
 	}
-
-	p.nextToken()
 
 	// Create a function identifier node
 	function := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 
 	// Ensure it's either the start of a call or raise an error
 	if !p.expectPeek(token.LPAREN) {
-		msg := fmt.Sprintf("expected '(' after function name, got %s instead", p.curToken.Type)
+		msg := fmt.Sprintf("expected '(' after function name, got %s instead", p.peekToken.Type)
 		p.errors = append(p.errors, msg)
 		return nil
 	}
-
-	// Advance to the next token
-	p.nextToken()
 
 	// Parse the arguments inside the parentheses
 	args := p.parseExpressionList(token.RPAREN)

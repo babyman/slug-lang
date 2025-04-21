@@ -283,7 +283,7 @@ func TestFunctionObject(t *testing.T) {
 			fn.Parameters)
 	}
 
-	if fn.Parameters[0].String() != "x" {
+	if fn.Parameters[0].String() != "(x)" {
 		t.Fatalf("parameter is not 'x'. got=%q", fn.Parameters[0])
 	}
 

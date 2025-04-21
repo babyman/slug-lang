@@ -557,8 +557,8 @@ func TestFunctionLiteralParsing(t *testing.T) {
 			len(function.Parameters))
 	}
 
-	testLiteralExpression(t, function.Parameters[0], "x")
-	testLiteralExpression(t, function.Parameters[1], "y")
+	testLiteralExpression(t, function.Parameters[0].Name, "x")
+	testLiteralExpression(t, function.Parameters[1].Name, "y")
 
 	if len(function.Body.Statements) != 1 {
 		t.Fatalf("function.Body.Statements has not 1 statements. got=%d\n",
@@ -582,6 +582,9 @@ func TestFunctionParameterParsing(t *testing.T) {
 		{input: "fn() {};", expectedParams: []string{}},
 		{input: "fn(x) {};", expectedParams: []string{"x"}},
 		{input: "fn(x, y, z) {};", expectedParams: []string{"x", "y", "z"}},
+		//{input: "fn(h:t) {};", expectedParams: []string{"x", "y"}},
+		{input: "fn(a = 1) {};", expectedParams: []string{"a"}},
+		{input: "fn(...a) {};", expectedParams: []string{"a"}},
 	}
 
 	for _, tt := range tests {
@@ -599,7 +602,7 @@ func TestFunctionParameterParsing(t *testing.T) {
 		}
 
 		for i, ident := range tt.expectedParams {
-			testLiteralExpression(t, function.Parameters[i], ident)
+			testFunctionParameter(t, function.Parameters[i], ident)
 		}
 	}
 }
@@ -1054,6 +1057,27 @@ func testIdentifier(t *testing.T, exp ast.Expression, value string) bool {
 
 	if ident.Value != value {
 		t.Errorf("ident.Value not %s. got=%s", value, ident.Value)
+		return false
+	}
+
+	if ident.TokenLiteral() != value {
+		t.Errorf("ident.TokenLiteral not %s. got=%s", value,
+			ident.TokenLiteral())
+		return false
+	}
+
+	return true
+}
+
+func testFunctionParameter(t *testing.T, exp ast.Expression, value string) bool {
+	ident, ok := exp.(*ast.FunctionParameter)
+	if !ok {
+		t.Errorf("exp not *ast.FunctionParameter. got=%T", exp)
+		return false
+	}
+
+	if ident.Name.Value != value {
+		t.Errorf("ident.Value not %s. got=%s", value, ident.Name.Value)
 		return false
 	}
 
