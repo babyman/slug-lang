@@ -13,7 +13,7 @@ type BuiltinFunction func(args ...Object) Object
 type ObjectType string
 
 const (
-	NULL_OBJ  = "NULL"
+	NIL_OBJ   = "NIL"
 	ERROR_OBJ = "ERROR"
 
 	INTEGER_OBJ = "INTEGER"
@@ -71,10 +71,10 @@ func (b *Boolean) HashKey() HashKey {
 	return HashKey{Type: b.Type(), Value: value}
 }
 
-type Null struct{}
+type Nil struct{}
 
-func (n *Null) Type() ObjectType { return NULL_OBJ }
-func (n *Null) Inspect() string  { return "null" }
+func (n *Nil) Type() ObjectType { return NIL_OBJ }
+func (n *Nil) Inspect() string  { return "nil" }
 
 type ReturnValue struct {
 	Value Object

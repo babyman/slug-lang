@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	NULL  = &object.Null{}
+	NIL   = &object.Nil{}
 	TRUE  = &object.Boolean{Value: true}
 	FALSE = &object.Boolean{Value: false}
 )
@@ -48,6 +48,9 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 
 	case *ast.Boolean:
 		return nativeBoolToBooleanObject(node.Value)
+
+	case *ast.Nil:
+		return NIL
 
 	case *ast.PrefixExpression:
 		right := Eval(node.Right, env)
@@ -208,7 +211,7 @@ func evalBangOperatorExpression(right object.Object) object.Object {
 		return FALSE
 	case FALSE:
 		return TRUE
-	case NULL:
+	case NIL:
 		return TRUE
 	default:
 		return FALSE
@@ -349,7 +352,7 @@ func evalIfExpression(
 	} else if ie.ElseBranch != nil {
 		return Eval(ie.ElseBranch, env)
 	} else {
-		return NULL
+		return NIL
 	}
 }
 
@@ -370,7 +373,7 @@ func evalIdentifier(
 
 func isTruthy(obj object.Object) bool {
 	switch obj {
-	case NULL:
+	case NIL:
 		return false
 	case TRUE:
 		return true
@@ -445,8 +448,8 @@ func extendFunctionEnv(
 		// Handle destructuring (h:t)
 		if param.Destructure != nil {
 			if i >= numArgs {
-				env.Set(param.Destructure.Head.Value, NULL)
-				env.Set(param.Destructure.Tail.Value, NULL)
+				env.Set(param.Destructure.Head.Value, NIL)
+				env.Set(param.Destructure.Tail.Value, NIL)
 			} else {
 				arg := args[i]
 
@@ -457,7 +460,7 @@ func extendFunctionEnv(
 						Elements: list.Elements[1:],
 					})
 				} else {
-					env.Set(param.Destructure.Head.Value, NULL)
+					env.Set(param.Destructure.Head.Value, NIL)
 					env.Set(param.Destructure.Tail.Value, &object.Array{})
 				}
 			}
@@ -470,7 +473,7 @@ func extendFunctionEnv(
 				defaultValue := Eval(param.Default, env)
 				env.Set(param.Name.Value, defaultValue)
 			} else {
-				env.Set(param.Name.Value, NULL)
+				env.Set(param.Name.Value, NIL)
 			}
 		} else {
 			env.Set(param.Name.Value, args[i])
@@ -505,7 +508,7 @@ func evalArrayIndexExpression(array, index object.Object) object.Object {
 	max := int64(len(arrayObject.Elements) - 1)
 
 	if idx < 0 || idx > max {
-		return NULL
+		return NIL
 	}
 
 	return arrayObject.Elements[idx]
@@ -550,7 +553,7 @@ func evalHashIndexExpression(hash, index object.Object) object.Object {
 
 	pair, ok := hashObject.Pairs[key.HashKey()]
 	if !ok {
-		return NULL
+		return NIL
 	}
 
 	return pair.Value

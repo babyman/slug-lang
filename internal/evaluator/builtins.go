@@ -18,7 +18,7 @@ var builtins = map[string]*object.Builtin{
 }
 
 // funcPeek retrieves the last element of an array without modifying it.
-// Returns NULL if the array is empty or an error for invalid input.
+// Returns NIL if the array is empty or an error for invalid input.
 func funcPeek() *object.Builtin {
 	return &object.Builtin{
 		Fn: func(args ...object.Object) object.Object {
@@ -37,7 +37,7 @@ func funcPeek() *object.Builtin {
 				return arr.Elements[length-1]
 			}
 
-			return NULL
+			return NIL
 		},
 	}
 }
@@ -89,7 +89,7 @@ func funcPop() *object.Builtin {
 				return popped
 			}
 
-			return NULL
+			return NIL
 		},
 	}
 }
@@ -111,7 +111,7 @@ func funcHead() *object.Builtin {
 				return arr.Elements[0]
 			}
 
-			return NULL
+			return NIL
 		},
 	}
 }
@@ -136,7 +136,7 @@ func funcTail() *object.Builtin {
 				return &object.Array{Elements: newElements}
 			}
 
-			return NULL
+			return NIL
 		},
 	}
 }
@@ -148,7 +148,7 @@ func funcPrintLn() *object.Builtin {
 				fmt.Println(arg.Inspect())
 			}
 
-			return NULL
+			return NIL
 		},
 	}
 }
@@ -173,7 +173,7 @@ func funcAssert() *object.Builtin {
 				return newError("Assertion failed")
 			}
 
-			return NULL
+			return NIL
 		},
 	}
 }
@@ -200,7 +200,7 @@ func funcAssertEqual() *object.Builtin {
 					args[0].Inspect(), args[1].Inspect()))
 			}
 
-			return NULL
+			return NIL
 		},
 	}
 }

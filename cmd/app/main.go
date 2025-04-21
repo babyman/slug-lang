@@ -57,7 +57,7 @@ func executeFile(filename string) error {
 
 	env := object.NewEnvironment()
 	evaluated := evaluator.Eval(program, env)
-	if evaluated != nil && evaluated.Type() != object.NULL_OBJ {
+	if evaluated != nil && evaluated.Type() != object.NIL_OBJ {
 		if evaluated.Type() == object.ERROR_OBJ {
 			return fmt.Errorf(evaluated.Inspect())
 		} else {

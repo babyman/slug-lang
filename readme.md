@@ -6,7 +6,7 @@ An interpreted programming language.
 Types
 ===
 
-- `Null`
+- `Nil`
 - `Boolean`: true or false
 - `Integer`
 - `String`
