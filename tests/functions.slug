@@ -1,5 +1,5 @@
 // declare a function
-var sqr = fn(a) { a * a };
+var sqr = fn(a) { a * a }
 
 // function chaining
 // -----------------------
@@ -7,28 +7,40 @@ var sqr = fn(a) { a * a };
 //
 // var n = sqr(sqr(2))
 //
-var out = 2.sqr().sqr()
+var out = 2.sqr().sqr();
 assert(out == 16, "got:" + out);
 
 //
 // default parameter value
 // -----------------------
-var f = fn(a, b = 1) { a + b };
-var out = 1.f()
-assert(out == 2, "expected 2, got " + out)
+var f = fn(a, b = 1) { a + b }
+var out = 1.f();
+assert(out == 2, "expected 2, got " + out);
 var out = 1.f(10);
 assert(out == 11, "expected 11, got " + out)
 
 
 // vargs example
 // -----------------------
-var f = fn(a, ...b) { a + b.len() };
+var f = fn(a, ...b) { a + b.len() }
 var out = 1.f(0, 0, 0);
-assert(out == 4, "expected 4, got " + out)
+assert(out == 4, "expected 4, got " + out);
 
 
 // list decomposition
 // -----------------------
-var f = fn(h:t) { h };
+var f = fn(h:t) { h }
 var out = [3,2,1,2,3].f();
 assert(out == 3, "head expected, got " + out);
+
+
+// sum a list of numbers
+// -----------------------
+var f = fn(h:t, sum = 0) {
+    if(len(t) == 0) {
+        sum + h;
+    } else {
+        f(t, sum + h);
+    }
+}
+println("SUM: " + [1,2,3,4].f());

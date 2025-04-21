@@ -429,7 +429,6 @@ func (p *Parser) parseFunctionParameters() []*ast.FunctionParameter {
 		// Check for destructuring (e.g., h:t)
 		if p.peekTokenIs(token.COLON) {
 			param.Destructure = p.parseDestructureBinding()
-			parameters = append(parameters, param)
 		} else {
 			param.Name = p.parseIdentifier().(*ast.Identifier)
 		}

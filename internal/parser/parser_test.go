@@ -583,6 +583,7 @@ func TestFunctionParameterParsing(t *testing.T) {
 		{input: "fn(x) {};", expectedParams: []string{"x"}},
 		{input: "fn(x, y, z) {};", expectedParams: []string{"x", "y", "z"}},
 		//{input: "fn(h:t) {};", expectedParams: []string{"x", "y"}},
+		//{input: "fn(h:t, a = 1) {};", expectedParams: []string{"x", "y"}},
 		{input: "fn(a = 1) {};", expectedParams: []string{"a"}},
 		{input: "fn(...a) {};", expectedParams: []string{"a"}},
 	}

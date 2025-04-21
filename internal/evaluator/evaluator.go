@@ -461,7 +461,7 @@ func extendFunctionEnv(
 					env.Set(param.Destructure.Tail.Value, &object.Array{})
 				}
 			}
-			break
+			continue
 		}
 
 		// Handle default values
