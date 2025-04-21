@@ -2,7 +2,7 @@
 // Fibonacci sequence calculation using simple recursion
 //
 
-let fib = fn(n) {
+var fib = fn(n) {
     if (n < 2) {
         return n;
     } else {
@@ -10,6 +10,6 @@ let fib = fn(n) {
     }
 }
 
-let out = fib(10);
+var out = fib(10);
 
 assert(out == 55, "Fibonacci 10 equals 55");

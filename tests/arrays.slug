@@ -1,5 +1,5 @@
 // declaration
-let list = ["slug", 42, fn(a) {a * a}];
+var list = ["slug", 42, fn(a) {a * a}];
 
 // length
 assert(len(list) == 3);
@@ -20,9 +20,9 @@ assert(pop(list)(5) == 25);
 assert(len(list) == 2);
 
 // adding items
-let l = [];
-let l = push(l, 1, 2, 3);
-let l = push(l, 4);
+var l = [];
+var l = push(l, 1, 2, 3);
+var l = push(l, 4);
 assert(len(l) == 4, "list should have 4 items");
 
 // todo decide if list equality should be a memory reference compare

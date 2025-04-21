@@ -32,7 +32,7 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		}
 		return &object.ReturnValue{Value: val}
 
-	case *ast.LetStatement:
+	case *ast.VarStatement:
 		val := Eval(node.Value, env)
 		if isError(val) {
 			return val
