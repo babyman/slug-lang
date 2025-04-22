@@ -1,0 +1,44 @@
+
+// String functions
+// -----------------------
+
+var s = "Hello Slug!";
+
+
+// length
+// -----------------------
+assertEqual(s.len(), 11);
+
+
+// contains
+// -----------------------
+assert(s.contains("Slug"), "Expected to contain Slug");
+assert(!s.contains("slug"), "Contains is case sensitive");
+
+
+// startsWith
+// -----------------------
+assert(s.startsWith("Hell"), "Does not start with Hell");
+assert(!s.startsWith("A"), "Starts with A");
+
+
+// endsWith
+// -----------------------
+assert(s.endsWith("Slug!"), "does not end with Slug!");
+assert(!s.endsWith("aaa"), "ends with aaa");
+
+
+// indexOf
+// -----------------------
+assertEqual(s.indexOf("aaa"), -1, "not found");
+assertEqual(s.indexOf("H"), 0, "H found at index 0");
+assertEqual(s.indexOf("Slug"), 6, "Slug starts at index 6");
+
+// indexOf using a start index
+// -----------------------
+assertEqual(s.indexOf("H", 1), -1, "H found at index 0");
+
+
+// trim
+// -----------------------
+assertEqual("  foo  ".trim(), "foo");
