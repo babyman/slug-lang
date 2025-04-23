@@ -3,6 +3,7 @@ package evaluator
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"slug/internal/ast"
 	"slug/internal/lexer"
 	"slug/internal/object"
@@ -146,16 +147,28 @@ func evalProgram(program *ast.Program, env *object.Environment) object.Object {
 	return result
 }
 
-func evalImportStatement(node *ast.ImportStatement, env *object.Environment) object.Object {
+func evalImportStatement(importStatement *ast.ImportStatement, env *object.Environment) object.Object {
 	// Step 1: Resolve module path to file path
-	modulePath := strings.Join(mapIdentifiersToStrings(node.PathParts), "/") + ".slug"
-	content, err := ioutil.ReadFile(modulePath)
+	modulePath := strings.Join(mapIdentifiersToStrings(importStatement.PathParts), "/") + ".slug"
+
+	// Try to read the module in the current working directory first
+	moduleSrc, err := ioutil.ReadFile(modulePath)
 	if err != nil {
-		return newError("error reading module '%s': %s", modulePath, err)
+		// If not found, attempt fallback to ${SLUG_HOME}/lib
+		slugHome := os.Getenv("SLUG_HOME")
+		if slugHome == "" {
+			return newError("environment variable SLUG_HOME is not set")
+		}
+
+		fallbackPath := fmt.Sprintf("%s/lib/%s", slugHome, modulePath)
+		moduleSrc, err = ioutil.ReadFile(fallbackPath)
+		if err != nil {
+			return newError("error reading module '%s': %s", modulePath, err)
+		}
 	}
 
 	// Step 2: Parse and evaluate the module
-	l := lexer.New(string(content))
+	l := lexer.New(string(moduleSrc))
 	p := parser.New(l)
 	program := p.ParseProgram()
 
@@ -167,22 +180,22 @@ func evalImportStatement(node *ast.ImportStatement, env *object.Environment) obj
 	Eval(program, moduleEnv)
 
 	// Step 3: Create the Module object
-	moduleName := node.PathParts[len(node.PathParts)-1].Value
+	moduleName := importStatement.PathParts[len(importStatement.PathParts)-1].Value
 	moduleObj := &object.Module{Name: moduleName, Env: moduleEnv}
 
 	// Step 4: Handle import types
-	if node.Wildcard {
+	if importStatement.Wildcard {
 		// Import all symbols from the module environment
 		for name, val := range moduleEnv.Store {
 			env.Set(name, val)
 		}
-	} else if node.Alias != "" {
+	} else if importStatement.Alias != "" {
 		// Import with an alias
-		val, _ := moduleEnv.Get(node.Symbols[0].Value)
-		env.Set(node.Alias, val)
-	} else if len(node.Symbols) > 0 {
+		val, _ := moduleEnv.Get(importStatement.Symbols[0].Value)
+		env.Set(importStatement.Alias, val)
+	} else if len(importStatement.Symbols) > 0 {
 		// Import specific symbols
-		for _, sym := range node.Symbols {
+		for _, sym := range importStatement.Symbols {
 			if val, ok := moduleEnv.Get(sym.Value); ok {
 				env.Set(sym.Value, val)
 			} else {
