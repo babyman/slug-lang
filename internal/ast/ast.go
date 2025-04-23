@@ -92,6 +92,45 @@ func (rs *ReturnStatement) String() string {
 	return out.String()
 }
 
+type ImportStatement struct {
+	Token     token.Token   // The 'import' token
+	PathParts []*Identifier // Dot-separated identifiers for module path (e.g., math.Arithmetic)
+	Symbols   []*Identifier // Symbols explicitly imported (e.g., {add, subtract})
+	Wildcard  bool          // Whether the import is a wildcard (*)
+	Alias     string        // Optional alias for the import
+}
+
+func (is *ImportStatement) statementNode()       {}
+func (is *ImportStatement) TokenLiteral() string { return is.Token.Literal }
+func (is *ImportStatement) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("import ")
+	out.WriteString(is.PathAsString())
+	if is.Wildcard {
+		out.WriteString(".*")
+	} else if len(is.Symbols) > 0 {
+		symbols := []string{}
+		for _, sym := range is.Symbols {
+			symbols = append(symbols, sym.String())
+		}
+		out.WriteString(".{" + strings.Join(symbols, ", ") + "}")
+	}
+	if is.Alias != "" {
+		out.WriteString(" as " + is.Alias)
+	}
+
+	return out.String()
+}
+
+func (is *ImportStatement) PathAsString() string {
+	parts := []string{}
+	for _, part := range is.PathParts {
+		parts = append(parts, part.Value)
+	}
+	return strings.Join(parts, ".")
+}
+
 type ExpressionStatement struct {
 	Token      token.Token // the first token of the expression
 	Expression Expression

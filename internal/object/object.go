@@ -22,6 +22,7 @@ const (
 
 	RETURN_VALUE_OBJ = "RETURN_VALUE"
 
+	MODULE_OBJ   = "MODULE"
 	FUNCTION_OBJ = "FUNCTION"
 	BUILTIN_OBJ  = "BUILTIN"
 
@@ -89,6 +90,25 @@ type Error struct {
 
 func (e *Error) Type() ObjectType { return ERROR_OBJ }
 func (e *Error) Inspect() string  { return "ERROR: " + e.Message }
+
+type Module struct {
+	Name string       // Module name/namespace (e.g., `Arithmetic` or an alias)
+	Env  *Environment // Module-scoped environment with variables and functions
+}
+
+func (m *Module) Type() ObjectType { return MODULE_OBJ }
+
+func (m *Module) Inspect() string {
+	var out bytes.Buffer
+	out.WriteString("module ")
+	out.WriteString(m.Name)
+	out.WriteString(" {")
+	for key, val := range m.Env.Store {
+		out.WriteString(fmt.Sprintf("\n  %s: %s,", key, val.Inspect()))
+	}
+	out.WriteString("\n}")
+	return out.String()
+}
 
 type Function struct {
 	Parameters []*ast.FunctionParameter

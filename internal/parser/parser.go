@@ -178,6 +178,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseVarStatement()
 	case token.RETURN:
 		return p.parseReturnStatement()
+	case token.IMPORT:
+		return p.parseImportStatement()
 	default:
 		return p.parseExpressionStatement()
 	}
@@ -213,6 +215,70 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	p.nextToken()
 
 	stmt.ReturnValue = p.parseExpression(LOWEST)
+
+	if p.peekTokenIs(token.SEMICOLON) {
+		p.nextToken()
+	}
+
+	return stmt
+}
+
+func (p *Parser) parseImportStatement() *ast.ImportStatement {
+	stmt := &ast.ImportStatement{
+		Token:     p.curToken,
+		PathParts: []*ast.Identifier{},
+		Symbols:   []*ast.Identifier{},
+		Wildcard:  false,
+	}
+
+	// Parse the module path (e.g., math.Arithmetic)
+	if !p.expectPeek(token.IDENT) {
+		return nil
+	}
+
+	stmt.PathParts = append(stmt.PathParts, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+
+	for p.peekTokenIs(token.PERIOD) {
+		p.nextToken() // Consume '.'
+		if p.peekTokenIs(token.IDENT) {
+			p.nextToken()
+			stmt.PathParts = append(stmt.PathParts, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+		}
+	}
+
+	if p.peekTokenIs(token.ASTERISK) {
+		p.nextToken() // Consume '*'
+		stmt.Wildcard = true
+	} else if p.peekTokenIs(token.LBRACE) {
+		// Parse optional symbols
+		p.nextToken() // Consume '{'
+
+		for !p.curTokenIs(token.RBRACE) {
+			if p.curTokenIs(token.IDENT) {
+				stmt.Symbols = append(stmt.Symbols, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+			}
+			p.nextToken() // Move to the next token
+			if p.curTokenIs(token.COMMA) {
+				p.nextToken() // Consume comma
+			}
+		}
+		if !p.curTokenIs(token.RBRACE) {
+			return nil
+		}
+		p.nextToken() // Consume '}'
+	} else {
+		stmt.Symbols = append(stmt.Symbols, stmt.PathParts[len(stmt.PathParts)-1])
+		stmt.PathParts = stmt.PathParts[:len(stmt.PathParts)-1]
+
+		if p.peekTokenIs(token.AS) {
+			// Parse optional alias
+			p.nextToken() // Consume 'as'
+			if !p.expectPeek(token.IDENT) {
+				return nil
+			}
+			stmt.Alias = p.curToken.Literal
+		}
+	}
 
 	if p.peekTokenIs(token.SEMICOLON) {
 		p.nextToken()
