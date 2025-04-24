@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/user"
 	"slug/internal/evaluator"
@@ -10,6 +11,7 @@ import (
 	"slug/internal/object"
 	"slug/internal/parser"
 	"slug/internal/repl"
+	"strings"
 )
 
 var rootPath string
@@ -44,9 +46,23 @@ func main() {
 
 func executeFile(filename, rootPath string) error {
 	// Read the file
+	if !strings.HasSuffix(filename, ".slug") {
+		filename = filename + ".slug"
+	}
+
 	content, err := os.ReadFile(filename)
 	if err != nil {
-		return fmt.Errorf("could not read file %s: %v", filename, err)
+		// If not found, attempt fallback to ${SLUG_HOME}/lib
+		slugHome := os.Getenv("SLUG_HOME")
+		if slugHome == "" {
+			return fmt.Errorf("environment variable SLUG_HOME is not set")
+		}
+
+		fallbackPath := fmt.Sprintf("%s/lib/%s", slugHome, filename)
+		content, err = ioutil.ReadFile(fallbackPath)
+		if err != nil {
+			return fmt.Errorf("error reading module '%s': %s", fallbackPath, err)
+		}
 	}
 
 	// Set up lexer, parser, and environment
