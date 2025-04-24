@@ -2,8 +2,9 @@ import functions.*;
 import functions.{sqr};
 import functions.{f as sum};
 
-println(51.sqr());
 
-println([2, 3, 4].f().sqr());
+assertEqual(51.sqr(), 2601);
 
-println([51, 23].sum());
+assertEqual([2, 3, 4].f().sqr(), 81);
+
+assertEqual([51, 23].sum(), 74);

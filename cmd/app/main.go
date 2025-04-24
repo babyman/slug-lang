@@ -26,7 +26,9 @@ func main() {
 	if len(flag.Args()) > 0 { // Remaining arguments after flags
 		// If an argument is passed, treat it as a filename to execute
 		filename := flag.Args()[0]
-		if err := executeFile(filename, rootPath); err != nil {
+		args := flag.Args()[1:]
+
+		if err := executeFile(filename, rootPath, args); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -44,7 +46,7 @@ func main() {
 	}
 }
 
-func executeFile(filename, rootPath string) error {
+func executeFile(filename, rootPath string, args []string) error {
 	// Read the file
 	if !strings.HasSuffix(filename, ".slug") {
 		filename = filename + ".slug"
@@ -82,6 +84,12 @@ func executeFile(filename, rootPath string) error {
 
 	env := object.NewEnvironment()
 	env.SetRootPath(rootPath) // Set the root path in the environment
+
+	objects := make([]object.Object, len(args))
+	for i, arg := range args {
+		objects[i] = &object.String{Value: arg}
+	}
+	env.Set("args", &object.Array{Elements: objects})
 
 	evaluated := evaluator.Eval(program, env)
 	if evaluated != nil && evaluated.Type() != object.NIL_OBJ {
