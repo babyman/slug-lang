@@ -17,6 +17,8 @@ var (
 	FALSE = &object.Boolean{Value: false}
 )
 
+var ModuleRegistry = make(map[string]*object.Module)
+
 func Eval(node ast.Node, env *object.Environment) object.Object {
 	switch node := node.(type) {
 
@@ -148,14 +150,31 @@ func evalProgram(program *ast.Program, env *object.Environment) object.Object {
 }
 
 func evalImportStatement(importStatement *ast.ImportStatement, env *object.Environment) object.Object {
+	// Generate the cache key from PathParts
+	key := strings.Join(mapIdentifiersToStrings(importStatement.PathParts), ".")
+
+	// Check if the module is already in the registry
+	if module, exists := ModuleRegistry[key]; exists {
+		// Module is already loaded, return it
+		return handleModuleImport(importStatement, env, module)
+	}
+
 	// Step 1: Resolve the root path
 	rootPath := env.GetRootPath() // Retrieve the root path set by --root
+
+	// if the module is not in the registry, create a new Module object and cache it
+	moduleName := importStatement.PathParts[len(importStatement.PathParts)-1].Value
+	moduleEnv := object.NewEnvironment()
+	moduleEnv.SetRootPath(rootPath)
+	module := &object.Module{Name: moduleName, Env: moduleEnv}
+	ModuleRegistry[key] = module
 
 	// Step 2: Resolve module path to file path
 	modulePath := fmt.Sprintf("%s/%s.slug", rootPath, strings.Join(mapIdentifiersToStrings(importStatement.PathParts), "/"))
 
-	// Try to read the module from the resolved root path
+	// Try to read the module from the resolved path
 	moduleSrc, err := ioutil.ReadFile(modulePath)
+	fallbackPath := ""
 	if err != nil {
 		// If not found, attempt fallback to ${SLUG_HOME}/lib
 		slugHome := os.Getenv("SLUG_HOME")
@@ -163,49 +182,52 @@ func evalImportStatement(importStatement *ast.ImportStatement, env *object.Envir
 			return newError("environment variable SLUG_HOME is not set")
 		}
 
-		fallbackPath := fmt.Sprintf("%s/lib/%s", slugHome, modulePath)
+		fallbackPath = fmt.Sprintf("%s/lib/%s.slug", slugHome, strings.Join(mapIdentifiersToStrings(importStatement.PathParts), "/"))
 		moduleSrc, err = ioutil.ReadFile(fallbackPath)
 		if err != nil {
-			return newError("error reading module '%s': %s", modulePath, err)
+			return newError("error reading module '%s': %s", fallbackPath, err)
 		}
 	}
 
-	// Step 2: Parse and evaluate the module
+	// Step 3: Parse and evaluate the module
 	l := lexer.New(string(moduleSrc))
 	p := parser.New(l)
 	program := p.ParseProgram()
 
 	if len(p.Errors()) > 0 {
-		return newError("parsing errors in module '%s': %s", modulePath, strings.Join(p.Errors(), ", "))
+		return newError("parsing errors in module '%s': %s", key, strings.Join(p.Errors(), ", "))
 	}
 
-	moduleEnv := object.NewEnvironment()
-	moduleEnv.SetRootPath(rootPath)
+	// Evaluate the program within the module's environment
 	Eval(program, moduleEnv)
 
-	// Step 3: Create the Module object
-	moduleName := importStatement.PathParts[len(importStatement.PathParts)-1].Value
-	moduleObj := &object.Module{Name: moduleName, Env: moduleEnv}
+	// Import the module into the current environment
+	return handleModuleImport(importStatement, env, module)
+}
 
-	// Handle import types (e.g., named symbols, wildcard, or namespace)
+func handleModuleImport(importStatement *ast.ImportStatement, env *object.Environment, module *object.Module) object.Object {
+	// Handle named symbols import, wildcard import, or namespace import
 	if importStatement.Wildcard {
-		for name, val := range moduleEnv.Store {
+		// Import all symbols into the current environment
+		for name, val := range module.Env.Store {
 			env.Set(name, val)
 		}
 	} else if len(importStatement.Symbols) > 0 {
+		// Import specific symbols
 		for _, sym := range importStatement.Symbols {
-			if val, ok := moduleEnv.Get(sym.Name.Value); ok {
-				n := sym.Name.Value
+			if val, ok := module.Env.Get(sym.Name.Value); ok {
+				alias := sym.Name.Value
 				if sym.Alias != nil {
-					n = sym.Alias.Value
+					alias = sym.Alias.Value
 				}
-				env.Set(n, val)
+				env.Set(alias, val)
 			} else {
-				return newError("symbol '%s' not found in module '%s'", sym.Name.Value, moduleName)
+				return newError("symbol '%s' not found in module '%s'", sym.Name.Value, module.Name)
 			}
 		}
 	} else {
-		env.Set(moduleName, moduleObj)
+		// Store the whole module as a namespace
+		env.Set(module.Name, module)
 	}
 
 	return NIL

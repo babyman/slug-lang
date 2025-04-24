@@ -4,4 +4,4 @@ var add = fn(a, b) {
     a + b;
 }
 
-println("b executed", 1.add(2));
+println("b executed");
