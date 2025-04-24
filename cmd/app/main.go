@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/user"
@@ -11,17 +12,24 @@ import (
 	"slug/internal/repl"
 )
 
+var rootPath string
+
+func init() {
+	flag.StringVar(&rootPath, "root", ".", "Set the root context for the program (used for imports)")
+}
+
 func main() {
-	if len(os.Args) > 1 {
+	flag.Parse() // Parse the command-line flags
+
+	if len(flag.Args()) > 0 { // Remaining arguments after flags
 		// If an argument is passed, treat it as a filename to execute
-		filename := os.Args[1]
-		if err := executeFile(filename); err != nil {
+		filename := flag.Args()[0]
+		if err := executeFile(filename, rootPath); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 	} else {
 		// No arguments, launch the REPL
-
 		usr, err := user.Current()
 		if err != nil {
 			panic(err)
@@ -29,11 +37,12 @@ func main() {
 
 		fmt.Printf("Hello %s! This is the Slug programming language!\n", usr.Username)
 		fmt.Printf("Feel free to type in commands\n")
+		repl.SetRootPath(rootPath) // Pass rootPath to REPL
 		repl.Start(os.Stdin, os.Stdout)
 	}
 }
 
-func executeFile(filename string) error {
+func executeFile(filename, rootPath string) error {
 	// Read the file
 	content, err := os.ReadFile(filename)
 	if err != nil {
@@ -56,6 +65,8 @@ func executeFile(filename string) error {
 	}
 
 	env := object.NewEnvironment()
+	env.SetRootPath(rootPath) // Set the root path in the environment
+
 	evaluated := evaluator.Eval(program, env)
 	if evaluated != nil && evaluated.Type() != object.NIL_OBJ {
 		if evaluated.Type() == object.ERROR_OBJ {

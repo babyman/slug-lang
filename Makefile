@@ -9,7 +9,7 @@ test: release
 	go test ./... || exit 1
 	@for file in $(shell find ./tests -name "*.slug"); do \
 		echo "Running tests for $$file"; \
-		./bin/$(BINARY_NAME) $$file || exit 1; \
+		./bin/$(BINARY_NAME) --root ./tests $$file || exit 1; \
 	done
 
 

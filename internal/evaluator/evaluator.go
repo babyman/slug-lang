@@ -148,10 +148,13 @@ func evalProgram(program *ast.Program, env *object.Environment) object.Object {
 }
 
 func evalImportStatement(importStatement *ast.ImportStatement, env *object.Environment) object.Object {
-	// Step 1: Resolve module path to file path
-	modulePath := strings.Join(mapIdentifiersToStrings(importStatement.PathParts), "/") + ".slug"
+	// Step 1: Resolve the root path
+	rootPath := env.GetRootPath() // Retrieve the root path set by --root
 
-	// Try to read the module in the current working directory first
+	// Step 2: Resolve module path to file path
+	modulePath := fmt.Sprintf("%s/%s.slug", rootPath, strings.Join(mapIdentifiersToStrings(importStatement.PathParts), "/"))
+
+	// Try to read the module from the resolved root path
 	moduleSrc, err := ioutil.ReadFile(modulePath)
 	if err != nil {
 		// If not found, attempt fallback to ${SLUG_HOME}/lib
@@ -177,20 +180,19 @@ func evalImportStatement(importStatement *ast.ImportStatement, env *object.Envir
 	}
 
 	moduleEnv := object.NewEnvironment()
+	moduleEnv.SetRootPath(rootPath)
 	Eval(program, moduleEnv)
 
 	// Step 3: Create the Module object
 	moduleName := importStatement.PathParts[len(importStatement.PathParts)-1].Value
 	moduleObj := &object.Module{Name: moduleName, Env: moduleEnv}
 
-	// Step 4: Handle import types
+	// Handle import types (e.g., named symbols, wildcard, or namespace)
 	if importStatement.Wildcard {
-		// Import all symbols from the module environment
 		for name, val := range moduleEnv.Store {
 			env.Set(name, val)
 		}
 	} else if len(importStatement.Symbols) > 0 {
-		// Import specific symbols
 		for _, sym := range importStatement.Symbols {
 			if val, ok := moduleEnv.Get(sym.Name.Value); ok {
 				n := sym.Name.Value
@@ -203,7 +205,6 @@ func evalImportStatement(importStatement *ast.ImportStatement, env *object.Envir
 			}
 		}
 	} else {
-		// Default: Import the module as a namespace
 		env.Set(moduleName, moduleObj)
 	}
 

@@ -10,11 +10,18 @@ import (
 	"slug/internal/parser"
 )
 
+var rootPath = "."
+
+func SetRootPath(path string) {
+	rootPath = path
+}
+
 const PROMPT = ">> "
 
 func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
 	env := object.NewEnvironment()
+	env.SetRootPath(rootPath) // Set root path for the REPL
 
 	for {
 		fmt.Fprintf(out, PROMPT)
