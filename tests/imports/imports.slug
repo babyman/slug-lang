@@ -1,0 +1,9 @@
+import functions.*;
+import functions.{sqr};
+import functions.{f as sum};
+
+println(51.sqr());
+
+println([2, 3, 4].f().sqr());
+
+println([51, 23].sum());

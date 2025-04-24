@@ -224,12 +224,7 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 }
 
 func (p *Parser) parseImportStatement() *ast.ImportStatement {
-	stmt := &ast.ImportStatement{
-		Token:     p.curToken,
-		PathParts: []*ast.Identifier{},
-		Symbols:   []*ast.Identifier{},
-		Wildcard:  false,
-	}
+	stmt := &ast.ImportStatement{Token: p.curToken}
 
 	// Parse the module path (e.g., math.Arithmetic)
 	if !p.expectPeek(token.IDENT) {
@@ -246,38 +241,20 @@ func (p *Parser) parseImportStatement() *ast.ImportStatement {
 		}
 	}
 
-	if p.peekTokenIs(token.ASTERISK) {
-		p.nextToken() // Consume '*'
-		stmt.Wildcard = true
-	} else if p.peekTokenIs(token.LBRACE) {
-		// Parse optional symbols
-		p.nextToken() // Consume '{'
+	// Check for wildcard or braces with symbols
+	if p.curTokenIs(token.PERIOD) {
+		p.nextToken()
+		if p.curTokenIs(token.ASTERISK) {
+			stmt.Wildcard = true
+		} else if p.curTokenIs(token.LBRACE) {
+			stmt.Symbols = p.parseImportSymbols()
+		}
+	}
 
-		for !p.curTokenIs(token.RBRACE) {
-			if p.curTokenIs(token.IDENT) {
-				stmt.Symbols = append(stmt.Symbols, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
-			}
-			p.nextToken() // Move to the next token
-			if p.curTokenIs(token.COMMA) {
-				p.nextToken() // Consume comma
-			}
-		}
-		if !p.curTokenIs(token.RBRACE) {
-			return nil
-		}
-		p.nextToken() // Consume '}'
-	} else {
-		stmt.Symbols = append(stmt.Symbols, stmt.PathParts[len(stmt.PathParts)-1])
-		stmt.PathParts = stmt.PathParts[:len(stmt.PathParts)-1]
-
-		if p.peekTokenIs(token.AS) {
-			// Parse optional alias
-			p.nextToken() // Consume 'as'
-			if !p.expectPeek(token.IDENT) {
-				return nil
-			}
-			stmt.Alias = p.curToken.Literal
-		}
+	if !stmt.Wildcard && len(stmt.Symbols) == 0 {
+		msg := fmt.Sprintf("invalid import: must specify `*` or `{symbols}`")
+		p.errors = append(p.errors, msg)
+		return nil
 	}
 
 	if p.peekTokenIs(token.SEMICOLON) {
@@ -285,6 +262,33 @@ func (p *Parser) parseImportStatement() *ast.ImportStatement {
 	}
 
 	return stmt
+}
+
+func (p *Parser) parseImportSymbols() []*ast.ImportSymbol {
+	var symbols []*ast.ImportSymbol
+
+	for !p.peekTokenIs(token.RBRACE) {
+		p.nextToken()
+
+		symbol := &ast.ImportSymbol{Name: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}}
+
+		// Check for alias using "as"
+		if p.peekTokenIs(token.AS) {
+			p.nextToken() // Consume "as"
+			p.nextToken() // Consume "as"
+			symbol.Alias = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		}
+
+		symbols = append(symbols, symbol)
+
+		// Handle comma between symbols
+		if p.peekTokenIs(token.COMMA) {
+			p.nextToken()
+		}
+	}
+	p.expectPeek(token.RBRACE)
+
+	return symbols
 }
 
 func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {

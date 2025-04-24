@@ -92,12 +92,23 @@ func (rs *ReturnStatement) String() string {
 	return out.String()
 }
 
+type ImportSymbol struct {
+	Name  *Identifier // The symbol being imported (e.g., "sqr")
+	Alias *Identifier // Optional alias for the symbol (e.g., "as a")
+}
+
+func (is *ImportSymbol) String() string {
+	if is.Alias != nil {
+		return is.Name.String() + " as " + is.Alias.String()
+	}
+	return is.Name.String()
+}
+
 type ImportStatement struct {
-	Token     token.Token   // The 'import' token
-	PathParts []*Identifier // Dot-separated identifiers for module path (e.g., math.Arithmetic)
-	Symbols   []*Identifier // Symbols explicitly imported (e.g., {add, subtract})
-	Wildcard  bool          // Whether the import is a wildcard (*)
-	Alias     string        // Optional alias for the import
+	Token     token.Token     // The 'import' token
+	PathParts []*Identifier   // Dot-separated identifiers for module path (e.g., math.Arithmetic)
+	Symbols   []*ImportSymbol // Symbols being imported, with optional aliases
+	Wildcard  bool            // Whether the import uses a wildcard (*)
 }
 
 func (is *ImportStatement) statementNode()       {}
@@ -107,6 +118,7 @@ func (is *ImportStatement) String() string {
 
 	out.WriteString("import ")
 	out.WriteString(is.PathAsString())
+
 	if is.Wildcard {
 		out.WriteString(".*")
 	} else if len(is.Symbols) > 0 {
@@ -116,10 +128,6 @@ func (is *ImportStatement) String() string {
 		}
 		out.WriteString(".{" + strings.Join(symbols, ", ") + "}")
 	}
-	if is.Alias != "" {
-		out.WriteString(" as " + is.Alias)
-	}
-
 	return out.String()
 }
 

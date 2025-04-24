@@ -17,11 +17,7 @@ clean:
 	rm -rf ./bin/$(BINARY_NAME)
 
 
-copy-lib:
-	cp -r ./lib ./bin/
-
-
-build: copy-lib
+build:
 	mkdir -p ./bin
 	go build -o ./bin/$(BINARY_NAME) ./cmd/app/
 ifeq ($(OS), Darwin)
@@ -29,7 +25,7 @@ ifeq ($(OS), Darwin)
 endif
 
 
-release: clean copy-lib
+release: clean
 	mkdir -p ./bin
 	go build -ldflags="-s -w" -o ./bin/$(BINARY_NAME) ./cmd/app/
 ifeq ($(OS), Darwin)

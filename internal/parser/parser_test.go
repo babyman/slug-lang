@@ -86,29 +86,25 @@ func TestImportStatement(t *testing.T) {
 		{input: "import test.system.os.*;", expectedResult: &ast.ImportStatement{
 			Token:     token.Token{Type: token.IMPORT, Literal: "import"},
 			PathParts: []*ast.Identifier{{Value: "test"}, {Value: "system"}, {Value: "os"}},
-			Symbols:   []*ast.Identifier{},
-			Alias:     "",
+			Symbols:   nil,
 			Wildcard:  true,
 		}},
 		{input: "import test.{sqr};", expectedResult: &ast.ImportStatement{
 			Token:     token.Token{Type: token.IMPORT, Literal: "import"},
 			PathParts: []*ast.Identifier{{Value: "test"}},
-			Symbols:   []*ast.Identifier{{Value: "sqr"}},
-			Alias:     "",
+			Symbols:   []*ast.ImportSymbol{{Name: &ast.Identifier{Value: "sqr"}}},
 			Wildcard:  false,
 		}},
 		{input: "import test.{sqr, double};", expectedResult: &ast.ImportStatement{
 			Token:     token.Token{Type: token.IMPORT, Literal: "import"},
 			PathParts: []*ast.Identifier{{Value: "test"}},
-			Symbols:   []*ast.Identifier{{Value: "sqr"}, {Value: "double"}},
-			Alias:     "",
+			Symbols:   []*ast.ImportSymbol{{Name: &ast.Identifier{Value: "sqr"}}, {Name: &ast.Identifier{Value: "double"}}},
 			Wildcard:  false,
 		}},
-		{input: "import test.double as sqr;", expectedResult: &ast.ImportStatement{
+		{input: "import test.{double as sqr};", expectedResult: &ast.ImportStatement{
 			Token:     token.Token{Type: token.IMPORT, Literal: "import"},
 			PathParts: []*ast.Identifier{{Value: "test"}},
-			Symbols:   []*ast.Identifier{{Value: "double"}},
-			Alias:     "sqr",
+			Symbols:   []*ast.ImportSymbol{{Name: &ast.Identifier{Value: "double"}, Alias: &ast.Identifier{Value: "sqr"}}},
 			Wildcard:  false,
 		}},
 	}
@@ -132,17 +128,11 @@ func TestImportStatement(t *testing.T) {
 		if importStmt.Wildcard != tt.expectedResult.Wildcard {
 			t.Fatalf("importStmt.Wildcard is not %t. got=%t", tt.expectedResult.Wildcard, importStmt.Wildcard)
 		}
-		if importStmt.Alias != tt.expectedResult.Alias {
-			t.Fatalf("importStmt.Alias is not %s. got=%s", tt.expectedResult.Alias, importStmt.Alias)
-		}
 		if importStmt.PathParts[0].Value != tt.expectedResult.PathParts[0].Value {
 			t.Fatalf("importStmt.PathParts[0].Value is not %s. got=%s", tt.expectedResult.PathParts[0].Value, importStmt.PathParts[0].Value)
 		}
 		if len(importStmt.Symbols) != len(tt.expectedResult.Symbols) {
 			t.Fatalf("Symbols is not %s. got=%s", tt.expectedResult.Symbols, importStmt.Symbols)
-		}
-		if len(importStmt.Symbols) > 0 && importStmt.Symbols[0].Value != tt.expectedResult.Symbols[0].Value {
-			t.Fatalf("importStmt.Symbols[0].Value is not %s. got=%s", tt.expectedResult.Symbols[0].Value, importStmt.Symbols[0].Value)
 		}
 	}
 }

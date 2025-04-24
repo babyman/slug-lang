@@ -189,17 +189,17 @@ func evalImportStatement(importStatement *ast.ImportStatement, env *object.Envir
 		for name, val := range moduleEnv.Store {
 			env.Set(name, val)
 		}
-	} else if importStatement.Alias != "" {
-		// Import with an alias
-		val, _ := moduleEnv.Get(importStatement.Symbols[0].Value)
-		env.Set(importStatement.Alias, val)
 	} else if len(importStatement.Symbols) > 0 {
 		// Import specific symbols
 		for _, sym := range importStatement.Symbols {
-			if val, ok := moduleEnv.Get(sym.Value); ok {
-				env.Set(sym.Value, val)
+			if val, ok := moduleEnv.Get(sym.Name.Value); ok {
+				n := sym.Name.Value
+				if sym.Alias != nil {
+					n = sym.Alias.Value
+				}
+				env.Set(n, val)
 			} else {
-				return newError("symbol '%s' not found in module '%s'", sym.Value, moduleName)
+				return newError("symbol '%s' not found in module '%s'", sym.Name.Value, moduleName)
 			}
 		}
 	} else {
