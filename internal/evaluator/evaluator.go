@@ -170,7 +170,9 @@ func evalImportStatement(importStatement *ast.ImportStatement, env *object.Envir
 	ModuleRegistry[key] = module
 
 	// Step 2: Resolve module path to file path
-	modulePath := fmt.Sprintf("%s/%s.slug", rootPath, strings.Join(mapIdentifiersToStrings(importStatement.PathParts), "/"))
+	moduleRelativePath := strings.Join(mapIdentifiersToStrings(importStatement.PathParts), "/")
+
+	modulePath := fmt.Sprintf("%s/%s.slug", rootPath, moduleRelativePath)
 
 	// Try to read the module from the resolved path
 	moduleSrc, err := ioutil.ReadFile(modulePath)
@@ -182,7 +184,7 @@ func evalImportStatement(importStatement *ast.ImportStatement, env *object.Envir
 			return newError("environment variable SLUG_HOME is not set")
 		}
 
-		fallbackPath = fmt.Sprintf("%s/lib/%s.slug", slugHome, strings.Join(mapIdentifiersToStrings(importStatement.PathParts), "/"))
+		fallbackPath = fmt.Sprintf("%s/lib/%s.slug", slugHome, moduleRelativePath)
 		moduleSrc, err = ioutil.ReadFile(fallbackPath)
 		if err != nil {
 			return newError("error reading module '%s': %s", fallbackPath, err)
@@ -190,8 +192,13 @@ func evalImportStatement(importStatement *ast.ImportStatement, env *object.Envir
 	}
 
 	// Step 3: Parse and evaluate the module
-	l := lexer.New(string(moduleSrc))
-	p := parser.New(l)
+	src := string(moduleSrc)
+	module.Src = src
+	module.Path = moduleRelativePath
+	moduleEnv.Src = src
+	moduleEnv.Path = moduleRelativePath
+	l := lexer.New(src)
+	p := parser.New(l, src)
 	program := p.ParseProgram()
 
 	if len(p.Errors()) > 0 {
@@ -493,6 +500,15 @@ func isTruthy(obj object.Object) bool {
 func newError(format string, a ...interface{}) *object.Error {
 	return &object.Error{Message: fmt.Sprintf(format, a...)}
 }
+
+//func newError(format string, tok token.Token, src string, a ...interface{}) *object.Error {
+//	line, col := getLineAndColumn(src, tok.Position)
+//	message := fmt.Sprintf(
+//		"Error at line %d, column %d: %s",
+//		line, col, fmt.Sprintf(format, a...),
+//	)
+//	return &object.Error{Message: message}
+//}
 
 func isError(obj object.Object) bool {
 	if obj != nil {

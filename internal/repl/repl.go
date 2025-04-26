@@ -32,7 +32,7 @@ func Start(in io.Reader, out io.Writer) {
 
 		line := scanner.Text()
 		l := lexer.New(line)
-		p := parser.New(l)
+		p := parser.New(l, line)
 
 		program := p.ParseProgram()
 		if len(p.Errors()) != 0 {

@@ -57,6 +57,7 @@ type (
 
 type Parser struct {
 	l      *lexer.Lexer
+	src    string // source code here
 	errors []string
 
 	curToken  token.Token
@@ -66,9 +67,10 @@ type Parser struct {
 	infixParseFns  map[token.TokenType]infixParseFn
 }
 
-func New(l *lexer.Lexer) *Parser {
+func New(l *lexer.Lexer, source string) *Parser {
 	p := &Parser{
 		l:      l,
+		src:    source,
 		errors: []string{},
 	}
 
@@ -148,13 +150,20 @@ func (p *Parser) Errors() []string {
 }
 
 func (p *Parser) peekError(t token.TokenType) {
-	msg := fmt.Sprintf("expected next token to be %s, got %s instead",
-		t, p.peekToken.Type)
+	line, col := GetLineAndColumn(p.src, p.peekToken.Position)
+	msg := fmt.Sprintf(
+		"expected next token to be %s, got %s instead at line %d, column %d",
+		t, p.peekToken.Type, line, col,
+	)
 	p.errors = append(p.errors, msg)
 }
 
 func (p *Parser) noPrefixParseFnError(t token.TokenType) {
-	msg := fmt.Sprintf("no prefix parse function for %s found", t)
+	line, col := GetLineAndColumn(p.src, p.curToken.Position)
+	msg := fmt.Sprintf(
+		"no prefix parse function for %s found at line %d, column %d",
+		t, line, col,
+	)
 	p.errors = append(p.errors, msg)
 }
 
@@ -731,4 +740,22 @@ func (p *Parser) parseMatchExpression() ast.Expression {
 	}
 
 	return rootIfExpression
+}
+
+// todo put this in a utils file
+func GetLineAndColumn(src string, pos int) (line int, column int) {
+	line = 1
+	column = 1
+	for i, char := range src {
+		if i == pos {
+			break
+		}
+		if char == '\n' {
+			line++
+			column = 1
+		} else {
+			column++
+		}
+	}
+	return
 }

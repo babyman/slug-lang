@@ -74,17 +74,11 @@ func executeFile(filename, rootPath string, args []string) error {
 	// Set up lexer, parser, and environment
 	source := string(content)
 	l := lexer.New(source)
-	p := parser.New(l)
+	p := parser.New(l, source)
 
 	program := p.ParseProgram()
 
 	// Debug-ast flag: write AST to JSON file
-	if debugAST {
-		if err := parser.WriteASTToJSON(program, filename+".ast.json"); err != nil {
-			return fmt.Errorf("failed to write AST to JSON: %v", err)
-		}
-	}
-
 	if len(p.Errors()) != 0 {
 		fmt.Println("Woops! Looks like we slid into some slimy slug trouble here!")
 		fmt.Println("Parser errors:")
@@ -92,6 +86,12 @@ func executeFile(filename, rootPath string, args []string) error {
 			fmt.Printf("\t%s\n", msg)
 		}
 		return fmt.Errorf("parsing errors encountered")
+	}
+
+	if debugAST {
+		if err := parser.WriteASTToJSON(program, filename+".ast.json"); err != nil {
+			return fmt.Errorf("failed to write AST to JSON: %v", err)
+		}
 	}
 
 	env := object.NewEnvironment()

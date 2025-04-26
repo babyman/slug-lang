@@ -15,6 +15,8 @@ func NewEnvironment() *Environment {
 type Environment struct {
 	Store    map[string]Object
 	outer    *Environment
+	Src      string
+	Path     string
 	rootPath string // Track the execution root path
 }
 
