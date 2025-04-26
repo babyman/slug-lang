@@ -73,8 +73,9 @@ const (
 )
 
 type Token struct {
-	Type    TokenType
-	Literal string
+	Type     TokenType
+	Literal  string
+	Position int // the src index of the token
 }
 
 var keywords = map[string]TokenType{
