@@ -24,7 +24,15 @@ func init() {
 }
 
 func main() {
+	// Define a help flag
+	help := flag.Bool("help", false, "Display help information and exit")
+
 	flag.Parse() // Parse the command-line flags
+
+	if *help {
+		printHelp()
+		os.Exit(0) // Exit after printing help
+	}
 
 	if len(flag.Args()) > 0 { // Remaining arguments after flags
 		// If an argument is passed, treat it as a filename to execute
@@ -47,6 +55,25 @@ func main() {
 		repl.SetRootPath(rootPath) // Pass rootPath to REPL
 		repl.Start(os.Stdin, os.Stdout)
 	}
+}
+
+func printHelp() {
+	fmt.Println(`Usage: slug [options] [filename [args...]]
+
+Options:
+  -root <path>       Set the root context for the program (used for imports). Default is '.'
+  -debug-ast         Render the AST as a JSON file.
+  -help              Display this help information and exit.
+
+Details:
+This is the Slug programming language. 
+You can provide a filename to execute a Slug program, or run without arguments to start the interactive REPL.
+
+Examples:
+  slug                          Start the interactive REPL
+  slug -root=/path/to/root      Start the REPL with a specific root path
+  slug myfile.slug              Execute the provided Slug file
+  slug myfile.slug arg1 arg2    Execute the file with command-line arguments`)
 }
 
 func executeFile(filename, rootPath string, args []string) error {
