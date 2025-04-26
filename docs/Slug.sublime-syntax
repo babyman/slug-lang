@@ -1,0 +1,156 @@
+%YAML 1.2
+---
+# Sublime Text syntax definition for the Slug programming language
+# See http://www.sublimetext.com/docs/syntax.html
+#
+# Slug is a simple, interpreted language with a syntax inspired by JavaScript and Go.
+# Features include:
+# - First-class functions
+# - Dynamic typing
+# - Array and map data structures
+# - Pattern matching
+# - Method chaining
+# - Default parameter values
+# - Variadic arguments
+#
+# For more information, see: https://github.com/babyman/slug
+#
+name: Slug
+file_extensions:
+  - slug
+first_line_match: '^#!.*\bslug\b'
+scope: source.slug
+
+contexts:
+  main:
+    # Comments
+    - match: //.*$
+      scope: comment.line.double-slash.slug
+    - match: \#.*$
+      scope: comment.line.number-sign.slug
+
+    # Keywords
+    - match: \b(fn|var|true|false|if|else|return|nil|import|as|try|catch|match)\b
+      scope: keyword.control.slug
+
+    # Built-in functions
+    - match: \b(len|head|tail|peek|pop|push|assert|assertEqual)\b
+      scope: support.function.builtin.slug
+
+    # Function calls
+    - match: \b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(
+      captures:
+        1: support.function.slug
+
+    # Operators
+    - match: (=>|==|!=|<=|>=|&&|\|\||<<|>>|\.\.\.)
+      scope: keyword.operator.slug
+    - match: (=|\+|-|\*|/|%|!|<|>|~|&|\||\^|\.)
+      scope: keyword.operator.slug
+
+    # Strings
+    - match: '"'
+      scope: punctuation.definition.string.begin.slug
+      push: string
+
+    # Numbers
+    - match: \b\d+\.\d+\b
+      scope: constant.numeric.float.slug
+    - match: \b\d+\b
+      scope: constant.numeric.integer.slug
+
+    # Arrays
+    - match: \[
+      scope: punctuation.section.brackets.begin.slug
+      push: array
+    - match: \]
+      scope: punctuation.section.brackets.end.slug
+
+    # Function definition
+    - match: \b(fn)\s*\(
+      captures:
+        1: keyword.control.slug
+      push: function_params
+
+    # Match expression
+    - match: \b(match)\s*(\{|\w+\s*\{)
+      captures:
+        1: keyword.control.slug
+      push: match_expression
+
+    # Delimiters
+    - match: \(
+      scope: punctuation.section.parens.begin.slug
+      push: parens
+    - match: \)
+      scope: punctuation.section.parens.end.slug
+    - match: \{
+      scope: punctuation.section.braces.begin.slug
+      push: braces
+    - match: \}
+      scope: punctuation.section.braces.end.slug
+    - match: ;
+      scope: punctuation.terminator.statement.slug
+    - match: ':'
+      scope: punctuation.separator.colon.slug
+    - match: ','
+      scope: punctuation.separator.comma.slug
+
+  string:
+    - meta_scope: string.quoted.double.slug
+    - match: '"'
+      scope: punctuation.definition.string.end.slug
+      pop: true
+    - match: \\[\\'"bfnrt]
+      scope: constant.character.escape.slug
+    - match: \\u[0-9a-fA-F]{4}
+      scope: constant.character.escape.unicode.slug
+    - match: .
+      scope: string.quoted.double.slug
+
+  array:
+    - meta_scope: meta.structure.array.slug
+    - match: \]
+      scope: punctuation.section.brackets.end.slug
+      pop: true
+    - include: main
+
+  parens:
+    - meta_scope: meta.group.slug
+    - match: \)
+      scope: punctuation.section.parens.end.slug
+      pop: true
+    - include: main
+
+  braces:
+    - meta_scope: meta.block.slug
+    - match: \}
+      scope: punctuation.section.braces.end.slug
+      pop: true
+    - include: main
+
+  function_params:
+    - meta_scope: meta.function.parameters.slug
+    - match: \)
+      scope: punctuation.section.parens.end.slug
+      pop: true
+    - match: \b[a-zA-Z_][a-zA-Z0-9_]*\b
+      scope: variable.parameter.slug
+    - match: =
+      scope: keyword.operator.assignment.slug
+    - match: \.\.\.
+      scope: keyword.operator.variadic.slug
+    - match: ':'
+      scope: punctuation.separator.parameter.slug
+    - include: main
+
+  match_expression:
+    - meta_scope: meta.match.slug
+    - match: \}
+      scope: punctuation.section.braces.end.slug
+      pop: true
+    - match: =>
+      scope: keyword.operator.arrow.slug
+    - match: _
+      scope: constant.language.underscore.slug
+    - include: main
