@@ -1,0 +1,10 @@
+
+// var f = fn(x) {
+//     match x {
+//         1, 2, 3 => {"x is 1, 2, or 3"}
+//         _ => {"x is unexpected"}
+//     }
+// }
+//
+// 1.f().println();
+//

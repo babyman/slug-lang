@@ -36,6 +36,14 @@ Repl
 
 Slug has a simple repl if launched without a script.
 
+Comments
+===
+
+`//` is supported since the language follows `C` language style conventions.
+
+`#` is supported to allow easy execution as a shell script with the inclusion of `#!`. For example, if `SLUG_HOME` is
+exported and `slug` is on the user path.
+
 
 Types
 ===
@@ -44,8 +52,9 @@ Types
 - `Boolean`: true or false
 - `Integer`
 - `String`
-- `Map`
-- `List`
+- `List`: []
+- `Map`: {}
+- `Function`: fn(){}
 
 Operator Precedence and Associativity
 ===
@@ -124,7 +133,7 @@ match {
 }
 ```
 Key Difference from Standard `match`:
-- Instead of being tied to a single object like `x`, each branch here evaluates a . **condition**
+- Instead of being tied to a single object like `x`, each branch here evaluates a condition
 
 Replacing Switch-like Logic:
 ---
@@ -133,11 +142,11 @@ For cases where multiple conditions depend on a common variable, you can preserv
 
 ``` slug
 match x {
-  1, 2, 3 => print("x is 1, 2, or 3");
-  4..6 => print("x is within the range 4-6");
-  _ => print("x is unexpected");
+  1, 2, 3 => {"x is 1, 2, or 3"}
+  _ => {"x is unexpected"}
 }
 ```
+4..6 => {"x is within the range 4-6"}
 
 Errors
 ===
@@ -145,10 +154,10 @@ Errors
 Throw
 ---
 
-| Syntax | Expansion |
-| --- | --- |
-| `throw FileError` | `throw { "type": "FileError" }` |
-| `throw FileError()` | `throw { "type": "FileError" }` |
+| Syntax                      | Expansion                                     |
+|-----------------------------|-----------------------------------------------|
+| `throw FileError`           | `throw { "type": "FileError" }`               |
+| `throw FileError()`         | `throw { "type": "FileError" }`               |
 | `throw FileError({ path })` | `throw { "type": "FileError", "path": path }` |
 
 This approach guarantees that errors always follow the format`Hash`, which keeps the error-handling mechanism consistent, predictable, and extensible.
@@ -175,12 +184,3 @@ assert(test boolean, message string*)
 
 Assert something as true, will error if false. If an optional message string is provided that will be included in the
 error.
-
-
-Comments
-===
-
-`//` is supported since the language follows `C` language style conventions.
-
-`#` is supported to allow easy execution as a shell script with the inclusion of `#!`. For example if `SLUG_HOME` is
-exported and `slug` is on the users path.
