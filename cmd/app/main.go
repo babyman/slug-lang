@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/user"
 	"slug/internal/evaluator"
@@ -51,35 +50,73 @@ func main() {
 }
 
 func executeFile(filename, rootPath string, args []string) error {
-	// Read the file
+
+	// Step 1: Ensure the file has the correct extension
 	if !strings.HasSuffix(filename, ".slug") {
-		filename = filename + ".slug"
+		filename += ".slug"
 	}
 
-	content, err := os.ReadFile(filename)
+	// Step 2: Attempt to load the file content
+	content, err := readFileWithFallback(filename)
 	if err != nil {
-		// If not found, attempt fallback to ${SLUG_HOME}/lib
-		slugHome := os.Getenv("SLUG_HOME")
-		if slugHome == "" {
-			return fmt.Errorf("environment variable SLUG_HOME is not set")
-		}
-
-		fallbackPath := fmt.Sprintf("%s/lib/%s", slugHome, filename)
-		content, err = ioutil.ReadFile(fallbackPath)
-		if err != nil {
-			return fmt.Errorf("error reading module '%s': %s", fallbackPath, err)
-		}
+		return fmt.Errorf("failed to load file '%s': %v", filename, err)
 	}
 
-	// Set up lexer, parser, and environment
-	source := string(content)
-	l := lexer.New(source)
-	p := parser.New(l, source)
+	// Step 3: Initialize the environment
+	env := setupEnvironment(rootPath, args)
 
+	// Step 4: Parse and evaluate the content
+	err = parseAndEvaluate(filename, content, env)
+	if err != nil {
+		return fmt.Errorf("execution error for file '%s': %v", filename, err)
+	}
+
+	return nil
+}
+
+func readFileWithFallback(filename string) (string, error) {
+	content, err := os.ReadFile(filename) // Primary file path
+	if err == nil {
+		return string(content), nil
+	}
+
+	// Fallback logic to check SLUG_HOME/lib
+	slugHome := os.Getenv("SLUG_HOME")
+	if slugHome == "" {
+		return "", fmt.Errorf("file not found at '%s' and SLUG_HOME is not set", filename)
+	}
+
+	fallbackPath := fmt.Sprintf("%s/lib/%s", slugHome, filename)
+	content, err = os.ReadFile(fallbackPath)
+	if err != nil {
+		return "", fmt.Errorf("file not found at '%s' and fallback to '%s' also failed", filename, fallbackPath)
+	}
+
+	return string(content), nil
+}
+
+func setupEnvironment(rootPath string, args []string) *object.Environment {
+	env := object.NewEnvironment()
+	env.SetRootPath(rootPath)
+
+	// Prepare args array
+	objects := make([]object.Object, len(args))
+	for i, arg := range args {
+		objects[i] = &object.String{Value: arg}
+	}
+	env.Set("args", &object.Array{Elements: objects})
+
+	return env
+}
+
+func parseAndEvaluate(filename string, src string, env *object.Environment) error {
+	// Initialize Lexer and Parser
+	l := lexer.New(src)
+	p := parser.New(l, src)
+
+	// Parse src into a Program AST
 	program := p.ParseProgram()
-
-	// Debug-ast flag: write AST to JSON file
-	if len(p.Errors()) != 0 {
+	if len(p.Errors()) > 0 {
 		fmt.Println("Woops! Looks like we slid into some slimy slug trouble here!")
 		fmt.Println("Parser errors:")
 		for _, msg := range p.Errors() {
@@ -94,16 +131,7 @@ func executeFile(filename, rootPath string, args []string) error {
 		}
 	}
 
-	env := object.NewEnvironment()
-	env.SetRootPath(rootPath) // Set the root path in the environment
-
-	// Set up the args list
-	objects := make([]object.Object, len(args))
-	for i, arg := range args {
-		objects[i] = &object.String{Value: arg}
-	}
-	env.Set("args", &object.Array{Elements: objects})
-
+	// Evaluate the program within the provided environment
 	evaluated := evaluator.Eval(program, env)
 	if evaluated != nil && evaluated.Type() != object.NIL_OBJ {
 		if evaluated.Type() == object.ERROR_OBJ {
