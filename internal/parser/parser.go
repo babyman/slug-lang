@@ -135,6 +135,27 @@ func (p *Parser) peekTokenIs(t token.TokenType) bool {
 	return p.peekToken.Type == t
 }
 
+func (p *Parser) peekError(t token.TokenType) {
+	// Line and column are extracted using the position of the peek token.
+	line, col := GetLineAndColumn(p.src, p.peekToken.Position)
+	msg := fmt.Sprintf(
+		"expected next token to be %s, got %s instead at line %d, column %d",
+		t, p.peekToken.Type, line, col,
+	)
+	p.errors = append(p.errors, msg)
+}
+
+func (p *Parser) noPrefixParseFnError(t token.TokenType) {
+	// Line and column are extracted using the position of the current token.
+	line, col := GetLineAndColumn(p.src, p.curToken.Position)
+	msg := fmt.Sprintf(
+		"no prefix parse function for %s found at line %d, column %d",
+		t, line, col,
+	)
+	p.errors = append(p.errors, msg)
+}
+
+// Update `expectPeek` to include line and column context when a peek error happens
 func (p *Parser) expectPeek(t token.TokenType) bool {
 	if p.peekTokenIs(t) {
 		p.nextToken()
@@ -147,24 +168,6 @@ func (p *Parser) expectPeek(t token.TokenType) bool {
 
 func (p *Parser) Errors() []string {
 	return p.errors
-}
-
-func (p *Parser) peekError(t token.TokenType) {
-	line, col := GetLineAndColumn(p.src, p.peekToken.Position)
-	msg := fmt.Sprintf(
-		"expected next token to be %s, got %s instead at line %d, column %d",
-		t, p.peekToken.Type, line, col,
-	)
-	p.errors = append(p.errors, msg)
-}
-
-func (p *Parser) noPrefixParseFnError(t token.TokenType) {
-	line, col := GetLineAndColumn(p.src, p.curToken.Position)
-	msg := fmt.Sprintf(
-		"no prefix parse function for %s found at line %d, column %d",
-		t, line, col,
-	)
-	p.errors = append(p.errors, msg)
 }
 
 func (p *Parser) ParseProgram() *ast.Program {
@@ -233,10 +236,11 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	return stmt
 }
 
+// Enhance the error message in parseImportStatement for invalid imports
 func (p *Parser) parseImportStatement() *ast.ImportStatement {
 	stmt := &ast.ImportStatement{Token: p.curToken}
 
-	// Parse the module path (e.g., math.Arithmetic)
+	// Parse the module path
 	if !p.expectPeek(token.IDENT) {
 		return nil
 	}
@@ -262,7 +266,11 @@ func (p *Parser) parseImportStatement() *ast.ImportStatement {
 	}
 
 	if !stmt.Wildcard && len(stmt.Symbols) == 0 {
-		msg := fmt.Sprintf("invalid import: must specify `*` or `{symbols}`")
+		line, col := GetLineAndColumn(p.src, p.curToken.Position)
+		msg := fmt.Sprintf(
+			"invalid import: must specify `*` or `{symbols}` at line %d, column %d",
+			line, col,
+		)
 		p.errors = append(p.errors, msg)
 		return nil
 	}
@@ -355,18 +363,19 @@ func (p *Parser) parseIdentifier() ast.Expression {
 	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 }
 
+// Modify parseIntegerLiteral to include line and column
 func (p *Parser) parseIntegerLiteral() ast.Expression {
 	lit := &ast.IntegerLiteral{Token: p.curToken}
 
 	value, err := strconv.ParseInt(p.curToken.Literal, 0, 64)
 	if err != nil {
-		msg := fmt.Sprintf("could not parse %q as integer", p.curToken.Literal)
+		line, col := GetLineAndColumn(p.src, p.curToken.Position)
+		msg := fmt.Sprintf("could not parse %q as integer at line %d, column %d", p.curToken.Literal, line, col)
 		p.errors = append(p.errors, msg)
 		return nil
 	}
 
 	lit.Value = value
-
 	return lit
 }
 
@@ -554,32 +563,27 @@ func (p *Parser) parseDestructureBinding() *ast.DestructureBinding {
 	}
 }
 
+// Modify parseFunctionFirstCallExpression to include enhanced context
 func (p *Parser) parseFunctionFirstCallExpression(left ast.Expression) ast.Expression {
-
-	// Advance to the next token, which should be the function identifier
 	if !p.expectPeek(token.IDENT) {
-		msg := fmt.Sprintf("expected function identifier after '.', got %s instead", p.peekToken.Type)
+		line, col := GetLineAndColumn(p.src, p.peekToken.Position)
+		msg := fmt.Sprintf("expected function identifier after '.', got %s instead at line %d, column %d", p.peekToken.Type, line, col)
 		p.errors = append(p.errors, msg)
 		return nil
 	}
 
-	// Create a function identifier node
 	function := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 
-	// Ensure it's either the start of a call or raise an error
 	if !p.expectPeek(token.LPAREN) {
-		msg := fmt.Sprintf("expected '(' after function name, got %s instead", p.peekToken.Type)
+		line, col := GetLineAndColumn(p.src, p.peekToken.Position)
+		msg := fmt.Sprintf("expected '(' after function name, got %s instead at line %d, column %d", p.peekToken.Type, line, col)
 		p.errors = append(p.errors, msg)
 		return nil
 	}
 
-	// Parse the arguments inside the parentheses
 	args := p.parseExpressionList(token.RPAREN)
-
-	// Add the left-hand side as the first argument (lst in lst.map())
 	args = append([]ast.Expression{left}, args...)
 
-	// Return a CallExpression (e.g., map(lst, f))
 	return &ast.CallExpression{
 		Token:     function.Token,
 		Function:  function,
