@@ -39,6 +39,7 @@ true || false;
 {"foo": "bar"}
 ...
 ..
+f2=fn
 // comment at eof
 //`
 
@@ -163,6 +164,9 @@ true || false;
 		{token.ELLIPSIS, "..."},
 		{token.PERIOD, "."},
 		{token.PERIOD, "."},
+		{token.IDENT, "f2"},
+		{token.ASSIGN, "="},
+		{token.FUNCTION, "fn"},
 		{token.EOF, ""},
 	}
 

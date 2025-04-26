@@ -22,11 +22,11 @@ var f = fn(x) {
 // -----------------------------------
 //
 
-var check = fn(x) {
+var f2 = fn(x) {
     match {
         _ => {"a";}
         _ => {"b";}
     }
 }
 
-20.check().assertEqual("a");
+20.f2().assertEqual("a");

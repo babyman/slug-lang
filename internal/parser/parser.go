@@ -668,7 +668,7 @@ func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
 func (p *Parser) parseMatchExpression() ast.Expression {
 	// Consume the `match` token
 	matchToken := p.curToken
-	println("1.", p.curToken.Literal, ">>", p.peekToken.Literal)
+	//println("1.", p.curToken.Literal, ">>", p.peekToken.Literal)
 
 	if !p.expectPeek(token.LBRACE) { // Ensure an opening brace `{`
 		return nil
@@ -681,7 +681,7 @@ func (p *Parser) parseMatchExpression() ast.Expression {
 
 	// Parse the cases inside the braces
 	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
-		println("2.", p.curToken.Literal, ">>", p.peekToken.Literal)
+		//println("2.", p.curToken.Literal, ">>", p.peekToken.Literal)
 
 		var condition ast.Expression
 		if p.curTokenIs(token.UNDERSCORE) { // Handle `_` (wildcard else case)
