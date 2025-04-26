@@ -193,8 +193,6 @@ func evalImportStatement(importStatement *ast.ImportStatement, env *object.Envir
 
 	// Step 3: Parse and evaluate the module
 	src := string(moduleSrc)
-	module.Src = src
-	module.Path = moduleRelativePath
 	moduleEnv.Src = src
 	moduleEnv.Path = moduleRelativePath
 	l := lexer.New(src)

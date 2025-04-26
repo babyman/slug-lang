@@ -94,8 +94,6 @@ func (e *Error) Inspect() string  { return "ERROR: " + e.Message }
 type Module struct {
 	Name string       // Module name/namespace (e.g., `Arithmetic` or an alias)
 	Env  *Environment // Module-scoped environment with variables and functions
-	Src  string
-	Path string
 }
 
 func (m *Module) Type() ObjectType { return MODULE_OBJ }
