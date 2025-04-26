@@ -22,7 +22,7 @@ func (l *Lexer) NextToken() token.Token {
 
 	switch l.ch {
 	case '=':
-		tok = l.handleCompoundToken(token.ASSIGN, '=', token.EQ)
+		tok = l.handleCompoundToken2(token.ASSIGN, '=', token.EQ, '>', token.ROCKET)
 	case '+':
 		tok = newToken(token.PLUS, l.ch)
 	case '-':
@@ -41,6 +41,8 @@ func (l *Lexer) NextToken() token.Token {
 		tok = l.handleCompoundToken(token.BITWISE_AND, '&', token.LOGICAL_AND)
 	case '|':
 		tok = l.handleCompoundToken(token.BITWISE_OR, '|', token.LOGICAL_OR)
+	case '_':
+		tok = newToken(token.UNDERSCORE, l.ch)
 	case '^':
 		tok = newToken(token.BITWISE_XOR, l.ch)
 	case '<':
@@ -58,6 +60,9 @@ func (l *Lexer) NextToken() token.Token {
 			l.readChar()
 			l.readChar()
 			tok = token.Token{Type: token.ELLIPSIS, Literal: "..."}
+			//} else if l.peekChar() == '.'{
+			//	l.readChar()
+			//	tok = token.Token{Type: token.RANGE, Literal: ".."}
 		} else {
 			tok = newToken(token.PERIOD, l.ch)
 		}

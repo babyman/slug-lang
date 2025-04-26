@@ -31,3 +31,7 @@ release: clean
 ifeq ($(OS), Darwin)
 	codesign --sign - ./bin/$(BINARY_NAME)
 endif
+
+
+windows: clean
+	GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ./bin/slug.exe ./cmd/app/

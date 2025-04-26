@@ -87,6 +87,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral)
 	p.registerPrefix(token.LBRACKET, p.parseArrayLiteral)
 	p.registerPrefix(token.LBRACE, p.parseHashLiteral)
+	p.registerPrefix(token.MATCH, p.parseMatchExpression)
 
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
@@ -663,4 +664,71 @@ func (p *Parser) registerPrefix(tokenType token.TokenType, fn prefixParseFn) {
 
 func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
 	p.infixParseFns[tokenType] = fn
+}
+func (p *Parser) parseMatchExpression() ast.Expression {
+	// Consume the `match` token
+	matchToken := p.curToken
+	println("1.", p.curToken.Literal, ">>", p.peekToken.Literal)
+
+	if !p.expectPeek(token.LBRACE) { // Ensure an opening brace `{`
+		return nil
+	}
+
+	p.nextToken() // consume the LBRACE
+
+	var rootIfExpression *ast.IfExpression
+	var currentIfExpression *ast.IfExpression
+
+	// Parse the cases inside the braces
+	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
+		println("2.", p.curToken.Literal, ">>", p.peekToken.Literal)
+
+		var condition ast.Expression
+		if p.curTokenIs(token.UNDERSCORE) { // Handle `_` (wildcard else case)
+			condition = nil
+		} else {
+			condition = p.parseExpression(LOWEST)
+		}
+
+		if !p.expectPeek(token.ROCKET) { // Expect `=>`
+			return nil
+		}
+
+		if !p.expectPeek(token.LBRACE) { // Expect `{` block
+			return nil
+		}
+
+		body := p.parseBlockStatement() // Parse the body block of the case
+
+		// Build the `if` expression
+		ifExp := &ast.IfExpression{
+			Token:      matchToken,
+			Condition:  condition,
+			ThenBranch: body,
+		}
+
+		// Assemble the nested `if-else` structure
+		if rootIfExpression == nil {
+			rootIfExpression = ifExp
+			currentIfExpression = rootIfExpression
+		} else if currentIfExpression != nil {
+			if condition == nil { // If it's the else case (`_`)
+				currentIfExpression.ElseBranch = body
+			} else {
+				currentIfExpression.ElseBranch = &ast.BlockStatement{
+					Statements: []ast.Statement{
+						&ast.ExpressionStatement{Expression: ifExp},
+					},
+				}
+				currentIfExpression = ifExp
+			}
+		}
+
+		p.nextToken() // Skip past blocks and commas
+		//if p.curTokenIs(token.COMMA) { // Optional commas between cases
+		//	p.nextToken()
+		//}
+	}
+
+	return rootIfExpression
 }

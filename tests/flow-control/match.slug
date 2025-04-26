@@ -1,0 +1,32 @@
+
+var f = fn(x) {
+    match {
+        x < 10 => {"less than 10";}
+        x == 15 => {"is 15";}
+        x > 15 => {"greater than 15";}
+        _ => {"unmatched";}
+    }
+}
+
+9.f().assertEqual("less than 10");
+
+14.f().assertEqual("unmatched");
+
+15.f().assertEqual("is 15");
+
+20.f().assertEqual("greater than 15");
+
+
+//
+// matches are evaluated top to bottom
+// -----------------------------------
+//
+
+var check = fn(x) {
+    match {
+        _ => {"a";}
+        _ => {"b";}
+    }
+}
+
+20.check().assertEqual("a");

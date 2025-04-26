@@ -12,13 +12,14 @@ const (
 	STRING = "STRING" // "foobar"
 
 	// Operators
-	ASSIGN   = "="
-	PLUS     = "+"
-	MINUS    = "-"
-	BANG     = "!"
-	ASTERISK = "*"
-	SLASH    = "/"
-	PERCENT  = "%"
+	ASSIGN     = "="
+	PLUS       = "+"
+	MINUS      = "-"
+	BANG       = "!"
+	ASTERISK   = "*"
+	SLASH      = "/"
+	PERCENT    = "%"
+	UNDERSCORE = "_"
 
 	LT    = "<"
 	LT_EQ = "<="
@@ -35,8 +36,11 @@ const (
 	LOGICAL_AND = "&&"
 	LOGICAL_OR  = "||"
 
-	EQ       = "=="
-	NOT_EQ   = "!="
+	EQ     = "=="
+	NOT_EQ = "!="
+
+	ROCKET = "=>"
+	//RANGE    = ".."
 	ELLIPSIS = "..."
 
 	// Delimiters
@@ -63,6 +67,9 @@ const (
 	NIL      = "NIL"
 	IMPORT   = "IMPORT"
 	AS       = "AS"
+	TRY      = "TRY"
+	CATCH    = "CATCH"
+	MATCH    = "MATCH"
 )
 
 type Token struct {
@@ -71,7 +78,8 @@ type Token struct {
 }
 
 var keywords = map[string]TokenType{
-	"fn":     FUNCTION,
+	"fn": FUNCTION,
+	//"val"
 	"var":    VAR,
 	"true":   TRUE,
 	"false":  FALSE,
@@ -81,6 +89,12 @@ var keywords = map[string]TokenType{
 	"nil":    NIL,
 	"import": IMPORT,
 	"as":     AS,
+	//"export"
+	"try":   TRY,
+	"catch": CATCH,
+	"match": MATCH,
+	//"defer"
+	//"native"
 }
 
 func LookupIdent(ident string) TokenType {
