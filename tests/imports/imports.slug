@@ -3,8 +3,8 @@ import functions.{sqr};
 import functions.{f as sum};
 
 
-assertEqual(51.sqr(), 2601);
+51.sqr().assertEqual(2601);
 
-assertEqual([2, 3, 4].f().sqr(), 81);
+[2, 3, 4].f().sqr().assertEqual(81);
 
-assertEqual([51, 23].sum(), 74);
+[51, 23].sum().assertEqual(74);

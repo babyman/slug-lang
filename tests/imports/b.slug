@@ -1,3 +1,6 @@
+//
+// test circular imports
+//
 import imports.a.*;
 
 var add = fn(a, b) {

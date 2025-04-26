@@ -14,10 +14,14 @@ import (
 	"strings"
 )
 
-var rootPath string
+var (
+	rootPath string
+	debugAST bool // New debug-ast flag
+)
 
 func init() {
 	flag.StringVar(&rootPath, "root", ".", "Set the root context for the program (used for imports)")
+	flag.BoolVar(&debugAST, "debug-ast", false, "Render the AST as a JSON file")
 }
 
 func main() {
@@ -73,6 +77,14 @@ func executeFile(filename, rootPath string, args []string) error {
 	p := parser.New(l)
 
 	program := p.ParseProgram()
+
+	// Debug-ast flag: write AST to JSON file
+	if debugAST {
+		if err := parser.WriteASTToJSON(program, filename+".ast.json"); err != nil {
+			return fmt.Errorf("failed to write AST to JSON: %v", err)
+		}
+	}
+
 	if len(p.Errors()) != 0 {
 		fmt.Println("Woops! Looks like we slid into some slimy slug trouble here!")
 		fmt.Println("Parser errors:")
@@ -85,6 +97,7 @@ func executeFile(filename, rootPath string, args []string) error {
 	env := object.NewEnvironment()
 	env.SetRootPath(rootPath) // Set the root path in the environment
 
+	// Set up the args list
 	objects := make([]object.Object, len(args))
 	for i, arg := range args {
 		objects[i] = &object.String{Value: arg}

@@ -9,3 +9,6 @@ bin/
 .AppleDouble
 .LSOverride
 ._*
+
+# ast json files
+*.ast.json
