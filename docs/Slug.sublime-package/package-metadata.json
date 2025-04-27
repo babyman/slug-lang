@@ -1,0 +1,16 @@
+{
+  "name": "Slug",
+  "version": "0.1.0",
+  "sublime_text": "*",
+  "platforms": [
+    "*"
+  ],
+  "url": "https://github.com/babyman/slug",
+  "issues": "https://github.com/babyman/slug/issues",
+  "author": [
+    "babyman"
+  ],
+  "description": "A Sublime Package for the Slug programming language",
+  "labels": [],
+  "libraries": []
+}

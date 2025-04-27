@@ -2,6 +2,7 @@ BINARY_NAME=slug
 OS := $(shell uname)
 
 run:
+	# e.g. make run ARGS='--root ./tests --debug-ast ./tests/nil.slug'
 	go run ./cmd/app/ $(ARGS)
 
 
