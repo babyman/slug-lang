@@ -4,6 +4,9 @@
 # Binary output directory
 bin/
 
+# distro folder can be ignored
+dist/
+
 # OSX System Files
 .DS_Store
 .AppleDouble
