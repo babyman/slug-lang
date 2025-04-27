@@ -223,7 +223,7 @@ enum LiteralValue {
 
 ---
 
-# ⚡ Bonus Idea (optional later)
+# Bonus Idea (optional later)
 
 You could allow small *guard* conditions too:
 
@@ -365,7 +365,7 @@ struct MatchExpr {
 
 ---
 
-# ✨ Why This AST Design Works
+# Why This AST Design Works
 
 - `Pattern` can be reused for `let`, `match`, and function parameters.
 - Easy to walk in interpreter:
