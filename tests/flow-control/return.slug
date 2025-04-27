@@ -1,7 +1,7 @@
 //
 // guard clause using return
 // -------------------------
-//
+
 var f = fn(a) {
     if(a == 1) {
         return 10;

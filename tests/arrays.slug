@@ -1,3 +1,9 @@
+// empty list
+// -----------------------
+var e = [];
+
+e.len().assertEqual(0);
+
 // accessing elements by index
 // -----------------------
 var l = [2, 3, 4];

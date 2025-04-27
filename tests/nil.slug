@@ -1,4 +1,7 @@
 
 assertEqual(nil, nil, "nil should equal nil")
 
+assertEqual(1, nil, "1 != nil")
+assertEqual(nil, 1, "nil != 1")
+
 assertEqual(println(""), nil, "nil expected")

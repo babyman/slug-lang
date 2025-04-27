@@ -8,6 +8,8 @@ var f = fn(a) {
     }
 }
 
-assertEqual(f(1), 10, "expected 10");
-assertEqual(f(2), 11);
-assertEqual(f(3), 12);
+1.f().assertEqual(10, "expected 10");
+
+2.f().assertEqual(11);
+
+3.f().assertEqual(12);
