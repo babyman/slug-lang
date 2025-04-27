@@ -143,6 +143,13 @@ func parseAndEvaluate(filename string, src string, env *object.Environment) erro
 
 	// Parse src into a Program AST
 	program := p.ParseProgram()
+
+	if debugAST {
+		if err := parser.WriteASTToJSON(program, filename+".ast.json"); err != nil {
+			return fmt.Errorf("failed to write AST to JSON: %v", err)
+		}
+	}
+
 	if len(p.Errors()) > 0 {
 		fmt.Println("Woops! Looks like we slid into some slimy slug trouble here!")
 		fmt.Println("Parser errors:")
@@ -150,12 +157,6 @@ func parseAndEvaluate(filename string, src string, env *object.Environment) erro
 			fmt.Printf("\t%s\n", msg)
 		}
 		return fmt.Errorf("parsing errors encountered")
-	}
-
-	if debugAST {
-		if err := parser.WriteASTToJSON(program, filename+".ast.json"); err != nil {
-			return fmt.Errorf("failed to write AST to JSON: %v", err)
-		}
 	}
 
 	// Evaluate the program within the provided environment

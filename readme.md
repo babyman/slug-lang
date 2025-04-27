@@ -175,11 +175,11 @@ match x {
 ```slug
 var greet = fn(x) {
     match x {
-        "hello", "hi" => println("greeting")
-        "bye"         => println("farewell")
-        true          => println("truthy")
-        42            => println("magic number")
-        _             => println("something else")
+        "hello", "hi" => "greeting";
+        "bye"         => "farewell";
+        true          => "truthy";
+        42            => "magic number";
+        _             => "something else";
     }
 }
 ```

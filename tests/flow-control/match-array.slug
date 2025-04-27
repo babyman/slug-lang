@@ -1,0 +1,19 @@
+//
+// matching on map values
+// ----------------------
+
+var f = fn(x) {
+    match x {
+      [a] => "list of one";
+      [] => "empty list";
+      _ => "default";
+    }
+}
+
+
+// todo this will fail with a compile error if the line above is missing its ;
+;
+
+[].f().assertEqual("empty list");
+
+[1].f().assertEqual("list of one");

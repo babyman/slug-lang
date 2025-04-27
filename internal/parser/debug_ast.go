@@ -87,6 +87,13 @@ func WalkAST(node ast.Node) interface{} {
 			"3.value":    n.Value,
 		}
 
+	case *ast.Nil:
+		return map[string]interface{}{
+			"0.type":     "Nil",
+			"1.position": n.Token.Position,
+			"2.token":    n.TokenLiteral(),
+		}
+
 	case *ast.IntegerLiteral:
 		return map[string]interface{}{
 			"0.type":     "IntegerLiteral",
@@ -157,13 +164,6 @@ func WalkAST(node ast.Node) interface{} {
 			"4.body":       WalkAST(n.Body),
 		}
 
-	case *ast.FunctionParameter:
-		return map[string]interface{}{
-			"0.type":  "FunctionParameter",
-			"1.token": n.TokenLiteral(),
-			"2.name":  n.Name,
-		}
-
 	case *ast.CallExpression:
 		args := make([]interface{}, len(n.Arguments))
 		for i, arg := range n.Arguments {
@@ -189,9 +189,27 @@ func WalkAST(node ast.Node) interface{} {
 			"3.pairs":    pairs,
 		}
 
+	case *ast.FunctionParameter:
+		return map[string]interface{}{
+			"0.type":       "FunctionParameter",
+			"2.token":      n.TokenLiteral(),
+			"3.name":       WalkAST(n.Name),
+			"4.isVariadic": n.IsVariadic,
+			"5.default":    WalkAST(n.Default),
+		}
+
+	case *ast.DestructureBinding:
+		return map[string]interface{}{
+			"0.type":     "DestructureBinding",
+			"1.position": n.Token.Position,
+			"2.head":     WalkAST(n.Head),
+			"3.tail":     WalkAST(n.Tail),
+		}
+
 	default:
 		return map[string]interface{}{
-			"0.type": "Unknown: " + n.String(),
+			"0.type": "Unknown",
+			"1.node": n,
 		}
 	}
 }

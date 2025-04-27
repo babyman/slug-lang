@@ -1,0 +1,18 @@
+//
+// matching on primitive values
+// ----------------------------
+
+var f = fn(x) {
+    match x {
+      {k} if k == "a" => "map with " + k;
+      {k} => "map with " + k;
+      {k2, _} => "map with " + k2;
+      {} => "empty map";
+      _ => "default";
+    }
+}
+
+{}.f().assertEqual("empty map");
+{"k":"v"}.f().assertEqual("map with v");
+{"k":"a"}.f().assertEqual("map with a");
+{"k1":"v1", "k2":"v2"}.f().assertEqual("map with v2");

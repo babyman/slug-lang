@@ -1,0 +1,34 @@
+//
+// matching on primitive values
+// ----------------------------
+
+var f = fn(x) {
+    match x {
+        "hello", "hi" => "greeting";
+        "bye"         => "farewell";
+        true          => "truthy";
+        42            => "magic number";
+        // 
+        // ERROR: type mismatch: BOOLEAN < INTEGER
+        // todo: make sure this fails to match but no error
+        // 
+        // n if n < 10   => "small number";
+        _             => "something else";
+    }
+}
+
+"hello".f().assertEqual("greeting");
+"hi".f().assertEqual("greeting");
+
+"bye".f().assertEqual("farewell");
+
+true.f().assertEqual("truthy");
+false.f().assertEqual("something else");
+
+42.f().assertEqual("magic number");
+
+// 9.f().assertEqual("small number");
+
+
+43.f().assertEqual("something else");
+

@@ -42,6 +42,9 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 	case *ast.ImportStatement:
 		return evalImportStatement(node, env)
 
+	case *ast.MatchExpression:
+		return evalMatchExpression(node, env)
+
 	case *ast.VarStatement:
 		val := Eval(node.Value, env)
 		if isError(val) {
@@ -665,6 +668,253 @@ func evalHashLiteral(
 	}
 
 	return &object.Hash{Pairs: pairs}
+}
+
+func evalMatchExpression(node *ast.MatchExpression, env *object.Environment) object.Object {
+	// If there's a match value, evaluate it
+	var matchValue object.Object
+	if node.Value != nil {
+		matchValue = Eval(node.Value, env)
+		if isError(matchValue) {
+			return matchValue
+		}
+	}
+
+	// Try each pattern in sequence
+	for _, matchCase := range node.Cases {
+		// Create a new scope for pattern variables
+		patternEnv := object.NewEnclosedEnvironment(env)
+
+		// Check if the pattern matches
+		matched := false
+		if matchValue != nil {
+			// Match against the provided value
+			matched = patternMatches(matchCase.Pattern, matchValue, patternEnv)
+		} else {
+			// Valueless match - evaluate pattern as a condition
+			matched = evaluatePatternAsCondition(matchCase.Pattern, patternEnv)
+		}
+
+		// Check guard condition if pattern matched
+		if matched && matchCase.Guard != nil {
+			guardResult := Eval(matchCase.Guard, patternEnv)
+			if isError(guardResult) {
+				return guardResult
+			}
+			matched = isTruthy(guardResult)
+		}
+
+		// If matched, evaluate the body with bindings from the pattern
+		if matched {
+			return Eval(matchCase.Body, patternEnv)
+		}
+	}
+
+	// If no patterns matched, return nil
+	return NIL
+}
+
+// patternMatches checks if a value matches a pattern and binds variables
+func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.Environment) bool {
+	switch p := pattern.(type) {
+	case *ast.WildcardPattern:
+		// Wildcard matches anything
+		return true
+
+	case *ast.LiteralPattern:
+		// Evaluate the literal and compare with the value
+		literalValue := Eval(p.Value, env)
+		if isError(literalValue) {
+			return false
+		}
+		return objectsEqual(literalValue, value)
+
+	case *ast.IdentifierPattern:
+		// Bind the value to the identifier
+		env.Set(p.Value.Value, value)
+		return true
+
+	case *ast.MultiPattern:
+		// Check if value matches any of the patterns
+		for _, subPattern := range p.Patterns {
+			if patternMatches(subPattern, value, object.NewEnclosedEnvironment(env)) {
+				return true
+			}
+		}
+		return false
+
+	case *ast.ArrayPattern:
+		// Check if value is an array
+		arr, ok := value.(*object.Array)
+		if !ok {
+			return false
+		}
+
+		// Empty array pattern matches empty array
+		if len(p.Elements) == 0 {
+			return len(arr.Elements) == 0
+		}
+
+		// Check if array length matches pattern length
+		if len(p.Elements) != len(arr.Elements) {
+			return false
+		}
+
+		// Check each element against its pattern
+		for i, elemPattern := range p.Elements {
+			if !patternMatches(elemPattern, arr.Elements[i], env) {
+				return false
+			}
+		}
+
+		return true
+
+	case *ast.ConsPattern:
+		// Check if value is an array
+		arr, ok := value.(*object.Array)
+		if !ok || len(arr.Elements) == 0 {
+			return false
+		}
+
+		// Match head with first element
+		if !patternMatches(p.Head, arr.Elements[0], env) {
+			return false
+		}
+
+		// Match tail with rest of array
+		tailArr := &object.Array{Elements: arr.Elements[1:]}
+		return patternMatches(p.Tail, tailArr, env)
+
+	case *ast.HashPattern:
+		// Check if value is a hash
+		hash, ok := value.(*object.Hash)
+		if !ok {
+			return false
+		}
+
+		// Empty hash pattern matches empty hash
+		if len(p.Pairs) == 0 {
+			return len(hash.Pairs) == 0
+		}
+
+		// Check if all required fields are present
+		for key, subPattern := range p.Pairs {
+			if key == "_" {
+				// Skip wildcard placeholder for spread
+				continue
+			}
+
+			// Check if key exists in hash
+			keyObj := &object.String{Value: key}
+			hashKey := keyObj.HashKey()
+			pair, ok := hash.Pairs[hashKey]
+			if !ok {
+				return false
+			}
+
+			// Check if value matches subpattern
+			if !patternMatches(subPattern, pair.Value, env) {
+				return false
+			}
+		}
+
+		// If spread is false, verify exact field count
+		if !p.Spread && len(p.Pairs) != len(hash.Pairs) {
+			return false
+		}
+
+		return true
+	}
+
+	return false
+}
+
+// evaluatePatternAsCondition evaluates patterns as conditions for valueless match
+func evaluatePatternAsCondition(pattern ast.MatchPattern, env *object.Environment) bool {
+	switch p := pattern.(type) {
+	case *ast.WildcardPattern:
+		// Wildcard always matches
+		return true
+
+	case *ast.LiteralPattern:
+		// Evaluate the literal and check if truthy
+		result := Eval(p.Value, env)
+		if isError(result) {
+			return false
+		}
+		return isTruthy(result)
+
+	case *ast.IdentifierPattern:
+		// Look up identifier and check if truthy
+		value, ok := env.Get(p.Value.Value)
+		if !ok {
+			return false
+		}
+		return isTruthy(value)
+
+	case *ast.MultiPattern:
+		// Check if any subpattern is truthy
+		for _, subPattern := range p.Patterns {
+			if evaluatePatternAsCondition(subPattern, env) {
+				return true
+			}
+		}
+		return false
+	}
+
+	return false
+}
+
+// objectsEqual compares two objects for equality
+func objectsEqual(a, b object.Object) bool {
+	if a.Type() != b.Type() {
+		return false
+	}
+
+	switch aVal := a.(type) {
+	case *object.Integer:
+		return aVal.Value == b.(*object.Integer).Value
+
+	case *object.Boolean:
+		return aVal.Value == b.(*object.Boolean).Value
+
+	case *object.String:
+		return aVal.Value == b.(*object.String).Value
+
+	case *object.Nil:
+		return true // nil equals nil
+
+	case *object.Array:
+		bArr := b.(*object.Array)
+		if len(aVal.Elements) != len(bArr.Elements) {
+			return false
+		}
+
+		for i, elem := range aVal.Elements {
+			if !objectsEqual(elem, bArr.Elements[i]) {
+				return false
+			}
+		}
+
+		return true
+
+	case *object.Hash:
+		bHash := b.(*object.Hash)
+		if len(aVal.Pairs) != len(bHash.Pairs) {
+			return false
+		}
+
+		for k, v := range aVal.Pairs {
+			bPair, ok := bHash.Pairs[k]
+			if !ok || !objectsEqual(v.Value, bPair.Value) {
+				return false
+			}
+		}
+
+		return true
+	}
+
+	return false
 }
 
 func evalHashIndexExpression(hash, index object.Object) object.Object {

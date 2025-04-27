@@ -442,3 +442,174 @@ func (hl *HashLiteral) String() string {
 
 	return out.String()
 }
+
+// Pattern matching related AST nodes
+type MatchExpression struct {
+	Token token.Token // The 'match' token
+	Value Expression  // The value to match against (nil for valueless match)
+	Cases []*MatchCase
+}
+
+func (me *MatchExpression) expressionNode()      {}
+func (me *MatchExpression) TokenLiteral() string { return me.Token.Literal }
+func (me *MatchExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("match")
+	if me.Value != nil {
+		out.WriteString(" ")
+		out.WriteString(me.Value.String())
+	}
+	out.WriteString(" {")
+
+	for _, c := range me.Cases {
+		out.WriteString("\n    ")
+		out.WriteString(c.String())
+	}
+	out.WriteString("\n}")
+
+	return out.String()
+}
+
+type MatchCase struct {
+	Token   token.Token  // The token for this case
+	Pattern MatchPattern // The pattern to match against
+	Guard   Expression   // Optional guard condition (if pattern)
+	Body    *BlockStatement
+}
+
+func (mc *MatchCase) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(mc.Pattern.String())
+
+	if mc.Guard != nil {
+		out.WriteString(" if ")
+		out.WriteString(mc.Guard.String())
+	}
+
+	out.WriteString(" => ")
+	out.WriteString(mc.Body.String())
+
+	return out.String()
+}
+
+// MatchPattern interface for different pattern types
+type MatchPattern interface {
+	Node
+	patternNode()
+	String() string
+}
+
+// Wildcard pattern (_)
+type WildcardPattern struct {
+	Token token.Token // The '_' token
+}
+
+func (wp *WildcardPattern) patternNode()         {}
+func (wp *WildcardPattern) TokenLiteral() string { return wp.Token.Literal }
+func (wp *WildcardPattern) String() string       { return "_" }
+
+// LiteralPattern for matching constants
+type LiteralPattern struct {
+	Token token.Token
+	Value Expression // IntegerLiteral, StringLiteral, Boolean, etc.
+}
+
+func (lp *LiteralPattern) patternNode()         {}
+func (lp *LiteralPattern) TokenLiteral() string { return lp.Token.Literal }
+func (lp *LiteralPattern) String() string       { return lp.Value.String() }
+
+// IdentifierPattern for binding values to variables
+type IdentifierPattern struct {
+	Token token.Token
+	Value *Identifier
+}
+
+func (ip *IdentifierPattern) patternNode()         {}
+func (ip *IdentifierPattern) TokenLiteral() string { return ip.Token.Literal }
+func (ip *IdentifierPattern) String() string       { return ip.Value.String() }
+
+// MultiPattern for matching against multiple patterns
+type MultiPattern struct {
+	Token    token.Token
+	Patterns []MatchPattern
+}
+
+func (mp *MultiPattern) patternNode()         {}
+func (mp *MultiPattern) TokenLiteral() string { return mp.Token.Literal }
+func (mp *MultiPattern) String() string {
+	var out bytes.Buffer
+	patterns := []string{}
+
+	for _, p := range mp.Patterns {
+		patterns = append(patterns, p.String())
+	}
+
+	out.WriteString(strings.Join(patterns, ", "))
+	return out.String()
+}
+
+// ArrayPattern for matching array structure
+type ArrayPattern struct {
+	Token    token.Token
+	Elements []MatchPattern
+}
+
+func (ap *ArrayPattern) patternNode()         {}
+func (ap *ArrayPattern) TokenLiteral() string { return ap.Token.Literal }
+func (ap *ArrayPattern) String() string {
+	var out bytes.Buffer
+	elements := []string{}
+
+	for _, e := range ap.Elements {
+		elements = append(elements, e.String())
+	}
+
+	out.WriteString("[")
+	out.WriteString(strings.Join(elements, ", "))
+	out.WriteString("]")
+
+	return out.String()
+}
+
+// HashPattern for matching hash structure
+type HashPattern struct {
+	Token  token.Token
+	Pairs  map[string]MatchPattern
+	Spread bool // Whether _ is present to match additional fields
+}
+
+func (hp *HashPattern) patternNode()         {}
+func (hp *HashPattern) TokenLiteral() string { return hp.Token.Literal }
+func (hp *HashPattern) String() string {
+	var out bytes.Buffer
+	pairs := []string{}
+
+	for key, pattern := range hp.Pairs {
+		if key == "_" {
+			pairs = append(pairs, "_")
+		} else {
+			pairs = append(pairs, key+": "+pattern.String())
+		}
+	}
+
+	out.WriteString("{")
+	out.WriteString(strings.Join(pairs, ", "))
+	out.WriteString("}")
+
+	return out.String()
+}
+
+// ConsPattern for list destructuring patterns like a:b:c:[]
+type ConsPattern struct {
+	Token token.Token
+	Head  MatchPattern
+	Tail  MatchPattern
+}
+
+func (cp *ConsPattern) patternNode()         {}
+func (cp *ConsPattern) TokenLiteral() string { return cp.Token.Literal }
+func (cp *ConsPattern) String() string {
+	return cp.Head.String() + ":" + cp.Tail.String()
+}

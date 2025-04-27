@@ -135,24 +135,21 @@ func (p *Parser) peekTokenIs(t token.TokenType) bool {
 	return p.peekToken.Type == t
 }
 
+func (p *Parser) addError(message string, args ...interface{}) {
+	line, col := GetLineAndColumn(p.src, p.curToken.Position)
+	m := fmt.Sprintf(message, args...)
+	msg := fmt.Sprintf("[%3d:%2d] %s", line, col, m)
+	p.errors = append(p.errors, msg)
+}
+
 func (p *Parser) peekError(t token.TokenType) {
 	// Line and column are extracted using the position of the peek token.
-	line, col := GetLineAndColumn(p.src, p.peekToken.Position)
-	msg := fmt.Sprintf(
-		"expected next token to be %s, got %s instead at line %d, column %d",
-		t, p.peekToken.Type, line, col,
-	)
-	p.errors = append(p.errors, msg)
+	p.addError("expected next token to be %s, got %s instead", t, p.peekToken.Type)
 }
 
 func (p *Parser) noPrefixParseFnError(t token.TokenType) {
 	// Line and column are extracted using the position of the current token.
-	line, col := GetLineAndColumn(p.src, p.curToken.Position)
-	msg := fmt.Sprintf(
-		"no prefix parse function for %s found at line %d, column %d",
-		t, line, col,
-	)
-	p.errors = append(p.errors, msg)
+	p.addError("no prefix parse function for %s found", t)
 }
 
 // Update `expectPeek` to include line and column context when a peek error happens
@@ -266,12 +263,7 @@ func (p *Parser) parseImportStatement() *ast.ImportStatement {
 	}
 
 	if !stmt.Wildcard && len(stmt.Symbols) == 0 {
-		line, col := GetLineAndColumn(p.src, p.curToken.Position)
-		msg := fmt.Sprintf(
-			"invalid import: must specify `*` or `{symbols}` at line %d, column %d",
-			line, col,
-		)
-		p.errors = append(p.errors, msg)
+		p.addError("invalid import: must specify `*` or `{symbols}`")
 		return nil
 	}
 
@@ -369,9 +361,7 @@ func (p *Parser) parseIntegerLiteral() ast.Expression {
 
 	value, err := strconv.ParseInt(p.curToken.Literal, 0, 64)
 	if err != nil {
-		line, col := GetLineAndColumn(p.src, p.curToken.Position)
-		msg := fmt.Sprintf("could not parse %q as integer at line %d, column %d", p.curToken.Literal, line, col)
-		p.errors = append(p.errors, msg)
+		p.addError("could not parse %q as integer", p.curToken.Literal)
 		return nil
 	}
 
@@ -412,6 +402,307 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 
 func (p *Parser) parseNil() ast.Expression {
 	return &ast.Nil{Token: p.curToken}
+}
+
+func (p *Parser) parseMatchExpression() ast.Expression {
+	match := &ast.MatchExpression{Token: p.curToken}
+
+	// Check if match has a value to match against
+	if !p.peekTokenIs(token.LBRACE) {
+		p.nextToken()
+		match.Value = p.parseExpression(LOWEST)
+	} else {
+		p.addError("match expression must be followed by an expression")
+		return nil
+	}
+
+	if !p.expectPeek(token.LBRACE) {
+		p.addError("'{' expected after match expression")
+		return nil
+	}
+
+	match.Cases = []*ast.MatchCase{}
+
+	// Skip the opening brace
+	p.nextToken()
+
+	// Parse cases until we hit the closing brace
+	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
+		matchCase := p.parseMatchCase()
+		if matchCase != nil {
+			match.Cases = append(match.Cases, matchCase)
+		}
+		p.nextToken() // Move to the next case or closing brace
+	}
+
+	return match
+}
+
+func (p *Parser) parseMatchCase() *ast.MatchCase {
+	matchCase := &ast.MatchCase{Token: p.curToken}
+
+	// Parse the pattern
+	pattern := p.parseMatchPattern()
+	if pattern == nil {
+		return nil
+	}
+	matchCase.Pattern = pattern
+
+	// Check for guard condition with 'if'
+	if p.peekTokenIs(token.IF) {
+		p.nextToken() // Consume 'if'
+		p.nextToken() // Move to the guard expression
+		matchCase.Guard = p.parseExpression(LOWEST)
+	}
+
+	// Expect => followed by a block statement
+	if !p.expectPeek(token.ROCKET) {
+		return nil
+	}
+
+	// Parse block statement or expression
+	if p.peekTokenIs(token.LBRACE) {
+		p.nextToken()
+		matchCase.Body = p.parseBlockStatement()
+	} else {
+		// For single-expression cases
+		p.nextToken()
+		expr := p.parseExpression(LOWEST)
+		stmt := &ast.ExpressionStatement{Token: p.curToken, Expression: expr}
+
+		// Create a block with a single statement
+		matchCase.Body = &ast.BlockStatement{
+			Token:      p.curToken,
+			Statements: []ast.Statement{stmt},
+		}
+
+		// Expect a semicolon at the end of the expression
+		if p.peekTokenIs(token.SEMICOLON) {
+			p.nextToken()
+		}
+	}
+
+	return matchCase
+}
+
+func (p *Parser) parseMatchPattern() ast.MatchPattern {
+
+	//println("matchPattern", p.curToken.Literal, " <~> ", p.peekToken.Literal)
+
+	switch p.curToken.Type {
+	case token.UNDERSCORE:
+		return &ast.WildcardPattern{Token: p.curToken}
+	case token.IDENT:
+		return &ast.IdentifierPattern{
+			Token: p.curToken,
+			Value: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
+		}
+	case token.INT, token.STRING, token.TRUE, token.FALSE, token.NIL:
+		// Literal patterns (numbers, strings, booleans, nil)
+
+		expr := p.parseExpression(LOWEST)
+		multiPattern := &ast.MultiPattern{
+			Token:    p.curToken,
+			Patterns: []ast.MatchPattern{&ast.LiteralPattern{Token: p.curToken, Value: expr}},
+		}
+
+		// Check for additional literal patterns separated by commas
+		for p.peekTokenIs(token.COMMA) {
+			p.nextToken() // consume comma
+			p.nextToken() // move to next literal
+			expr = p.parseExpression(LOWEST)
+			multiPattern.Patterns = append(multiPattern.Patterns, &ast.LiteralPattern{Token: p.curToken, Value: expr})
+		}
+
+		// If only one pattern, return as LiteralPattern
+		if len(multiPattern.Patterns) == 1 {
+			return multiPattern.Patterns[0]
+		}
+
+		return multiPattern
+	case token.LBRACKET:
+		// Array pattern
+		return p.parseArrayPattern()
+	case token.LBRACE:
+		// Hash pattern
+		return p.parseHashPattern()
+	default:
+		p.peekError(p.curToken.Type)
+		return nil
+	}
+}
+
+func (p *Parser) parseArrayPattern() ast.MatchPattern {
+	arrayPattern := &ast.ArrayPattern{Token: p.curToken}
+	arrayPattern.Elements = []ast.MatchPattern{}
+
+	if p.peekTokenIs(token.RBRACKET) {
+		p.nextToken() // Skip the closing bracket for empty array
+		return arrayPattern
+	}
+
+	p.nextToken() // Move past the opening bracket
+
+	// Parse first element
+	element := p.parseMatchPattern()
+	if element == nil {
+		return nil
+	}
+
+	// Check if this is a cons pattern (a:b:...)
+	if p.peekTokenIs(token.COLON) {
+		return p.parseConsPattern(element)
+	}
+
+	arrayPattern.Elements = append(arrayPattern.Elements, element)
+
+	// Parse remaining elements
+	for p.peekTokenIs(token.COMMA) {
+		p.nextToken() // Consume comma
+		p.nextToken() // Move to next element
+
+		element := p.parseMatchPattern()
+		if element == nil {
+			return nil
+		}
+
+		arrayPattern.Elements = append(arrayPattern.Elements, element)
+	}
+
+	if !p.expectPeek(token.RBRACKET) {
+		return nil
+	}
+
+	return arrayPattern
+}
+
+func (p *Parser) parseConsPattern(head ast.MatchPattern) *ast.ConsPattern {
+	consPattern := &ast.ConsPattern{
+		Token: p.curToken,
+		Head:  head,
+	}
+
+	p.nextToken() // Consume the colon
+	p.nextToken() // Move to the tail element
+
+	tail := p.parseMatchPattern()
+	if tail == nil {
+		return nil
+	}
+
+	consPattern.Tail = tail
+
+	// If current pattern is an array pattern but is empty ([]),
+	// or if we have another cons pattern, return as is
+	if _, ok := tail.(*ast.ArrayPattern); ok {
+		if p.peekTokenIs(token.RBRACKET) {
+			p.nextToken() // Consume closing bracket
+		}
+	}
+
+	return consPattern
+}
+
+func (p *Parser) parseHashPattern() *ast.HashPattern {
+	hashPattern := &ast.HashPattern{
+		Token:  p.curToken,
+		Pairs:  make(map[string]ast.MatchPattern),
+		Spread: false,
+	}
+
+	// Empty hash pattern
+	if p.peekTokenIs(token.RBRACE) {
+		p.nextToken()
+		return hashPattern
+	}
+
+	p.nextToken() // Move past the opening brace
+
+	// Special case for wildcard in hash pattern
+	if p.curTokenIs(token.UNDERSCORE) {
+		hashPattern.Spread = true
+		hashPattern.Pairs["_"] = &ast.WildcardPattern{Token: p.curToken}
+
+		// Check if there are more fields after the wildcard
+		if p.peekTokenIs(token.COMMA) {
+			p.nextToken() // Consume comma
+			p.nextToken() // Move to next field
+		} else {
+			if !p.expectPeek(token.RBRACE) {
+				return nil
+			}
+			return hashPattern
+		}
+	}
+
+	// Parse first key-value pair
+	if !p.parseHashPatternPair(hashPattern) {
+		return nil
+	}
+
+	// Parse remaining key-value pairs
+	for p.peekTokenIs(token.COMMA) {
+		p.nextToken() // Consume comma
+		p.nextToken() // Move to next key
+
+		// Check for wildcard after regular keys
+		if p.curTokenIs(token.UNDERSCORE) {
+			hashPattern.Spread = true
+			hashPattern.Pairs["_"] = &ast.WildcardPattern{Token: p.curToken}
+
+			// Must be the last item
+			if !p.peekTokenIs(token.RBRACE) {
+				p.peekError("wildcard must be the last item in hash pattern")
+				return nil
+			}
+			break
+		}
+
+		if !p.parseHashPatternPair(hashPattern) {
+			return nil
+		}
+	}
+
+	if !p.expectPeek(token.RBRACE) {
+		return nil
+	}
+
+	return hashPattern
+}
+
+func (p *Parser) parseHashPatternPair(hp *ast.HashPattern) bool {
+	// For hash patterns, keys are always identifiers
+	if !p.curTokenIs(token.IDENT) {
+		p.addError("expected identifier as hash pattern key, got %s", p.curToken.Type)
+		return false
+	}
+
+	key := p.curToken.Literal
+
+	// Check if this is a shorthand notation (just the key)
+	if p.peekTokenIs(token.COMMA) || p.peekTokenIs(token.RBRACE) {
+		// Shorthand notation - { name } is the same as { name: name }
+		hp.Pairs[key] = &ast.IdentifierPattern{
+			Token: p.curToken,
+			Value: &ast.Identifier{Token: p.curToken, Value: key},
+		}
+		return true
+	}
+
+	// Otherwise, expect colon followed by a pattern
+	if !p.expectPeek(token.COLON) {
+		return false
+	}
+
+	p.nextToken() // Move to the pattern
+
+	pattern := p.parseMatchPattern()
+	if pattern == nil {
+		return false
+	}
+
+	hp.Pairs[key] = pattern
+	return true
 }
 
 func (p *Parser) parseBoolean() ast.Expression {
@@ -582,18 +873,14 @@ func (p *Parser) parseDestructureBinding() *ast.DestructureBinding {
 // Modify parseFunctionFirstCallExpression to include enhanced context
 func (p *Parser) parseFunctionFirstCallExpression(left ast.Expression) ast.Expression {
 	if !p.expectPeek(token.IDENT) {
-		line, col := GetLineAndColumn(p.src, p.peekToken.Position)
-		msg := fmt.Sprintf("expected function identifier after '.', got %s instead at line %d, column %d", p.peekToken.Type, line, col)
-		p.errors = append(p.errors, msg)
+		p.addError("expected function identifier after '.', got %s instead", p.peekToken.Type)
 		return nil
 	}
 
 	function := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 
 	if !p.expectPeek(token.LPAREN) {
-		line, col := GetLineAndColumn(p.src, p.peekToken.Position)
-		msg := fmt.Sprintf("expected '(' after function name, got %s instead at line %d, column %d", p.peekToken.Type, line, col)
-		p.errors = append(p.errors, msg)
+		p.addError("expected '(' after function name, got %s instead", p.peekToken.Type)
 		return nil
 	}
 
@@ -693,73 +980,6 @@ func (p *Parser) registerPrefix(tokenType token.TokenType, fn prefixParseFn) {
 
 func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
 	p.infixParseFns[tokenType] = fn
-}
-func (p *Parser) parseMatchExpression() ast.Expression {
-	// Consume the `match` token
-	matchToken := p.curToken
-	//println("1.", p.curToken.Literal, ">>", p.peekToken.Literal)
-
-	if !p.expectPeek(token.LBRACE) { // Ensure an opening brace `{`
-		return nil
-	}
-
-	p.nextToken() // consume the LBRACE
-
-	var rootIfExpression *ast.IfExpression
-	var currentIfExpression *ast.IfExpression
-
-	// Parse the cases inside the braces
-	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
-		//println("2.", p.curToken.Literal, ">>", p.peekToken.Literal)
-
-		var condition ast.Expression
-		if p.curTokenIs(token.UNDERSCORE) { // Handle `_` (wildcard else case)
-			condition = nil
-		} else {
-			condition = p.parseExpression(LOWEST)
-		}
-
-		if !p.expectPeek(token.ROCKET) { // Expect `=>`
-			return nil
-		}
-
-		if !p.expectPeek(token.LBRACE) { // Expect `{` block
-			return nil
-		}
-
-		body := p.parseBlockStatement() // Parse the body block of the case
-
-		// Build the `if` expression
-		ifExp := &ast.IfExpression{
-			Token:      matchToken,
-			Condition:  condition,
-			ThenBranch: body,
-		}
-
-		// Assemble the nested `if-else` structure
-		if rootIfExpression == nil {
-			rootIfExpression = ifExp
-			currentIfExpression = rootIfExpression
-		} else if currentIfExpression != nil {
-			if condition == nil { // If it's the else case (`_`)
-				currentIfExpression.ElseBranch = body
-			} else {
-				currentIfExpression.ElseBranch = &ast.BlockStatement{
-					Statements: []ast.Statement{
-						&ast.ExpressionStatement{Expression: ifExp},
-					},
-				}
-				currentIfExpression = ifExp
-			}
-		}
-
-		p.nextToken() // Skip past blocks and commas
-		//if p.curTokenIs(token.COMMA) { // Optional commas between cases
-		//	p.nextToken()
-		//}
-	}
-
-	return rootIfExpression
 }
 
 // todo put this in a utils file
