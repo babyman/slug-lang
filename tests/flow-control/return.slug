@@ -1,0 +1,14 @@
+//
+// guard clause using return
+// -------------------------
+//
+var f = fn(a) {
+    if(a == 1) {
+        return 10;
+    }
+    a * a;
+}
+
+1.f().assertEqual(10);
+
+2.f().assertEqual(4);

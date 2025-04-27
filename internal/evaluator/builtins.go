@@ -156,8 +156,14 @@ func funcTail() *object.Builtin {
 func funcPrintLn() *object.Builtin {
 	return &object.Builtin{
 		Fn: func(args ...object.Object) object.Object {
-			for _, arg := range args {
-				fmt.Println(arg.Inspect())
+			for i, arg := range args {
+				fmt.Print(arg.Inspect())
+				if i < len(args)-1 {
+					fmt.Print(" ")
+				}
+			}
+			if len(args) > 0 {
+				fmt.Println()
 			}
 
 			return NIL
