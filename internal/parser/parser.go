@@ -453,11 +453,27 @@ func (p *Parser) parseIfExpression() ast.Expression {
 	if p.peekTokenIs(token.ELSE) {
 		p.nextToken()
 
-		if !p.expectPeek(token.LBRACE) {
+		// Check if we have an "else if" construction
+		if p.peekTokenIs(token.IF) {
+			p.nextToken() // consume the IF token
+			// Parse the else-if as an if expression and set it as the else branch
+			elseIfExpression := p.parseIfExpression()
+			// Wrap the else-if expression in a block statement
+			elseBlock := &ast.BlockStatement{
+				Token: p.curToken,
+				Statements: []ast.Statement{
+					&ast.ExpressionStatement{
+						Token:      p.curToken,
+						Expression: elseIfExpression,
+					},
+				},
+			}
+			expression.ElseBranch = elseBlock
+		} else if !p.expectPeek(token.LBRACE) {
 			return nil
+		} else {
+			expression.ElseBranch = p.parseBlockStatement()
 		}
-
-		expression.ElseBranch = p.parseBlockStatement()
 	}
 
 	return expression
