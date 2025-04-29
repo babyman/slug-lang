@@ -755,35 +755,24 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 			return len(arr.Elements) == 0
 		}
 
+		_, wild := p.Elements[len(p.Elements)-1].(*ast.WildcardPattern)
+
 		// Check if array length matches pattern length
-		if len(p.Elements) != len(arr.Elements) {
+		if (len(p.Elements) != len(arr.Elements) && !wild) || (len(p.Elements) > len(arr.Elements)+1 && wild) {
 			return false
 		}
 
 		// Check each element against its pattern
 		for i, elemPattern := range p.Elements {
-			if !patternMatches(elemPattern, arr.Elements[i], env) {
+			_, ok := elemPattern.(*ast.WildcardPattern)
+			if ok {
+				return true
+			} else if !patternMatches(elemPattern, arr.Elements[i], env) {
 				return false
 			}
 		}
 
 		return true
-
-	case *ast.ConsPattern:
-		// Check if value is an array
-		arr, ok := value.(*object.Array)
-		if !ok || len(arr.Elements) == 0 {
-			return false
-		}
-
-		// Match head with first element
-		if !patternMatches(p.Head, arr.Elements[0], env) {
-			return false
-		}
-
-		// Match tail with rest of array
-		tailArr := &object.Array{Elements: arr.Elements[1:]}
-		return patternMatches(p.Tail, tailArr, env)
 
 	case *ast.HashPattern:
 		// Check if value is a hash

@@ -487,16 +487,16 @@ func (p *Parser) parseMatchCase() *ast.MatchCase {
 
 func (p *Parser) parseMatchPattern() ast.MatchPattern {
 
-	//println("matchPattern", p.curToken.Literal, " <~> ", p.peekToken.Literal)
-
 	switch p.curToken.Type {
 	case token.UNDERSCORE:
 		return &ast.WildcardPattern{Token: p.curToken}
 	case token.IDENT:
-		return &ast.IdentifierPattern{
+		pattern := ast.IdentifierPattern{
 			Token: p.curToken,
 			Value: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
 		}
+		p.nextToken()
+		return &pattern
 	case token.INT, token.STRING, token.TRUE, token.FALSE, token.NIL:
 		// Literal patterns (numbers, strings, booleans, nil)
 
@@ -536,71 +536,29 @@ func (p *Parser) parseArrayPattern() ast.MatchPattern {
 	arrayPattern := &ast.ArrayPattern{Token: p.curToken}
 	arrayPattern.Elements = []ast.MatchPattern{}
 
-	if p.peekTokenIs(token.RBRACKET) {
-		p.nextToken() // Skip the closing bracket for empty array
+	p.nextToken() // Skip '['
+
+	// Handle empty list: `[]`
+	if p.curTokenIs(token.RBRACKET) {
 		return arrayPattern
 	}
 
-	p.nextToken() // Move past the opening bracket
-
-	// Parse first element
-	element := p.parseMatchPattern()
-	if element == nil {
-		return nil
-	}
-
-	// Check if this is a cons pattern (a:b:...)
-	if p.peekTokenIs(token.COLON) {
-		return p.parseConsPattern(element)
-	}
-
-	arrayPattern.Elements = append(arrayPattern.Elements, element)
-
-	// Parse remaining elements
-	for p.peekTokenIs(token.COMMA) {
-		p.nextToken() // Consume comma
-		p.nextToken() // Move to next element
-
+	// Parse multiple elements (comma-separated, cons-patterns, etc.)
+	for !p.curTokenIs(token.RBRACKET) {
 		element := p.parseMatchPattern()
 		if element == nil {
 			return nil
 		}
+		// todo wildcard pattern should be the last in the pattern, error if not
 
 		arrayPattern.Elements = append(arrayPattern.Elements, element)
-	}
 
-	if !p.expectPeek(token.RBRACKET) {
-		return nil
-	}
-
-	return arrayPattern
-}
-
-func (p *Parser) parseConsPattern(head ast.MatchPattern) *ast.ConsPattern {
-	consPattern := &ast.ConsPattern{
-		Token: p.curToken,
-		Head:  head,
-	}
-
-	p.nextToken() // Consume the colon
-	p.nextToken() // Move to the tail element
-
-	tail := p.parseMatchPattern()
-	if tail == nil {
-		return nil
-	}
-
-	consPattern.Tail = tail
-
-	// If current pattern is an array pattern but is empty ([]),
-	// or if we have another cons pattern, return as is
-	if _, ok := tail.(*ast.ArrayPattern); ok {
-		if p.peekTokenIs(token.RBRACKET) {
-			p.nextToken() // Consume closing bracket
+		if p.curTokenIs(token.COLON) || p.peekTokenIs(token.RBRACKET) {
+			p.nextToken() // consume :
 		}
 	}
 
-	return consPattern
+	return arrayPattern
 }
 
 func (p *Parser) parseHashPattern() *ast.HashPattern {

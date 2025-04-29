@@ -12,13 +12,11 @@ type Node interface {
 	String() string
 }
 
-// All statement nodes implement this
 type Statement interface {
 	Node
 	statementNode()
 }
 
-// All expression nodes implement this
 type Expression interface {
 	Node
 	expressionNode()
@@ -443,26 +441,25 @@ func (hl *HashLiteral) String() string {
 	return out.String()
 }
 
-// Pattern matching related AST nodes
 type MatchExpression struct {
 	Token token.Token // The 'match' token
 	Value Expression  // The value to match against (nil for valueless match)
 	Cases []*MatchCase
 }
 
-func (me *MatchExpression) expressionNode()      {}
-func (me *MatchExpression) TokenLiteral() string { return me.Token.Literal }
-func (me *MatchExpression) String() string {
+func (m *MatchExpression) expressionNode()      {}
+func (m *MatchExpression) TokenLiteral() string { return m.Token.Literal }
+func (m *MatchExpression) String() string {
 	var out bytes.Buffer
 
 	out.WriteString("match")
-	if me.Value != nil {
+	if m.Value != nil {
 		out.WriteString(" ")
-		out.WriteString(me.Value.String())
+		out.WriteString(m.Value.String())
 	}
 	out.WriteString(" {")
 
-	for _, c := range me.Cases {
+	for _, c := range m.Cases {
 		out.WriteString("\n    ")
 		out.WriteString(c.String())
 	}
@@ -478,18 +475,20 @@ type MatchCase struct {
 	Body    *BlockStatement
 }
 
-func (mc *MatchCase) String() string {
+func (m *MatchCase) expressionNode()      {}
+func (m *MatchCase) TokenLiteral() string { return m.Token.Literal }
+func (m *MatchCase) String() string {
 	var out bytes.Buffer
 
-	out.WriteString(mc.Pattern.String())
+	out.WriteString(m.Pattern.String())
 
-	if mc.Guard != nil {
+	if m.Guard != nil {
 		out.WriteString(" if ")
-		out.WriteString(mc.Guard.String())
+		out.WriteString(m.Guard.String())
 	}
 
 	out.WriteString(" => ")
-	out.WriteString(mc.Body.String())
+	out.WriteString(m.Body.String())
 
 	return out.String()
 }
@@ -501,11 +500,12 @@ type MatchPattern interface {
 	String() string
 }
 
-// Wildcard pattern (_)
+// WildcardPattern  (_)
 type WildcardPattern struct {
 	Token token.Token // The '_' token
 }
 
+func (wp *WildcardPattern) expressionNode()      {}
 func (wp *WildcardPattern) patternNode()         {}
 func (wp *WildcardPattern) TokenLiteral() string { return wp.Token.Literal }
 func (wp *WildcardPattern) String() string       { return "_" }
@@ -516,6 +516,7 @@ type LiteralPattern struct {
 	Value Expression // IntegerLiteral, StringLiteral, Boolean, etc.
 }
 
+func (lp *LiteralPattern) expressionNode()      {}
 func (lp *LiteralPattern) patternNode()         {}
 func (lp *LiteralPattern) TokenLiteral() string { return lp.Token.Literal }
 func (lp *LiteralPattern) String() string       { return lp.Value.String() }
@@ -526,6 +527,7 @@ type IdentifierPattern struct {
 	Value *Identifier
 }
 
+func (ip *IdentifierPattern) expressionNode()      {}
 func (ip *IdentifierPattern) patternNode()         {}
 func (ip *IdentifierPattern) TokenLiteral() string { return ip.Token.Literal }
 func (ip *IdentifierPattern) String() string       { return ip.Value.String() }
@@ -536,6 +538,7 @@ type MultiPattern struct {
 	Patterns []MatchPattern
 }
 
+func (mp *MultiPattern) expressionNode()      {}
 func (mp *MultiPattern) patternNode()         {}
 func (mp *MultiPattern) TokenLiteral() string { return mp.Token.Literal }
 func (mp *MultiPattern) String() string {
@@ -556,6 +559,7 @@ type ArrayPattern struct {
 	Elements []MatchPattern
 }
 
+func (ap *ArrayPattern) expressionNode()      {}
 func (ap *ArrayPattern) patternNode()         {}
 func (ap *ArrayPattern) TokenLiteral() string { return ap.Token.Literal }
 func (ap *ArrayPattern) String() string {
@@ -580,6 +584,7 @@ type HashPattern struct {
 	Spread bool // Whether _ is present to match additional fields
 }
 
+func (lp *HashPattern) expressionNode()      {}
 func (hp *HashPattern) patternNode()         {}
 func (hp *HashPattern) TokenLiteral() string { return hp.Token.Literal }
 func (hp *HashPattern) String() string {
@@ -599,17 +604,4 @@ func (hp *HashPattern) String() string {
 	out.WriteString("}")
 
 	return out.String()
-}
-
-// ConsPattern for list destructuring patterns like a:b:c:[]
-type ConsPattern struct {
-	Token token.Token
-	Head  MatchPattern
-	Tail  MatchPattern
-}
-
-func (cp *ConsPattern) patternNode()         {}
-func (cp *ConsPattern) TokenLiteral() string { return cp.Token.Literal }
-func (cp *ConsPattern) String() string {
-	return cp.Head.String() + ":" + cp.Tail.String()
 }

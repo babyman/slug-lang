@@ -1,19 +1,51 @@
 //
-// matching on map values
-// ----------------------
+// matching on array values
+// ------------------------
 
-var f = fn(x) {
+var f1 = fn(x) {
     match x {
-      [a] => "list of one";
-      [] => "empty list";
-      _ => "default";
+        [] => "empty list";
+        [a] => "list of one";
+        [a:b] => "list of two";
+        [a:b:c] => "list of three";
+        _ => "default";
     }
 }
-
 
 // todo this will fail with a compile error if the line above is missing its ;
 ;
 
-[].f().assertEqual("empty list");
+// Assertions to test the behavior
 
-[1].f().assertEqual("list of one");
+[].f1().assertEqual("empty list");
+
+[1].f1().assertEqual("list of one");
+
+[1, 2].f1().assertEqual("list of two");
+
+[1, 2, 3].f1().assertEqual("list of three");
+
+//
+// matching array wildcards
+// ------------------------
+
+var f2 = fn(x) {
+    match x {
+        [a:b:_] => "list of at least two";
+        [a:_] => "list of one+";
+        [_] => "any list";
+        _ => "default";
+    }
+}
+
+// todo this will fail with a compile error if the line above is missing its ;
+;
+
+
+[1, 2, 3, 4].f2().assertEqual("list of at least two");
+
+[1].f2().assertEqual("list of one+");
+
+[].f2().assertEqual("any list");
+
+
