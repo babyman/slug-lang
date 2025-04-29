@@ -348,6 +348,7 @@ func (p *FunctionParameter) String() string {
 	return out.String()
 }
 
+// DestructureBinding todo deprecated, replace with proper destructure
 type DestructureBinding struct {
 	Token token.Token // The ':', for example
 	Head  *Identifier // The variable for the head (e.g., "h")

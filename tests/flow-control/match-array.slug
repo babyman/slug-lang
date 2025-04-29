@@ -10,12 +10,7 @@ var f1 = fn(x) {
         [a:b:c] => "list of three";
         _ => "default";
     }
-}
-
-// todo this will fail with a compile error if the line above is missing its ;
-;
-
-// Assertions to test the behavior
+};
 
 [].f1().assertEqual("empty list");
 
@@ -36,11 +31,7 @@ var f2 = fn(x) {
         [_] => "any list";
         _ => "default";
     }
-}
-
-// todo this will fail with a compile error if the line above is missing its ;
-;
-
+};
 
 [1, 2, 3, 4].f2().assertEqual("list of at least two");
 
