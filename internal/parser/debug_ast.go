@@ -47,7 +47,7 @@ func WalkAST(node ast.Node) interface{} {
 			"1.position":  n.Token.Position,
 			"2.token":     n.TokenLiteral(),
 			"3.pathParts": n.PathAsString(),
-			"4.symbols":   symbols,
+			"4.cases":     symbols,
 			"5.wildcard":  n.Wildcard,
 		}
 
@@ -196,6 +196,80 @@ func WalkAST(node ast.Node) interface{} {
 			"3.name":       WalkAST(n.Name),
 			"4.isVariadic": n.IsVariadic,
 			"5.default":    WalkAST(n.Default),
+		}
+
+	case *ast.MatchExpression:
+		var cases []interface{}
+		for _, c := range n.Cases {
+			cases = append(cases, WalkAST(c))
+		}
+		return map[string]interface{}{
+			"0.type":       "MatchExpression",
+			"1.position":   n.Token.Position,
+			"2.expression": WalkAST(n.Value),
+			"3.cases":      cases,
+		}
+
+	case *ast.MatchCase:
+		return map[string]interface{}{
+			"0.type":     "MatchCase",
+			"1.position": n.Token.Position,
+			"2.pattern":  WalkAST(n.Pattern),
+			"3.guard":    WalkAST(n.Guard),
+			"4.body":     WalkAST(n.Body),
+		}
+
+	case *ast.WildcardPattern:
+		return map[string]interface{}{
+			"0.type":     "WildcardPattern",
+			"1.position": n.Token.Position,
+		}
+
+	case *ast.LiteralPattern:
+		return map[string]interface{}{
+			"0.type":     "LiteralPattern",
+			"1.position": n.Token.Position,
+			"2.value":    WalkAST(n.Value),
+		}
+
+	case *ast.IdentifierPattern:
+		return map[string]interface{}{
+			"0.type":       "IdentifierPattern",
+			"1.position":   n.Token.Position,
+			"2.identifier": WalkAST(n.Value),
+		}
+
+	case *ast.MultiPattern:
+		patterns := make([]interface{}, len(n.Patterns))
+		for i, p := range n.Patterns {
+			patterns[i] = WalkAST(p)
+		}
+		return map[string]interface{}{
+			"0.type":     "MultiPattern",
+			"1.position": n.Token.Position,
+			"2.patterns": patterns,
+		}
+
+	case *ast.ArrayPattern:
+		elements := make([]interface{}, len(n.Elements))
+		for i, el := range n.Elements {
+			elements[i] = WalkAST(el)
+		}
+		return map[string]interface{}{
+			"0.type":     "ArrayPattern",
+			"1.position": n.Token.Position,
+			"2.elements": elements,
+		}
+
+	case *ast.HashPattern:
+		pairs := map[string]interface{}{}
+		for key, value := range n.Pairs {
+			pairs[fmt.Sprintf("%v", key)] = WalkAST(value)
+		}
+		return map[string]interface{}{
+			"0.type":     "HashPattern",
+			"1.position": n.Token.Position,
+			"2.pairs":    pairs,
 		}
 
 	case *ast.DestructureBinding:
