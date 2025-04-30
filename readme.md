@@ -206,7 +206,6 @@ match x {
 }
 ```
 
-
 # Mini-Spec: Destructuring in Slug (Draft 0.1)
 
 ---
@@ -345,6 +344,149 @@ struct MatchExpr {
     - `Pattern::MapPattern` → lookup fields
 
 Keeps your runtime super simple and readable while still feeling *very expressive* for users.
+
+---
+
+# **Slug Concurrency: Mini-Spec**
+
+## **Core Concepts**
+
+### 1. **Process**
+
+A **process** in Slug is:
+
+- An isolated unit of execution with:
+    - Its own **stack** and **environment**
+    - A **mailbox** (message queue)
+- Lightweight and scheduled by the Slug runtime (not OS threads)
+
+Processes **do not share memory** and interact only via **message passing**.
+
+---
+
+### 2. **Process ID (PID)**
+
+- An opaque handle representing a process.
+- Can be sent in messages, stored in data structures, and compared.
+
+---
+
+### 3. **Spawn**
+
+```slug
+var pid = spawn fn (arg1, arg2) {
+    ...
+}(a, b);
+```
+
+- Starts a new process running the given function.
+- The function must **not** implicitly capture outer scope—pass all needed state explicitly via arguments.
+- Returns a `pid`.
+
+---
+
+### 4. **Self**
+
+```slug
+var me = self()
+```
+
+- Returns the current process's `pid`.
+- Bound automatically in each process created by `spawn`.
+
+---
+
+### 5. **Send**
+
+```slug
+send(pid, message)
+```
+
+- Appends `message` to the inbox of the process identified by `pid`.
+- Messages are:
+    - First-in, first-out
+    - Immutable values
+    - Must be pattern-matchable
+
+---
+
+### 6. **Receive**
+
+```slug
+receive msg {
+    {tag: "foo", data} => ...
+    {tag: "bar"} => ...
+}
+```
+
+- Blocks until a matching message is available in the current process’s mailbox.
+- Matches are evaluated **in order**.
+- Pattern-matching follows Slug's existing semantics.
+- A fallback (e.g. `_ =>`) is recommended for exhaustiveness.
+
+#### Optional timeout extension (not in min-spec, but natural):
+
+```slug
+receive msg timeout 1000 {
+    {tag: "foo"} => ...
+    _ => log("timed out")
+}
+```
+
+---
+
+## **Runtime Behavior**
+
+- Slug maintains a **scheduler** that maps many lightweight processes to a small number of OS threads (or a single
+  thread for simplicity).
+- `spawn`ed processes are added to a **run queue**.
+- `receive` suspends a process until a matching message is available.
+- Messages are delivered **asynchronously**, in the order sent per sender.
+
+---
+
+## **Design Principles**
+
+- **Explicit state**: no implicit environment capture in spawned functions.
+- **No shared memory**: all state is passed via messages or arguments.
+- **Composable concurrency**: processes are simple and isolated.
+- **Pure semantics**: all concurrency constructs are functions or expressions.
+- **No implicit reply**: use `self()` and explicit `from` values in message formats.
+
+---
+
+## **Example: Ping-Pong**
+
+```slug
+var responder = fn() {
+    receive msg {
+        {tag: "ping", from} => {
+            from.send({tag: "pong"});
+            responder();
+        }
+    }
+}
+
+var res = spawn responder();
+
+res.send({tag: "ping", from: self()});
+
+receive msg {
+    {tag: "pong"} => log("Got pong");
+}
+```
+
+---
+
+## **Future Extensions (Outside the Min-Spec)**
+
+- **`after` or `timeout` in `receive`**
+- **Process groups or registries**
+- **Supervision trees**
+- **Message priorities or filters**
+- **Remote messaging (distributed)**
+
+---
 
 # Slug Language Mini-Spec: Strings
 
@@ -562,7 +704,7 @@ Age: {{age}}
 
 ---
 
-##  Design Philosophy
+## Design Philosophy
 
 - **Keep templates simple, readable, and predictable.**
 - **Fail early**: Compilation should catch unmatched or invalid blocks.
@@ -584,6 +726,7 @@ Age: {{age}}
 ## 1. Overview
 
 In Slug, **maps** are flexible, first-class dynamic key/value containers that support:
+
 - **Mixed key types** (strings, numbers, etc.)
 - **Concise, safe literals**
 - **Natural access** through dot (`.`) and bracket (`[]`) syntax
@@ -597,20 +740,26 @@ Maps are the foundational structure for object-like and dynamic behaviors in Slu
 ## 2. Map Definition
 
 ### 2.1 Static Key Map Literals
+
 ```slug
 var user = { name: "Sluggy", age: 5 }
 ```
+
 Equivalent to:
+
 ```slug
 var user = put(put({}, "name", "Sluggy"), "age", 5)
 ```
 
 ### 2.2 Dynamic Key Map Literals
+
 ```slug
 var key = "speed"
 var stats = { [key]: 88 }
 ```
+
 Equivalent to:
+
 ```slug
 var stats = put({}, key, 88)
 ```
@@ -620,12 +769,14 @@ var stats = put({}, key, 88)
 ## 3. Map Access
 
 ### 3.1 Dot Notation (`.`)
+
 ```slug
 user.name   // get(user, "name")
 numbers.42  // get(numbers, 42)
 ```
 
 ### 3.2 Bracket Notation (`[]`)
+
 ```slug
 var field = "name"
 user[field]   // get(user, field)
@@ -636,6 +787,7 @@ user[field]   // get(user, field)
 ## 4. Function Call Syntax (Method-like Calls)
 
 ### 4.1 Calling a Map Key as a Function
+
 ```slug
 user.greet()
 // Desugars to:
@@ -643,6 +795,7 @@ get(user, "greet")(user)
 ```
 
 If the retrieved key is not a function, the runtime throws an error:
+
 ```
 Cannot call non-function value from map key 'greet'
 ```
@@ -656,44 +809,53 @@ Maps come with **three core built-in functions**: `put`, `get`, and `remove`.
 Each **returns a new updated map**, allowing fluent chaining.
 
 ### 5.1 `put(map, key, value) -> map`
+
 - Inserts (or replaces) the entry for `key` with `value`.
 - Returns the updated map.
 
 Example:
+
 ```slug
 var m = {}
 m = put(m, "name", "Sluggy")
 ```
 
 Chaining version:
+
 ```slug
 var m = {}.put("name", "Sluggy").put("age", 5)
 ```
 
 ### 5.2 `get(map, key) -> value`
+
 - Retrieves the value for the given key.
 - If the key is not found, returns `empty` (or error based on context).
 
 Example:
+
 ```slug
 var name = get(m, "name")
 ```
 
 Or using dot syntax:
+
 ```slug
 var name = m.name
 ```
 
 ### 5.3 `remove(map, key) -> map`
+
 - Removes the given key from the map if it exists.
 - Returns the updated map.
 
 Example:
+
 ```slug
 var m2 = m.remove("age")
 ```
 
 Chaining example:
+
 ```slug
 var m3 = m.remove("age").put("city", "Toronto")
 ```
@@ -739,11 +901,13 @@ print(config.env)    // "production"
 # Closing Notes
 
 This **unified** map model gives Slug:
+
 - Highly **expressive** map building
 - A lightweight **object system** without special types
 - Predictable, consistent syntax across literals, access, and methods
 - A foundation to evolve more complex features like traits, prototypes, or objects later if desired
 
+---
 
 Errors
 ===
