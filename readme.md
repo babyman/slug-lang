@@ -154,9 +154,8 @@ match x {
 2. Walk arms top-to-bottom.
 3. For each arm:
     - If a **literal** matches `==` target, execute body.
-    - If a **list** contains target, execute body.
     - If `_`, match unconditionally (wildcard).
-4. If no match found, runtime error unless `_` was present.
+4. If no match found, `nil` is returned.
 
 ---
 
@@ -186,34 +185,6 @@ var greet = fn(x) {
 
 ---
 
-## Parser/AST Notes
-
-Each `MatchArm` in the AST could look like:
-
-```rust
-struct MatchArm {
-    patterns: Vec<PrimitivePattern>, // one or more literals or wildcard
-    body: Block,
-}
-
-enum PrimitivePattern {
-    Literal(LiteralValue),
-    Wildcard,
-}
-```
-
-Where `LiteralValue` could be:
-
-```rust
-enum LiteralValue {
-    Number(f64),
-    String(String),
-    Boolean(bool),
-}
-```
-
----
-
 # Key Advantages
 
 - **Consistent**: works exactly like pattern matching for structured types later.
@@ -223,7 +194,7 @@ enum LiteralValue {
 
 ---
 
-# Bonus Idea (optional later)
+# Bonus Idea (implemented)
 
 You could allow small *guard* conditions too:
 
@@ -235,7 +206,6 @@ match x {
 }
 ```
 
-But for now — **perfect to leave that out** and focus on pure matching!
 
 # Mini-Spec: Destructuring in Slug (Draft 0.1)
 
@@ -256,17 +226,16 @@ Destructuring allows **breaking apart** structured data (lists, hashes) into ind
 | Pattern       | Matches                                              | Binds         |
 |:--------------|:-----------------------------------------------------|:--------------|
 | `[]`          | Empty list                                           | Nothing       |
+| `[...]`       | Any list                                             | Nothing       |
+| `[_]`         | Any with exactly one element                         | Nothing       |
 | `[a:b:c]`     | List with exactly three elements                     | `a`, `b`, `c` |
-| `[a:b:_]`     | List with at least two elements, discards rest       | `a`, `b`      |
-| `[a:_]`       | List with at least one element, discards rest        | `a`           |
+| `[a:b:...]`   | List with at least two elements, discards rest       | `a`, `b`      |
+| `[a:...]`     | List with at least one element, discards rest        | `a`           |
 | `{}`          | Empty map/hash                                       | Nothing       |
+| `{...}`       | Any map/hash                                         | Nothing       |
 | `{name}`      | Map with a `name` key                                | `name`        |
 | `{name, age}` | Map with `name` and `age` keys                       | `name`, `age` |
-| `{name, _}`   | Map with `name` and potentially others, ignores rest | `name`        |
-| `{_}`         | Any map/hash                                         | Nothing       |
-
-- `_` **discards** unmatched parts.
-- No spread/rest binding (like `rest`) inside hashes yet — keep it simple first.
+| `{name, ...}` | Map with `name` and potentially others, ignores rest | `name`        |
 
 ---
 
@@ -304,8 +273,9 @@ Semantics:
 
 - Try patterns **top to bottom**.
 - First successful match wins.
-- `_` matches anything (wildcard).
-- Failure to match any branch = runtime error (or default error handling).
+- `_` matches any single item (wildcard).
+- `...` spread anything remaining entries.
+- Failure to match any branch = `nil` return.
 
 ---
 
