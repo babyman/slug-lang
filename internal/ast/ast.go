@@ -523,9 +523,9 @@ func (wp *SpreadPattern) String() string {
 
 	out.WriteString(wp.Token.Literal)
 
-	//if wp.Value != nil {
-	//	out.WriteString(wp.Value.String())
-	//}
+	if wp.Value != nil {
+		out.WriteString(wp.Value.String())
+	}
 
 	return out.String()
 }

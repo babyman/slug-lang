@@ -236,7 +236,6 @@ func WalkAST(node ast.Node) interface{} {
 			"1.position": n.Token.Position,
 			"2.token":    n.Token.Literal,
 			"3.value":    id,
-			//"3.value":    WalkAST(n.Value),
 		}
 
 	case *ast.LiteralPattern:
