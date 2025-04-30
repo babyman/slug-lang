@@ -721,6 +721,13 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 		// Wildcard matches anything
 		return true
 
+	case *ast.SpreadPattern:
+		// SpreadPattern matches anything
+		if p.Value != nil {
+			env.Set(p.Value.Value, value)
+		}
+		return true
+
 	case *ast.LiteralPattern:
 		// Evaluate the literal and compare with the value
 		literalValue := Eval(p.Value, env)
@@ -755,18 +762,18 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 			return len(arr.Elements) == 0
 		}
 
-		_, wild := p.Elements[len(p.Elements)-1].(*ast.WildcardPattern)
+		_, isSpread := p.Elements[len(p.Elements)-1].(*ast.SpreadPattern)
 
 		// Check if array length matches pattern length
-		if (len(p.Elements) != len(arr.Elements) && !wild) || (len(p.Elements) > len(arr.Elements)+1 && wild) {
+		if (len(p.Elements) != len(arr.Elements) && !isSpread) || (len(p.Elements) > len(arr.Elements)+1 && isSpread) {
 			return false
 		}
 
 		// Check each element against its pattern
 		for i, elemPattern := range p.Elements {
-			_, ok := elemPattern.(*ast.WildcardPattern)
+			_, ok := elemPattern.(*ast.SpreadPattern)
 			if ok {
-				return true
+				return patternMatches(elemPattern, &object.Array{Elements: arr.Elements[i:]}, env)
 			} else if !patternMatches(elemPattern, arr.Elements[i], env) {
 				return false
 			}

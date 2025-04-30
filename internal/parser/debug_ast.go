@@ -223,6 +223,20 @@ func WalkAST(node ast.Node) interface{} {
 		return map[string]interface{}{
 			"0.type":     "WildcardPattern",
 			"1.position": n.Token.Position,
+			"2.token":    n.Token.Literal,
+		}
+
+	case *ast.SpreadPattern:
+		var id interface{}
+		if n.Value != nil {
+			id = WalkAST(n.Value)
+		}
+		return map[string]interface{}{
+			"0.type":     "SpreadPattern",
+			"1.position": n.Token.Position,
+			"2.token":    n.Token.Literal,
+			"3.value":    id,
+			//"3.value":    WalkAST(n.Value),
 		}
 
 	case *ast.LiteralPattern:

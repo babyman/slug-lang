@@ -444,7 +444,7 @@ func (hl *HashLiteral) String() string {
 
 type MatchExpression struct {
 	Token token.Token // The 'match' token
-	Value Expression  // The value to match against (nil for valueless match)
+	Value Expression  // The value to match against
 	Cases []*MatchCase
 }
 
@@ -454,10 +454,8 @@ func (m *MatchExpression) String() string {
 	var out bytes.Buffer
 
 	out.WriteString("match")
-	if m.Value != nil {
-		out.WriteString(" ")
-		out.WriteString(m.Value.String())
-	}
+	out.WriteString(" ")
+	out.WriteString(m.Value.String())
 	out.WriteString(" {")
 
 	for _, c := range m.Cases {
@@ -510,6 +508,27 @@ func (wp *WildcardPattern) expressionNode()      {}
 func (wp *WildcardPattern) patternNode()         {}
 func (wp *WildcardPattern) TokenLiteral() string { return wp.Token.Literal }
 func (wp *WildcardPattern) String() string       { return "_" }
+
+// SpreadPattern  (_)
+type SpreadPattern struct {
+	Token token.Token // The '...' token
+	Value *Identifier // identifier for the spread if bound
+}
+
+func (wp *SpreadPattern) expressionNode()      {}
+func (wp *SpreadPattern) patternNode()         {}
+func (wp *SpreadPattern) TokenLiteral() string { return wp.Token.Literal }
+func (wp *SpreadPattern) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(wp.Token.Literal)
+
+	//if wp.Value != nil {
+	//	out.WriteString(wp.Value.String())
+	//}
+
+	return out.String()
+}
 
 // LiteralPattern for matching constants
 type LiteralPattern struct {

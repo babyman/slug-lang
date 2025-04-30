@@ -490,13 +490,20 @@ func (p *Parser) parseMatchPattern() ast.MatchPattern {
 	switch p.curToken.Type {
 	case token.UNDERSCORE:
 		return &ast.WildcardPattern{Token: p.curToken}
+	case token.ELLIPSIS:
+		pattern := ast.SpreadPattern{Token: p.curToken}
+		if p.peekTokenIs(token.IDENT) {
+			p.nextToken()
+			pattern.Value = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		} else {
+			pattern.Value = nil
+		}
+		return &pattern
 	case token.IDENT:
-		pattern := ast.IdentifierPattern{
+		return &ast.IdentifierPattern{
 			Token: p.curToken,
 			Value: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
 		}
-		p.nextToken()
-		return &pattern
 	case token.INT, token.STRING, token.TRUE, token.FALSE, token.NIL:
 		// Literal patterns (numbers, strings, booleans, nil)
 
@@ -549,12 +556,15 @@ func (p *Parser) parseArrayPattern() ast.MatchPattern {
 		if element == nil {
 			return nil
 		}
-		// todo wildcard pattern should be the last in the pattern, error if not
+		// todo the spread pattern should be the last in the pattern, error if not
 
 		arrayPattern.Elements = append(arrayPattern.Elements, element)
 
-		if p.curTokenIs(token.COLON) || p.peekTokenIs(token.RBRACKET) {
+		if p.peekTokenIs(token.COLON) {
+			p.nextToken() // consume IDENT
 			p.nextToken() // consume :
+		} else if p.peekTokenIs(token.RBRACKET) {
+			p.nextToken() // consume IDENT
 		}
 	}
 

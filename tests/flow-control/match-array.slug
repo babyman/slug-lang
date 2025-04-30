@@ -26,16 +26,44 @@ var f1 = fn(x) {
 
 var f2 = fn(x) {
     match x {
-        [a:b:_] => "list of at least two";
-        [a:_] => "list of one+";
-        [_] => "any list";
+        [a:b:_] => "list of 3";
+        [a:_] => "list of 2";
+        [_] => "list of 1";
+        [] => "empty list";
         _ => "default";
     }
 };
 
-[1, 2, 3, 4].f2().assertEqual("list of at least two");
+[1, 2, 3, 4, 5].f2().assertEqual("default");
+
+[1, 2, 3].f2().assertEqual("list of 3");
+
+[1].f2().assertEqual("list of 1");
+
+[].f2().assertEqual("empty list");
+
+
+//
+// matching array spreads
+// ----------------------
+
+var f2 = fn(x) {
+    match x {
+        [4:a:...] => "" + a;
+        [h:_:...t] => "list of two + " + len(t);
+        [_:...] => "list of one+";
+        [...] => "any list";
+        _ => "default";
+    }
+};
+
+[1, 2].f2().assertEqual("list of two + 0");
+
+[1, 2, 3, 4].f2().assertEqual("list of two + 2");
 
 [1].f2().assertEqual("list of one+");
+
+[4, 6, 1].f2().assertEqual("6");
 
 [].f2().assertEqual("any list");
 
