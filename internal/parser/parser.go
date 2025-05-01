@@ -198,11 +198,15 @@ func (p *Parser) parseStatement() ast.Statement {
 func (p *Parser) parseVarStatement() *ast.VarStatement {
 	stmt := &ast.VarStatement{Token: p.curToken}
 
-	if !p.expectPeek(token.IDENT) {
+	if !(p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.LBRACKET) || p.peekTokenIs(token.LBRACE)) {
+		p.addError("expected identifier, array, or hash literal after 'var'")
 		return nil
 	}
 
-	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	// consume var
+	p.nextToken()
+
+	stmt.Pattern = p.parseMatchPattern()
 
 	if !p.expectPeek(token.ASSIGN) {
 		return nil

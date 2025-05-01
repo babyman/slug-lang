@@ -10,9 +10,12 @@ func TestString(t *testing.T) {
 		Statements: []Statement{
 			&VarStatement{
 				Token: token.Token{Type: token.VAR, Literal: "var"},
-				Name: &Identifier{
+				Pattern: &IdentifierPattern{
 					Token: token.Token{Type: token.IDENT, Literal: "myVar"},
-					Value: "myVar",
+					Value: &Identifier{
+						Token: token.Token{Type: token.IDENT, Literal: "myVar"},
+						Value: "myVar",
+					},
 				},
 				Value: &Identifier{
 					Token: token.Token{Type: token.IDENT, Literal: "anotherVar"},

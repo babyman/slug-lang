@@ -1030,14 +1030,14 @@ func testVarStatement(t *testing.T, s ast.Statement, name string) bool {
 		return false
 	}
 
-	if varStmt.Name.Value != name {
-		t.Errorf("varStmt.Name.Value not '%s'. got=%s", name, varStmt.Name.Value)
+	if varStmt.Pattern.String() != name {
+		t.Errorf("varStmt.Pattern.Value not '%s'. got=%s", name, varStmt.Pattern.String())
 		return false
 	}
 
-	if varStmt.Name.TokenLiteral() != name {
-		t.Errorf("varStmt.Name.TokenLiteral() not '%s'. got=%s",
-			name, varStmt.Name.TokenLiteral())
+	if varStmt.Pattern.TokenLiteral() != name {
+		t.Errorf("varStmt.Pattern.TokenLiteral() not '%s'. got=%s",
+			name, varStmt.Pattern.TokenLiteral())
 		return false
 	}
 

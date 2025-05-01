@@ -1,0 +1,28 @@
+
+//
+// simple var declaration
+// ----------------------
+
+var x = 10;
+
+x.assertEqual(10);
+
+var x = x + 1;
+
+x.assertEqual(11);
+
+
+//
+// var declaration with destructuring
+// ----------------------------------
+
+var f = fn(a, b) {
+    [a, b]
+}
+
+var [a:b] = f(1, 2);
+
+a.assertEqual(1);
+
+b.assertEqual(2);
+

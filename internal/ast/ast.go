@@ -44,11 +44,10 @@ func (p *Program) String() string {
 	return out.String()
 }
 
-// Statements
 type VarStatement struct {
-	Token token.Token // the token.VAR token
-	Name  *Identifier
-	Value Expression
+	Token   token.Token // the token.VAR token
+	Pattern MatchPattern
+	Value   Expression
 }
 
 func (ls *VarStatement) statementNode()       {}
@@ -57,7 +56,7 @@ func (ls *VarStatement) String() string {
 	var out bytes.Buffer
 
 	out.WriteString(ls.TokenLiteral() + " ")
-	out.WriteString(ls.Name.String())
+	out.WriteString(ls.Pattern.String())
 	out.WriteString(" = ")
 
 	if ls.Value != nil {

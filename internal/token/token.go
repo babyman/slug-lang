@@ -79,23 +79,35 @@ type Token struct {
 }
 
 var keywords = map[string]TokenType{
+	// declarations
+	"nil":   NIL,
+	"true":  TRUE,
+	"false": FALSE,
+	//"native": NATIVE
+	"fn": FUNCTION,
+	//"val": VAL
+	"var": VAR,
+
+	// import etc
 	"import": IMPORT,
 	"as":     AS,
-	//"export"
-	//"native"
-	"fn": FUNCTION,
-	//"val"
-	"var":    VAR,
-	"true":   TRUE,
-	"false":  FALSE,
+	//"export": EXPORT
+
+	// flow control
 	"if":     IF,
 	"else":   ELSE,
-	"return": RETURN,
-	"nil":    NIL,
-	"try":    TRY,
-	"catch":  CATCH,
 	"match":  MATCH,
-	//"defer"
+	"return": RETURN,
+
+	// error handling
+	"try":   TRY,
+	"catch": CATCH,
+	//"defer": DEFER
+
+	// Thread related
+	//"spawn": SPAWN
+	//"send": SEND
+	//"receive": RECEIVE
 }
 
 func LookupIdent(ident string) TokenType {

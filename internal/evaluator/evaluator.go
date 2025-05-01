@@ -50,7 +50,7 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		if isError(val) {
 			return val
 		}
-		env.Set(node.Name.Value, val)
+		patternMatches(node.Pattern, val, env)
 
 	// Expressions
 	case *ast.IntegerLiteral:

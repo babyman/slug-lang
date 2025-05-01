@@ -25,7 +25,7 @@ func WalkAST(node ast.Node) interface{} {
 			"0.type":     "VarStatement",
 			"1.position": n.Token.Position,
 			"2.token":    n.TokenLiteral(),
-			"3.name":     WalkAST(n.Name),
+			"3.pattern":  WalkAST(n.Pattern),
 			"4.value":    WalkAST(n.Value),
 		}
 
