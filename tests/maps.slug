@@ -1,8 +1,18 @@
 //
-// working wih Maps
-// -----------------------
+// declare a map
+// -------------
 
-var m = {"name": "Angus", "age": 15};
+var a = "key";
 
-assertEqual(m["name"], "Angus");
-assertEqual(m["age"], 15);
+var m1 = {name: "Angus", age: 15, [a]: "value"};
+
+m1["name"].assertEqual("Angus");
+m1["age"].assertEqual(15);
+
+m1["key"].assertEqual("value");
+m1[a].assertEqual("value");
+
+
+// println(m1.age);
+
+// m1.age.assertEqual(15);

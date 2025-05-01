@@ -923,7 +923,22 @@ func (p *Parser) parseHashLiteral() ast.Expression {
 
 	for !p.peekTokenIs(token.RBRACE) {
 		p.nextToken()
+
+		readIdent := p.curTokenIs(token.LBRACKET)
+		if readIdent {
+			p.nextToken() // consume the '['
+		}
+
 		key := p.parseExpression(LOWEST)
+
+		if readIdent {
+			p.expectPeek(token.RBRACKET)
+		}
+
+		_, isIdent := key.(*ast.Identifier)
+		if isIdent && !readIdent {
+			key = &ast.StringLiteral{Token: key.(*ast.Identifier).Token, Value: key.(*ast.Identifier).Value}
+		}
 
 		if !p.expectPeek(token.COLON) {
 			return nil

@@ -13,16 +13,32 @@ x.assertEqual(11);
 
 
 //
-// var declaration with destructuring
-// ----------------------------------
+// var declaration with destructured lists
+// ---------------------------------------
 
-var f = fn(a, b) {
+var f1 = fn(a, b) {
     [a, b]
 }
 
-var [a:b] = f(1, 2);
+var [a:b] = f1(1, 2);
 
 a.assertEqual(1);
 
 b.assertEqual(2);
+
+//
+// var declaration with destructured maps
+// --------------------------------------
+
+// var f2 = fn(a, b) {
+//     {"a":a, "b":b}
+// }
+
+// var {"a":x, "b":y} = f2(1, 2);
+
+// println(x, y, f2(1,2));
+
+// x.assertEqual(1);
+
+// y.assertEqual(2);
 
