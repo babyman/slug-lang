@@ -3,16 +3,36 @@
 // -------------
 
 var a = "key";
+var f = fn(m) { m.age * 12}
 
-var m1 = {name: "Angus", age: 15, [a]: "value"};
+var m1 = {name: "Angus", age: 15, [a]: "value", months: f};
 
+// read keys using index notation
+// ------------------------------
 m1["name"].assertEqual("Angus");
 m1["age"].assertEqual(15);
 
+m1["missing"].assertEqual(nil);
+
+
+// read a dynamic key value
+// ------------------------
 m1["key"].assertEqual("value");
+
+// read a dynamic key using index notation
+// ---------------------------------------
 m1[a].assertEqual("value");
 
 
-// println(m1.age);
+// access a key in a map
+// ---------------------
+
+//m1.println();
+//m1.age.println();
+//println(m1["months"], "<<<<<");
 
 // m1.age.assertEqual(15);
+
+// // access and call a function saved in a map
+// // -----------------------------------------
+// m1.months().assertEqual(180);

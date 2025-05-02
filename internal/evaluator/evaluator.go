@@ -502,15 +502,6 @@ func newError(format string, a ...interface{}) *object.Error {
 	return &object.Error{Message: fmt.Sprintf(format, a...)}
 }
 
-//func newError(format string, tok token.Token, src string, a ...interface{}) *object.Error {
-//	line, col := getLineAndColumn(src, tok.Position)
-//	message := fmt.Sprintf(
-//		"Error at line %d, column %d: %s",
-//		line, col, fmt.Sprintf(format, a...),
-//	)
-//	return &object.Error{Message: message}
-//}
-
 func isError(obj object.Object) bool {
 	if obj != nil {
 		return obj.Type() == object.ERROR_OBJ
