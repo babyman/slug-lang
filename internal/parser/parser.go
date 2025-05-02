@@ -446,7 +446,15 @@ func (p *Parser) parseMatchCase() *ast.MatchCase {
 	matchCase := &ast.MatchCase{Token: p.curToken}
 
 	// Parse the pattern
-	pattern := p.parseMatchPattern()
+	var pattern ast.MatchPattern
+	if p.peekTokenIs(token.COMMA) {
+		// Multi-pattern case - comma-separated list of patterns
+		pattern = p.parseMultiPattern()
+	} else {
+		// Single-pattern case - single pattern
+		pattern = p.parseMatchPattern()
+	}
+
 	if pattern == nil {
 		return nil
 	}
@@ -510,27 +518,8 @@ func (p *Parser) parseMatchPattern() ast.MatchPattern {
 		}
 	case token.INT, token.STRING, token.TRUE, token.FALSE, token.NIL:
 		// Literal patterns (numbers, strings, booleans, nil)
-
 		expr := p.parseExpression(LOWEST)
-		multiPattern := &ast.MultiPattern{
-			Token:    p.curToken,
-			Patterns: []ast.MatchPattern{&ast.LiteralPattern{Token: p.curToken, Value: expr}},
-		}
-
-		// Check for additional literal patterns separated by commas
-		for p.peekTokenIs(token.COMMA) {
-			p.nextToken() // consume comma
-			p.nextToken() // move to next literal
-			expr = p.parseExpression(LOWEST)
-			multiPattern.Patterns = append(multiPattern.Patterns, &ast.LiteralPattern{Token: p.curToken, Value: expr})
-		}
-
-		// If only one pattern, return as LiteralPattern
-		if len(multiPattern.Patterns) == 1 {
-			return multiPattern.Patterns[0]
-		}
-
-		return multiPattern
+		return &ast.LiteralPattern{Token: p.curToken, Value: expr}
 	case token.LBRACKET:
 		// Array pattern
 		return p.parseArrayPattern()
@@ -541,6 +530,31 @@ func (p *Parser) parseMatchPattern() ast.MatchPattern {
 		p.peekError(p.curToken.Type)
 		return nil
 	}
+}
+
+func (p *Parser) parseMultiPattern() ast.MatchPattern {
+
+	expr := p.parseExpression(LOWEST)
+
+	multiPattern := &ast.MultiPattern{
+		Token:    p.curToken,
+		Patterns: []ast.MatchPattern{&ast.LiteralPattern{Token: p.curToken, Value: expr}},
+	}
+
+	// Check for additional literal patterns separated by commas
+	for p.peekTokenIs(token.COMMA) {
+		p.nextToken() // consume comma
+		p.nextToken() // move to next literal
+		expr = p.parseExpression(LOWEST)
+		multiPattern.Patterns = append(multiPattern.Patterns, &ast.LiteralPattern{Token: p.curToken, Value: expr})
+	}
+
+	// If only one pattern, return as LiteralPattern
+	if len(multiPattern.Patterns) == 1 {
+		return multiPattern.Patterns[0]
+	}
+
+	return multiPattern
 }
 
 func (p *Parser) parseArrayPattern() ast.MatchPattern {
@@ -554,19 +568,17 @@ func (p *Parser) parseArrayPattern() ast.MatchPattern {
 		return arrayPattern
 	}
 
-	// Parse multiple elements (comma-separated, cons-patterns, etc.)
 	for !p.curTokenIs(token.RBRACKET) {
 		element := p.parseMatchPattern()
 		if element == nil {
 			return nil
 		}
-		// todo the spread pattern should be the last in the pattern, error if not
 
 		arrayPattern.Elements = append(arrayPattern.Elements, element)
 
-		if p.peekTokenIs(token.COLON) {
+		if p.peekTokenIs(token.COMMA) {
 			p.nextToken() // consume IDENT
-			p.nextToken() // consume :
+			p.nextToken() // consume ,
 		} else if p.peekTokenIs(token.RBRACKET) {
 			p.nextToken() // consume IDENT
 		}

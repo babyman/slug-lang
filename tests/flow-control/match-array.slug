@@ -6,8 +6,8 @@ var f1 = fn(x) {
     match x {
         [] => "empty list";
         [a] => "list of one";
-        [a:b] => "list of two";
-        [a:b:c] => "list of three";
+        [a, b] => "list of two";
+        [a, b, c] => "list of three";
         _ => "default";
     }
 };
@@ -26,8 +26,8 @@ var f1 = fn(x) {
 
 var f2 = fn(x) {
     match x {
-        [a:b:_] => "list of 3";
-        [a:_] => "list of 2";
+        [a, b, _] => "list of 3";
+        [a, _] => "list of 2";
         [_] => "list of 1";
         [] => "empty list";
         _ => "default";
@@ -49,9 +49,9 @@ var f2 = fn(x) {
 
 var f2 = fn(x) {
     match x {
-        [4:a:...] => "" + a;
-        [h:_:...t] => "list of two + " + len(t);
-        [_:...] => "list of one+";
+        [4, a, ...] => "" + a;
+        [h, _, ...t] => "list of two + " + len(t);
+        [_, ...] => "list of one+";
         [...] => "any list";
         _ => "default";
     }

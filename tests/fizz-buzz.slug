@@ -2,9 +2,9 @@
 var fizzBuzz = fn(max, acc = 1) {
 	if(acc <= max) {
 		match [acc % 3, acc % 5] {
-			[0:0] => "FizzBuzz";
-			[0:_] => "Fizz";
-			[_:0] => "Buzz";
+			[0, 0] => "FizzBuzz";
+			[0, _] => "Fizz";
+			[_, 0] => "Buzz";
 			_ => acc;
 		}.println();
 		fizzBuzz(max, acc + 1);

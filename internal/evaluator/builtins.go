@@ -7,6 +7,7 @@ import (
 )
 
 var builtins = map[string]*object.Builtin{
+	"type":    funcType(),
 	"len":     funcLen(),
 	"println": funcPrintLn(),
 
@@ -238,6 +239,20 @@ func funcLen() *object.Builtin {
 		default:
 			return newError("argument to `len` not supported, got %s",
 				args[0].Type())
+		}
+	},
+	}
+}
+
+func funcType() *object.Builtin {
+	return &object.Builtin{Fn: func(args ...object.Object) object.Object {
+		if len(args) != 1 {
+			return newError("wrong number of arguments. got=%d, want=1",
+				len(args))
+		}
+
+		return &object.String{
+			Value: string(args[0].Type()),
 		}
 	},
 	}
