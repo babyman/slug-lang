@@ -73,3 +73,5 @@ m3.k2.assertEqual(nil);
 
 m3.keys().len().assertEqual(m3.len());
 
+{}.keys().len().assertEqual(0);
+

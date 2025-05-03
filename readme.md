@@ -170,9 +170,21 @@ Cannot call non-function value from map key 'greet'
 
 ## 5. Built-in Map Operations
 
-Maps come with **three core built-in functions**: `put`, `get`, and `remove`.
+Maps come with **core built-in functions**: `keys`, `put`, `get`, and `remove`.
 
 Each **returns a new updated map**, allowing fluent chaining.
+
+### 5.0 `keys(map) -> list`
+
+- Returns a list containing all keys in the map.
+- Keys in the returned list have no guaranteed order.
+- If the map is empty, returns an empty list.
+ 
+  Example:
+```slug
+var m = {name: "Sluggy"};
+m.keys();  // ["name"]
+```
 
 ### 5.1 `put(map, key, value) -> map`
 - Inserts (or replaces) the entry for `key` with `value`.
