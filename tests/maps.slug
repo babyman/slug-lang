@@ -27,12 +27,20 @@ m1[a].assertEqual("value");
 // access a key in a map
 // ---------------------
 
-//m1.println();
-//m1.age.println();
-//println(m1["months"], "<<<<<");
+m1.age.assertEqual(15);
 
-// m1.age.assertEqual(15);
 
-// // access and call a function saved in a map
-// // -----------------------------------------
+// access and call a function saved in a map
+// -----------------------------------------
+
+//
+// todo: the syntax i'd like:
+//
 // m1.months().assertEqual(180);
+// 
+// this would be great but because vars are untyped every call needs to check
+// the caller to see if it's a map, this will slow the whole language down
+
+m1["months"](m1).assertEqual(180);
+
+(m1.months)(m1).assertEqual(180);
