@@ -14,7 +14,7 @@ var f = fn(x) {
     }
 }
 
-// {}.f().assertEqual("empty map");
+{}.f().assertEqual("empty map");
 
 {"k":"v"}.f().assertEqual("map with v");
 

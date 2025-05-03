@@ -743,7 +743,7 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 		return false
 
 	case *ast.ArrayPattern:
-		// Check if value is an array
+		// Check if the value is an array
 		arr, ok := value.(*object.Array)
 		if !ok {
 			return false
@@ -761,14 +761,29 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 			return false
 		}
 
+		// scoped environment to capture the match bindings, these will be copied to the parent env on success
+		scoped := object.NewEnclosedEnvironment(env)
+
 		// Check each element against its pattern
 		for i, elemPattern := range p.Elements {
 			_, ok := elemPattern.(*ast.SpreadPattern)
 			if ok {
-				return patternMatches(elemPattern, &object.Array{Elements: arr.Elements[i:]}, env)
-			} else if !patternMatches(elemPattern, arr.Elements[i], env) {
+				matches := patternMatches(elemPattern, &object.Array{Elements: arr.Elements[i:]}, scoped)
+				if matches {
+					// Copy bindings from scoped environment to parent environment
+					for name, val := range scoped.Store {
+						env.Set(name, val)
+					}
+				}
+				return matches
+			} else if !patternMatches(elemPattern, arr.Elements[i], scoped) {
 				return false
 			}
+		}
+
+		// Copy bindings from scoped environment to parent environment
+		for name, val := range scoped.Store {
+			env.Set(name, val)
 		}
 
 		return true
@@ -787,6 +802,9 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 
 		usedKeys := make([]object.HashKey, 0)
 
+		// scoped environment to capture the match bindings, these will be copied to the parent env on success
+		scoped := object.NewEnclosedEnvironment(env)
+
 		// Check if all required fields are present
 		for key, subPattern := range p.Pairs {
 			if key == token.ELLIPSIS {
@@ -804,7 +822,7 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 			}
 
 			// Check if value matches subpattern
-			if !patternMatches(subPattern, pair.Value, env) {
+			if !patternMatches(subPattern, pair.Value, scoped) {
 				return false
 			}
 		}
@@ -814,7 +832,8 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 			pair, ok := p.Pairs[token.ELLIPSIS]
 			if ok {
 				if len(usedKeys) >= len(hash.Pairs) {
-					patternMatches(pair, &object.Hash{Pairs: make(map[object.HashKey]object.HashPair)}, env)
+					// map is empty
+					patternMatches(pair, &object.Hash{Pairs: make(map[object.HashKey]object.HashPair)}, scoped)
 				} else {
 					copiedPairs := make(map[object.HashKey]object.HashPair)
 					for hashKey, pair := range hash.Pairs {
@@ -829,13 +848,18 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 							copiedPairs[hashKey] = pair
 						}
 					}
-					patternMatches(pair, &object.Hash{Pairs: copiedPairs}, env)
+					patternMatches(pair, &object.Hash{Pairs: copiedPairs}, scoped)
 				}
 			}
 		}
 
 		if !p.Spread && len(usedKeys) != len(hash.Pairs) {
 			return false
+		}
+
+		// Copy bindings from scoped environment to parent environment
+		for name, val := range scoped.Store {
+			env.Set(name, val)
 		}
 
 		return true

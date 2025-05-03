@@ -44,12 +44,8 @@ x.assertEqual(1);
 
 y.assertEqual(2);
 
+// todo: no match, causes an error and system exit, needs a test
+//var {"a":z} = f2(1, 2);
 
-// todo: this is a scoping bug, the match starts left to right and
-// binds as matches
-var {"z":d, "z":g, "a":z, ...} = f2(1, 2);
-
-z.assertEqual(1);
-
-
+//println(z)
 
