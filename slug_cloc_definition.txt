@@ -1,0 +1,7 @@
+# Custom language definitions for cloc
+Slug
+    extension slug
+    filter remove_matches ^[ \t]*$
+    filter remove_matches //.*
+    filter remove_matches #.*
+    3rd_gen_scale 2.29

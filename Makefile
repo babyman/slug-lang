@@ -13,8 +13,11 @@ test: release
 		./bin/$(BINARY_NAME) --root ./tests $$file || exit 1; \
 	done
 
+lc: clean
+	cloc  --exclude-dir=.idea --read-lang-def=slug_cloc_definition.txt .
 
 clean:
+	find ./tests -name "*.ast.json" -type f -delete
 	rm -rf ./dist
 	rm -rf ./bin/$(BINARY_NAME)
 
