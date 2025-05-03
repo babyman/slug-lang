@@ -44,8 +44,7 @@ x.assertEqual(1);
 
 y.assertEqual(2);
 
-// todo: no match, causes an error and system exit, needs a test
-//var {"a":z} = f2(1, 2);
+var {"b":z, ...} = f2(1, 2);
 
-//println(z)
+z.assertEqual(2);
 
