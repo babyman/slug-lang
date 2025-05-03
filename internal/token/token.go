@@ -69,6 +69,7 @@ const (
 	AS       = "AS"
 	TRY      = "TRY"
 	CATCH    = "CATCH"
+	THROW    = "THROW"
 	MATCH    = "MATCH"
 )
 
@@ -83,7 +84,7 @@ var keywords = map[string]TokenType{
 	"nil":   NIL,
 	"true":  TRUE,
 	"false": FALSE,
-	//"native": NATIVE
+	//"foreign": FOREIGN
 	"fn": FUNCTION,
 	//"val": VAL
 	"var": VAR,
@@ -102,6 +103,7 @@ var keywords = map[string]TokenType{
 	// error handling
 	"try":   TRY,
 	"catch": CATCH,
+	"throw": THROW,
 	//"defer": DEFER
 
 	// Thread related
