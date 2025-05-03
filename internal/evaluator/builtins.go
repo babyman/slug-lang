@@ -22,6 +22,12 @@ var builtins = map[string]*object.Builtin{
 	"assert":      funcAssert(),
 	"assertEqual": funcAssertEqual(),
 
+	// map functions
+	"keys":   funcKeys(),
+	"get":    funcGet(),
+	"put":    funcPut(),
+	"remove": funcRemove(),
+
 	// list functions
 	"head": funcHead(),
 	"tail": funcTail(),
@@ -234,6 +240,8 @@ func funcLen() *object.Builtin {
 		switch arg := args[0].(type) {
 		case *object.Array:
 			return &object.Integer{Value: int64(len(arg.Elements))}
+		case *object.Hash:
+			return &object.Integer{Value: int64(len(arg.Pairs))}
 		case *object.String:
 			return &object.Integer{Value: int64(len(arg.Value))}
 		default:
@@ -329,6 +337,121 @@ func funcEndsWith() *object.Builtin {
 			return newError("argument to `endsWith` not supported, got %s", args[0].Type())
 		}
 	},
+	}
+}
+
+func funcKeys() *object.Builtin {
+	return &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			// Check the number of arguments
+			if len(args) != 1 {
+				return newError("wrong number of arguments. got=%d, want=1", len(args))
+			}
+
+			// Ensure the argument is of type HASH_OBJ
+			if args[0].Type() != object.HASH_OBJ {
+				return newError("argument to `keys` must be a MAP, got=%s", args[0].Type())
+			}
+
+			// Extract the hash map
+			hash := args[0].(*object.Hash)
+
+			// Collect keys
+			keys := make([]object.Object, 0, len(hash.Pairs))
+			for _, pair := range hash.Pairs {
+				keys = append(keys, pair.Key)
+			}
+
+			// Return the keys as an Array object
+			return &object.Array{Elements: keys}
+		},
+	}
+}
+
+func funcGet() *object.Builtin {
+	return &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 2 {
+				return newError("wrong number of arguments. got=%d, want=2", len(args))
+			}
+
+			if args[0].Type() != object.HASH_OBJ {
+				return newError("argument to `get` must be HASH, got %s", args[0].Type())
+			}
+
+			hash := args[0].(*object.Hash)
+			key, ok := args[1].(object.Hashable)
+			if !ok {
+				return newError("unusable as hash key: %s", args[1].Type())
+			}
+
+			hashKey := key.HashKey()
+			if pair, ok := hash.Pairs[hashKey]; ok {
+				return pair.Value
+			}
+
+			return NIL
+		},
+	}
+}
+
+func funcPut() *object.Builtin {
+	return &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 3 {
+				return newError("wrong number of arguments. got=%d, want=3", len(args))
+			}
+
+			if args[0].Type() != object.HASH_OBJ {
+				return newError("argument to `put` must be HASH, got %s", args[0].Type())
+			}
+
+			hash := args[0].(*object.Hash)
+			key, ok := args[1].(object.Hashable)
+			if !ok {
+				return newError("unusable as hash key: %s", args[1].Type())
+			}
+
+			newPairs := make(map[object.HashKey]object.HashPair)
+			for k, v := range hash.Pairs {
+				newPairs[k] = v
+			}
+
+			hashKey := key.HashKey()
+			newPairs[hashKey] = object.HashPair{Key: args[1], Value: args[2]}
+
+			return &object.Hash{Pairs: newPairs}
+		},
+	}
+}
+
+func funcRemove() *object.Builtin {
+	return &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 2 {
+				return newError("wrong number of arguments. got=%d, want=2", len(args))
+			}
+
+			if args[0].Type() != object.HASH_OBJ {
+				return newError("argument to `remove` must be HASH, got %s", args[0].Type())
+			}
+
+			hash := args[0].(*object.Hash)
+			key, ok := args[1].(object.Hashable)
+			if !ok {
+				return newError("unusable as hash key: %s", args[1].Type())
+			}
+
+			newPairs := make(map[object.HashKey]object.HashPair)
+			for k, v := range hash.Pairs {
+				newPairs[k] = v
+			}
+
+			hashKey := key.HashKey()
+			delete(newPairs, hashKey)
+
+			return &object.Hash{Pairs: newPairs}
+		},
 	}
 }
 
