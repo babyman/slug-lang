@@ -8,6 +8,7 @@ import (
 	"slug/internal/lexer"
 	"slug/internal/object"
 	"slug/internal/parser"
+	"slug/internal/token"
 	"strings"
 )
 
@@ -784,16 +785,19 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 			return len(hash.Pairs) == 0
 		}
 
+		usedKeys := make([]object.HashKey, 0)
+
 		// Check if all required fields are present
 		for key, subPattern := range p.Pairs {
-			if key == "_" {
-				// Skip wildcard placeholder for spread
+			if key == token.ELLIPSIS {
+				// Skip wildcard placeholder for spread, we'll deal with that later
 				continue
 			}
 
 			// Check if key exists in hash
 			keyObj := &object.String{Value: key}
 			hashKey := keyObj.HashKey()
+			usedKeys = append(usedKeys, hashKey)
 			pair, ok := hash.Pairs[hashKey]
 			if !ok {
 				return false
@@ -805,8 +809,32 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 			}
 		}
 
-		// If spread is false, verify exact field count
-		if !p.Spread && len(p.Pairs) != len(hash.Pairs) {
+		// If a spread pattern is used, collect unused keys into a new hash
+		if p.Spread {
+			pair, ok := p.Pairs[token.ELLIPSIS]
+			if ok {
+				if len(usedKeys) >= len(hash.Pairs) {
+					patternMatches(pair, &object.Hash{Pairs: make(map[object.HashKey]object.HashPair)}, env)
+				} else {
+					copiedPairs := make(map[object.HashKey]object.HashPair)
+					for hashKey, pair := range hash.Pairs {
+						isUsed := false
+						for _, usedKey := range usedKeys {
+							if hashKey == usedKey {
+								isUsed = true
+								break
+							}
+						}
+						if !isUsed {
+							copiedPairs[hashKey] = pair
+						}
+					}
+					patternMatches(pair, &object.Hash{Pairs: copiedPairs}, env)
+				}
+			}
+		}
+
+		if !p.Spread && len(usedKeys) != len(hash.Pairs) {
 			return false
 		}
 

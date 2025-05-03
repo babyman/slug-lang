@@ -600,49 +600,47 @@ func (p *Parser) parseHashPattern() *ast.HashPattern {
 		return hashPattern
 	}
 
-	p.nextToken() // Move past the opening brace
+	for !p.peekTokenIs(token.RBRACE) {
+		p.nextToken()
 
-	// Special case for wildcard in hash pattern
-	if p.curTokenIs(token.UNDERSCORE) {
-		hashPattern.Spread = true
-		hashPattern.Pairs["_"] = &ast.WildcardPattern{Token: p.curToken}
-
-		// Check if there are more fields after the wildcard
-		if p.peekTokenIs(token.COMMA) {
-			p.nextToken() // Consume comma
-			p.nextToken() // Move to next field
-		} else {
-			if !p.expectPeek(token.RBRACE) {
-				return nil
-			}
-			return hashPattern
-		}
-	}
-
-	// Parse first key-value pair
-	if !p.parseHashPatternPair(hashPattern) {
-		return nil
-	}
-
-	// Parse remaining key-value pairs
-	for p.peekTokenIs(token.COMMA) {
-		p.nextToken() // Consume comma
-		p.nextToken() // Move to next key
-
-		// Check for wildcard after regular keys
-		if p.curTokenIs(token.UNDERSCORE) {
+		readSpread := p.curTokenIs(token.ELLIPSIS)
+		if readSpread {
+			value := p.parseMatchPattern()
+			hashPattern.Pairs[token.ELLIPSIS] = value
 			hashPattern.Spread = true
-			hashPattern.Pairs["_"] = &ast.WildcardPattern{Token: p.curToken}
-
-			// Must be the last item
-			if !p.peekTokenIs(token.RBRACE) {
-				p.peekError("wildcard must be the last item in hash pattern")
-				return nil
-			}
-			break
+			continue
 		}
 
-		if !p.parseHashPatternPair(hashPattern) {
+		readIdent := p.curTokenIs(token.LBRACKET)
+		if readIdent {
+			p.nextToken() // consume the '['
+		}
+
+		key := p.parseExpression(LOWEST)
+
+		if readIdent {
+			p.expectPeek(token.RBRACKET)
+		}
+
+		_, isIdent := key.(*ast.Identifier)
+		if isIdent && !readIdent {
+			key = &ast.StringLiteral{
+				Token: key.(*ast.Identifier).Token,
+				Value: key.(*ast.Identifier).Value}
+		}
+
+		if p.peekTokenIs(token.COLON) {
+			p.nextToken()
+			p.nextToken()
+			value := p.parseMatchPattern()
+			hashPattern.Pairs[key.String()] = value
+		} else {
+			hashPattern.Pairs[key.String()] = &ast.IdentifierPattern{
+				Token: p.curToken,
+				Value: &ast.Identifier{Token: p.curToken, Value: key.String()}}
+		}
+
+		if !p.peekTokenIs(token.RBRACE) && !p.expectPeek(token.COMMA) {
 			return nil
 		}
 	}

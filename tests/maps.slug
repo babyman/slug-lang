@@ -71,6 +71,10 @@ m3.len().assertEqual(2);
 
 m3.k2.assertEqual(nil);
 
+// todo: this should work too
+// m3.k2 = 1;
+// m3["k2"] = 1;
+
 m3.keys().len().assertEqual(m3.len());
 
 {}.keys().len().assertEqual(0);

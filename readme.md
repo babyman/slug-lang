@@ -424,7 +424,7 @@ Destructuring allows **breaking apart** structured data (lists, hashes) into ind
 Syntax:
 
 ```slug
-var [h1, h2, rest] = mylist;
+var [h1, h2, ...rest] = mylist;
 var {name, age} = user;
 var {name: n, age: a} = user;
 ```
@@ -446,7 +446,7 @@ match something {
     [] => println("empty list")
     [h, t, _] => println(h, t)
     {} => println("empty hash")
-    {name, _} => println(name)
+    {name, ...} => println(name)
 }
 ```
 
@@ -460,9 +460,7 @@ Semantics:
 
 ---
 
-## Future Extensions
-
-(Easy to add later if needed:)
+## Future Extensions **IMPLEMENTED**
 
 - `var {name, ...rest} = user` → bind rest of fields into `rest`
 - `[head, ...tail]` → proper spread operator in lists
