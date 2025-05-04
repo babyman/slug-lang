@@ -1002,23 +1002,64 @@ func (p *Parser) parseTryCatchStatement() *ast.TryCatchStatement {
 	stmt.CatchToken = p.curToken
 
 	// this seems hacky, i wonder if it's idiomatic Go...
-	stmt.CatchBlock = p.parseMatchExpression().(*ast.MatchExpression)
+	expression := p.parseMatchExpression().(*ast.MatchExpression)
+
+	// add a default case to the CatchBlock expression to rethrow value
+	// todo: maybe we can check for the default case already in the expression?
+	expression.Cases = append(expression.Cases, &ast.MatchCase{
+		Token:   p.curToken,
+		Pattern: &ast.SpreadPattern{Token: p.curToken},
+		Body: &ast.BlockStatement{
+			Token: p.curToken,
+			Statements: []ast.Statement{
+				&ast.ThrowStatement{
+					Token: p.curToken,
+					Value: expression.Value,
+				},
+			},
+		},
+	})
+	stmt.CatchBlock = expression
 
 	return stmt
 }
 
 func (p *Parser) parseThrowStatement() *ast.ThrowStatement {
-	stmt := &ast.ThrowStatement{Token: p.curToken}
+	throw := &ast.ThrowStatement{Token: p.curToken}
 
 	// Advance to the expression after `throw`
 	p.nextToken()
-	stmt.Value = p.parseExpression(LOWEST)
+	ident := p.parseIdentifier()
+
+	if !p.expectPeek(token.LPAREN) {
+		return nil
+	}
+	var ef *ast.HashLiteral = nil
+	if p.peekTokenIs(token.LBRACE) {
+		p.nextToken() // consume RPAREN
+		ef = p.parseHashLiteral().(*ast.HashLiteral)
+	}
+	if !p.expectPeek(token.RPAREN) {
+		return nil
+	}
+	if ef == nil {
+		pairs := make(map[ast.Expression]ast.Expression)
+		pairs[&ast.StringLiteral{Token: p.curToken, Value: "type"}] = &ast.StringLiteral{Token: p.curToken, Value: ident.String()}
+
+		throw.Value = &ast.HashLiteral{
+			Token: p.curToken,
+			Pairs: pairs,
+		}
+	} else {
+		ef.Pairs[&ast.StringLiteral{Token: p.curToken, Value: "type"}] = &ast.StringLiteral{Token: p.curToken, Value: ident.String()}
+		throw.Value = ef
+	}
 
 	if p.peekTokenIs(token.SEMICOLON) {
 		p.nextToken()
 	}
 
-	return stmt
+	return throw
 }
 
 // todo put this in a utils file

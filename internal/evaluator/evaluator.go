@@ -151,6 +151,8 @@ func evalProgram(program *ast.Program, env *object.Environment) object.Object {
 		switch result := result.(type) {
 		case *object.ReturnValue:
 			return result.Value
+		case *object.RuntimeError:
+			return result
 		case *object.Error:
 			return result
 		}
@@ -1020,11 +1022,5 @@ func evalTryCatchStatement(node *ast.TryCatchStatement, env *object.Environment)
 	// bind the error payload to the catch pattern
 	catchEnv.Set(catchMatch.Value.String(), err.Payload)
 
-	catchResult := evalMatchExpression(catchMatch, catchEnv)
-	if catchResult != nil {
-		return catchResult
-	}
-
-	// If no catch pattern matches, re-throw the error with its stack trace
-	return err
+	return evalMatchExpression(catchMatch, catchEnv)
 }

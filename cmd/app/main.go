@@ -40,7 +40,7 @@ func main() {
 		args := flag.Args()[1:]
 
 		if err := executeFile(filename, rootPath, args); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Unhandled error: %v\n", err)
 			os.Exit(1)
 		}
 	} else {
@@ -97,7 +97,7 @@ func executeFile(filename, rootPath string, args []string) error {
 	// Step 4: Parse and evaluate the content
 	err = parseAndEvaluate(filename, content, env)
 	if err != nil {
-		return fmt.Errorf("execution error for file '%s': %v", filename, err)
+		return fmt.Errorf("'%s': %v", filename, err)
 	}
 
 	return nil

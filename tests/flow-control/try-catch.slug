@@ -1,24 +1,24 @@
-
 //
 // throwing a catching errors
 // --------------------------
 
-
-var f = fn() {
+var f1 = fn() {
     try {
-        println("hello slug!")
-        // throw FileError({ path: "/path/to/file" });
-        throw {"type": "ConnectionError"}
+        println("  before throw")
+        throw ConnectionError({msg: "Failed to connect"});
+        println("  after throw")
     } catch err {
-        {"type": "ConnectionError"} => println("Connection failed");
-        {"type": "FileError"} => println("File error");
-        _ => {
-        //         // todo needs to be in a block, update the parser
-                // throw err;
-        //         println("ddddddd");
-            }
+        {type: "ConnectionError", msg, ...} => println("    Connection failed: " + msg);
+        {type: "FileError", ...} => println("    File error");
+        // no default case required to re-throw
     }
 }
 
-f();
-println("next");
+println("before call");
+
+f1();
+
+println("after call");
+
+
+

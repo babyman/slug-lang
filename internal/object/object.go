@@ -213,7 +213,7 @@ func (re *RuntimeError) Inspect() string {
 	out.WriteString(re.Payload.Inspect())
 	out.WriteString("\nStack trace:")
 	for _, frame := range re.StackTrace {
-		out.WriteString(fmt.Sprintf("\n at [%3d:%2d] %s - %s", frame.Line, frame.Col, frame.Function, frame.File))
+		out.WriteString(fmt.Sprintf("\n at [%3d:%2d] %-8s - %s", frame.Line, frame.Col, frame.Function, frame.File))
 	}
 	return out.String()
 }
