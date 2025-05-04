@@ -624,3 +624,43 @@ func (hp *HashPattern) String() string {
 
 	return out.String()
 }
+
+type ThrowStatement struct {
+	Token token.Token // The 'throw' token
+	Value Expression  // The expression to be thrown
+}
+
+func (ts *ThrowStatement) statementNode()       {}
+func (ts *ThrowStatement) TokenLiteral() string { return ts.Token.Literal }
+func (ts *ThrowStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(ts.TokenLiteral() + " ")
+	if ts.Value != nil {
+		out.WriteString(ts.Value.String())
+	}
+	out.WriteString(";")
+	return out.String()
+}
+
+type TryCatchStatement struct {
+	Token      token.Token      // The 'try' token
+	TryBlock   *BlockStatement  // Code to try
+	CatchToken token.Token      // The 'catch' token
+	CatchBlock *MatchExpression // Code to execute on error
+}
+
+func (tcs *TryCatchStatement) statementNode()       {}
+func (tcs *TryCatchStatement) TokenLiteral() string { return tcs.Token.Literal }
+func (tcs *TryCatchStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString("try ")
+	out.WriteString(tcs.TryBlock.String())
+	out.WriteString(" catch (")
+	// todo string
+	//if tcs.CatchIdent != nil {
+	//	out.WriteString(tcs.CatchIdent.String())
+	//}
+	out.WriteString(") ")
+	//out.WriteString(tcs.CatchBlock.String())
+	return out.String()
+}

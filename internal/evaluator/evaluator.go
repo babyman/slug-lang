@@ -131,6 +131,12 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 	case *ast.HashLiteral:
 		return evalHashLiteral(node, env)
 
+	case *ast.ThrowStatement:
+		return evalThrowStatement(node, env)
+
+	case *ast.TryCatchStatement:
+		return evalTryCatchStatement(node, env)
+
 	}
 
 	return nil
@@ -250,15 +256,17 @@ func mapIdentifiersToStrings(identifiers []*ast.Identifier) []string {
 	return parts
 }
 
-func evalBlockStatement(
-	block *ast.BlockStatement,
-	env *object.Environment,
-) object.Object {
+func evalBlockStatement(block *ast.BlockStatement, env *object.Environment) object.Object {
+	// Create a new environment with an associated stack frame
+	blockEnv := object.NewEnclosedEnvironment(env, &object.StackFrame{
+		Function: "block",
+		File:     env.Path,
+		Position: block.Token.Position,
+	})
+
 	var result object.Object
-
 	for _, statement := range block.Statements {
-		result = Eval(statement, env)
-
+		result = Eval(statement, blockEnv)
 		if result != nil {
 			rt := result.Type()
 			if rt == object.RETURN_VALUE_OBJ || rt == object.ERROR_OBJ {
@@ -266,7 +274,6 @@ func evalBlockStatement(
 			}
 		}
 	}
-
 	return result
 }
 
@@ -529,7 +536,6 @@ func evalExpressions(
 
 func applyFunction(fn object.Object, args []object.Object) object.Object {
 	switch fn := fn.(type) {
-
 	case *object.Function:
 		extendedEnv := extendFunctionEnv(fn, args)
 		evaluated := Eval(fn.Body, extendedEnv)
@@ -547,7 +553,11 @@ func extendFunctionEnv(
 	fn *object.Function,
 	args []object.Object,
 ) *object.Environment {
-	env := object.NewEnclosedEnvironment(fn.Env)
+	env := object.NewEnclosedEnvironment(fn.Env, &object.StackFrame{
+		Function: "function", // String representation of the function
+		File:     fn.Env.Path,
+		Position: fn.Body.Token.Position,
+	})
 	numArgs := len(args)
 
 	for i, param := range fn.Parameters {
@@ -675,7 +685,7 @@ func evalMatchExpression(node *ast.MatchExpression, env *object.Environment) obj
 	// Try each pattern in sequence
 	for _, matchCase := range node.Cases {
 		// Create a new scope for pattern variables
-		patternEnv := object.NewEnclosedEnvironment(env)
+		patternEnv := object.NewEnclosedEnvironment(env, nil)
 
 		// Check if the pattern matches
 		matched := false
@@ -736,7 +746,7 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 	case *ast.MultiPattern:
 		// Check if value matches any of the patterns
 		for _, subPattern := range p.Patterns {
-			if patternMatches(subPattern, value, object.NewEnclosedEnvironment(env)) {
+			if patternMatches(subPattern, value, object.NewEnclosedEnvironment(env, nil)) {
 				return true
 			}
 		}
@@ -762,7 +772,7 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 		}
 
 		// scoped environment to capture the match bindings, these will be copied to the parent env on success
-		scoped := object.NewEnclosedEnvironment(env)
+		scoped := object.NewEnclosedEnvironment(env, nil)
 
 		// Check each element against its pattern
 		for i, elemPattern := range p.Elements {
@@ -803,7 +813,7 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 		usedKeys := make([]object.HashKey, 0)
 
 		// scoped environment to capture the match bindings, these will be copied to the parent env on success
-		scoped := object.NewEnclosedEnvironment(env)
+		scoped := object.NewEnclosedEnvironment(env, nil)
 
 		// Check if all required fields are present
 		for key, subPattern := range p.Pairs {
@@ -970,4 +980,51 @@ func evalHashIndexExpression(hash, index object.Object) object.Object {
 	}
 
 	return pair.Value
+}
+
+func evalThrowStatement(node *ast.ThrowStatement, env *object.Environment) object.Object {
+	val := Eval(node.Value, env)
+	if isError(val) {
+		return val
+	}
+	if val.Type() != object.HASH_OBJ {
+		return newError("throw argument must be a Hash, got %s", val.Type())
+	}
+	return &object.RuntimeError{
+		Payload: val,
+		StackTrace: env.GatherStackTrace(&object.StackFrame{
+			Function: "throw",
+			File:     env.Path,
+			Position: node.Token.Position,
+		}),
+	}
+}
+
+func evalTryCatchStatement(node *ast.TryCatchStatement, env *object.Environment) object.Object {
+	// Execute the try block
+	tryResult := Eval(node.TryBlock, env)
+
+	err, isRuntimeError := tryResult.(*object.RuntimeError)
+
+	// If there's no error, return the result of the try block
+	if !isRuntimeError {
+		return tryResult
+	}
+
+	// Match the error Payload against catch block patterns
+	catchMatch := node.CatchBlock
+
+	// Otherwise, handle the error (it must be a RuntimeError)
+	catchEnv := object.NewEnclosedEnvironment(env, nil)
+
+	// bind the error payload to the catch pattern
+	catchEnv.Set(catchMatch.Value.String(), err.Payload)
+
+	catchResult := evalMatchExpression(catchMatch, catchEnv)
+	if catchResult != nil {
+		return catchResult
+	}
+
+	// If no catch pattern matches, re-throw the error with its stack trace
+	return err
 }

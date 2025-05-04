@@ -103,6 +103,7 @@ substituting the `.` for file path separators, for example `slug.system` will be
 ## 1. Overview
 
 In Slug, **maps** are flexible, first-class dynamic key/value containers that support:
+
 - **Mixed key types** (strings, numbers, etc.)
 - **Concise, safe literals**
 - **Natural access** through dot (`.`) and bracket (`[]`) syntax
@@ -116,20 +117,26 @@ Maps are the foundational structure for object-like and dynamic behaviors in Slu
 ## 2. Map Definition
 
 ### 2.1 Static Key Map Literals
+
 ```slug
 var user = { name: "Sluggy", age: 5 }
 ```
+
 Equivalent to:
+
 ```slug
 var user = { "name": "Sluggy", "age": 5 }
 ```
 
 ### 2.2 Dynamic Key Map Literals
+
 ```slug
 var key = "speed"
 var stats = { [key]: 88 }
 ```
+
 Equivalent to:
+
 ```slug
 var stats = put({}, key, 88)
 ```
@@ -139,12 +146,14 @@ var stats = put({}, key, 88)
 ## 3. Map Access
 
 ### 3.1 Dot Notation (`.`)
+
 ```slug
 user.name   // get(user, "name")
 numbers.42  // get(numbers, 42)
 ```
 
 ### 3.2 Bracket Notation (`[]`)
+
 ```slug
 var field = "name"
 user[field]   // get(user, field)
@@ -155,6 +164,7 @@ user[field]   // get(user, field)
 ## 4. Function Call Syntax (Method-like Calls) **NOT IMPLEMENTED**
 
 ### 4.1 Calling a Map Key as a Function
+
 ```slug
 user.greet()
 // Desugars to:
@@ -162,6 +172,7 @@ get(user, "greet")(user)
 ```
 
 If the retrieved key is not a function, the runtime throws an error:
+
 ```
 Cannot call non-function value from map key 'greet'
 ```
@@ -179,52 +190,62 @@ Each **returns a new updated map**, allowing fluent chaining.
 - Returns a list containing all keys in the map.
 - Keys in the returned list have no guaranteed order.
 - If the map is empty, returns an empty list.
- 
+
   Example:
+
 ```slug
 var m = {name: "Sluggy"};
 m.keys();  // ["name"]
 ```
 
 ### 5.1 `put(map, key, value) -> map`
+
 - Inserts (or replaces) the entry for `key` with `value`.
 - Returns the updated map.
 
 Example:
+
 ```slug
 var m = {}
 m = put(m, "name", "Sluggy")
 ```
 
 Chaining version:
+
 ```slug
 var m = {}.put("name", "Sluggy").put("age", 5)
 ```
 
 ### 5.2 `get(map, key) -> value`
+
 - Retrieves the value for the given key.
 - If the key is not found, returns `empty` (or error based on context).
 
 Example:
+
 ```slug
 var name = get(m, "name")
 ```
 
 Or using dot syntax:
+
 ```slug
 var name = m.name
 ```
 
 ### 5.3 `remove(map, key) -> map`
+
 - Removes the given key from the map if it exists.
 - Returns the updated map.
 
 Example:
+
 ```slug
 var m2 = m.remove("age")
 ```
 
 Chaining example:
+
 ```slug
 var m3 = m.remove("age").put("city", "Toronto")
 ```
@@ -270,6 +291,7 @@ println(config.env)    // "production"
 # Closing Notes
 
 This **unified** map model gives Slug:
+
 - Highly **expressive** map building
 - A lightweight **object system** without special types
 - Predictable, consistent syntax across literals, access, and methods
@@ -901,12 +923,10 @@ Age: {{age}}
 | Phase 2 | Add `#if / else / unless` conditional blocks |
 | Phase 3 | Add `#each`, `#with` scoped evaluation       |
 
-
 Errors
 ===
 
-Throw
----
+## Throw
 
 | Syntax                      | Expansion                                     |
 |-----------------------------|-----------------------------------------------|
@@ -914,13 +934,30 @@ Throw
 | `throw FileError()`         | `throw { "type": "FileError" }`               |
 | `throw FileError({ path })` | `throw { "type": "FileError", "path": path }` |
 
-This approach guarantees that errors always follow the format`Hash`, which keeps the error-handling mechanism
-consistent, predictable, and extensible.
+This ensures all errors are structured as `Hash` values with a required `"type"` key, enabling consistent, extensible,
+and pattern-matchable error handling.
 
-Try/Catch
+### Runtime Behavior
+
+- Executing `throw` immediately halts the current function.
+- The provided error `Hash` is wrapped internally by the runtime in a `RuntimeError` object:
+  ```go
+  type RuntimeError struct {
+      Payload    Hash
+      StackTrace []StackFrame
+  }
+  ```
+- Each `StackFrame` includes the current function name, source file, line, and column number.
+- As the error propagates up the call stack, the runtime appends frames to the `StackTrace`.
+- The `Payload` (just the `Hash`) is what reaches `catch` blocks.
+- If an error is uncaught, the full `RuntimeError` is printed, including the stack trace.
+- Thrown values **must be Hashes**. Throwing a non-Hash value causes a runtime error.
+
 ---
 
-``` slug
+## Try/Catch
+
+```slug
 try {
     connectToDatabase();
 } catch err {
@@ -928,6 +965,99 @@ try {
     { "type": "TimeoutError" } => print("Operation timed out!");
     _ => throw err // Re-throw unexpected errors;
 }
+```
+
+### Runtime Behavior
+
+- The `try` block executes normally unless a `throw` occurs.
+- If a `throw` is triggered (directly or indirectly), control transfers to the nearest enclosing `catch`.
+- The runtime extracts the `Payload` `Hash` from the internal `RuntimeError` and binds it to the identifier following
+  `catch`.
+- The `catch` block is a pattern match block:
+    - Arms are evaluated in order.
+    - On the first match, the corresponding block executes.
+    - If no arm matches and `_ =>` is present, it is used.
+    - If no match is found, the original `RuntimeError` is re-thrown with its stack trace preserved.
+
+---
+
+## Stack Trace Introspection
+
+Users can access stack trace information from a caught error using the built-in `trace(err)` function:
+
+```slug
+try {
+    runJob();
+} catch err {
+    _ =>
+      println("Something went wrong!");
+      println("Details: " + err);
+      println("Stack trace:");
+      for line in trace(err) {
+          println("  at " + line.function + " (" + line.file + ":" + line.line + ")");
+      }
+}
+```
+
+The `trace(err)` function returns a list of hashes, each representing a stack frame:
+
+```slug
+[
+  { "function": "readFile", "file": "fs.sl", "line": 12, "col": 5 },
+  { "function": "loadConfig", "file": "app.sl", "line": 3, "col": 5 },
+  ...
+]
+```
+
+> Note: If `err` is not a tracked runtime error, `trace(err)` returns an empty list.
+
+---
+
+## Example: Propagation Across Multiple Stack Frames
+
+```slug
+var readFile = fn(path) {
+    var content = readFromDisk(path); // might throw
+    return content;
+}
+
+var loadConfig = fn() {
+    var configText = readFile("config.json");
+    return parseConfig(configText);
+}
+
+try {
+    loadConfig();
+} catch err {
+    { "type": "FileError", "path": p } => {
+        print("Failed to read file: " + p);
+        for frame in trace(err) {
+            print("  at " + frame.function + " (" + frame.file + ":" + frame.line + ")");
+        }
+    }
+    _ => throw err;
+}
+```
+
+---
+
+## Example: Uncaught Error Output
+
+If an error is not caught:
+
+```slug
+var main = fn() {
+    openSocket(); // throws, uncaught
+}
+```
+
+Runtime output:
+
+```text
+Uncaught error: { "type": "SocketUnavailable", "port": 8080 }
+Stack trace:
+  at openSocket (net.sl:42)
+  at main (app.sl:2)
 ```
 
 Build In Functions

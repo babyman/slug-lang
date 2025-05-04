@@ -190,6 +190,10 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseReturnStatement()
 	case token.IMPORT:
 		return p.parseImportStatement()
+	case token.TRY:
+		return p.parseTryCatchStatement()
+	case token.THROW:
+		return p.parseThrowStatement()
 	default:
 		return p.parseExpressionStatement()
 	}
@@ -980,6 +984,41 @@ func (p *Parser) registerPrefix(tokenType token.TokenType, fn prefixParseFn) {
 
 func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
 	p.infixParseFns[tokenType] = fn
+}
+
+func (p *Parser) parseTryCatchStatement() *ast.TryCatchStatement {
+	stmt := &ast.TryCatchStatement{Token: p.curToken}
+
+	// Parse the try block
+	if !p.expectPeek(token.LBRACE) {
+		return nil
+	}
+	stmt.TryBlock = p.parseBlockStatement()
+
+	// Parse the catch block
+	if !p.expectPeek(token.CATCH) {
+		return nil
+	}
+	stmt.CatchToken = p.curToken
+
+	// this seems hacky, i wonder if it's idiomatic Go...
+	stmt.CatchBlock = p.parseMatchExpression().(*ast.MatchExpression)
+
+	return stmt
+}
+
+func (p *Parser) parseThrowStatement() *ast.ThrowStatement {
+	stmt := &ast.ThrowStatement{Token: p.curToken}
+
+	// Advance to the expression after `throw`
+	p.nextToken()
+	stmt.Value = p.parseExpression(LOWEST)
+
+	if p.peekTokenIs(token.SEMICOLON) {
+		p.nextToken()
+	}
+
+	return stmt
 }
 
 // todo put this in a utils file

@@ -10,7 +10,9 @@ var f = fn(x) {
       {k} => "map with " + k;
       {k1, k2:k, ...a} => "map with " + k + " '" + a + "'";
       {...} => "map with data";
-      _ => "default";
+      _ => {
+              return "default";
+        }
     }
 }
 
@@ -25,3 +27,5 @@ var f = fn(x) {
 {"k1":"v1", "k2":"v2"}.f().assertEqual("map with v2 '{}'");
 
 {"k1":"v1", "k2":"v2", "k3":"v3"}.f().assertEqual("map with v2 '{k3: v3}'");
+
+42.f().assertEqual("default");

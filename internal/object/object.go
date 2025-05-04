@@ -200,3 +200,28 @@ func (h *Hash) Inspect() string {
 
 	return out.String()
 }
+
+type RuntimeError struct {
+	Payload    Object       // The error payload (must be a Hash object)
+	StackTrace []StackFrame // Stack frames for error propagation
+}
+
+func (re *RuntimeError) Type() ObjectType { return ERROR_OBJ }
+func (re *RuntimeError) Inspect() string {
+	var out bytes.Buffer
+	out.WriteString("RuntimeError: ")
+	out.WriteString(re.Payload.Inspect())
+	out.WriteString("\nStack trace:")
+	for _, frame := range re.StackTrace {
+		out.WriteString(fmt.Sprintf("\n at [%3d:%2d] %s - %s", frame.Line, frame.Col, frame.Function, frame.File))
+	}
+	return out.String()
+}
+
+type StackFrame struct {
+	Function string
+	File     string
+	Position int
+	Line     int // lazy populated line number
+	Col      int // lazy populated column number
+}

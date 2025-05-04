@@ -91,6 +91,8 @@ func executeFile(filename, rootPath string, args []string) error {
 
 	// Step 3: Initialize the environment
 	env := setupEnvironment(rootPath, args)
+	env.Src = content
+	env.Path = filename
 
 	// Step 4: Parse and evaluate the content
 	err = parseAndEvaluate(filename, content, env)
