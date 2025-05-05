@@ -27,6 +27,7 @@ const (
 )
 
 var precedences = map[token.TokenType]int{
+	token.ASSIGN:      LOWEST, // Assignment has lowest precedence
 	token.EQ:          EQUALS,
 	token.NOT_EQ:      EQUALS,
 	token.LOGICAL_AND: LOGICAL_AND,
@@ -360,7 +361,14 @@ func (p *Parser) curPrecedence() int {
 }
 
 func (p *Parser) parseIdentifier() ast.Expression {
-	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+
+	if p.peekTokenIs(token.ASSIGN) {
+		p.nextToken()
+		return p.parseAssignmentExpression(ident)
+	}
+
+	return ident
 }
 
 // Modify parseIntegerLiteral to include line and column
@@ -395,6 +403,20 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 }
 
 func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
+	expression := &ast.InfixExpression{
+		Token:    p.curToken,
+		Operator: p.curToken.Literal,
+		Left:     left,
+	}
+
+	precedence := p.curPrecedence()
+	p.nextToken()
+	expression.Right = p.parseExpression(precedence)
+
+	return expression
+}
+
+func (p *Parser) parseAssignmentExpression(left *ast.Identifier) ast.Expression {
 	expression := &ast.InfixExpression{
 		Token:    p.curToken,
 		Operator: p.curToken.Literal,
@@ -816,15 +838,13 @@ func (p *Parser) parseFunctionParameters() []*ast.FunctionParameter {
 		// Check for destructuring (e.g., h:t)
 		if p.peekTokenIs(token.COLON) {
 			param.Destructure = p.parseDestructureBinding()
-		} else {
-			param.Name = p.parseIdentifier().(*ast.Identifier)
-		}
-
-		// Check for default value (e.g., b = 1)
-		if p.peekTokenIs(token.ASSIGN) {
+		} else if p.peekTokenIs(token.ASSIGN) {
+			param.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 			p.nextToken() // consume identifier
 			p.nextToken() // consume =
 			param.Default = p.parseExpression(LOWEST)
+		} else {
+			param.Name = p.parseIdentifier().(*ast.Identifier)
 		}
 
 		parameters = append(parameters, param)

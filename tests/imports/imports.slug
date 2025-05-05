@@ -1,5 +1,5 @@
 import functions.*;
-import functions.{sqr};
+import functions.{sqr as s};
 import functions.{f as sum};
 
 

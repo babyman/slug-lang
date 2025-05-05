@@ -74,6 +74,30 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		return evalPrefixExpression(node.Operator, right)
 
 	case *ast.InfixExpression:
+		// Special case for assignment
+		if node.Operator == "=" {
+			// Ensure left side is an identifier
+			ident, ok := node.Left.(*ast.Identifier)
+			if !ok {
+				return newError("left side of assignment must be an identifier")
+			}
+
+			// Evaluate right side
+			right := Eval(node.Right, env)
+			if isError(right) {
+				return right
+			}
+
+			// Try to assign the value (variable is already defined)
+			val, ok := env.Assign(ident.Value, right)
+			if !ok {
+				return newError("cannot assign to '%s'", ident.Value)
+			}
+
+			return val
+		}
+
+		// Regular infix expressions
 		left := Eval(node.Left, env)
 		if isError(left) {
 			return left
@@ -227,7 +251,10 @@ func handleModuleImport(importStatement *ast.ImportStatement, env *object.Enviro
 	if importStatement.Wildcard {
 		// Import all symbols into the current environment
 		for name, val := range module.Env.Store {
-			env.Set(name, val)
+			_, ok := env.Define(name, val)
+			if !ok {
+				return newError("cannot assign to '%s'", name)
+			}
 		}
 	} else if len(importStatement.Symbols) > 0 {
 		// Import specific symbols
@@ -237,14 +264,14 @@ func handleModuleImport(importStatement *ast.ImportStatement, env *object.Enviro
 				if sym.Alias != nil {
 					alias = sym.Alias.Value
 				}
-				env.Set(alias, val)
+				_, ok := env.Define(alias, val)
+				if !ok {
+					return newError("cannot assign to '%s'", alias)
+				}
 			} else {
 				return newError("symbol '%s' not found in module '%s'", sym.Name.Value, module.Name)
 			}
 		}
-	} else {
-		// Store the whole module as a namespace
-		env.Set(module.Name, module)
 	}
 
 	return NIL
@@ -566,7 +593,7 @@ func extendFunctionEnv(
 
 		// Handle variadic arguments
 		if param.IsVariadic {
-			env.Set(param.Name.Value, &object.Array{
+			env.Define(param.Name.Value, &object.Array{
 				Elements: args[i:], // Remaining args as a list
 			})
 			break
@@ -575,20 +602,20 @@ func extendFunctionEnv(
 		// Handle destructuring (h:t)
 		if param.Destructure != nil {
 			if i >= numArgs {
-				env.Set(param.Destructure.Head.Value, NIL)
-				env.Set(param.Destructure.Tail.Value, NIL)
+				env.Define(param.Destructure.Head.Value, NIL)
+				env.Define(param.Destructure.Tail.Value, NIL)
 			} else {
 				arg := args[i]
 
 				list := arg.(*object.Array)
 				if len(list.Elements) > 0 {
-					env.Set(param.Destructure.Head.Value, list.Elements[0])
-					env.Set(param.Destructure.Tail.Value, &object.Array{
+					env.Define(param.Destructure.Head.Value, list.Elements[0])
+					env.Define(param.Destructure.Tail.Value, &object.Array{
 						Elements: list.Elements[1:],
 					})
 				} else {
-					env.Set(param.Destructure.Head.Value, NIL)
-					env.Set(param.Destructure.Tail.Value, &object.Array{})
+					env.Define(param.Destructure.Head.Value, NIL)
+					env.Define(param.Destructure.Tail.Value, &object.Array{})
 				}
 			}
 			continue
@@ -598,12 +625,12 @@ func extendFunctionEnv(
 		if i >= numArgs {
 			if param.Default != nil {
 				defaultValue := Eval(param.Default, env)
-				env.Set(param.Name.Value, defaultValue)
+				env.Define(param.Name.Value, defaultValue)
 			} else {
-				env.Set(param.Name.Value, NIL)
+				env.Define(param.Name.Value, NIL)
 			}
 		} else {
-			env.Set(param.Name.Value, args[i])
+			env.Define(param.Name.Value, args[i])
 		}
 	}
 
@@ -728,7 +755,7 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 	case *ast.SpreadPattern:
 		// SpreadPattern matches anything
 		if p.Value != nil {
-			env.Set(p.Value.Value, value)
+			env.Define(p.Value.Value, value)
 		}
 		return true
 
@@ -742,7 +769,7 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 
 	case *ast.IdentifierPattern:
 		// Bind the value to the identifier
-		env.Set(p.Value.Value, value)
+		env.Define(p.Value.Value, value)
 		return true
 
 	case *ast.MultiPattern:
@@ -784,7 +811,7 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 				if matches {
 					// Copy bindings from scoped environment to parent environment
 					for name, val := range scoped.Store {
-						env.Set(name, val)
+						env.Define(name, val)
 					}
 				}
 				return matches
@@ -795,7 +822,7 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 
 		// Copy bindings from scoped environment to parent environment
 		for name, val := range scoped.Store {
-			env.Set(name, val)
+			env.Define(name, val)
 		}
 
 		return true
@@ -871,7 +898,7 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 
 		// Copy bindings from scoped environment to parent environment
 		for name, val := range scoped.Store {
-			env.Set(name, val)
+			env.Define(name, val)
 		}
 
 		return true
@@ -1020,7 +1047,7 @@ func evalTryCatchStatement(node *ast.TryCatchStatement, env *object.Environment)
 	catchEnv := object.NewEnclosedEnvironment(env, nil)
 
 	// bind the error payload to the catch pattern
-	catchEnv.Set(catchMatch.Value.String(), err.Payload)
+	catchEnv.Define(catchMatch.Value.String(), err.Payload)
 
 	return evalMatchExpression(catchMatch, catchEnv)
 }

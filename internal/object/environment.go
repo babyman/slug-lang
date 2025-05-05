@@ -45,9 +45,24 @@ func (e *Environment) Get(name string) (Object, bool) {
 	return obj, ok
 }
 
-func (e *Environment) Set(name string, val Object) Object {
+func (e *Environment) Define(name string, val Object) (Object, bool) {
+	if _, exists := e.Store[name]; exists {
+		println("Failed to define variable: ", name, " already exists")
+		return nil, false
+	}
 	e.Store[name] = val
-	return val
+	return val, true
+}
+
+func (e *Environment) Assign(name string, val Object) (Object, bool) {
+	if _, exists := e.Store[name]; exists {
+		e.Store[name] = val
+		return val, true
+	}
+	if e.outer != nil {
+		return e.outer.Assign(name, val)
+	}
+	return nil, false
 }
 
 func (e *Environment) GatherStackTrace(frame *StackFrame) []StackFrame {

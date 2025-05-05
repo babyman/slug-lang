@@ -58,6 +58,7 @@ const (
 
 	// Keywords
 	FUNCTION = "FUNCTION"
+	VAL      = "VAL"
 	VAR      = "VAR"
 	TRUE     = "TRUE"
 	FALSE    = "FALSE"
@@ -85,8 +86,8 @@ var keywords = map[string]TokenType{
 	"true":  TRUE,
 	"false": FALSE,
 	//"foreign": FOREIGN
-	"fn": FUNCTION,
-	//"val": VAL
+	"fn":  FUNCTION,
+	"val": VAL,
 	"var": VAR,
 
 	// import etc

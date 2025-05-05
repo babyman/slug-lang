@@ -3,8 +3,4 @@
 //
 import imports.a.*;
 
-var add = fn(a, b) {
-    a + b;
-}
-
 println("b executed");

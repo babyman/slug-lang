@@ -1,0 +1,16 @@
+//
+// closure scope counter
+// ---------------------
+
+var makeCounter = fn(start = 0) {
+    var count = start;
+    fn() {
+        count = count + 1;
+    };
+}
+
+var c = makeCounter();
+
+c().assertEqual(1);
+c().assertEqual(2);
+

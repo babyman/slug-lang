@@ -7,7 +7,7 @@ var x = 10;
 
 x.assertEqual(10);
 
-var x = x + 1;
+x = x + 1;
 
 x.assertEqual(11);
 
@@ -38,11 +38,21 @@ var f2 = fn(a, b) {
     {"a":a, "b":b}
 }
 
-var {"a":x, "b":y} = f2(1, 2);
+if (true) {
+    var {"a":x, "b":y} = f2(1, 2);
+    x.assertEqual(1);
+    y.assertEqual(2);
+}
 
-x.assertEqual(1);
 
-y.assertEqual(2);
+x.assertEqual(11);
+
+if (true) {
+    x = 20
+}
+
+x.assertEqual(20);
+
 
 var {"b":z, ...} = f2(1, 2);
 

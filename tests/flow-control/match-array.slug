@@ -47,7 +47,7 @@ var f2 = fn(x) {
 // matching array spreads
 // ----------------------
 
-var f2 = fn(x) {
+var f3 = fn(x) {
     match x {
         [4, a, ...] => "" + a;
         [h, _, ...t] => "list of two + " + len(t);
@@ -57,14 +57,14 @@ var f2 = fn(x) {
     }
 };
 
-[1, 2].f2().assertEqual("list of two + 0");
+[1, 2].f3().assertEqual("list of two + 0");
 
-[1, 2, 3, 4].f2().assertEqual("list of two + 2");
+[1, 2, 3, 4].f3().assertEqual("list of two + 2");
 
-[1].f2().assertEqual("list of one+");
+[1].f3().assertEqual("list of one+");
 
-[4, 6, 1].f2().assertEqual("6");
+[4, 6, 1].f3().assertEqual("6");
 
-[].f2().assertEqual("any list");
+[].f3().assertEqual("any list");
 
 

@@ -133,7 +133,7 @@ func setupEnvironment(rootPath string, args []string) *object.Environment {
 	for i, arg := range args {
 		objects[i] = &object.String{Value: arg}
 	}
-	env.Set("args", &object.Array{Elements: objects})
+	env.Assign("args", &object.Array{Elements: objects})
 
 	return env
 }
