@@ -1,6 +1,6 @@
 //
 // test circular imports
 //
-import imports.b.*;
+import imports.b.{add};
 
 println("a executed");

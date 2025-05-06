@@ -48,10 +48,10 @@ assertEqual(len(list), 2);
 // adding items
 // -----------------------
 
-var l2 = [];
-l2 = push(l2, 1, 2, 3);
-l2 = push(l2, 4);
-assertEqual(len(l2), 4, "list should have 4 items");
+var l = [];
+var l = push(l, 1, 2, 3);
+var l = push(l, 4);
+assertEqual(len(l), 4, "list should have 4 items");
 
 // todo decide if list equality should be a memory reference compare
 // assert(tail(list), tail(list), "lists are not equal");

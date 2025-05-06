@@ -1,6 +1,9 @@
 package object
 
-import "slug/internal/parser"
+import (
+	"fmt"
+	"slug/internal/parser"
+)
 
 // NewEnclosedEnvironment initializes an environment with a parent and optional stack frame.
 func NewEnclosedEnvironment(outer *Environment, stackFrame *StackFrame) *Environment {
@@ -45,24 +48,21 @@ func (e *Environment) Get(name string) (Object, bool) {
 	return obj, ok
 }
 
-func (e *Environment) Define(name string, val Object) (Object, bool) {
-	if _, exists := e.Store[name]; exists {
-		println("Failed to define variable: ", name, " already exists")
-		return nil, false
-	}
+// Define adds a new variable with the given name and value to the environment and returns the value and true.
+func (e *Environment) Define(name string, val Object) Object {
 	e.Store[name] = val
-	return val, true
+	return val
 }
 
-func (e *Environment) Assign(name string, val Object) (Object, bool) {
+func (e *Environment) Assign(name string, val Object) (Object, error) {
 	if _, exists := e.Store[name]; exists {
 		e.Store[name] = val
-		return val, true
+		return val, nil
 	}
 	if e.outer != nil {
 		return e.outer.Assign(name, val)
 	}
-	return nil, false
+	return nil, fmt.Errorf("failed to assign to '%s': not defined in any accessible scope", name)
 }
 
 func (e *Environment) GatherStackTrace(frame *StackFrame) []StackFrame {

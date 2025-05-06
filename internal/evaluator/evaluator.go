@@ -89,9 +89,9 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 			}
 
 			// Try to assign the value (variable is already defined)
-			val, ok := env.Assign(ident.Value, right)
-			if !ok {
-				return newError("cannot assign to '%s'", ident.Value)
+			val, err := env.Assign(ident.Value, right)
+			if err != nil {
+				return newError(err.Error())
 			}
 
 			return val
@@ -251,10 +251,7 @@ func handleModuleImport(importStatement *ast.ImportStatement, env *object.Enviro
 	if importStatement.Wildcard {
 		// Import all symbols into the current environment
 		for name, val := range module.Env.Store {
-			_, ok := env.Define(name, val)
-			if !ok {
-				return newError("cannot assign to '%s'", name)
-			}
+			env.Define(name, val)
 		}
 	} else if len(importStatement.Symbols) > 0 {
 		// Import specific symbols
@@ -264,10 +261,7 @@ func handleModuleImport(importStatement *ast.ImportStatement, env *object.Enviro
 				if sym.Alias != nil {
 					alias = sym.Alias.Value
 				}
-				_, ok := env.Define(alias, val)
-				if !ok {
-					return newError("cannot assign to '%s'", alias)
-				}
+				env.Define(alias, val)
 			} else {
 				return newError("symbol '%s' not found in module '%s'", sym.Name.Value, module.Name)
 			}

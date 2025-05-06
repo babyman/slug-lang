@@ -7,7 +7,7 @@ var x = 10;
 
 x.assertEqual(10);
 
-x = x + 1;
+var x = x + 1;
 
 x.assertEqual(11);
 

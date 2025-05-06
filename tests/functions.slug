@@ -14,36 +14,36 @@ assert(out == 16, "got:" + out);
 // default parameter value
 // -----------------------
 var f = fn(a, b = 1) { a + b }
-out = 1.f();
+var out = 1.f();
 assert(out == 2, "expected 2, got " + out);
-out = 1.f(10);
+var out = 1.f(10);
 assert(out == 11, "expected 11, got " + out)
 
 
 // vargs example
 // -----------------------
-f = fn(a, ...b) { a + b.len() }
-out = 1.f(0, 0, 0);
+var f = fn(a, ...b) { a + b.len() }
+var out = 1.f(0, 0, 0);
 assert(out == 4, "expected 4, got " + out);
 
 
 // list decomposition
 // -----------------------
-f = fn(h:t) { h }
-out = [3,2,1,2,3].f();
+var f = fn(h:t) { h }
+var out = [3,2,1,2,3].f();
 assert(out == 3, "head expected, got " + out);
 
 
 // sum a list of numbers
 // -----------------------
-f = fn(h:t, sum = 0) {
+var f = fn(h:t, sum = 0) {
     if(len(t) == 0) {
         sum + h;
     } else {
         f(t, sum + h);
     }
 }
-out = [1,2,3,4].f();
+var out = [1,2,3,4].f();
 assert(out == 10, "Sum expected 10, got: " + out);
 assertEqual(out, 10);
 
