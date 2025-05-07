@@ -9,8 +9,12 @@ var makeCounter = fn(start = 0) {
     };
 }
 
-var c = makeCounter();
+var c1 = makeCounter();
+var c2 = makeCounter(10);
 
-c().assertEqual(1);
-c().assertEqual(2);
+c1().assertEqual(1);
+c1().assertEqual(2);
+
+c2().assertEqual(11);
+c2().assertEqual(12);
 
