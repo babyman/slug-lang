@@ -104,7 +104,7 @@ func (m *Module) Inspect() string {
 	out.WriteString(m.Name)
 	out.WriteString(" {")
 	for key, val := range m.Env.Store {
-		out.WriteString(fmt.Sprintf("\n  %s: %s,", key, val.Inspect()))
+		out.WriteString(fmt.Sprintf("\n  %s: %s,", key, val.Value.Inspect()))
 	}
 	out.WriteString("\n}")
 	return out.String()

@@ -51,7 +51,18 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		if isError(val) {
 			return val
 		}
-		patternMatches(node.Pattern, val, env)
+		if _, err := patternMatches(node.Pattern, val, env, false); err != nil {
+			return newError(err.Error())
+		}
+
+	case *ast.ValStatement:
+		val := Eval(node.Value, env)
+		if isError(val) {
+			return val
+		}
+		if _, err := patternMatches(node.Pattern, val, env, true); err != nil {
+			return newError(err.Error())
+		}
 
 	// Expressions
 	case *ast.IntegerLiteral:
@@ -251,17 +262,33 @@ func handleModuleImport(importStatement *ast.ImportStatement, env *object.Enviro
 	if importStatement.Wildcard {
 		// Import all symbols into the current environment
 		for name, val := range module.Env.Store {
-			env.Define(name, val)
+			if val.IsConstant {
+				if _, err := env.DefineConstant(name, val.Value); err != nil {
+					return newError(err.Error())
+				}
+			} else {
+				if _, err := env.Define(name, val.Value); err != nil {
+					return newError(err.Error())
+				}
+			}
 		}
 	} else if len(importStatement.Symbols) > 0 {
 		// Import specific symbols
 		for _, sym := range importStatement.Symbols {
-			if val, ok := module.Env.Get(sym.Name.Value); ok {
+			if binding, ok := module.Env.GetBinding(sym.Name.Value); ok {
 				alias := sym.Name.Value
 				if sym.Alias != nil {
 					alias = sym.Alias.Value
 				}
-				env.Define(alias, val)
+				if binding.IsConstant {
+					if _, err := env.DefineConstant(alias, binding.Value); err != nil {
+						return newError(err.Error())
+					}
+				} else {
+					if _, err := env.Define(alias, binding.Value); err != nil {
+						return newError(err.Error())
+					}
+				}
 			} else {
 				return newError("symbol '%s' not found in module '%s'", sym.Name.Value, module.Name)
 			}
@@ -696,7 +723,7 @@ func evalHashLiteral(
 }
 
 func evalMatchExpression(node *ast.MatchExpression, env *object.Environment) object.Object {
-	// If there's a match value, evaluate it
+	// Evaluate the match value if provided
 	var matchValue object.Object
 	if node.Value != nil {
 		matchValue = Eval(node.Value, env)
@@ -705,22 +732,26 @@ func evalMatchExpression(node *ast.MatchExpression, env *object.Environment) obj
 		}
 	}
 
-	// Try each pattern in sequence
+	// Iterate through patterns
 	for _, matchCase := range node.Cases {
 		// Create a new scope for pattern variables
 		patternEnv := object.NewEnclosedEnvironment(env, nil)
 
-		// Check if the pattern matches
+		// Match against the provided value or evaluate the condition
 		matched := false
+		var err error
 		if matchValue != nil {
-			// Match against the provided value
-			matched = patternMatches(matchCase.Pattern, matchValue, patternEnv)
+			// Match the case's pattern against the matchValue
+			matched, err = patternMatches(matchCase.Pattern, matchValue, patternEnv, false)
+			if err != nil {
+				return newError("pattern match error: %s", err.Error())
+			}
 		} else {
-			// Valueless match - evaluate pattern as a condition
+			// Valueless match condition
 			matched = evaluatePatternAsCondition(matchCase.Pattern, patternEnv)
 		}
 
-		// Check guard condition if pattern matched
+		// Evaluate guard condition if pattern matches
 		if matched && matchCase.Guard != nil {
 			guardResult := Eval(matchCase.Guard, patternEnv)
 			if isError(guardResult) {
@@ -729,108 +760,129 @@ func evalMatchExpression(node *ast.MatchExpression, env *object.Environment) obj
 			matched = isTruthy(guardResult)
 		}
 
-		// If matched, evaluate the body with bindings from the pattern
+		// If the pattern matched, evaluate the body
 		if matched {
 			return Eval(matchCase.Body, patternEnv)
 		}
 	}
 
-	// If no patterns matched, return nil
+	// No match found
 	return NIL
 }
 
 // patternMatches checks if a value matches a pattern and binds variables
-func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.Environment) bool {
+func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.Environment, isConstant bool) (bool, error) {
 	switch p := pattern.(type) {
 	case *ast.WildcardPattern:
 		// Wildcard matches anything
-		return true
+		return true, nil
 
 	case *ast.SpreadPattern:
 		// SpreadPattern matches anything
 		if p.Value != nil {
-			env.Define(p.Value.Value, value)
+			if isConstant {
+				_, err := env.DefineConstant(p.Value.Value, value)
+				return err == nil, err
+			} else {
+				_, err := env.Define(p.Value.Value, value)
+				return err == nil, err
+			}
 		}
-		return true
+		return true, nil
 
 	case *ast.LiteralPattern:
 		// Evaluate the literal and compare with the value
 		literalValue := Eval(p.Value, env)
 		if isError(literalValue) {
-			return false
+			return false, fmt.Errorf("error while evaluating literal pattern value: %s", literalValue)
 		}
-		return objectsEqual(literalValue, value)
+		return objectsEqual(literalValue, value), nil
 
 	case *ast.IdentifierPattern:
 		// Bind the value to the identifier
-		env.Define(p.Value.Value, value)
-		return true
+		if isConstant {
+			_, err := env.DefineConstant(p.Value.Value, value)
+			return err == nil, err
+		} else {
+			_, err := env.Define(p.Value.Value, value)
+			return err == nil, err
+		}
 
 	case *ast.MultiPattern:
 		// Check if value matches any of the patterns
 		for _, subPattern := range p.Patterns {
-			if patternMatches(subPattern, value, object.NewEnclosedEnvironment(env, nil)) {
-				return true
+			matched, err := patternMatches(subPattern, value, object.NewEnclosedEnvironment(env, nil), isConstant)
+			if err != nil {
+				return false, err
+			}
+			if matched {
+				return true, nil
 			}
 		}
-		return false
+		return false, nil
 
 	case *ast.ArrayPattern:
 		// Check if the value is an array
 		arr, ok := value.(*object.Array)
 		if !ok {
-			return false
+			return false, nil
 		}
 
 		// Empty array pattern matches empty array
 		if len(p.Elements) == 0 {
-			return len(arr.Elements) == 0
+			return len(arr.Elements) == 0, nil
 		}
 
 		_, isSpread := p.Elements[len(p.Elements)-1].(*ast.SpreadPattern)
 
 		// Check if array length matches pattern length
 		if (len(p.Elements) != len(arr.Elements) && !isSpread) || (len(p.Elements) > len(arr.Elements)+1 && isSpread) {
-			return false
+			return false, nil
 		}
 
 		// scoped environment to capture the match bindings, these will be copied to the parent env on success
 		scoped := object.NewEnclosedEnvironment(env, nil)
 
-		// Check each element against its pattern
 		for i, elemPattern := range p.Elements {
-			_, ok := elemPattern.(*ast.SpreadPattern)
-			if ok {
-				matches := patternMatches(elemPattern, &object.Array{Elements: arr.Elements[i:]}, scoped)
-				if matches {
-					// Copy bindings from scoped environment to parent environment
-					for name, val := range scoped.Store {
-						env.Define(name, val)
-					}
+			if spread, isSpread := elemPattern.(*ast.SpreadPattern); isSpread {
+				matched, err := patternMatches(spread, &object.Array{Elements: arr.Elements[i:]}, scoped, isConstant)
+				if err != nil || !matched {
+					return false, err
 				}
-				return matches
-			} else if !patternMatches(elemPattern, arr.Elements[i], scoped) {
-				return false
+				break
+			} else {
+				matched, err := patternMatches(elemPattern, arr.Elements[i], scoped, isConstant)
+				if err != nil || !matched {
+					return false, err
+				}
 			}
 		}
 
 		// Copy bindings from scoped environment to parent environment
 		for name, val := range scoped.Store {
-			env.Define(name, val)
+			if val.IsConstant {
+				if _, err := env.DefineConstant(name, val.Value); err != nil {
+					return false, err
+				}
+			} else {
+				if _, err := env.Define(name, val.Value); err != nil {
+					return false, err
+				}
+			}
 		}
 
-		return true
+		return true, nil
 
 	case *ast.HashPattern:
 		// Check if value is a hash
 		hash, ok := value.(*object.Hash)
 		if !ok {
-			return false
+			return false, nil
 		}
 
 		// Empty hash pattern matches empty hash
 		if len(p.Pairs) == 0 {
-			return len(hash.Pairs) == 0
+			return len(hash.Pairs) == 0, nil
 		}
 
 		usedKeys := make([]object.HashKey, 0)
@@ -851,12 +903,13 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 			usedKeys = append(usedKeys, hashKey)
 			pair, ok := hash.Pairs[hashKey]
 			if !ok {
-				return false
+				return false, nil
 			}
 
 			// Check if value matches subpattern
-			if !patternMatches(subPattern, pair.Value, scoped) {
-				return false
+			matched, err := patternMatches(subPattern, pair.Value, scoped, isConstant)
+			if !matched || err != nil {
+				return false, err
 			}
 		}
 
@@ -866,7 +919,10 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 			if ok {
 				if len(usedKeys) >= len(hash.Pairs) {
 					// map is empty
-					patternMatches(pair, &object.Hash{Pairs: make(map[object.HashKey]object.HashPair)}, scoped)
+					_, err := patternMatches(pair, &object.Hash{Pairs: make(map[object.HashKey]object.HashPair)}, scoped, isConstant)
+					if err != nil {
+						return false, err
+					}
 				} else {
 					copiedPairs := make(map[object.HashKey]object.HashPair)
 					for hashKey, pair := range hash.Pairs {
@@ -881,24 +937,35 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 							copiedPairs[hashKey] = pair
 						}
 					}
-					patternMatches(pair, &object.Hash{Pairs: copiedPairs}, scoped)
+					_, err := patternMatches(pair, &object.Hash{Pairs: copiedPairs}, scoped, isConstant)
+					if err != nil {
+						return false, err
+					}
+
 				}
 			}
 		}
 
-		if !p.Spread && len(usedKeys) != len(hash.Pairs) {
-			return false
-		}
-
-		// Copy bindings from scoped environment to parent environment
+		// Copy bindings to parent env
 		for name, val := range scoped.Store {
-			env.Define(name, val)
+			if val.IsConstant {
+				_, err := env.DefineConstant(name, val.Value)
+				if err != nil {
+					return false, err
+				}
+			} else {
+				_, err := env.Define(name, val.Value)
+				if err != nil {
+					return false, err
+				}
+			}
 		}
 
-		return true
+		return true, nil
 	}
 
-	return false
+	// Unhandled pattern type
+	return false, nil
 }
 
 // evaluatePatternAsCondition evaluates patterns as conditions for valueless match
@@ -1041,7 +1108,10 @@ func evalTryCatchStatement(node *ast.TryCatchStatement, env *object.Environment)
 	catchEnv := object.NewEnclosedEnvironment(env, nil)
 
 	// bind the error payload to the catch pattern
-	catchEnv.Define(catchMatch.Value.String(), err.Payload)
+	_, bindError := catchEnv.Define(catchMatch.Value.String(), err.Payload)
+	if bindError != nil {
+		return newError(bindError.Error())
+	}
 
 	return evalMatchExpression(catchMatch, catchEnv)
 }

@@ -1,0 +1,24 @@
+//
+// in Slug constants / immutable values are declared using `val`
+// -------------------------------------------------------------
+
+//
+// simple val declaration
+// ----------------------
+
+val CONST = 10;
+
+CONST.assertEqual(10);
+
+
+if (true) {
+    // can be redefined in a new scope
+    var CONST = 111;
+    CONST = CONST + 1;
+    CONST.assertEqual(112);
+}
+
+// error!
+// var CONST = 111;
+
+CONST.assertEqual(10);

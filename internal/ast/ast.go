@@ -664,3 +664,24 @@ func (tcs *TryCatchStatement) String() string {
 	//out.WriteString(tcs.CatchBlock.String())
 	return out.String()
 }
+
+type ValStatement struct {
+	Token   token.Token  // The token.VAL token
+	Pattern MatchPattern // Constant name
+	Value   Expression   // The assigned value
+}
+
+func (vs *ValStatement) statementNode()       {}
+func (vs *ValStatement) TokenLiteral() string { return vs.Token.Literal }
+func (vs *ValStatement) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(vs.TokenLiteral() + " ")
+	out.WriteString(vs.Pattern.String())
+	out.WriteString(" = ")
+	if vs.Value != nil {
+		out.WriteString(vs.Value.String())
+	}
+	out.WriteString(";")
+	return out.String()
+}

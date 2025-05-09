@@ -32,24 +32,24 @@ contexts:
       scope: comment.line.number-sign.slug
 
     # Include destructuring patterns
-    - match: \b(var)\s+(\[|\{)
+    - match: \b(var|val)\s+(\[|\{)
       captures:
         1: keyword.control.slug
       push: destructuring_pattern
 
     # Keywords
-    - match: \b(fn|var|true|false|if|else|return|nil|import|as|try|catch|throw|match)\b
+    - match: \b(fn|var|val|true|false|if|else|return|nil|import|as|try|catch|throw|match)\b
       scope: keyword.control.slug
-    
+
     # Built-in functions
     - match: \b(len|head|tail|peek|pop|push|assert|assertEqual)\b
       scope: support.function.builtin.slug
-    
+
     # Function calls
     - match: \b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(
       captures:
         1: support.function.slug
-    
+
     # Operators
     - match: (=>|==|!=|<=|>=|&&|\|\||<<|>>|\.\.\.|&|\||\^|~)
       scope: keyword.operator.slug

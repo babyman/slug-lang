@@ -187,6 +187,8 @@ func (p *Parser) parseStatement() ast.Statement {
 	switch p.curToken.Type {
 	case token.VAR:
 		return p.parseVarStatement()
+	case token.VAL:
+		return p.parseValStatement()
 	case token.RETURN:
 		return p.parseReturnStatement()
 	case token.IMPORT:
@@ -205,6 +207,34 @@ func (p *Parser) parseVarStatement() *ast.VarStatement {
 
 	if !(p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.LBRACKET) || p.peekTokenIs(token.LBRACE)) {
 		p.addError("expected identifier, array, or hash literal after 'var'")
+		return nil
+	}
+
+	// consume var
+	p.nextToken()
+
+	stmt.Pattern = p.parseMatchPattern()
+
+	if !p.expectPeek(token.ASSIGN) {
+		return nil
+	}
+
+	p.nextToken()
+
+	stmt.Value = p.parseExpression(LOWEST)
+
+	if p.peekTokenIs(token.SEMICOLON) {
+		p.nextToken()
+	}
+
+	return stmt
+}
+
+func (p *Parser) parseValStatement() *ast.ValStatement {
+	stmt := &ast.ValStatement{Token: p.curToken}
+
+	if !(p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.LBRACKET) || p.peekTokenIs(token.LBRACE)) {
+		p.addError("expected identifier, array, or hash literal after 'val'")
 		return nil
 	}
 

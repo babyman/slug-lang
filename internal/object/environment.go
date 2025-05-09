@@ -17,12 +17,17 @@ func NewEnclosedEnvironment(outer *Environment, stackFrame *StackFrame) *Environ
 }
 
 func NewEnvironment() *Environment {
-	s := make(map[string]Object)
+	s := make(map[string]*Binding)
 	return &Environment{Store: s, outer: nil, rootPath: "."}
 }
 
+type Binding struct {
+	Value      Object
+	IsConstant bool
+}
+
 type Environment struct {
-	Store     map[string]Object
+	Store     map[string]*Binding
 	outer     *Environment
 	Src       string
 	Path      string
@@ -40,23 +45,44 @@ func (e *Environment) GetRootPath() string {
 	return e.rootPath
 }
 
-func (e *Environment) Get(name string) (Object, bool) {
-	obj, ok := e.Store[name]
-	if !ok && e.outer != nil {
-		obj, ok = e.outer.Get(name)
+func (e *Environment) GetBinding(name string) (*Binding, bool) {
+	if binding, ok := e.Store[name]; ok {
+		return binding, true
 	}
-	return obj, ok
+	if e.outer != nil {
+		return e.outer.GetBinding(name)
+	}
+	return nil, false
 }
 
-// Define adds a new variable with the given name and value to the environment and returns the value and true.
-func (e *Environment) Define(name string, val Object) Object {
-	e.Store[name] = val
-	return val
+func (e *Environment) Get(name string) (Object, bool) {
+	b, ok := e.GetBinding(name)
+	return b.Value, ok
+}
+
+func (e *Environment) DefineConstant(name string, val Object) (Object, error) {
+	if v, exists := e.Store[name]; exists && v.IsConstant {
+		return nil, fmt.Errorf("val `%s` is already defined and cannot be reassigned", name)
+	}
+	e.Store[name] = &Binding{Value: val, IsConstant: true}
+	return val, nil
+}
+
+// Define adds a new variable with the given name and value to the environment and returns the value
+func (e *Environment) Define(name string, val Object) (Object, error) {
+	if v, exists := e.Store[name]; exists && v.IsConstant {
+		return nil, fmt.Errorf("var `%s` is already defined as a 'val' and cannot be reassigned", name)
+	}
+	e.Store[name] = &Binding{Value: val, IsConstant: false}
+	return val, nil
 }
 
 func (e *Environment) Assign(name string, val Object) (Object, error) {
-	if _, exists := e.Store[name]; exists {
-		e.Store[name] = val
+	if v, exists := e.Store[name]; exists {
+		if v.IsConstant {
+			return nil, fmt.Errorf("failed to assign to val '%s': value is immutible", name)
+		}
+		e.Store[name] = &Binding{Value: val, IsConstant: false}
 		return val, nil
 	}
 	if e.outer != nil {
