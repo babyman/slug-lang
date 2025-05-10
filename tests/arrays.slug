@@ -10,15 +10,15 @@ e.len().assertEqual(0);
 // -----------------------
 var l = [2, 3, 4];
 
-assertEqual(l[0], 2)
-assertEqual(l[1], 3)
-assertEqual(l[2], 4)
-assertEqual(l[3], nil)
+l[0].assertEqual(2);
+l[1].assertEqual(3);
+l[2].assertEqual(4);
+l[3].assertEqual(nil);
 
-assertEqual(l[-1], 4)
-assertEqual(l[-2], 3)
-assertEqual(l[-3], 2)
-assertEqual(l[-4], nil)
+l[-1].assertEqual(4);
+l[-2].assertEqual(3);
+l[-3].assertEqual(2);
+l[-4].assertEqual(nil);
 
 // list can contain mixed types
 // -----------------------
@@ -26,26 +26,26 @@ var list = ["slug", 42, fn(a) {a * a}];
 
 // length
 // -----------------------
-assertEqual(len(list), 3);
+list.len().assertEqual(3);
 
 
 // lists are zero indexed
 // -----------------------
-assertEqual(head(list), "slug");
-assertEqual(list[0], "slug");
-assertEqual(list[1], 42);
+list.head().assertEqual("slug");
+list[0].assertEqual("slug");
+list[1].assertEqual(42);
 
 // reference the last item
 // -----------------------
-assertEqual(list[2](5), 25);
-assertEqual(list[len(list) - 1](5), 25);
-assertEqual(peek(list)(5), 25);
+list[2](5).assertEqual(25);
+list[len(list) - 1](5).assertEqual(25);
+list.peek()(5).assertEqual(25);
 
 // **mutation alert**
 // pop removes and returns the last item in the list
 // -----------------------
-assertEqual(pop(list)(5), 25);
-assertEqual(len(list), 2);
+list.pop()(5).assertEqual(25);
+list.len().assertEqual(2);
 
 // adding items
 // -----------------------
@@ -57,3 +57,6 @@ assertEqual(len(l), 4, "list should have 4 items");
 
 // todo decide if list equality should be a memory reference compare
 // assert(tail(list), tail(list), "lists are not equal");
+
+([1, 2] + [3, 4]).len().assert(4);
+([1, 2] + [3]).len().assert(3);

@@ -360,6 +360,8 @@ func evalInfixExpression(
 		return nativeBoolToBooleanObject(left == right)
 	case operator == "!=":
 		return nativeBoolToBooleanObject(left != right)
+	case left.Type() == object.ARRAY_OBJ && right.Type() == object.ARRAY_OBJ:
+		return evalArrayInfixExpression(operator, left, right)
 	case left.Type() == object.BOOLEAN_OBJ && right.Type() == object.BOOLEAN_OBJ:
 		return evalBooleanInfixExpression(operator, left, right)
 	case left.Type() == object.STRING_OBJ || right.Type() == object.STRING_OBJ:
@@ -482,6 +484,30 @@ func evalStringInfixExpression(
 		return nativeBoolToBooleanObject(leftVal == rightVal)
 	case "!=":
 		return nativeBoolToBooleanObject(leftVal != rightVal)
+	default:
+		return newError("unknown operator: %s %s %s",
+			left.Type(), operator, right.Type())
+	}
+
+}
+
+func evalArrayInfixExpression(
+	operator string,
+	left, right object.Object,
+) object.Object {
+	leftVal := left.(*object.Array)
+	rightVal := right.(*object.Array)
+
+	switch operator {
+	case "+":
+		length := len(leftVal.Elements) + len(rightVal.Elements)
+		if length > 0 {
+			newElements := make([]object.Object, length)
+			copy(newElements, leftVal.Elements)
+			copy(newElements[len(leftVal.Elements):], rightVal.Elements)
+			return &object.Array{Elements: newElements}
+		}
+		return &object.Array{Elements: []object.Object{}}
 	default:
 		return newError("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
