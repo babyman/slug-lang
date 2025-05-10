@@ -42,7 +42,7 @@ contexts:
       scope: keyword.control.slug
 
     # Built-in functions
-    - match: \b(len|head|tail|peek|pop|push|assert|assertEqual)\b
+    - match: \b(len|head|tail|peek|pop|push)\b
       scope: support.function.builtin.slug
 
     # Function calls
