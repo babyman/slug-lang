@@ -1,0 +1,42 @@
+import slug.test.*;
+
+var list = ["slug", 42, fn(a) {a * a}];
+
+// **mutation alert**
+// pop removes and returns the last item in the list
+// -----------------------
+list.pop()(5).assertEqual(25);
+list.len().assertEqual(2);
+
+// adding items
+// -----------------------
+
+var l = [];
+var l = push(l, 1, 2, 3);
+var l = push(l, 4);
+assertEqual(len(l), 4, "list should have 4 items");
+
+// todo decide if list equality should be a memory reference compare
+// assert(tail(list), tail(list), "lists are not equal");
+
+// concatenating lists
+// -------------------
+([1, 2] + [3, 4]).len().assertEqual(4);
+([1, 2] + [3]).len().assertEqual(3);
+
+// appending items
+// ---------------
+([1, 2] :+ 3).len().assertEqual(3);
+
+([] :+ 1 :+ 2 :+ 3).len().assertEqual(3);
+
+// prepending items
+// ----------------
+(0 +: [1, 2]).len().assertEqual(3);
+
+(1 +: 2 +: 3 +: []).len().assertEqual(3);
+
+(1 +: [2, 3] + [4] :+ 5).len().assertEqual(5);
+
+
+

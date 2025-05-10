@@ -1,0 +1,27 @@
+import slug.test.*;
+
+var str = "hello";
+
+str[:].assertEqual("hello");
+
+str[1:].assertEqual("ello");
+
+str[:2].assertEqual("he");
+
+str[0:4].assertEqual("hell");
+
+str[1::].assertEqual("ello");
+
+str[:2:].assertEqual("he");
+
+str[0:4:].assertEqual("hell");
+
+str[1:6:2].assertEqual("el");
+
+str[:6:2].assertEqual("hlo");
+
+str[1::2].assertEqual("el");
+
+str[::2].assertEqual("hlo");
+
+str[::].assertEqual("hello");

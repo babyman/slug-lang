@@ -163,6 +163,9 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		}
 		return evalIndexExpression(left, index)
 
+	case *ast.SliceExpression:
+		return evalSliceExpression(node, env)
+
 	case *ast.HashLiteral:
 		return evalHashLiteral(node, env)
 
@@ -709,33 +712,6 @@ func unwrapReturnValue(obj object.Object) object.Object {
 	return obj
 }
 
-func evalIndexExpression(left, index object.Object) object.Object {
-	switch {
-	case left.Type() == object.ARRAY_OBJ && index.Type() == object.INTEGER_OBJ:
-		return evalArrayIndexExpression(left, index)
-	case left.Type() == object.HASH_OBJ:
-		return evalHashIndexExpression(left, index)
-	default:
-		return newError("index operator not supported: %s", left.Type())
-	}
-}
-
-func evalArrayIndexExpression(array, index object.Object) object.Object {
-	arrayObject := array.(*object.Array)
-	idx := index.(*object.Integer).Value
-	max := int64(len(arrayObject.Elements) - 1)
-
-	if idx < 0 {
-		idx = max + idx + 1
-	}
-
-	if idx < 0 || idx > max {
-		return NIL
-	}
-
-	return arrayObject.Elements[idx]
-}
-
 func evalHashLiteral(
 	node *ast.HashLiteral,
 	env *object.Environment,
@@ -1157,4 +1133,131 @@ func evalTryCatchStatement(node *ast.TryCatchStatement, env *object.Environment)
 	}
 
 	return evalMatchExpression(catchMatch, catchEnv)
+}
+
+func evalIndexExpression(left, index object.Object) object.Object {
+
+	switch {
+	case left.Type() == object.STRING_OBJ:
+		if slice, ok := index.(*object.Slice); ok {
+			if str, ok := left.(*object.String); ok {
+				return evalStringSlice(str.Value, slice)
+			}
+		}
+		return evalStringIndexExpression(left, index)
+	case left.Type() == object.ARRAY_OBJ && index.Type() == object.INTEGER_OBJ:
+		return evalArrayIndexExpression(left, index)
+	case left.Type() == object.ARRAY_OBJ:
+		if slice, ok := index.(*object.Slice); ok {
+			if arr, ok := left.(*object.Array); ok {
+				return evalArraySlice(arr.Elements, slice)
+			}
+		}
+		return evalArrayIndexExpression(left, index)
+	case left.Type() == object.HASH_OBJ:
+		return evalHashIndexExpression(left, index)
+	default:
+		return newError("index operator not supported: %s", left.Type())
+	}
+}
+
+func evalSliceExpression(node *ast.SliceExpression, env *object.Environment) object.Object {
+	start := Eval(node.Start, env)
+	if isError(start) {
+		return start
+	}
+	end := Eval(node.End, env)
+	if isError(end) {
+		return end
+	}
+	step := Eval(node.Step, env)
+	if isError(step) {
+		return step
+	}
+	return &object.Slice{
+		Start: start,
+		End:   end,
+		Step:  step,
+	}
+}
+
+func evalArrayIndexExpression(array, index object.Object) object.Object {
+	arrayObject := array.(*object.Array)
+	idx := index.(*object.Integer).Value
+	max := int64(len(arrayObject.Elements) - 1)
+
+	if idx < 0 {
+		idx = max + idx + 1
+	}
+
+	if idx < 0 || idx > max {
+		return NIL
+	}
+
+	return arrayObject.Elements[idx]
+}
+
+func evalStringIndexExpression(str, index object.Object) object.Object {
+	stringObject := str.(*object.String)
+	idx := index.(*object.Integer).Value
+	max := int64(len(stringObject.Value) - 1)
+
+	if idx < 0 {
+		idx = max + idx + 1
+	}
+
+	if idx < 0 || idx > max {
+		return NIL
+	}
+
+	return &object.String{Value: string(stringObject.Value[idx])}
+}
+
+func evalArraySlice(elements []object.Object, slice *object.Slice) object.Object {
+	start, end, step := computeSliceIndices(len(elements), slice)
+	var result []object.Object
+	for i := start; i < end; i += step {
+		result = append(result, elements[i])
+	}
+	return &object.Array{Elements: result}
+}
+
+func evalStringSlice(value string, slice *object.Slice) object.Object {
+	start, end, step := computeSliceIndices(len(value), slice)
+	var result string
+	for i := start; i < end; i += step {
+		result += string(value[i])
+	}
+	return &object.String{Value: result}
+}
+
+func computeSliceIndices(length int, slice *object.Slice) (int, int, int) {
+	start := 0
+	end := length
+	step := 1
+
+	if slice.Start != nil {
+		start = int(slice.Start.(*object.Integer).Value)
+	}
+	if slice.End != nil {
+		end = int(slice.End.(*object.Integer).Value)
+	}
+	if slice.Step != nil {
+		step = int(slice.Step.(*object.Integer).Value)
+	}
+
+	if start < 0 {
+		start += length
+	}
+	if end < 0 {
+		end += length
+	}
+	if start < 0 {
+		start = 0
+	}
+	if end > length {
+		end = length
+	}
+
+	return start, end, step
 }

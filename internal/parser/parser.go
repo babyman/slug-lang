@@ -983,16 +983,60 @@ func (p *Parser) parseArrayLiteral() ast.Expression {
 }
 
 func (p *Parser) parseIndexExpression(left ast.Expression) ast.Expression {
-	exp := &ast.IndexExpression{Token: p.curToken, Left: left}
+	// Construct the IndexExpression node
+	expr := &ast.IndexExpression{
+		Token: p.curToken, // The '[' token
+		Left:  left,
+	}
 
-	p.nextToken()
-	exp.Index = p.parseExpression(LOWEST)
+	p.nextToken() // Consume '[' and parse the index or slice
+
+	// Check for slice syntax start:end or start:end:step
+	if p.curTokenIs(token.COLON) || p.peekTokenIs(token.COLON) {
+		expr.Index = p.parseSliceExpression()
+	} else {
+		expr.Index = p.parseExpression(LOWEST)
+	}
 
 	if !p.expectPeek(token.RBRACKET) {
 		return nil
 	}
+	return expr
+}
 
-	return exp
+func (p *Parser) parseSliceExpression() ast.Expression {
+	// Create the slice node
+	slice := &ast.SliceExpression{
+		Token: p.curToken,
+	}
+
+	if !p.peekTokenIs(token.RBRACKET) {
+
+		if !p.curTokenIs(token.COLON) {
+			slice.Start = p.parseExpression(LOWEST)
+			p.nextToken()
+		}
+
+		if !p.peekTokenIs(token.RBRACKET) {
+			p.nextToken()
+
+			if !p.curTokenIs(token.COLON) {
+				slice.End = p.parseExpression(LOWEST)
+			}
+
+			if !p.peekTokenIs(token.RBRACKET) {
+				p.nextToken()
+
+				if !p.peekTokenIs(token.RBRACKET) {
+					p.nextToken()
+					slice.Step = p.parseExpression(LOWEST)
+				} else if !p.curTokenIs(token.COLON) {
+					slice.Step = p.parseExpression(LOWEST)
+				}
+			}
+		}
+	}
+	return slice
 }
 
 func (p *Parser) parseHashLiteral() ast.Expression {

@@ -1,7 +1,7 @@
 
 
 var assert = fn(a, msg = nil) {
-    if ( !a ) {
+    if ( a.type() == "BOOLEAN" && !a ) {
         if ( !msg ) {
             msg = a + " is not true";
         }

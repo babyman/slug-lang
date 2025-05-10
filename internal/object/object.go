@@ -225,3 +225,26 @@ type StackFrame struct {
 	Line     int // lazy populated line number
 	Col      int // lazy populated column number
 }
+
+type Slice struct {
+	Start Object
+	End   Object
+	Step  Object
+}
+
+func (s *Slice) Type() ObjectType { return "SLICE" }
+func (s *Slice) Inspect() string {
+	var out bytes.Buffer
+	if s.Start != nil {
+		out.WriteString(s.Start.Inspect())
+	}
+	out.WriteString(":")
+	if s.End != nil {
+		out.WriteString(s.End.Inspect())
+	}
+	if s.Step != nil {
+		out.WriteString(":")
+		out.WriteString(s.Step.Inspect())
+	}
+	return out.String()
+}
