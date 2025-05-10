@@ -1,0 +1,12 @@
+import slug.test.*;
+
+// in slug `???` can be used to mark something as not implemented, 
+// this will throw a runtime error when encountered during execution.
+// ------------------------------------------------------------------
+
+try {
+    ???;
+} catch err {
+    {type:"NotImplementedError", ...} => nil;
+}
+

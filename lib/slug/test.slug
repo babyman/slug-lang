@@ -22,7 +22,7 @@ var assertEqual = fn(a, b, msg = nil) {
 
 var fail = fn(msg = nil) {
     if ( !msg ) {
-        msg = "Test failed";
+        msg = "Test failed!";
     }
     throw AssertionError({msg: msg});
 }

@@ -41,7 +41,8 @@ const (
 
 	ROCKET = "=>"
 	//RANGE    = ".."
-	ELLIPSIS = "..."
+	ELLIPSIS        = "..."
+	NOT_IMPLEMENTED = "???"
 
 	// Delimiters
 	PERIOD    = "."

@@ -68,6 +68,14 @@ func (l *Lexer) NextToken() token.Token {
 		} else {
 			tok = newToken(token.PERIOD, l.ch, startPosition)
 		}
+	case '?':
+		if l.peekChar() == '?' && l.peekTwoChars() == '?' {
+			tok = token.Token{Type: token.NOT_IMPLEMENTED, Literal: "???", Position: startPosition}
+			l.readChar()
+			l.readChar()
+		} else {
+			tok = newToken(token.ILLEGAL, l.ch, startPosition)
+		}
 	case '{':
 		tok = newToken(token.LBRACE, l.ch, startPosition)
 	case '}':

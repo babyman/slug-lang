@@ -685,3 +685,11 @@ func (vs *ValStatement) String() string {
 	out.WriteString(";")
 	return out.String()
 }
+
+type NotImplemented struct {
+	Token token.Token // The ??? token
+}
+
+func (ni *NotImplemented) expressionNode()      {}
+func (ni *NotImplemented) TokenLiteral() string { return ni.Token.Literal }
+func (ni *NotImplemented) String() string       { return ni.Token.Literal }

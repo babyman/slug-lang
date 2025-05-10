@@ -193,6 +193,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseReturnStatement()
 	case token.IMPORT:
 		return p.parseImportStatement()
+	case token.NOT_IMPLEMENTED:
+		return p.parseNotImplemented()
 	case token.TRY:
 		return p.parseTryCatchStatement()
 	case token.THROW:
@@ -535,8 +537,7 @@ func (p *Parser) parseMatchCase() *ast.MatchCase {
 	} else {
 		// For single-expression cases
 		p.nextToken()
-		expr := p.parseExpression(LOWEST)
-		stmt := &ast.ExpressionStatement{Token: p.curToken, Expression: expr}
+		stmt := p.parseStatement()
 
 		// Create a block with a single statement
 		matchCase.Body = &ast.BlockStatement{
@@ -1103,6 +1104,23 @@ func (p *Parser) parseThrowStatement() *ast.ThrowStatement {
 	} else {
 		ef.Pairs[&ast.StringLiteral{Token: p.curToken, Value: "type"}] = &ast.StringLiteral{Token: p.curToken, Value: ident.String()}
 		throw.Value = ef
+	}
+
+	if p.peekTokenIs(token.SEMICOLON) {
+		p.nextToken()
+	}
+
+	return throw
+}
+
+func (p *Parser) parseNotImplemented() *ast.ThrowStatement {
+	throw := &ast.ThrowStatement{Token: p.curToken}
+	pairs := make(map[ast.Expression]ast.Expression)
+	pairs[&ast.StringLiteral{Token: p.curToken, Value: "type"}] = &ast.StringLiteral{Token: p.curToken, Value: "NotImplementedError"}
+
+	throw.Value = &ast.HashLiteral{
+		Token: p.curToken,
+		Pairs: pairs,
 	}
 
 	if p.peekTokenIs(token.SEMICOLON) {
