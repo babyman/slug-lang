@@ -2,26 +2,26 @@ import slug.test.*;
 
 var arr = ["h", "e", "l", "l", "o"];
 
-arr[:].assertEqual(["h", "e", "l", "l", "o"]);
+arr[:].assertListEqual(["h", "e", "l", "l", "o"]);
 
-arr[1:].assertEqual(["e", "l", "l", "o"]);
+arr[1:].assertListEqual(["e", "l", "l", "o"]);
 
-arr[:2].assertEqual(["h", "e"]);
+arr[:2].assertListEqual(["h", "e"]);
 
-arr[0:4].assertEqual(["h", "e", "l", "l"]);
+arr[0:4].assertListEqual(["h", "e", "l", "l"]);
 
-arr[1::].assertEqual(["e", "l", "l", "o"]);
+arr[1::].assertListEqual(["e", "l", "l", "o"]);
 
-arr[:2:].assertEqual(["h", "e"]);
+arr[:2:].assertListEqual(["h", "e"]);
 
-arr[0:4:].assertEqual(["h", "e", "l", "l"]);
+arr[0:4:].assertListEqual(["h", "e", "l", "l"]);
 
-arr[1:6:2].assertEqual(["e", "l"]);
+arr[1:6:2].assertListEqual(["e", "l"]);
 
-arr[:6:2].assertEqual(["h", "l", "o"]);
+arr[:6:2].assertListEqual(["h", "l", "o"]);
 
-arr[1::2].assertEqual(["e", "l"]);
+arr[1::2].assertListEqual(["e", "l"]);
 
-arr[::2].assertEqual(["h", "l", "o"]);
+arr[::2].assertListEqual(["h", "l", "o"]);
 
-arr[::].assertEqual(["h", "e", "l", "l", "o"]);
+arr[::].assertListEqual(["h", "e", "l", "l", "o"]);
