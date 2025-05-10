@@ -19,7 +19,6 @@ var assertEqual = fn(a, b, msg = nil) {
 }
 
 var fail = fn(msg = nil) {
-    println(msg);
     if ( !msg ) {
         msg = "Test failed";
     }
