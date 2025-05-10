@@ -1,3 +1,5 @@
+import slug.test.*;
+
 import functions.*;
 import functions.{sqr};
 import functions.{f as sum};

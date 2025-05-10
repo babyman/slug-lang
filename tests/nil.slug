@@ -1,3 +1,4 @@
+import slug.test.*;
 
 assertEqual(nil, nil, "nil should equal nil")
 

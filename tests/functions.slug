@@ -1,3 +1,5 @@
+import slug.test.*;
+
 // declare a function
 var sqr = fn(a) { a * a }
 

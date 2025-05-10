@@ -1,3 +1,5 @@
+import slug.test.*;
+
 var f = fn(a) {
     if(a == 1) {
         10;

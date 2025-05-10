@@ -1,3 +1,5 @@
+import slug.test.*;
+
 //
 // in Slug constants / immutable values are declared using `val`
 // -------------------------------------------------------------

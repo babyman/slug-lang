@@ -18,10 +18,6 @@ var builtins = map[string]*object.Builtin{
 	"endsWith":   funcEndsWith(),
 	"indexOf":    funcIndexOf(),
 
-	// testing functions
-	"assert":      funcAssert(),
-	"assertEqual": funcAssertEqual(),
-
 	// map functions
 	"keys":   funcKeys(),
 	"get":    funcGet(),
@@ -171,58 +167,6 @@ func funcPrintLn() *object.Builtin {
 			}
 			if len(args) > 0 {
 				fmt.Println()
-			}
-
-			return NIL
-		},
-	}
-}
-
-func funcAssert() *object.Builtin {
-	return &object.Builtin{
-		Fn: func(args ...object.Object) object.Object {
-			if len(args) < 1 || len(args) > 2 {
-				return newError("wrong number of arguments. got=%d, want=1",
-					len(args))
-			}
-			if args[0].Type() != object.BOOLEAN_OBJ {
-				return newError("first argument to `assert` must be BOOLEAN, got %s",
-					args[0].Type())
-			}
-
-			test := args[0].(*object.Boolean)
-			if !test.Value {
-				if len(args) == 2 {
-					return newError(fmt.Sprintf("Assertion failed: %s", args[1].Inspect()))
-				}
-				return newError("Assertion failed")
-			}
-
-			return NIL
-		},
-	}
-}
-
-func funcAssertEqual() *object.Builtin {
-	return &object.Builtin{
-		Fn: func(args ...object.Object) object.Object {
-			if len(args) < 2 || len(args) > 3 {
-				return newError("wrong number of arguments. got=%d, want=2",
-					len(args))
-			}
-			if args[0].Type() != args[1].Type() {
-				return newError("arguments to `assertEqual` must be the same type, got %s and %s",
-					args[0].Type(), args[1].Type())
-			}
-
-			test := args[0].Inspect() == args[1].Inspect()
-			if !test {
-				if len(args) == 3 {
-					return newError(fmt.Sprintf("Assertion failed: %s != %s, %s",
-						args[0].Inspect(), args[1].Inspect(), args[2].Inspect()))
-				}
-				return newError(fmt.Sprintf("Assertion failed: %s != %s",
-					args[0].Inspect(), args[1].Inspect()))
 			}
 
 			return NIL

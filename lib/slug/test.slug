@@ -1,0 +1,27 @@
+
+var assert = fn(a, msg = nil) {
+    if ( !a ) {
+        if ( !msg ) {
+            msg = a + " is not true";
+        }
+        throw AssertionError({msg: msg});
+    }
+}
+
+
+var assertEqual = fn(a, b, msg = nil) {
+    if ( a != b ) {
+        if ( !msg ) {
+            msg = a + " is not equal to " + b;
+        }
+        throw AssertionError({msg: msg});
+    }
+}
+
+var fail = fn(msg = nil) {
+    println(msg);
+    if ( !msg ) {
+        msg = "Test failed";
+    }
+    throw AssertionError({msg: msg});
+}
