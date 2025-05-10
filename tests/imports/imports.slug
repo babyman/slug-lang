@@ -2,11 +2,11 @@ import slug.test.*;
 
 import functions.*;
 import functions.{sqr};
-import functions.{f as sum};
+import functions.{sum as f};
 
 
 51.sqr().assertEqual(2601);
 
 [2, 3, 4].f().sqr().assertEqual(81);
 
-[51, 23].sum().assertEqual(74);
+[51, 23].f().assertEqual(74);

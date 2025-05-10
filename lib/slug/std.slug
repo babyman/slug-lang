@@ -1,0 +1,28 @@
+//
+// the slug standard library
+// -------------------------
+
+
+var map = fn(arr, f, acc = []) {
+	match arr {
+		[h, ...t] => map(t, f, acc :+ f(h));
+		[] => acc;
+	}
+}
+
+var filter = fn(arr, f, acc = []) {
+	match arr {
+		[h, ...t] if f(h) => filter(t, f, acc :+ h);
+		[h, ...t] => filter(t, f, acc);
+		[] => acc;
+	}
+}
+
+var reduce = fn(arr, v, f) {
+	match arr {
+		[h, ...t] => reduce(t, f(v, h), f);
+		[] => v;
+	}
+}
+
+

@@ -3,6 +3,13 @@ import slug.test.*;
 // declare a function
 var sqr = fn(a) { a * a }
 
+var sum = fn(ns, acc = 0) {
+    match ns {
+        [h, ...t] => sum(t, acc + h);
+        [] => acc;
+    }
+}
+
 // function chaining
 // -----------------------
 // function chaining works here because the code is extrapolated by the parser into:
@@ -27,25 +34,4 @@ assert(out == 11, "expected 11, got " + out)
 var f = fn(a, ...b) { a + b.len() }
 var out = 1.f(0, 0, 0);
 assert(out == 4, "expected 4, got " + out);
-
-
-// list decomposition
-// -----------------------
-var f = fn(h:t) { h }
-var out = [3,2,1,2,3].f();
-assert(out == 3, "head expected, got " + out);
-
-
-// sum a list of numbers
-// -----------------------
-var f = fn(h:t, sum = 0) {
-    if(len(t) == 0) {
-        sum + h;
-    } else {
-        f(t, sum + h);
-    }
-}
-var out = [1,2,3,4].f();
-assert(out == 10, "Sum expected 10, got: " + out);
-assertEqual(out, 10);
 

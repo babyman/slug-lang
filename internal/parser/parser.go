@@ -876,10 +876,7 @@ func (p *Parser) parseFunctionParameters() []*ast.FunctionParameter {
 			break // Variadic must be the last parameter.
 		}
 
-		// Check for destructuring (e.g., h:t)
-		if p.peekTokenIs(token.COLON) {
-			param.Destructure = p.parseDestructureBinding()
-		} else if p.peekTokenIs(token.ASSIGN) {
+		if p.peekTokenIs(token.ASSIGN) {
 			param.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 			p.nextToken() // consume identifier
 			p.nextToken() // consume =
@@ -903,18 +900,6 @@ func (p *Parser) parseFunctionParameters() []*ast.FunctionParameter {
 	}
 
 	return parameters
-}
-
-func (p *Parser) parseDestructureBinding() *ast.DestructureBinding {
-	head := p.parseIdentifier().(*ast.Identifier) // Parse `h`
-	p.nextToken()                                 // Consume `:`
-	p.nextToken()                                 // Parse `t`
-	tail := p.parseIdentifier().(*ast.Identifier)
-
-	return &ast.DestructureBinding{
-		Head: head,
-		Tail: tail,
-	}
 }
 
 // Modify parseFunctionFirstCallExpression to include enhanced context

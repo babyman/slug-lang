@@ -382,16 +382,6 @@ func TestBuiltinFunctions(t *testing.T) {
 		{`len([1, 2, 3])`, 3},
 		{`len([])`, 0},
 		{`println("hello", "world!")`, nil},
-		{`head([1, 2, 3])`, 1},
-		{`head([])`, nil},
-		{`head(1)`, "argument to `head` must be ARRAY, got INTEGER"},
-		{`peek([1, 2, 3])`, 3},
-		{`peek([])`, nil},
-		{`peek(1)`, "argument to `peek` must be ARRAY, got INTEGER"},
-		{`tail([1, 2, 3])`, []int{2, 3}},
-		{`tail([])`, nil},
-		{`push([], 1)`, []int{1}},
-		{`push(1, 1)`, "argument to `push` must be ARRAY, got INTEGER"},
 	}
 
 	for _, tt := range tests {

@@ -31,12 +31,11 @@ list.len().assertEqual(3);
 
 // lists are zero indexed
 // -----------------------
-list.head().assertEqual("slug");
 list[0].assertEqual("slug");
 list[1].assertEqual(42);
 
 // reference the last item
 // -----------------------
 list[2](5).assertEqual(25);
+list[-1](5).assertEqual(25);
 list[len(list) - 1](5).assertEqual(25);
-list.peek()(5).assertEqual(25);

@@ -2,6 +2,15 @@ import slug.test.*;
 
 var str = "hello";
 
+// simple indexing
+// ---------------
+
+str[3].assertEqual("l");
+
+
+// slicing
+// -------
+
 str[:].assertEqual("hello");
 
 str[1:].assertEqual("ello");
@@ -13,6 +22,10 @@ str[0:4].assertEqual("hell");
 str[1::].assertEqual("ello");
 
 str[:2:].assertEqual("he");
+
+
+// slicing with step value
+// -----------------------
 
 str[0:4:].assertEqual("hell");
 
