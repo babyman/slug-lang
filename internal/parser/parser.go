@@ -46,11 +46,11 @@ var precedences = map[token.TokenType]int{
 	token.SLASH:        PRODUCT,
 	token.ASTERISK:     PRODUCT,
 	token.PERCENT:      PRODUCT,
+	token.APPEND_ITEM:  PRODUCT,
+	token.PREPEND_ITEM: PRODUCT,
 	token.PERIOD:       CALL,
 	token.LPAREN:       CALL,
 	token.LBRACKET:     INDEX,
-	token.APPEND_ITEM:  PRODUCT,
-	token.PREPEND_ITEM: PRODUCT,
 }
 
 type (
@@ -447,7 +447,13 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 
 	precedence := p.curPrecedence()
 	p.nextToken()
-	expression.Right = p.parseExpression(precedence)
+
+	if p.peekTokenIs(token.PREPEND_ITEM) {
+		// prepend is right-associative
+		expression.Right = p.parseExpression(precedence - 1)
+	} else {
+		expression.Right = p.parseExpression(precedence)
+	}
 
 	return expression
 }

@@ -67,8 +67,15 @@ assertEqual(len(l), 4, "list should have 4 items");
 // ---------------
 ([1, 2] :+ 3).len().assertEqual(3);
 
+([] :+ 1 :+ 2 :+ 3).len().assertEqual(3);
+
 // prepending items
 // ----------------
 (0 +: [1, 2]).len().assertEqual(3);
+
+(1 +: 2 +: 3 +: []).len().assertEqual(3);
+
+(1 +: [2, 3] + [4] :+ 5).len().assertEqual(5);
+
 
 
