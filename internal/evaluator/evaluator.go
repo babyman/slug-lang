@@ -360,6 +360,10 @@ func evalInfixExpression(
 		return nativeBoolToBooleanObject(left == right)
 	case operator == "!=":
 		return nativeBoolToBooleanObject(left != right)
+	case operator == ":+" && left.Type() == object.ARRAY_OBJ:
+		return evalArrayInfixExpression(operator, left, right)
+	case operator == "+:" && right.Type() == object.ARRAY_OBJ:
+		return evalArrayInfixExpression(operator, left, right)
 	case left.Type() == object.ARRAY_OBJ && right.Type() == object.ARRAY_OBJ:
 		return evalArrayInfixExpression(operator, left, right)
 	case left.Type() == object.BOOLEAN_OBJ && right.Type() == object.BOOLEAN_OBJ:
@@ -495,11 +499,25 @@ func evalArrayInfixExpression(
 	operator string,
 	left, right object.Object,
 ) object.Object {
-	leftVal := left.(*object.Array)
-	rightVal := right.(*object.Array)
 
 	switch operator {
+	case "+:":
+		rightVal := right.(*object.Array)
+		length := len(rightVal.Elements) + 1
+		newElements := make([]object.Object, length)
+		copy(newElements, []object.Object{left})
+		copy(newElements[1:], rightVal.Elements)
+		return &object.Array{Elements: newElements}
+	case ":+":
+		leftVal := left.(*object.Array)
+		length := len(leftVal.Elements) + 1
+		newElements := make([]object.Object, length)
+		copy(newElements, leftVal.Elements)
+		copy(newElements[len(leftVal.Elements):], []object.Object{right})
+		return &object.Array{Elements: newElements}
 	case "+":
+		leftVal := left.(*object.Array)
+		rightVal := right.(*object.Array)
 		length := len(leftVal.Elements) + len(rightVal.Elements)
 		if length > 0 {
 			newElements := make([]object.Object, length)
@@ -512,7 +530,6 @@ func evalArrayInfixExpression(
 		return newError("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
 	}
-
 }
 
 func evalStringPlusOtherInfixExpression(

@@ -26,7 +26,7 @@ func (l *Lexer) NextToken() token.Token {
 	case '=':
 		tok = l.handleCompoundToken2(token.ASSIGN, '=', token.EQ, '>', token.ROCKET)
 	case '+':
-		tok = newToken(token.PLUS, l.ch, startPosition)
+		tok = l.handleCompoundToken(token.PLUS, ':', token.PREPEND_ITEM)
 	case '-':
 		tok = newToken(token.MINUS, l.ch, startPosition)
 	case '!':
@@ -54,7 +54,7 @@ func (l *Lexer) NextToken() token.Token {
 	case ';':
 		tok = newToken(token.SEMICOLON, l.ch, startPosition)
 	case ':':
-		tok = newToken(token.COLON, l.ch, startPosition)
+		tok = l.handleCompoundToken(token.COLON, '+', token.APPEND_ITEM)
 	case ',':
 		tok = newToken(token.COMMA, l.ch, startPosition)
 	case '.':

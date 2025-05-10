@@ -21,6 +21,9 @@ const (
 	PERCENT    = "%"
 	UNDERSCORE = "_"
 
+	APPEND_ITEM  = ":+"
+	PREPEND_ITEM = "+:"
+
 	LT    = "<"
 	LT_EQ = "<="
 	GT    = ">"

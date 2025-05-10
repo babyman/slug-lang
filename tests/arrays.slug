@@ -58,5 +58,17 @@ assertEqual(len(l), 4, "list should have 4 items");
 // todo decide if list equality should be a memory reference compare
 // assert(tail(list), tail(list), "lists are not equal");
 
-([1, 2] + [3, 4]).len().assert(4);
-([1, 2] + [3]).len().assert(3);
+// concatenating lists
+// -------------------
+([1, 2] + [3, 4]).len().assertEqual(4);
+([1, 2] + [3]).len().assertEqual(3);
+
+// appending items
+// ---------------
+([1, 2] :+ 3).len().assertEqual(3);
+
+// prepending items
+// ----------------
+(0 +: [1, 2]).len().assertEqual(3);
+
+

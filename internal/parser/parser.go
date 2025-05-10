@@ -27,28 +27,30 @@ const (
 )
 
 var precedences = map[token.TokenType]int{
-	token.ASSIGN:      LOWEST, // Assignment has lowest precedence
-	token.EQ:          EQUALS,
-	token.NOT_EQ:      EQUALS,
-	token.LOGICAL_AND: LOGICAL_AND,
-	token.LOGICAL_OR:  LOGICAL_OR,
-	token.BITWISE_AND: BITWISE_AND,
-	token.BITWISE_OR:  BITWISE_OR,
-	token.BITWISE_XOR: BITWISE_XOR,
-	token.SHIFT_LEFT:  SHIFT,
-	token.SHIFT_RIGHT: SHIFT,
-	token.LT:          COMPARISON,
-	token.LT_EQ:       COMPARISON,
-	token.GT:          COMPARISON,
-	token.GT_EQ:       COMPARISON,
-	token.PLUS:        SUM,
-	token.MINUS:       SUM,
-	token.SLASH:       PRODUCT,
-	token.ASTERISK:    PRODUCT,
-	token.PERCENT:     PRODUCT,
-	token.PERIOD:      CALL,
-	token.LPAREN:      CALL,
-	token.LBRACKET:    INDEX,
+	token.ASSIGN:       LOWEST, // Assignment has lowest precedence
+	token.EQ:           EQUALS,
+	token.NOT_EQ:       EQUALS,
+	token.LOGICAL_AND:  LOGICAL_AND,
+	token.LOGICAL_OR:   LOGICAL_OR,
+	token.BITWISE_AND:  BITWISE_AND,
+	token.BITWISE_OR:   BITWISE_OR,
+	token.BITWISE_XOR:  BITWISE_XOR,
+	token.SHIFT_LEFT:   SHIFT,
+	token.SHIFT_RIGHT:  SHIFT,
+	token.LT:           COMPARISON,
+	token.LT_EQ:        COMPARISON,
+	token.GT:           COMPARISON,
+	token.GT_EQ:        COMPARISON,
+	token.PLUS:         SUM,
+	token.MINUS:        SUM,
+	token.SLASH:        PRODUCT,
+	token.ASTERISK:     PRODUCT,
+	token.PERCENT:      PRODUCT,
+	token.PERIOD:       CALL,
+	token.LPAREN:       CALL,
+	token.LBRACKET:     INDEX,
+	token.APPEND_ITEM:  PRODUCT,
+	token.PREPEND_ITEM: PRODUCT,
 }
 
 type (
@@ -111,6 +113,8 @@ func New(l *lexer.Lexer, source string) *Parser {
 	p.registerInfix(token.LT_EQ, p.parseInfixExpression)
 	p.registerInfix(token.GT, p.parseInfixExpression)
 	p.registerInfix(token.GT_EQ, p.parseInfixExpression)
+	p.registerInfix(token.APPEND_ITEM, p.parseInfixExpression)
+	p.registerInfix(token.PREPEND_ITEM, p.parseInfixExpression)
 
 	p.registerInfix(token.PERIOD, p.parseFunctionFirstCallExpression)
 	p.registerInfix(token.LPAREN, p.parseCallExpression)
