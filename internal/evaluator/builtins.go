@@ -53,7 +53,7 @@ func funcLen() *object.Builtin {
 		switch arg := args[0].(type) {
 		case *object.Array:
 			return &object.Integer{Value: int64(len(arg.Elements))}
-		case *object.Hash:
+		case *object.Map:
 			return &object.Integer{Value: int64(len(arg.Pairs))}
 		case *object.String:
 			return &object.Integer{Value: int64(len(arg.Value))}
@@ -161,17 +161,17 @@ func funcKeys() *object.Builtin {
 				return newError("wrong number of arguments. got=%d, want=1", len(args))
 			}
 
-			// Ensure the argument is of type HASH_OBJ
-			if args[0].Type() != object.HASH_OBJ {
+			// Ensure the argument is of type MAP_OBJ
+			if args[0].Type() != object.MAP_OBJ {
 				return newError("argument to `keys` must be a MAP, got=%s", args[0].Type())
 			}
 
-			// Extract the hash map
-			hash := args[0].(*object.Hash)
+			// Extract the map
+			mapObj := args[0].(*object.Map)
 
 			// Collect keys
-			keys := make([]object.Object, 0, len(hash.Pairs))
-			for _, pair := range hash.Pairs {
+			keys := make([]object.Object, 0, len(mapObj.Pairs))
+			for _, pair := range mapObj.Pairs {
 				keys = append(keys, pair.Key)
 			}
 
@@ -188,18 +188,18 @@ func funcGet() *object.Builtin {
 				return newError("wrong number of arguments. got=%d, want=2", len(args))
 			}
 
-			if args[0].Type() != object.HASH_OBJ {
-				return newError("argument to `get` must be HASH, got %s", args[0].Type())
+			if args[0].Type() != object.MAP_OBJ {
+				return newError("argument to `get` must be map, got %s", args[0].Type())
 			}
 
-			hash := args[0].(*object.Hash)
+			mapObj := args[0].(*object.Map)
 			key, ok := args[1].(object.Hashable)
 			if !ok {
-				return newError("unusable as hash key: %s", args[1].Type())
+				return newError("unusable as map key: %s", args[1].Type())
 			}
 
-			hashKey := key.HashKey()
-			if pair, ok := hash.Pairs[hashKey]; ok {
+			mapKey := key.MapKey()
+			if pair, ok := mapObj.Pairs[mapKey]; ok {
 				return pair.Value
 			}
 
@@ -215,25 +215,25 @@ func funcPut() *object.Builtin {
 				return newError("wrong number of arguments. got=%d, want=3", len(args))
 			}
 
-			if args[0].Type() != object.HASH_OBJ {
-				return newError("argument to `put` must be HASH, got %s", args[0].Type())
+			if args[0].Type() != object.MAP_OBJ {
+				return newError("argument to `put` must be map, got %s", args[0].Type())
 			}
 
-			hash := args[0].(*object.Hash)
+			mapObj := args[0].(*object.Map)
 			key, ok := args[1].(object.Hashable)
 			if !ok {
-				return newError("unusable as hash key: %s", args[1].Type())
+				return newError("unusable as map key: %s", args[1].Type())
 			}
 
-			newPairs := make(map[object.HashKey]object.HashPair)
-			for k, v := range hash.Pairs {
+			newPairs := make(map[object.MapKey]object.MapPair)
+			for k, v := range mapObj.Pairs {
 				newPairs[k] = v
 			}
 
-			hashKey := key.HashKey()
-			newPairs[hashKey] = object.HashPair{Key: args[1], Value: args[2]}
+			mapKey := key.MapKey()
+			newPairs[mapKey] = object.MapPair{Key: args[1], Value: args[2]}
 
-			return &object.Hash{Pairs: newPairs}
+			return &object.Map{Pairs: newPairs}
 		},
 	}
 }
@@ -245,25 +245,25 @@ func funcRemove() *object.Builtin {
 				return newError("wrong number of arguments. got=%d, want=2", len(args))
 			}
 
-			if args[0].Type() != object.HASH_OBJ {
-				return newError("argument to `remove` must be HASH, got %s", args[0].Type())
+			if args[0].Type() != object.MAP_OBJ {
+				return newError("argument to `remove` must be map, got %s", args[0].Type())
 			}
 
-			hash := args[0].(*object.Hash)
+			mapObj := args[0].(*object.Map)
 			key, ok := args[1].(object.Hashable)
 			if !ok {
-				return newError("unusable as hash key: %s", args[1].Type())
+				return newError("unusable as map key: %s", args[1].Type())
 			}
 
-			newPairs := make(map[object.HashKey]object.HashPair)
-			for k, v := range hash.Pairs {
+			newPairs := make(map[object.MapKey]object.MapPair)
+			for k, v := range mapObj.Pairs {
 				newPairs[k] = v
 			}
 
-			hashKey := key.HashKey()
-			delete(newPairs, hashKey)
+			mapKey := key.MapKey()
+			delete(newPairs, mapKey)
 
-			return &object.Hash{Pairs: newPairs}
+			return &object.Map{Pairs: newPairs}
 		},
 	}
 }

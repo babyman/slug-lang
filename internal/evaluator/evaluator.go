@@ -166,8 +166,8 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 	case *ast.SliceExpression:
 		return evalSliceExpression(node, env)
 
-	case *ast.HashLiteral:
-		return evalHashLiteral(node, env)
+	case *ast.MapLiteral:
+		return evalMapLiteral(node, env)
 
 	case *ast.ThrowStatement:
 		return evalThrowStatement(node, env)
@@ -712,11 +712,11 @@ func unwrapReturnValue(obj object.Object) object.Object {
 	return obj
 }
 
-func evalHashLiteral(
-	node *ast.HashLiteral,
+func evalMapLiteral(
+	node *ast.MapLiteral,
 	env *object.Environment,
 ) object.Object {
-	pairs := make(map[object.HashKey]object.HashPair)
+	pairs := make(map[object.MapKey]object.MapPair)
 
 	for keyNode, valueNode := range node.Pairs {
 		key := Eval(keyNode, env)
@@ -724,9 +724,9 @@ func evalHashLiteral(
 			return key
 		}
 
-		hashKey, ok := key.(object.Hashable)
+		mapKey, ok := key.(object.Hashable)
 		if !ok {
-			return newError("unusable as hash key: %s", key.Type())
+			return newError("unusable as map key: %s", key.Type())
 		}
 
 		value := Eval(valueNode, env)
@@ -734,11 +734,11 @@ func evalHashLiteral(
 			return value
 		}
 
-		hashed := hashKey.HashKey()
-		pairs[hashed] = object.HashPair{Key: key, Value: value}
+		mapKeyHash := mapKey.MapKey()
+		pairs[mapKeyHash] = object.MapPair{Key: key, Value: value}
 	}
 
-	return &object.Hash{Pairs: pairs}
+	return &object.Map{Pairs: pairs}
 }
 
 func evalMatchExpression(node *ast.MatchExpression, env *object.Environment) object.Object {
@@ -892,19 +892,19 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 
 		return true, nil
 
-	case *ast.HashPattern:
-		// Check if value is a hash
-		hash, ok := value.(*object.Hash)
+	case *ast.MapPattern:
+		// Check if value is a map
+		mapObj, ok := value.(*object.Map)
 		if !ok {
 			return false, nil
 		}
 
-		// Empty hash pattern matches empty hash
+		// Empty map pattern matches empty map
 		if len(p.Pairs) == 0 {
-			return len(hash.Pairs) == 0, nil
+			return len(mapObj.Pairs) == 0, nil
 		}
 
-		usedKeys := make([]object.HashKey, 0)
+		usedKeys := make([]object.MapKey, 0)
 
 		// scoped environment to capture the match bindings, these will be copied to the parent env on success
 		scoped := object.NewEnclosedEnvironment(env, nil)
@@ -916,11 +916,11 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 				continue
 			}
 
-			// Check if key exists in hash
+			// Check if key exists in map
 			keyObj := &object.String{Value: key}
-			hashKey := keyObj.HashKey()
-			usedKeys = append(usedKeys, hashKey)
-			pair, ok := hash.Pairs[hashKey]
+			mapKey := keyObj.MapKey()
+			usedKeys = append(usedKeys, mapKey)
+			pair, ok := mapObj.Pairs[mapKey]
 			if !ok {
 				return false, nil
 			}
@@ -932,31 +932,31 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 			}
 		}
 
-		// If a spread pattern is used, collect unused keys into a new hash
+		// If a spread pattern is used, collect unused keys into a new map
 		if p.Spread {
 			pair, ok := p.Pairs[token.ELLIPSIS]
 			if ok {
-				if len(usedKeys) >= len(hash.Pairs) {
+				if len(usedKeys) >= len(mapObj.Pairs) {
 					// map is empty
-					_, err := patternMatches(pair, &object.Hash{Pairs: make(map[object.HashKey]object.HashPair)}, scoped, isConstant)
+					_, err := patternMatches(pair, &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}, scoped, isConstant)
 					if err != nil {
 						return false, err
 					}
 				} else {
-					copiedPairs := make(map[object.HashKey]object.HashPair)
-					for hashKey, pair := range hash.Pairs {
+					copiedPairs := make(map[object.MapKey]object.MapPair)
+					for mapKey, pair := range mapObj.Pairs {
 						isUsed := false
 						for _, usedKey := range usedKeys {
-							if hashKey == usedKey {
+							if mapKey == usedKey {
 								isUsed = true
 								break
 							}
 						}
 						if !isUsed {
-							copiedPairs[hashKey] = pair
+							copiedPairs[mapKey] = pair
 						}
 					}
-					_, err := patternMatches(pair, &object.Hash{Pairs: copiedPairs}, scoped, isConstant)
+					_, err := patternMatches(pair, &object.Map{Pairs: copiedPairs}, scoped, isConstant)
 					if err != nil {
 						return false, err
 					}
@@ -1056,14 +1056,14 @@ func objectsEqual(a, b object.Object) bool {
 
 		return true
 
-	case *object.Hash:
-		bHash := b.(*object.Hash)
-		if len(aVal.Pairs) != len(bHash.Pairs) {
+	case *object.Map:
+		mapObj := b.(*object.Map)
+		if len(aVal.Pairs) != len(mapObj.Pairs) {
 			return false
 		}
 
 		for k, v := range aVal.Pairs {
-			bPair, ok := bHash.Pairs[k]
+			bPair, ok := mapObj.Pairs[k]
 			if !ok || !objectsEqual(v.Value, bPair.Value) {
 				return false
 			}
@@ -1075,15 +1075,15 @@ func objectsEqual(a, b object.Object) bool {
 	return false
 }
 
-func evalHashIndexExpression(hash, index object.Object) object.Object {
-	hashObject := hash.(*object.Hash)
+func evalMapIndexExpression(obj, index object.Object) object.Object {
+	mapObj := obj.(*object.Map)
 
 	key, ok := index.(object.Hashable)
 	if !ok {
-		return newError("unusable as hash key: %s", index.Type())
+		return newError("unusable as map key: %s", index.Type())
 	}
 
-	pair, ok := hashObject.Pairs[key.HashKey()]
+	pair, ok := mapObj.Pairs[key.MapKey()]
 	if !ok {
 		return NIL
 	}
@@ -1096,8 +1096,8 @@ func evalThrowStatement(node *ast.ThrowStatement, env *object.Environment) objec
 	if isError(val) {
 		return val
 	}
-	if val.Type() != object.HASH_OBJ {
-		return newError("throw argument must be a Hash, got %s", val.Type())
+	if val.Type() != object.MAP_OBJ {
+		return newError("throw argument must be a Map, got %s", val.Type())
 	}
 	return &object.RuntimeError{
 		Payload: val,
@@ -1154,8 +1154,8 @@ func evalIndexExpression(left, index object.Object) object.Object {
 			}
 		}
 		return evalArrayIndexExpression(left, index)
-	case left.Type() == object.HASH_OBJ:
-		return evalHashIndexExpression(left, index)
+	case left.Type() == object.MAP_OBJ:
+		return evalMapIndexExpression(left, index)
 	default:
 		return newError("index operator not supported: %s", left.Type())
 	}

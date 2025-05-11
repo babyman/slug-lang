@@ -27,16 +27,16 @@ const (
 	BUILTIN_OBJ  = "BUILTIN"
 
 	ARRAY_OBJ = "ARRAY"
-	HASH_OBJ  = "HASH"
+	MAP_OBJ   = "MAP"
 )
 
-type HashKey struct {
+type MapKey struct {
 	Type  ObjectType
 	Value uint64
 }
 
 type Hashable interface {
-	HashKey() HashKey
+	MapKey() MapKey
 }
 
 type Object interface {
@@ -50,8 +50,8 @@ type Integer struct {
 
 func (i *Integer) Type() ObjectType { return INTEGER_OBJ }
 func (i *Integer) Inspect() string  { return fmt.Sprintf("%d", i.Value) }
-func (i *Integer) HashKey() HashKey {
-	return HashKey{Type: i.Type(), Value: uint64(i.Value)}
+func (i *Integer) MapKey() MapKey {
+	return MapKey{Type: i.Type(), Value: uint64(i.Value)}
 }
 
 type Boolean struct {
@@ -60,7 +60,7 @@ type Boolean struct {
 
 func (b *Boolean) Type() ObjectType { return BOOLEAN_OBJ }
 func (b *Boolean) Inspect() string  { return fmt.Sprintf("%t", b.Value) }
-func (b *Boolean) HashKey() HashKey {
+func (b *Boolean) MapKey() MapKey {
 	var value uint64
 
 	if b.Value {
@@ -69,7 +69,7 @@ func (b *Boolean) HashKey() HashKey {
 		value = 0
 	}
 
-	return HashKey{Type: b.Type(), Value: value}
+	return MapKey{Type: b.Type(), Value: value}
 }
 
 type Nil struct{}
@@ -141,11 +141,11 @@ type String struct {
 
 func (s *String) Type() ObjectType { return STRING_OBJ }
 func (s *String) Inspect() string  { return s.Value }
-func (s *String) HashKey() HashKey {
+func (s *String) MapKey() MapKey {
 	h := fnv.New64a()
 	h.Write([]byte(s.Value))
 
-	return HashKey{Type: s.Type(), Value: h.Sum64()}
+	return MapKey{Type: s.Type(), Value: h.Sum64()}
 }
 
 type Builtin struct {
@@ -175,17 +175,17 @@ func (ao *Array) Inspect() string {
 	return out.String()
 }
 
-type HashPair struct {
+type MapPair struct {
 	Key   Object
 	Value Object
 }
 
-type Hash struct {
-	Pairs map[HashKey]HashPair
+type Map struct {
+	Pairs map[MapKey]MapPair
 }
 
-func (h *Hash) Type() ObjectType { return HASH_OBJ }
-func (h *Hash) Inspect() string {
+func (h *Map) Type() ObjectType { return MAP_OBJ }
+func (h *Map) Inspect() string {
 	var out bytes.Buffer
 
 	pairs := []string{}
@@ -202,7 +202,7 @@ func (h *Hash) Inspect() string {
 }
 
 type RuntimeError struct {
-	Payload    Object       // The error payload (must be a Hash object)
+	Payload    Object       // The error payload (must be a Map object)
 	StackTrace []StackFrame // Stack frames for error propagation
 }
 

@@ -444,14 +444,14 @@ func (se *SliceExpression) String() string {
 	return out.String()
 }
 
-type HashLiteral struct {
+type MapLiteral struct {
 	Token token.Token // the '{' token
 	Pairs map[Expression]Expression
 }
 
-func (hl *HashLiteral) expressionNode()      {}
-func (hl *HashLiteral) TokenLiteral() string { return hl.Token.Literal }
-func (hl *HashLiteral) String() string {
+func (hl *MapLiteral) expressionNode()      {}
+func (hl *MapLiteral) TokenLiteral() string { return hl.Token.Literal }
+func (hl *MapLiteral) String() string {
 	var out bytes.Buffer
 
 	pairs := []string{}
@@ -621,17 +621,17 @@ func (ap *ArrayPattern) String() string {
 	return out.String()
 }
 
-// HashPattern for matching hash structure
-type HashPattern struct {
+// MapPattern for matching map structure
+type MapPattern struct {
 	Token  token.Token
 	Pairs  map[string]MatchPattern
 	Spread bool // Whether _ is present to match additional fields
 }
 
-func (lp *HashPattern) expressionNode()      {}
-func (hp *HashPattern) patternNode()         {}
-func (hp *HashPattern) TokenLiteral() string { return hp.Token.Literal }
-func (hp *HashPattern) String() string {
+func (lp *MapPattern) expressionNode()      {}
+func (hp *MapPattern) patternNode()         {}
+func (hp *MapPattern) TokenLiteral() string { return hp.Token.Literal }
+func (hp *MapPattern) String() string {
 	var out bytes.Buffer
 	pairs := []string{}
 

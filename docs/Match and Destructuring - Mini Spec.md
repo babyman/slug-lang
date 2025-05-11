@@ -114,7 +114,7 @@ match x {
 
 ## Overview
 
-Destructuring allows **breaking apart** structured data (lists, hashes) into individual variables in:
+Destructuring allows **breaking apart** structured data (lists, maps) into individual variables in:
 
 - `var` statements
 - `match` expressions
@@ -132,8 +132,8 @@ Destructuring allows **breaking apart** structured data (lists, hashes) into ind
 | `[a, b, c]`   | List with exactly three elements                     | `a`, `b`, `c` |
 | `[a, b, ...]` | List with at least two elements, discards rest       | `a`, `b`      |
 | `[a, ...]`    | List with at least one element, discards rest        | `a`           |
-| `{}`          | Empty map/hash                                       | Nothing       |
-| `{...}`       | Any map/hash                                         | Nothing       |
+| `{}`          | Empty map                                            | Nothing       |
+| `{...}`       | Any map                                              | Nothing       |
 | `{name}`      | Map with a `name` key                                | `name`        |
 | `{name, age}` | Map with `name` and `age` keys                       | `name`, `age` |
 | `{name, ...}` | Map with `name` and potentially others, ignores rest | `name`        |
@@ -166,7 +166,7 @@ Syntax:
 match something {
     [] => println("empty list")
     [h, t, _] => println(h, t)
-    {} => println("empty hash")
+    {} => println("empty map")
     {name, ...} => println(name)
 }
 ```

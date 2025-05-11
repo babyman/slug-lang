@@ -91,7 +91,7 @@ func New(l *lexer.Lexer, source string) *Parser {
 	p.registerPrefix(token.IF, p.parseIfExpression)
 	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral)
 	p.registerPrefix(token.LBRACKET, p.parseArrayLiteral)
-	p.registerPrefix(token.LBRACE, p.parseHashLiteral)
+	p.registerPrefix(token.LBRACE, p.parseMapLiteral)
 	p.registerPrefix(token.MATCH, p.parseMatchExpression)
 
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
@@ -212,7 +212,7 @@ func (p *Parser) parseVarStatement() *ast.VarStatement {
 	stmt := &ast.VarStatement{Token: p.curToken}
 
 	if !(p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.LBRACKET) || p.peekTokenIs(token.LBRACE)) {
-		p.addError("expected identifier, array, or hash literal after 'var'")
+		p.addError("expected identifier, array, or map literal after 'var'")
 		return nil
 	}
 
@@ -240,7 +240,7 @@ func (p *Parser) parseValStatement() *ast.ValStatement {
 	stmt := &ast.ValStatement{Token: p.curToken}
 
 	if !(p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.LBRACKET) || p.peekTokenIs(token.LBRACE)) {
-		p.addError("expected identifier, array, or hash literal after 'val'")
+		p.addError("expected identifier, array, or map literal after 'val'")
 		return nil
 	}
 
@@ -591,8 +591,8 @@ func (p *Parser) parseMatchPattern() ast.MatchPattern {
 		// Array pattern
 		return p.parseArrayPattern()
 	case token.LBRACE:
-		// Hash pattern
-		return p.parseHashPattern()
+		// Map pattern
+		return p.parseMapPattern()
 	default:
 		p.peekError(p.curToken.Type)
 		return nil
@@ -654,17 +654,17 @@ func (p *Parser) parseArrayPattern() ast.MatchPattern {
 	return arrayPattern
 }
 
-func (p *Parser) parseHashPattern() *ast.HashPattern {
-	hashPattern := &ast.HashPattern{
+func (p *Parser) parseMapPattern() *ast.MapPattern {
+	mapPattern := &ast.MapPattern{
 		Token:  p.curToken,
 		Pairs:  make(map[string]ast.MatchPattern),
 		Spread: false,
 	}
 
-	// Empty hash pattern
+	// Empty map pattern
 	if p.peekTokenIs(token.RBRACE) {
 		p.nextToken()
-		return hashPattern
+		return mapPattern
 	}
 
 	for !p.peekTokenIs(token.RBRACE) {
@@ -673,8 +673,8 @@ func (p *Parser) parseHashPattern() *ast.HashPattern {
 		readSpread := p.curTokenIs(token.ELLIPSIS)
 		if readSpread {
 			value := p.parseMatchPattern()
-			hashPattern.Pairs[token.ELLIPSIS] = value
-			hashPattern.Spread = true
+			mapPattern.Pairs[token.ELLIPSIS] = value
+			mapPattern.Spread = true
 			continue
 		}
 
@@ -700,9 +700,9 @@ func (p *Parser) parseHashPattern() *ast.HashPattern {
 			p.nextToken()
 			p.nextToken()
 			value := p.parseMatchPattern()
-			hashPattern.Pairs[key.String()] = value
+			mapPattern.Pairs[key.String()] = value
 		} else {
-			hashPattern.Pairs[key.String()] = &ast.IdentifierPattern{
+			mapPattern.Pairs[key.String()] = &ast.IdentifierPattern{
 				Token: p.curToken,
 				Value: &ast.Identifier{Token: p.curToken, Value: key.String()}}
 		}
@@ -716,13 +716,13 @@ func (p *Parser) parseHashPattern() *ast.HashPattern {
 		return nil
 	}
 
-	return hashPattern
+	return mapPattern
 }
 
-func (p *Parser) parseHashPatternPair(hp *ast.HashPattern) bool {
-	// For hash patterns, keys are always identifiers
+func (p *Parser) parseMapPatternPair(hp *ast.MapPattern) bool {
+	// For map patterns, keys are always identifiers
 	if !p.curTokenIs(token.IDENT) {
-		p.addError("expected identifier as hash pattern key, got %s", p.curToken.Type)
+		p.addError("expected identifier as map pattern key, got %s", p.curToken.Type)
 		return false
 	}
 
@@ -1024,9 +1024,9 @@ func (p *Parser) parseSliceExpression() ast.Expression {
 	return slice
 }
 
-func (p *Parser) parseHashLiteral() ast.Expression {
-	hash := &ast.HashLiteral{Token: p.curToken}
-	hash.Pairs = make(map[ast.Expression]ast.Expression)
+func (p *Parser) parseMapLiteral() ast.Expression {
+	mapLit := &ast.MapLiteral{Token: p.curToken}
+	mapLit.Pairs = make(map[ast.Expression]ast.Expression)
 
 	for !p.peekTokenIs(token.RBRACE) {
 		p.nextToken()
@@ -1054,7 +1054,7 @@ func (p *Parser) parseHashLiteral() ast.Expression {
 		p.nextToken()
 		value := p.parseExpression(LOWEST)
 
-		hash.Pairs[key] = value
+		mapLit.Pairs[key] = value
 
 		if !p.peekTokenIs(token.RBRACE) && !p.expectPeek(token.COMMA) {
 			return nil
@@ -1065,7 +1065,7 @@ func (p *Parser) parseHashLiteral() ast.Expression {
 		return nil
 	}
 
-	return hash
+	return mapLit
 }
 
 func (p *Parser) registerPrefix(tokenType token.TokenType, fn prefixParseFn) {
@@ -1124,10 +1124,10 @@ func (p *Parser) parseThrowStatement() *ast.ThrowStatement {
 	if !p.expectPeek(token.LPAREN) {
 		return nil
 	}
-	var ef *ast.HashLiteral = nil
+	var ef *ast.MapLiteral = nil
 	if p.peekTokenIs(token.LBRACE) {
 		p.nextToken() // consume RPAREN
-		ef = p.parseHashLiteral().(*ast.HashLiteral)
+		ef = p.parseMapLiteral().(*ast.MapLiteral)
 	}
 	if !p.expectPeek(token.RPAREN) {
 		return nil
@@ -1136,7 +1136,7 @@ func (p *Parser) parseThrowStatement() *ast.ThrowStatement {
 		pairs := make(map[ast.Expression]ast.Expression)
 		pairs[&ast.StringLiteral{Token: p.curToken, Value: "type"}] = &ast.StringLiteral{Token: p.curToken, Value: ident.String()}
 
-		throw.Value = &ast.HashLiteral{
+		throw.Value = &ast.MapLiteral{
 			Token: p.curToken,
 			Pairs: pairs,
 		}
@@ -1157,7 +1157,7 @@ func (p *Parser) parseNotImplemented() *ast.ThrowStatement {
 	pairs := make(map[ast.Expression]ast.Expression)
 	pairs[&ast.StringLiteral{Token: p.curToken, Value: "type"}] = &ast.StringLiteral{Token: p.curToken, Value: "NotImplementedError"}
 
-	throw.Value = &ast.HashLiteral{
+	throw.Value = &ast.MapLiteral{
 		Token: p.curToken,
 		Pairs: pairs,
 	}

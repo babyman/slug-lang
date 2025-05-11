@@ -228,7 +228,7 @@ if (10 > 1) {
 		},
 		{
 			`{"name": "Slug"}[fn(x) { x }];`,
-			"unusable as hash key: FUNCTION",
+			"unusable as map key: FUNCTION",
 		},
 		{
 			`999[1]`,
@@ -500,7 +500,7 @@ func TestArrayIndexExpressions(t *testing.T) {
 	}
 }
 
-func TestHashLiterals(t *testing.T) {
+func TestMapLiterals(t *testing.T) {
 	input := `var two = "two";
 	{
 		"one": 10 - 9,
@@ -512,22 +512,22 @@ func TestHashLiterals(t *testing.T) {
 	}`
 
 	evaluated := testEval(input)
-	result, ok := evaluated.(*object.Hash)
+	result, ok := evaluated.(*object.Map)
 	if !ok {
-		t.Fatalf("Eval didn't return Hash. got=%T (%+v)", evaluated, evaluated)
+		t.Fatalf("Eval didn't return Map. got=%T (%+v)", evaluated, evaluated)
 	}
 
-	expected := map[object.HashKey]int64{
-		(&object.String{Value: "one"}).HashKey():   1,
-		(&object.String{Value: "two"}).HashKey():   2,
-		(&object.String{Value: "three"}).HashKey(): 3,
-		(&object.Integer{Value: 4}).HashKey():      4,
-		TRUE.HashKey():                             5,
-		FALSE.HashKey():                            6,
+	expected := map[object.MapKey]int64{
+		(&object.String{Value: "one"}).MapKey():   1,
+		(&object.String{Value: "two"}).MapKey():   2,
+		(&object.String{Value: "three"}).MapKey(): 3,
+		(&object.Integer{Value: 4}).MapKey():      4,
+		TRUE.MapKey():                             5,
+		FALSE.MapKey():                            6,
 	}
 
 	if len(result.Pairs) != len(expected) {
-		t.Fatalf("Hash has wrong num of pairs. got=%d", len(result.Pairs))
+		t.Fatalf("Map has wrong num of pairs. got=%d", len(result.Pairs))
 	}
 
 	for expectedKey, expectedValue := range expected {
@@ -540,7 +540,7 @@ func TestHashLiterals(t *testing.T) {
 	}
 }
 
-func TestHashIndexExpressions(t *testing.T) {
+func TestMapIndexExpressions(t *testing.T) {
 	tests := []struct {
 		input    string
 		expected interface{}

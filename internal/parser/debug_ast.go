@@ -177,13 +177,13 @@ func WalkAST(node ast.Node) interface{} {
 			"4.arguments": args,
 		}
 
-	case *ast.HashLiteral:
+	case *ast.MapLiteral:
 		pairs := map[string]interface{}{}
 		for key, value := range n.Pairs {
 			pairs[fmt.Sprintf("%v", WalkAST(key))] = WalkAST(value)
 		}
 		return map[string]interface{}{
-			"0.type":     "HashLiteral",
+			"0.type":     "MapLiteral",
 			"1.position": n.Token.Position,
 			"2.token":    n.TokenLiteral(),
 			"3.pairs":    pairs,
@@ -274,13 +274,13 @@ func WalkAST(node ast.Node) interface{} {
 			"2.elements": elements,
 		}
 
-	case *ast.HashPattern:
+	case *ast.MapPattern:
 		pairs := map[string]interface{}{}
 		for key, value := range n.Pairs {
 			pairs[fmt.Sprintf("%v", key)] = WalkAST(value)
 		}
 		return map[string]interface{}{
-			"0.type":     "HashPattern",
+			"0.type":     "MapPattern",
 			"1.position": n.Token.Position,
 			"2.pairs":    pairs,
 		}

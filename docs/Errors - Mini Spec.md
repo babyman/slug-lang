@@ -9,24 +9,24 @@ Errors
 | `throw FileError()`         | `throw { "type": "FileError" }`               |
 | `throw FileError({ path })` | `throw { "type": "FileError", "path": path }` |
 
-This ensures all errors are structured as `Hash` values with a required `"type"` key, enabling consistent, extensible,
+This ensures all errors are structured as `Map` values with a required `"type"` key, enabling consistent, extensible,
 and pattern-matchable error handling.
 
 ### Runtime Behavior
 
 - Executing `throw` immediately halts the current function.
-- The provided error `Hash` is wrapped internally by the runtime in a `RuntimeError` object:
+- The provided error `Map` is wrapped internally by the runtime in a `RuntimeError` object:
   ```go
   type RuntimeError struct {
-      Payload    Hash
+      Payload    Map
       StackTrace []StackFrame
   }
   ```
 - Each `StackFrame` includes the current function name, source file, line, and column number.
 - As the error propagates up the call stack, the runtime appends frames to the `StackTrace`.
-- The `Payload` (just the `Hash`) is what reaches `catch` blocks.
+- The `Payload` (just the `Map`) is what reaches `catch` blocks.
 - If an error is uncaught, the full `RuntimeError` is printed, including the stack trace.
-- Thrown values **must be Hashes**. Throwing a non-Hash value causes a runtime error.
+- Thrown values **must be Maps**. Throwing a non-Hash value causes a runtime error.
 
 ---
 
@@ -46,7 +46,7 @@ try {
 
 - The `try` block executes normally unless a `throw` occurs.
 - If a `throw` is triggered (directly or indirectly), control transfers to the nearest enclosing `catch`.
-- The runtime extracts the `Payload` `Hash` from the internal `RuntimeError` and binds it to the identifier following
+- The runtime extracts the `Payload` `Map` from the internal `RuntimeError` and binds it to the identifier following
   `catch`.
 - The `catch` block is a pattern match block:
     - Arms are evaluated in order.
@@ -74,7 +74,7 @@ try {
 }
 ```
 
-The `trace(err)` function returns a list of hashes, each representing a stack frame:
+The `trace(err)` function returns a list of maps, each representing a stack frame:
 
 ```slug
 [
