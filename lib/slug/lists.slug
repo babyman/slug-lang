@@ -1,0 +1,10 @@
+
+var listEquals = fn(a, b, idx = 0) {
+    if(idx >= len(a) && len(a) == len(b)) {
+        true;
+    } else if(a[idx] == b[idx]) {
+        listEquals(a, b, idx + 1);
+    } else {
+        false;
+    }
+}

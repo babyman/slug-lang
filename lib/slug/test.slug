@@ -1,4 +1,4 @@
-
+import slug.lists.{ listEquals };
 
 var assert = fn(a, msg = nil) {
     if ( a.type() == "BOOLEAN" && !a ) {
@@ -21,18 +21,7 @@ var assertEqual = fn(a, b, msg = nil) {
 
 
 var assertListEqual = fn(a, b, msg = nil) {
-
-    var eq = fn(a, b, idx = 0) {
-        if(idx >= len(a) && len(a) == len(b)) {
-            true;
-        } else if(a[idx] == b[idx]) {
-            eq(a, b, idx + 1);
-        } else {
-            false;
-        }
-    }
-
-    if ( !(a == b || eq(a, b)) ) {
+    if ( !(a == b || listEquals(a, b)) ) {
         if ( !msg ) {
             msg = "List '" + a + "' is not equal to '" + b + "'";
         }

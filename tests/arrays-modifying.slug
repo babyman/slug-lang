@@ -1,27 +1,20 @@
 import slug.test.*;
 
-var arr = ["h", "e", "l", "l", "o"];
+// concatenating lists
+// -------------------
+([1, 2] + [3, 4]).len().assertEqual(4);
+([1, 2] + [3]).len().assertEqual(3);
 
-arr[:].assertListEqual(["h", "e", "l", "l", "o"]);
+// appending items
+// ---------------
+([1, 2] :+ 3).len().assertEqual(3);
 
-arr[1:].assertListEqual(["e", "l", "l", "o"]);
+([] :+ 1 :+ 2 :+ 3).len().assertEqual(3);
 
-arr[:2].assertListEqual(["h", "e"]);
+// prepending items
+// ----------------
+(0 +: [1, 2]).len().assertEqual(3);
 
-arr[0:4].assertListEqual(["h", "e", "l", "l"]);
+(1 +: 2 +: 3 +: []).len().assertEqual(3);
 
-arr[1::].assertListEqual(["e", "l", "l", "o"]);
-
-arr[:2:].assertListEqual(["h", "e"]);
-
-arr[0:4:].assertListEqual(["h", "e", "l", "l"]);
-
-arr[1:6:2].assertListEqual(["e", "l"]);
-
-arr[:6:2].assertListEqual(["h", "l", "o"]);
-
-arr[1::2].assertListEqual(["e", "l"]);
-
-arr[::2].assertListEqual(["h", "l", "o"]);
-
-arr[::].assertListEqual(["h", "e", "l", "l", "o"]);
+(1 +: [2, 3] + [4] :+ 5).len().assertEqual(5);

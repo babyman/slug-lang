@@ -5,14 +5,14 @@
 
 var map = fn(arr, f, acc = []) {
 	match arr {
-		[h, ...t] => map(t, f, acc :+ f(h));
+		[h, ...t] => map(t, f, acc :+ h.f());
 		[] => acc;
 	}
 }
 
 var filter = fn(arr, f, acc = []) {
 	match arr {
-		[h, ...t] if f(h) => filter(t, f, acc :+ h);
+		[h, ...t] if h.f() => filter(t, f, acc :+ h);
 		[h, ...t] => filter(t, f, acc);
 		[] => acc;
 	}
