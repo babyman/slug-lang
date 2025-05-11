@@ -404,36 +404,36 @@ func TestBuiltinFunctions(t *testing.T) {
 					expected, errObj.Message)
 			}
 		case []int:
-			array, ok := evaluated.(*object.Array)
+			list, ok := evaluated.(*object.List)
 			if !ok {
-				t.Errorf("obj not Array. got=%T (%+v)", evaluated, evaluated)
+				t.Errorf("obj not List. got=%T (%+v)", evaluated, evaluated)
 				continue
 			}
 
-			if len(array.Elements) != len(expected) {
+			if len(list.Elements) != len(expected) {
 				t.Errorf("wrong num of elements. want=%d, got=%d",
-					len(expected), len(array.Elements))
+					len(expected), len(list.Elements))
 				continue
 			}
 
 			for i, expectedElem := range expected {
-				testIntegerObject(t, array.Elements[i], int64(expectedElem))
+				testIntegerObject(t, list.Elements[i], int64(expectedElem))
 			}
 		}
 	}
 }
 
-func TestArrayLiterals(t *testing.T) {
+func TestListLiterals(t *testing.T) {
 	input := "[1, 2 * 2, 3 + 3]"
 
 	evaluated := testEval(input)
-	result, ok := evaluated.(*object.Array)
+	result, ok := evaluated.(*object.List)
 	if !ok {
-		t.Fatalf("object is not Array. got=%T (%+v)", evaluated, evaluated)
+		t.Fatalf("object is not List. got=%T (%+v)", evaluated, evaluated)
 	}
 
 	if len(result.Elements) != 3 {
-		t.Fatalf("array has wrong num of elements. got=%d",
+		t.Fatalf("list has wrong num of elements. got=%d",
 			len(result.Elements))
 	}
 
@@ -442,7 +442,7 @@ func TestArrayLiterals(t *testing.T) {
 	testIntegerObject(t, result.Elements[2], 6)
 }
 
-func TestArrayIndexExpressions(t *testing.T) {
+func TestListIndexExpressions(t *testing.T) {
 	tests := []struct {
 		input    string
 		expected interface{}
@@ -468,15 +468,15 @@ func TestArrayIndexExpressions(t *testing.T) {
 			3,
 		},
 		{
-			"var myArray = [1, 2, 3]; myArray[2];",
+			"var myList = [1, 2, 3]; myList[2];",
 			3,
 		},
 		{
-			"var myArray = [1, 2, 3]; myArray[0] + myArray[1] + myArray[2];",
+			"var myList = [1, 2, 3]; myList[0] + myList[1] + myList[2];",
 			6,
 		},
 		{
-			"var myArray = [1, 2, 3]; var i = myArray[0]; myArray[i]",
+			"var myList = [1, 2, 3]; var i = myList[0]; myList[i]",
 			2,
 		},
 		{

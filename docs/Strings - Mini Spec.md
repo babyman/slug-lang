@@ -209,7 +209,7 @@ Age: {{age}}
 |--------------------|---------------------------------------------------|
 | `#if / else / /if` | Conditional content based on a boolean expression |
 | `#unless`          | Conditional content based on negated expression   |
-| `#each / /each`    | Loop over lists or arrays                         |
+| `#each / /each`    | Loop over lists                                   |
 | `#with / /with`    | Change evaluation scope to a sub-object           |
 
 ---

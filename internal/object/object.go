@@ -26,8 +26,8 @@ const (
 	FUNCTION_OBJ = "FUNCTION"
 	BUILTIN_OBJ  = "BUILTIN"
 
-	ARRAY_OBJ = "ARRAY"
-	MAP_OBJ   = "MAP"
+	LIST_OBJ = "LIST"
+	MAP_OBJ  = "MAP"
 )
 
 type MapKey struct {
@@ -155,12 +155,12 @@ type Builtin struct {
 func (b *Builtin) Type() ObjectType { return BUILTIN_OBJ }
 func (b *Builtin) Inspect() string  { return "builtin function" }
 
-type Array struct {
+type List struct {
 	Elements []Object
 }
 
-func (ao *Array) Type() ObjectType { return ARRAY_OBJ }
-func (ao *Array) Inspect() string {
+func (ao *List) Type() ObjectType { return LIST_OBJ }
+func (ao *List) Inspect() string {
 	var out bytes.Buffer
 
 	elements := []string{}

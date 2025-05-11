@@ -129,13 +129,13 @@ func WalkAST(node ast.Node) interface{} {
 			"3.value":    n.Value,
 		}
 
-	case *ast.ArrayLiteral:
+	case *ast.ListLiteral:
 		elements := make([]interface{}, len(n.Elements))
 		for i, el := range n.Elements {
 			elements[i] = WalkAST(el)
 		}
 		return map[string]interface{}{
-			"0.type":     "ArrayLiteral",
+			"0.type":     "ListLiteral",
 			"1.position": n.Token.Position,
 			"2.token":    n.TokenLiteral(),
 			"3.elements": elements,
@@ -263,13 +263,13 @@ func WalkAST(node ast.Node) interface{} {
 			"2.patterns": patterns,
 		}
 
-	case *ast.ArrayPattern:
+	case *ast.ListPattern:
 		elements := make([]interface{}, len(n.Elements))
 		for i, el := range n.Elements {
 			elements[i] = WalkAST(el)
 		}
 		return map[string]interface{}{
-			"0.type":     "ArrayPattern",
+			"0.type":     "ListPattern",
 			"1.position": n.Token.Position,
 			"2.elements": elements,
 		}

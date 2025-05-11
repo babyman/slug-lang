@@ -1,8 +1,8 @@
 import slug.test.*;
 
 //
-// matching on array values
-// ------------------------
+// matching on list values
+// -----------------------
 
 var f1 = fn(x) {
     match x {
@@ -23,8 +23,8 @@ var f1 = fn(x) {
 [1, 2, 3].f1().assertEqual("list of three");
 
 //
-// matching array wildcards
-// ------------------------
+// matching list wildcards
+// -----------------------
 
 var f2 = fn(x) {
     match x {
@@ -46,8 +46,8 @@ var f2 = fn(x) {
 
 
 //
-// matching array spreads
-// ----------------------
+// matching list spreads
+// ---------------------
 
 var f2 = fn(x) {
     match x {

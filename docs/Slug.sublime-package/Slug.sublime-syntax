@@ -7,7 +7,7 @@
 # Features include:
 # - First-class functions
 # - Dynamic typing
-# - Array and map data structures
+# - List and map data structures
 # - Powerful pattern matching
 # - Method chaining
 # - Default parameter values
@@ -67,10 +67,10 @@ contexts:
     - match: \b\d+\b
       scope: constant.numeric.integer.slug
 
-    # Arrays
+    # Lists
     - match: \[
       scope: punctuation.section.brackets.begin.slug
-      push: array
+      push: list
     - match: \]
       scope: punctuation.section.brackets.end.slug
 
@@ -116,8 +116,8 @@ contexts:
     - match: .
       scope: string.quoted.double.slug
 
-  array:
-    - meta_scope: meta.structure.array.slug
+  list:
+    - meta_scope: meta.structure.list.slug
     - match: \]
       scope: punctuation.section.brackets.end.slug
       pop: true

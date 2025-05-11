@@ -377,14 +377,14 @@ func (sl *StringLiteral) expressionNode()      {}
 func (sl *StringLiteral) TokenLiteral() string { return sl.Token.Literal }
 func (sl *StringLiteral) String() string       { return sl.Token.Literal }
 
-type ArrayLiteral struct {
+type ListLiteral struct {
 	Token    token.Token // the '[' token
 	Elements []Expression
 }
 
-func (al *ArrayLiteral) expressionNode()      {}
-func (al *ArrayLiteral) TokenLiteral() string { return al.Token.Literal }
-func (al *ArrayLiteral) String() string {
+func (al *ListLiteral) expressionNode()      {}
+func (al *ListLiteral) TokenLiteral() string { return al.Token.Literal }
+func (al *ListLiteral) String() string {
 	var out bytes.Buffer
 
 	elements := []string{}
@@ -597,16 +597,16 @@ func (mp *MultiPattern) String() string {
 	return out.String()
 }
 
-// ArrayPattern for matching array structure
-type ArrayPattern struct {
+// ListPattern for matching list structure
+type ListPattern struct {
 	Token    token.Token
 	Elements []MatchPattern
 }
 
-func (ap *ArrayPattern) expressionNode()      {}
-func (ap *ArrayPattern) patternNode()         {}
-func (ap *ArrayPattern) TokenLiteral() string { return ap.Token.Literal }
-func (ap *ArrayPattern) String() string {
+func (ap *ListPattern) expressionNode()      {}
+func (ap *ListPattern) patternNode()         {}
+func (ap *ListPattern) TokenLiteral() string { return ap.Token.Literal }
+func (ap *ListPattern) String() string {
 	var out bytes.Buffer
 	elements := []string{}
 

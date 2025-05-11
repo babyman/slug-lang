@@ -51,7 +51,7 @@ func funcLen() *object.Builtin {
 		}
 
 		switch arg := args[0].(type) {
-		case *object.Array:
+		case *object.List:
 			return &object.Integer{Value: int64(len(arg.Elements))}
 		case *object.Map:
 			return &object.Integer{Value: int64(len(arg.Pairs))}
@@ -175,8 +175,8 @@ func funcKeys() *object.Builtin {
 				keys = append(keys, pair.Key)
 			}
 
-			// Return the keys as an Array object
-			return &object.Array{Elements: keys}
+			// Return the keys as an List object
+			return &object.List{Elements: keys}
 		},
 	}
 }

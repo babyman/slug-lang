@@ -23,7 +23,7 @@ const (
 	PRODUCT     // *
 	PREFIX      // -X or !X
 	CALL        // myFunction(X)
-	INDEX       // array[index]
+	INDEX       // list[index]
 )
 
 var precedences = map[token.TokenType]int{
@@ -90,7 +90,7 @@ func New(l *lexer.Lexer, source string) *Parser {
 	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
 	p.registerPrefix(token.IF, p.parseIfExpression)
 	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral)
-	p.registerPrefix(token.LBRACKET, p.parseArrayLiteral)
+	p.registerPrefix(token.LBRACKET, p.parseListLiteral)
 	p.registerPrefix(token.LBRACE, p.parseMapLiteral)
 	p.registerPrefix(token.MATCH, p.parseMatchExpression)
 
@@ -212,7 +212,7 @@ func (p *Parser) parseVarStatement() *ast.VarStatement {
 	stmt := &ast.VarStatement{Token: p.curToken}
 
 	if !(p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.LBRACKET) || p.peekTokenIs(token.LBRACE)) {
-		p.addError("expected identifier, array, or map literal after 'var'")
+		p.addError("expected identifier, list, or map literal after 'var'")
 		return nil
 	}
 
@@ -240,7 +240,7 @@ func (p *Parser) parseValStatement() *ast.ValStatement {
 	stmt := &ast.ValStatement{Token: p.curToken}
 
 	if !(p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.LBRACKET) || p.peekTokenIs(token.LBRACE)) {
-		p.addError("expected identifier, array, or map literal after 'val'")
+		p.addError("expected identifier, list, or map literal after 'val'")
 		return nil
 	}
 
@@ -588,8 +588,8 @@ func (p *Parser) parseMatchPattern() ast.MatchPattern {
 		expr := p.parseExpression(LOWEST)
 		return &ast.LiteralPattern{Token: p.curToken, Value: expr}
 	case token.LBRACKET:
-		// Array pattern
-		return p.parseArrayPattern()
+		// List pattern
+		return p.parseListPattern()
 	case token.LBRACE:
 		// Map pattern
 		return p.parseMapPattern()
@@ -624,15 +624,15 @@ func (p *Parser) parseMultiPattern() ast.MatchPattern {
 	return multiPattern
 }
 
-func (p *Parser) parseArrayPattern() ast.MatchPattern {
-	arrayPattern := &ast.ArrayPattern{Token: p.curToken}
-	arrayPattern.Elements = []ast.MatchPattern{}
+func (p *Parser) parseListPattern() ast.MatchPattern {
+	listPattern := &ast.ListPattern{Token: p.curToken}
+	listPattern.Elements = []ast.MatchPattern{}
 
 	p.nextToken() // Skip '['
 
 	// Handle empty list: `[]`
 	if p.curTokenIs(token.RBRACKET) {
-		return arrayPattern
+		return listPattern
 	}
 
 	for !p.curTokenIs(token.RBRACKET) {
@@ -641,7 +641,7 @@ func (p *Parser) parseArrayPattern() ast.MatchPattern {
 			return nil
 		}
 
-		arrayPattern.Elements = append(arrayPattern.Elements, element)
+		listPattern.Elements = append(listPattern.Elements, element)
 
 		if p.peekTokenIs(token.COMMA) {
 			p.nextToken() // consume IDENT
@@ -651,7 +651,7 @@ func (p *Parser) parseArrayPattern() ast.MatchPattern {
 		}
 	}
 
-	return arrayPattern
+	return listPattern
 }
 
 func (p *Parser) parseMapPattern() *ast.MapPattern {
@@ -959,12 +959,12 @@ func (p *Parser) parseExpressionList(end token.TokenType) []ast.Expression {
 	return list
 }
 
-func (p *Parser) parseArrayLiteral() ast.Expression {
-	array := &ast.ArrayLiteral{Token: p.curToken}
+func (p *Parser) parseListLiteral() ast.Expression {
+	list := &ast.ListLiteral{Token: p.curToken}
 
-	array.Elements = p.parseExpressionList(token.RBRACKET)
+	list.Elements = p.parseExpressionList(token.RBRACKET)
 
-	return array
+	return list
 }
 
 func (p *Parser) parseIndexExpression(left ast.Expression) ast.Expression {

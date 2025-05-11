@@ -128,12 +128,12 @@ func setupEnvironment(rootPath string, args []string) *object.Environment {
 	env := object.NewEnvironment()
 	env.SetRootPath(rootPath)
 
-	// Prepare args array
+	// Prepare args list
 	objects := make([]object.Object, len(args))
 	for i, arg := range args {
 		objects[i] = &object.String{Value: arg}
 	}
-	env.Define("args", &object.Array{Elements: objects})
+	env.Define("args", &object.List{Elements: objects})
 
 	return env
 }

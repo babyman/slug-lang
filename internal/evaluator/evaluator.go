@@ -145,12 +145,12 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 
 		return applyFunction(function, args)
 
-	case *ast.ArrayLiteral:
+	case *ast.ListLiteral:
 		elements := evalExpressions(node.Elements, env)
 		if len(elements) == 1 && isError(elements[0]) {
 			return elements[0]
 		}
-		return &object.Array{Elements: elements}
+		return &object.List{Elements: elements}
 
 	case *ast.IndexExpression:
 		left := Eval(node.Left, env)
@@ -363,12 +363,12 @@ func evalInfixExpression(
 		return nativeBoolToBooleanObject(left == right)
 	case operator == "!=":
 		return nativeBoolToBooleanObject(left != right)
-	case operator == ":+" && left.Type() == object.ARRAY_OBJ:
-		return evalArrayInfixExpression(operator, left, right)
-	case operator == "+:" && right.Type() == object.ARRAY_OBJ:
-		return evalArrayInfixExpression(operator, left, right)
-	case left.Type() == object.ARRAY_OBJ && right.Type() == object.ARRAY_OBJ:
-		return evalArrayInfixExpression(operator, left, right)
+	case operator == ":+" && left.Type() == object.LIST_OBJ:
+		return evalListInfixExpression(operator, left, right)
+	case operator == "+:" && right.Type() == object.LIST_OBJ:
+		return evalListInfixExpression(operator, left, right)
+	case left.Type() == object.LIST_OBJ && right.Type() == object.LIST_OBJ:
+		return evalListInfixExpression(operator, left, right)
 	case left.Type() == object.BOOLEAN_OBJ && right.Type() == object.BOOLEAN_OBJ:
 		return evalBooleanInfixExpression(operator, left, right)
 	case left.Type() == object.STRING_OBJ || right.Type() == object.STRING_OBJ:
@@ -498,37 +498,37 @@ func evalStringInfixExpression(
 
 }
 
-func evalArrayInfixExpression(
+func evalListInfixExpression(
 	operator string,
 	left, right object.Object,
 ) object.Object {
 
 	switch operator {
 	case "+:":
-		rightVal := right.(*object.Array)
+		rightVal := right.(*object.List)
 		length := len(rightVal.Elements) + 1
 		newElements := make([]object.Object, length)
 		copy(newElements, []object.Object{left})
 		copy(newElements[1:], rightVal.Elements)
-		return &object.Array{Elements: newElements}
+		return &object.List{Elements: newElements}
 	case ":+":
-		leftVal := left.(*object.Array)
+		leftVal := left.(*object.List)
 		length := len(leftVal.Elements) + 1
 		newElements := make([]object.Object, length)
 		copy(newElements, leftVal.Elements)
 		copy(newElements[len(leftVal.Elements):], []object.Object{right})
-		return &object.Array{Elements: newElements}
+		return &object.List{Elements: newElements}
 	case "+":
-		leftVal := left.(*object.Array)
-		rightVal := right.(*object.Array)
+		leftVal := left.(*object.List)
+		rightVal := right.(*object.List)
 		length := len(leftVal.Elements) + len(rightVal.Elements)
 		if length > 0 {
 			newElements := make([]object.Object, length)
 			copy(newElements, leftVal.Elements)
 			copy(newElements[len(leftVal.Elements):], rightVal.Elements)
-			return &object.Array{Elements: newElements}
+			return &object.List{Elements: newElements}
 		}
-		return &object.Array{Elements: []object.Object{}}
+		return &object.List{Elements: []object.Object{}}
 	default:
 		return newError("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
@@ -660,7 +660,7 @@ func extendFunctionEnv(
 
 		// Handle variadic arguments
 		if param.IsVariadic {
-			env.Define(param.Name.Value, &object.Array{
+			env.Define(param.Name.Value, &object.List{
 				Elements: args[i:], // Remaining args as a list
 			})
 			break
@@ -674,15 +674,15 @@ func extendFunctionEnv(
 			} else {
 				arg := args[i]
 
-				list := arg.(*object.Array)
+				list := arg.(*object.List)
 				if len(list.Elements) > 0 {
 					env.Define(param.Destructure.Head.Value, list.Elements[0])
-					env.Define(param.Destructure.Tail.Value, &object.Array{
+					env.Define(param.Destructure.Tail.Value, &object.List{
 						Elements: list.Elements[1:],
 					})
 				} else {
 					env.Define(param.Destructure.Head.Value, NIL)
-					env.Define(param.Destructure.Tail.Value, &object.Array{})
+					env.Define(param.Destructure.Tail.Value, &object.List{})
 				}
 			}
 			continue
@@ -840,21 +840,21 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 		}
 		return false, nil
 
-	case *ast.ArrayPattern:
-		// Check if the value is an array
-		arr, ok := value.(*object.Array)
+	case *ast.ListPattern:
+		// Check if the value is an list
+		arr, ok := value.(*object.List)
 		if !ok {
 			return false, nil
 		}
 
-		// Empty array pattern matches empty array
+		// Empty list pattern matches empty list
 		if len(p.Elements) == 0 {
 			return len(arr.Elements) == 0, nil
 		}
 
 		_, isSpread := p.Elements[len(p.Elements)-1].(*ast.SpreadPattern)
 
-		// Check if array length matches pattern length
+		// Check if list length matches pattern length
 		if (len(p.Elements) != len(arr.Elements) && !isSpread) || (len(p.Elements) > len(arr.Elements)+1 && isSpread) {
 			return false, nil
 		}
@@ -864,7 +864,7 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 
 		for i, elemPattern := range p.Elements {
 			if spread, isSpread := elemPattern.(*ast.SpreadPattern); isSpread {
-				matched, err := patternMatches(spread, &object.Array{Elements: arr.Elements[i:]}, scoped, isConstant)
+				matched, err := patternMatches(spread, &object.List{Elements: arr.Elements[i:]}, scoped, isConstant)
 				if err != nil || !matched {
 					return false, err
 				}
@@ -1042,8 +1042,8 @@ func objectsEqual(a, b object.Object) bool {
 	case *object.Nil:
 		return true // nil equals nil
 
-	case *object.Array:
-		bArr := b.(*object.Array)
+	case *object.List:
+		bArr := b.(*object.List)
 		if len(aVal.Elements) != len(bArr.Elements) {
 			return false
 		}
@@ -1145,15 +1145,15 @@ func evalIndexExpression(left, index object.Object) object.Object {
 			}
 		}
 		return evalStringIndexExpression(left, index)
-	case left.Type() == object.ARRAY_OBJ && index.Type() == object.INTEGER_OBJ:
-		return evalArrayIndexExpression(left, index)
-	case left.Type() == object.ARRAY_OBJ:
+	case left.Type() == object.LIST_OBJ && index.Type() == object.INTEGER_OBJ:
+		return evalListIndexExpression(left, index)
+	case left.Type() == object.LIST_OBJ:
 		if slice, ok := index.(*object.Slice); ok {
-			if arr, ok := left.(*object.Array); ok {
-				return evalArraySlice(arr.Elements, slice)
+			if arr, ok := left.(*object.List); ok {
+				return evalListSlice(arr.Elements, slice)
 			}
 		}
-		return evalArrayIndexExpression(left, index)
+		return evalListIndexExpression(left, index)
 	case left.Type() == object.MAP_OBJ:
 		return evalMapIndexExpression(left, index)
 	default:
@@ -1181,10 +1181,10 @@ func evalSliceExpression(node *ast.SliceExpression, env *object.Environment) obj
 	}
 }
 
-func evalArrayIndexExpression(array, index object.Object) object.Object {
-	arrayObject := array.(*object.Array)
+func evalListIndexExpression(list, index object.Object) object.Object {
+	listObject := list.(*object.List)
 	idx := index.(*object.Integer).Value
-	max := int64(len(arrayObject.Elements) - 1)
+	max := int64(len(listObject.Elements) - 1)
 
 	if idx < 0 {
 		idx = max + idx + 1
@@ -1194,7 +1194,7 @@ func evalArrayIndexExpression(array, index object.Object) object.Object {
 		return NIL
 	}
 
-	return arrayObject.Elements[idx]
+	return listObject.Elements[idx]
 }
 
 func evalStringIndexExpression(str, index object.Object) object.Object {
@@ -1213,13 +1213,13 @@ func evalStringIndexExpression(str, index object.Object) object.Object {
 	return &object.String{Value: string(stringObject.Value[idx])}
 }
 
-func evalArraySlice(elements []object.Object, slice *object.Slice) object.Object {
+func evalListSlice(elements []object.Object, slice *object.Slice) object.Object {
 	start, end, step := computeSliceIndices(len(elements), slice)
 	var result []object.Object
 	for i := start; i < end; i += step {
 		result = append(result, elements[i])
 	}
-	return &object.Array{Elements: result}
+	return &object.List{Elements: result}
 }
 
 func evalStringSlice(value string, slice *object.Slice) object.Object {
