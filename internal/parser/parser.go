@@ -193,6 +193,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseVarStatement()
 	case token.VAL:
 		return p.parseValStatement()
+	case token.FOREIGN:
+		return p.parseForeignFunctionDeclaration()
 	case token.RETURN:
 		return p.parseReturnStatement()
 	case token.IMPORT:
@@ -1167,6 +1169,32 @@ func (p *Parser) parseNotImplemented() *ast.ThrowStatement {
 	}
 
 	return throw
+}
+
+func (p *Parser) parseForeignFunctionDeclaration() *ast.ForeignFunctionDeclaration {
+	stmt := &ast.ForeignFunctionDeclaration{Token: p.curToken}
+
+	if !p.expectPeek(token.IDENT) {
+		return nil
+	}
+
+	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+
+	if !p.expectPeek(token.ASSIGN) {
+		return nil
+	}
+
+	if !p.expectPeek(token.FUNCTION) {
+		return nil
+	}
+
+	stmt.Parameters = p.parseFunctionParameters()
+
+	if p.peekTokenIs(token.SEMICOLON) {
+		p.nextToken()
+	}
+
+	return stmt
 }
 
 // todo put this in a utils file

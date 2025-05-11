@@ -718,3 +718,31 @@ type NotImplemented struct {
 func (ni *NotImplemented) expressionNode()      {}
 func (ni *NotImplemented) TokenLiteral() string { return ni.Token.Literal }
 func (ni *NotImplemented) String() string       { return ni.Token.Literal }
+
+type ForeignFunctionDeclaration struct {
+	Token      token.Token // The `FOREIGN` token
+	Name       *Identifier // Name of the foreign function
+	Parameters []*FunctionParameter
+}
+
+func (ffd *ForeignFunctionDeclaration) statementNode()       {}
+func (ffd *ForeignFunctionDeclaration) TokenLiteral() string { return ffd.Token.Literal }
+func (ffd *ForeignFunctionDeclaration) String() string {
+	var out bytes.Buffer
+	out.WriteString("foreign ")
+	out.WriteString(ffd.Name.String())
+	out.WriteString(" = ")
+
+	params := []string{}
+	for _, p := range ffd.Parameters {
+		params = append(params, p.String())
+	}
+
+	out.WriteString(ffd.TokenLiteral())
+	out.WriteString("(")
+	out.WriteString(strings.Join(params, ", "))
+	out.WriteString(") ")
+
+	out.WriteString(";")
+	return out.String()
+}

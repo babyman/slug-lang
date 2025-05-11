@@ -175,6 +175,9 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 	case *ast.TryCatchStatement:
 		return evalTryCatchStatement(node, env)
 
+	case *ast.ForeignFunctionDeclaration:
+		return evalForeignFunctionDeclaration(node, env)
+
 	}
 
 	return nil
@@ -202,7 +205,6 @@ func evalProgram(program *ast.Program, env *object.Environment) object.Object {
 func evalImportStatement(importStatement *ast.ImportStatement, env *object.Environment) object.Object {
 	// Generate the cache key from PathParts
 	key := strings.Join(mapIdentifiersToStrings(importStatement.PathParts), ".")
-
 	// Check if the module is already in the registry
 	if module, exists := ModuleRegistry[key]; exists {
 		// Module is already loaded, return it
@@ -213,10 +215,9 @@ func evalImportStatement(importStatement *ast.ImportStatement, env *object.Envir
 	rootPath := env.GetRootPath() // Retrieve the root path set by --root
 
 	// if the module is not in the registry, create a new Module object and cache it
-	moduleName := importStatement.PathParts[len(importStatement.PathParts)-1].Value
 	moduleEnv := object.NewEnvironment()
 	moduleEnv.SetRootPath(rootPath)
-	module := &object.Module{Name: moduleName, Env: moduleEnv}
+	module := &object.Module{Name: key, Env: moduleEnv}
 	ModuleRegistry[key] = module
 
 	// Step 2: Resolve module path to file path
@@ -1260,4 +1261,21 @@ func computeSliceIndices(length int, slice *object.Slice) (int, int, int) {
 	}
 
 	return start, end, step
+}
+
+func evalForeignFunctionDeclaration(stmt *ast.ForeignFunctionDeclaration, env *object.Environment) object.Object {
+	modulePath := env.Path
+	functionName := stmt.Name.Value
+
+	println("loading foreign function %s from %s", functionName, modulePath)
+
+	if builtinFn, exists := builtins[functionName]; exists {
+		_, err := env.Define(functionName, builtinFn)
+		if err != nil {
+			return newError(err.Error())
+		}
+		println("loaded builtin function %s", functionName)
+		return NIL
+	}
+	return NIL
 }

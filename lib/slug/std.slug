@@ -3,23 +3,23 @@
 // -------------------------
 
 
-var map = fn(arr, f, acc = []) {
-	match arr {
+var map = fn(vs, f, acc = []) {
+	match vs {
 		[h, ...t] => map(t, f, acc :+ h.f());
 		[] => acc;
 	}
 }
 
-var filter = fn(arr, f, acc = []) {
-	match arr {
+var filter = fn(vs, f, acc = []) {
+	match vs {
 		[h, ...t] if h.f() => filter(t, f, acc :+ h);
 		[h, ...t] => filter(t, f, acc);
 		[] => acc;
 	}
 }
 
-var reduce = fn(arr, v, f) {
-	match arr {
+var reduce = fn(vs, v, f) {
+	match vs {
 		[h, ...t] => reduce(t, f(v, h), f);
 		[] => v;
 	}

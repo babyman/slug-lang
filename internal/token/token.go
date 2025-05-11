@@ -61,6 +61,7 @@ const (
 	RBRACKET = "]"
 
 	// Keywords
+	FOREIGN  = "FOREIGN"
 	FUNCTION = "FUNCTION"
 	VAL      = "VAL"
 	VAR      = "VAR"
@@ -86,13 +87,13 @@ type Token struct {
 
 var keywords = map[string]TokenType{
 	// declarations
-	"nil":   NIL,
-	"true":  TRUE,
-	"false": FALSE,
-	//"foreign": FOREIGN
-	"fn":  FUNCTION,
-	"val": VAL,
-	"var": VAR,
+	"nil":     NIL,
+	"true":    TRUE,
+	"false":   FALSE,
+	"foreign": FOREIGN,
+	"fn":      FUNCTION,
+	"val":     VAL,
+	"var":     VAR,
 
 	// import etc
 	"import": IMPORT,
