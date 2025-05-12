@@ -1,3 +1,4 @@
+import slug.std.*;
 import slug.test.*;
 
 // simple equality checks

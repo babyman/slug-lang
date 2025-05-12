@@ -207,8 +207,9 @@ func evalImportStatement(importStatement *ast.ImportStatement, env *object.Envir
 
 	// if the module is not in the registry, create a new Module object and cache it
 	moduleEnv := object.NewEnvironment()
-	moduleEnv.Src = module.Src
 	moduleEnv.Path = module.Path
+	moduleEnv.ModuleFqn = module.Name
+	moduleEnv.Src = module.Src
 
 	// Evaluate the module
 	module.Env = moduleEnv
@@ -539,10 +540,6 @@ func evalIdentifier(
 			return module
 		}
 		return val
-	}
-
-	if builtin, ok := builtins[node.Value]; ok {
-		return builtin
 	}
 
 	return newError("identifier not found: " + node.Value)
@@ -1222,17 +1219,17 @@ func computeSliceIndices(length int, slice *object.Slice) (int, int, int) {
 }
 
 func evalForeignFunctionDeclaration(stmt *ast.ForeignFunctionDeclaration, env *object.Environment) object.Object {
-	modulePath := env.Path
+	modulePath := env.ModuleFqn
 	functionName := stmt.Name.Value
 
-	println("loading foreign function %s from %s", functionName, modulePath)
+	fqn := modulePath + "." + functionName
 
-	if builtinFn, exists := builtins[functionName]; exists {
+	if builtinFn, exists := foreignFunctions[fqn]; exists {
 		_, err := env.Define(functionName, builtinFn)
 		if err != nil {
 			return newError(err.Error())
 		}
 		return NIL
 	}
-	return newError("unknown foreign function %s", functionName)
+	return newError("unknown foreign function %s", fqn)
 }

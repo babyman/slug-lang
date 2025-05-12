@@ -11,8 +11,8 @@ import (
 	"strings"
 )
 
-// ModulesRegistry is a global cache for loaded modules
-var ModulesRegistry = make(map[string]*object.Module)
+// moduleRegistry is a global cache for loaded modules
+var moduleRegistry = make(map[string]*object.Module)
 
 var DebugAST = false
 
@@ -20,19 +20,19 @@ var RootPath = "."
 
 // LoadModule loads a module by its path parts into the module registry and evaluates it.
 func LoadModule(pathParts []string) (*object.Module, error) {
-	// Generate the module key from path parts
-	key := strings.Join(pathParts, ".")
+	// Generate the module moduleName from path parts
+	moduleName := strings.Join(pathParts, ".")
 
 	// Check if the module already exists in the registry
-	if module, exists := ModulesRegistry[key]; exists {
+	if module, exists := moduleRegistry[moduleName]; exists {
 		return module, nil // Return the cached module
 	}
 
-	//fmt.Printf("Loading module '%s' from path parts: %v  Root path: %s\n", key, pathParts, RootPath)
+	//fmt.Printf("Loading module '%s' from path parts: %v  Root path: %s\n", moduleName, pathParts, RootPath)
 
 	// Create a new environment and module object
-	module := &object.Module{Name: key, Env: nil}
-	ModulesRegistry[key] = module // Cache the module
+	module := &object.Module{Name: moduleName, Env: nil}
+	moduleRegistry[moduleName] = module // Cache the module
 
 	// Resolve the module path
 	moduleRelativePath := strings.Join(pathParts, "/")
@@ -44,12 +44,12 @@ func LoadModule(pathParts []string) (*object.Module, error) {
 		// Fallback to SLUG_HOME if the file doesn't exist
 		slugHome := os.Getenv("SLUG_HOME")
 		if slugHome == "" {
-			return nil, fmt.Errorf("error reading module '%s': SLUG_HOME environment variable is not set", key)
+			return nil, fmt.Errorf("error reading module '%s': SLUG_HOME environment variable is not set", moduleName)
 		}
 		modulePath = fmt.Sprintf("%s/lib/%s.slug", slugHome, moduleRelativePath)
 		moduleSrc, err = ioutil.ReadFile(modulePath)
 		if err != nil {
-			return nil, fmt.Errorf("error reading module '%s': %s", key, err)
+			return nil, fmt.Errorf("error reading module '%s': %s", moduleName, err)
 		}
 	}
 

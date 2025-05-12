@@ -1,3 +1,4 @@
+import slug.std.*;
 import slug.lists.{ listEquals };
 
 var assert = fn(a, msg = nil) {

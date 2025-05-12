@@ -1,6 +1,7 @@
 //
 // test circular imports
 //
+import slug.std.*;
 //import imports.b.{add};
 import imports.b.*;
 

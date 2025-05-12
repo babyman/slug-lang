@@ -1,0 +1,14 @@
+import slug.std.*;
+
+// foreign println = fn();
+
+// foreign print = fn();
+
+"".println();
+
+"Hello Module".println();
+
+"".println();
+"".println();
+
+

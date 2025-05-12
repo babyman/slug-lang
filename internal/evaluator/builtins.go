@@ -6,23 +6,23 @@ import (
 	"strings"
 )
 
-var builtins = map[string]*object.Builtin{
-	"type":    funcType(),
-	"len":     funcLen(),
-	"println": funcPrintLn(),
+var foreignFunctions = map[string]*object.Builtin{
+	"slug.std.type":    funcType(),
+	"slug.std.len":     funcLen(),
+	"slug.std.println": funcPrintLn(),
 
 	// string functions
-	"trim":       funcTrim(),
-	"contains":   funcContains(),
-	"startsWith": funcStartsWith(),
-	"endsWith":   funcEndsWith(),
-	"indexOf":    funcIndexOf(),
+	"slug.strings.trim":       funcTrim(),
+	"slug.strings.contains":   funcContains(),
+	"slug.strings.startsWith": funcStartsWith(),
+	"slug.strings.endsWith":   funcEndsWith(),
+	"slug.strings.indexOf":    funcIndexOf(),
 
 	// map functions
-	"keys":   funcKeys(),
-	"get":    funcGet(),
-	"put":    funcPut(),
-	"remove": funcRemove(),
+	"slug.std.keys":   funcKeys(),
+	"slug.std.get":    funcGet(),
+	"slug.std.put":    funcPut(),
+	"slug.std.remove": funcRemove(),
 }
 
 func funcPrintLn() *object.Builtin {

@@ -1,3 +1,4 @@
+import slug.strings.*;
 import slug.test.*;
 
 // String functions

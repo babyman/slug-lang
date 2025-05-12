@@ -83,7 +83,7 @@ func executeFile(filename, rootPath string, args []string) error {
 		filename += ".slug"
 	}
 
-	systemRootPath, modulePath, err2 := modulePath(filename, rootPath)
+	systemRootPath, modulePath, err2 := calculateModulePath(filename, rootPath)
 	if err2 != nil {
 		return err2
 	}
@@ -97,8 +97,9 @@ func executeFile(filename, rootPath string, args []string) error {
 
 	// Initialize the environment
 	env := setupEnvironment(args)
+	env.Path = module.Path
+	env.ModuleFqn = module.Name
 	env.Src = module.Src
-	env.Path = filename
 	module.Env = env
 
 	// Parse and evaluate the content
@@ -159,7 +160,7 @@ func isSourceFile(filename string) (bool, error) {
 	return true, nil
 }
 
-func modulePath(filename string, rootPath string) (string, []string, error) {
+func calculateModulePath(filename string, rootPath string) (string, []string, error) {
 
 	// Check if file exists and is not a directory
 	isSource, err := isSourceFile(filename)

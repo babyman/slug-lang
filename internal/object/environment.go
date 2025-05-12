@@ -10,6 +10,7 @@ func NewEnclosedEnvironment(outer *Environment, stackFrame *StackFrame) *Environ
 	env := NewEnvironment()
 	env.outer = outer
 	env.Path = outer.Path
+	env.ModuleFqn = outer.ModuleFqn
 	env.Src = outer.Src
 	env.StackInfo = stackFrame
 	return env
@@ -30,6 +31,7 @@ type Environment struct {
 	outer     *Environment
 	Src       string
 	Path      string
+	ModuleFqn string
 	StackInfo *StackFrame // Optional stack frame information
 }
 

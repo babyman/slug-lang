@@ -1,3 +1,4 @@
+import slug.std.*;
 
 var fizzBuzz = fn(max, acc = 1) {
 	if(acc <= max) {

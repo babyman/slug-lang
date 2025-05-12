@@ -1,0 +1,10 @@
+
+foreign trim = fn();
+
+foreign contains = fn();
+
+foreign startsWith = fn();
+
+foreign endsWith = fn();
+
+foreign indexOf = fn();
