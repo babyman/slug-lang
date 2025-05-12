@@ -1224,8 +1224,8 @@ func evalForeignFunctionDeclaration(stmt *ast.ForeignFunctionDeclaration, env *o
 
 	fqn := modulePath + "." + functionName
 
-	if builtinFn, exists := foreignFunctions[fqn]; exists {
-		_, err := env.Define(functionName, builtinFn)
+	if foreignFn, exists := foreignFunctions[fqn]; exists {
+		_, err := env.Define(functionName, foreignFn)
 		if err != nil {
 			return newError(err.Error())
 		}
