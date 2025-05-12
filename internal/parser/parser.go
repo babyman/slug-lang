@@ -1188,6 +1188,10 @@ func (p *Parser) parseForeignFunctionDeclaration() *ast.ForeignFunctionDeclarati
 		return nil
 	}
 
+	if !p.expectPeek(token.LPAREN) {
+		return nil
+	}
+
 	stmt.Parameters = p.parseFunctionParameters()
 
 	if p.peekTokenIs(token.SEMICOLON) {

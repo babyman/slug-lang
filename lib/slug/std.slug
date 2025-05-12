@@ -2,19 +2,19 @@
 // the slug standard library
 // -------------------------
 
-foreign type = fn();
+foreign type = fn(val);
 
-foreign len = fn();
+foreign len = fn(obj);
 
-foreign println = fn();
+foreign println = fn(...args);
 
-foreign keys = fn();
+foreign keys = fn(map);
 
-foreign get = fn();
+foreign get = fn(map, key);
 
-foreign put = fn();
+foreign put = fn(map, key, val);
 
-foreign remove = fn();
+foreign remove = fn(map, key);
 
 var map = fn(vs, f, acc = []) {
 	match vs {

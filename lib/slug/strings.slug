@@ -1,10 +1,10 @@
 
-foreign trim = fn();
+foreign trim = fn(str);
 
-foreign contains = fn();
+foreign contains = fn(str, seq);
 
-foreign startsWith = fn();
+foreign startsWith = fn(str, sew);
 
-foreign endsWith = fn();
+foreign endsWith = fn(str, seq);
 
-foreign indexOf = fn();
+foreign indexOf = fn(str, seq);
