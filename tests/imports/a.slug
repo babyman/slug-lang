@@ -1,6 +1,11 @@
 //
 // test circular imports
 //
-import imports.b.{add};
+//import imports.b.{add};
+import imports.b.*;
+
+var sub = fn(a, b) {
+    a - b;
+}
 
 println("a executed");

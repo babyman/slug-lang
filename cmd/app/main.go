@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"os"
 	"os/user"
+	"path/filepath"
 	"slug/internal/evaluator"
-	"slug/internal/lexer"
 	"slug/internal/object"
-	"slug/internal/parser"
 	"slug/internal/repl"
 	"strings"
 )
@@ -50,9 +49,10 @@ func main() {
 			panic(err)
 		}
 
+		evaluator.RootPath = rootPath
+
 		fmt.Printf("Hello %s! This is the Slug programming language!\n", usr.Username)
 		fmt.Printf("Feel free to type in commands\n")
-		repl.SetRootPath(rootPath) // Pass rootPath to REPL
 		repl.Start(os.Stdin, os.Stdout)
 	}
 }
@@ -78,24 +78,31 @@ Examples:
 
 func executeFile(filename, rootPath string, args []string) error {
 
-	// Step 1: Ensure the file has the correct extension
+	// Ensure the file has the correct extension
 	if !strings.HasSuffix(filename, ".slug") {
 		filename += ".slug"
 	}
 
-	// Step 2: Attempt to load the file content
-	content, err := readFileWithFallback(filename)
-	if err != nil {
-		return fmt.Errorf("failed to load file '%s': %v", filename, err)
+	systemRootPath, modulePath, err2 := modulePath(filename, rootPath)
+	if err2 != nil {
+		return err2
 	}
 
-	// Step 3: Initialize the environment
-	env := setupEnvironment(rootPath, args)
-	env.Src = content
-	env.Path = filename
+	evaluator.DebugAST = debugAST
+	evaluator.RootPath = systemRootPath
+	module, err := evaluator.LoadModule(modulePath)
+	if err != nil {
+		return fmt.Errorf("failed to load main module '%s':\n%v", filename, err)
+	}
 
-	// Step 4: Parse and evaluate the content
-	err = parseAndEvaluate(filename, content, env)
+	// Initialize the environment
+	env := setupEnvironment(args)
+	env.Src = module.Src
+	env.Path = filename
+	module.Env = env
+
+	// Parse and evaluate the content
+	err = evaluateModule(module, env)
 	if err != nil {
 		return fmt.Errorf("'%s': %v", filename, err)
 	}
@@ -103,30 +110,8 @@ func executeFile(filename, rootPath string, args []string) error {
 	return nil
 }
 
-func readFileWithFallback(filename string) (string, error) {
-	content, err := os.ReadFile(filename) // Primary file path
-	if err == nil {
-		return string(content), nil
-	}
-
-	// Fallback logic to check SLUG_HOME/lib
-	slugHome := os.Getenv("SLUG_HOME")
-	if slugHome == "" {
-		return "", fmt.Errorf("file not found at '%s' and SLUG_HOME is not set", filename)
-	}
-
-	fallbackPath := fmt.Sprintf("%s/lib/%s", slugHome, filename)
-	content, err = os.ReadFile(fallbackPath)
-	if err != nil {
-		return "", fmt.Errorf("file not found at '%s' and fallback to '%s' also failed", filename, fallbackPath)
-	}
-
-	return string(content), nil
-}
-
-func setupEnvironment(rootPath string, args []string) *object.Environment {
+func setupEnvironment(args []string) *object.Environment {
 	env := object.NewEnvironment()
-	env.SetRootPath(rootPath)
 
 	// Prepare args list
 	objects := make([]object.Object, len(args))
@@ -138,28 +123,10 @@ func setupEnvironment(rootPath string, args []string) *object.Environment {
 	return env
 }
 
-func parseAndEvaluate(filename string, src string, env *object.Environment) error {
-	// Initialize Lexer and Parser
-	l := lexer.New(src)
-	p := parser.New(l, src)
+func evaluateModule(module *object.Module, env *object.Environment) error {
 
 	// Parse src into a Program AST
-	program := p.ParseProgram()
-
-	if debugAST {
-		if err := parser.WriteASTToJSON(program, filename+".ast.json"); err != nil {
-			return fmt.Errorf("failed to write AST to JSON: %v", err)
-		}
-	}
-
-	if len(p.Errors()) > 0 {
-		fmt.Println("Woops! Looks like we slid into some slimy slug trouble here!")
-		fmt.Println("Parser errors:")
-		for _, msg := range p.Errors() {
-			fmt.Printf("\t%s\n", msg)
-		}
-		return fmt.Errorf("parsing errors encountered")
-	}
+	program := module.Program
 
 	// Evaluate the program within the provided environment
 	evaluated := evaluator.Eval(program, env)
@@ -172,4 +139,64 @@ func parseAndEvaluate(filename string, src string, env *object.Environment) erro
 	}
 
 	return nil
+}
+
+func isSourceFile(filename string) (bool, error) {
+
+	fileInfo, err := os.Stat(filename)
+
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("error accessing file '%s': %v", filename, err)
+	}
+
+	if fileInfo.IsDir() {
+		return false, fmt.Errorf("'%s' is a directory, not a file", filename)
+	}
+
+	return true, nil
+}
+
+func modulePath(filename string, rootPath string) (string, []string, error) {
+
+	// Check if file exists and is not a directory
+	isSource, err := isSourceFile(filename)
+	if err != nil {
+		return "", nil, err
+	}
+
+	if rootPath == "." && isSource {
+		rootPath = filepath.Dir(filename)
+	}
+
+	// Calculate the module path relative to root path
+	absFilePath, err := filepath.Abs(filename)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to get absolute path for '%s': %v", filename, err)
+	}
+
+	absRootPath, err := filepath.Abs(rootPath)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to get absolute path for root '%s': %v", rootPath, err)
+	}
+
+	if !isSource {
+		absFilePath = absRootPath
+	}
+
+	modulePath, err := filepath.Rel(absRootPath, absFilePath)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to calculate relative path: %v", err)
+	}
+	if !isSource {
+		modulePath = filename
+	}
+
+	// Remove .slug extension if present
+	modulePath = strings.TrimSuffix(modulePath, ".slug")
+
+	modulePathParts := strings.Split(modulePath, string(filepath.Separator))
+	return absRootPath, modulePathParts, nil
 }

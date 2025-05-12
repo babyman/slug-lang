@@ -9,7 +9,6 @@ import (
 func NewEnclosedEnvironment(outer *Environment, stackFrame *StackFrame) *Environment {
 	env := NewEnvironment()
 	env.outer = outer
-	env.rootPath = outer.rootPath
 	env.Path = outer.Path
 	env.Src = outer.Src
 	env.StackInfo = stackFrame
@@ -18,7 +17,7 @@ func NewEnclosedEnvironment(outer *Environment, stackFrame *StackFrame) *Environ
 
 func NewEnvironment() *Environment {
 	s := make(map[string]*Binding)
-	return &Environment{Store: s, outer: nil, rootPath: "."}
+	return &Environment{Store: s, outer: nil}
 }
 
 type Binding struct {
@@ -31,18 +30,7 @@ type Environment struct {
 	outer     *Environment
 	Src       string
 	Path      string
-	rootPath  string      // Track the execution root path
 	StackInfo *StackFrame // Optional stack frame information
-}
-
-// SetRootPath sets the root path for the environment
-func (e *Environment) SetRootPath(path string) {
-	e.rootPath = path
-}
-
-// GetRootPath retrieves the root path for the environment
-func (e *Environment) GetRootPath() string {
-	return e.rootPath
 }
 
 func (e *Environment) GetBinding(name string) (*Binding, bool) {

@@ -2,14 +2,9 @@ package evaluator
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 	"slug/internal/ast"
-	"slug/internal/lexer"
 	"slug/internal/object"
-	"slug/internal/parser"
 	"slug/internal/token"
-	"strings"
 )
 
 var (
@@ -17,8 +12,6 @@ var (
 	TRUE  = &object.Boolean{Value: true}
 	FALSE = &object.Boolean{Value: false}
 )
-
-var ModuleRegistry = make(map[string]*object.Module)
 
 func Eval(node ast.Node, env *object.Environment) object.Object {
 	switch node := node.(type) {
@@ -203,59 +196,24 @@ func evalProgram(program *ast.Program, env *object.Environment) object.Object {
 }
 
 func evalImportStatement(importStatement *ast.ImportStatement, env *object.Environment) object.Object {
-	// Generate the cache key from PathParts
-	key := strings.Join(mapIdentifiersToStrings(importStatement.PathParts), ".")
-	// Check if the module is already in the registry
-	if module, exists := ModuleRegistry[key]; exists {
-		// Module is already loaded, return it
+
+	module, err := LoadModule(mapIdentifiersToStrings(importStatement.PathParts))
+	if err != nil {
+		return newError(err.Error())
+	}
+	if module.Env != nil {
 		return handleModuleImport(importStatement, env, module)
 	}
 
-	// Step 1: Resolve the root path
-	rootPath := env.GetRootPath() // Retrieve the root path set by --root
-
 	// if the module is not in the registry, create a new Module object and cache it
 	moduleEnv := object.NewEnvironment()
-	moduleEnv.SetRootPath(rootPath)
-	module := &object.Module{Name: key, Env: moduleEnv}
-	ModuleRegistry[key] = module
+	moduleEnv.Src = module.Src
+	moduleEnv.Path = module.Path
 
-	// Step 2: Resolve module path to file path
-	moduleRelativePath := strings.Join(mapIdentifiersToStrings(importStatement.PathParts), "/")
+	// Evaluate the module
+	module.Env = moduleEnv
 
-	modulePath := fmt.Sprintf("%s/%s.slug", rootPath, moduleRelativePath)
-
-	// Try to read the module from the resolved path
-	moduleSrc, err := ioutil.ReadFile(modulePath)
-	fallbackPath := ""
-	if err != nil {
-		// If not found, attempt fallback to ${SLUG_HOME}/lib
-		slugHome := os.Getenv("SLUG_HOME")
-		if slugHome == "" {
-			return newError("environment variable SLUG_HOME is not set")
-		}
-
-		fallbackPath = fmt.Sprintf("%s/lib/%s.slug", slugHome, moduleRelativePath)
-		moduleSrc, err = ioutil.ReadFile(fallbackPath)
-		if err != nil {
-			return newError("error reading module '%s': %s", fallbackPath, err)
-		}
-	}
-
-	// Step 3: Parse and evaluate the module
-	src := string(moduleSrc)
-	moduleEnv.Src = src
-	moduleEnv.Path = moduleRelativePath
-	l := lexer.New(src)
-	p := parser.New(l, src)
-	program := p.ParseProgram()
-
-	if len(p.Errors()) > 0 {
-		return newError("parsing errors in module '%s': %s", key, strings.Join(p.Errors(), ", "))
-	}
-
-	// Evaluate the program within the module's environment
-	Eval(program, moduleEnv)
+	Eval(module.Program, moduleEnv)
 
 	// Import the module into the current environment
 	return handleModuleImport(importStatement, env, module)
@@ -1274,8 +1232,7 @@ func evalForeignFunctionDeclaration(stmt *ast.ForeignFunctionDeclaration, env *o
 		if err != nil {
 			return newError(err.Error())
 		}
-		println("loaded builtin function %s", functionName)
 		return NIL
 	}
-	return NIL
+	return newError("unknown foreign function %s", functionName)
 }
