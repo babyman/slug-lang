@@ -1,0 +1,4 @@
+import slug.sys.*;
+import slug.test.*;
+
+assert(env("SLUG_HOME") != nil, "You should set a SLUG_HOME environment value!");

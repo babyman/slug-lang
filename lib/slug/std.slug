@@ -2,18 +2,25 @@
 // the slug standard library
 // -------------------------
 
+// return a string value indicating the type of `val`
 foreign type = fn(val);
 
+// get the length of a string, list or map
 foreign len = fn(obj);
 
+// print values followed by a newline
 foreign println = fn(...args);
 
+// get the list of keys used a map
 foreign keys = fn(map);
 
+// get a value from a map, nil if not present
 foreign get = fn(map, key);
 
+// put a value into a map
 foreign put = fn(map, key, val);
 
+// remove a key from a map
 foreign remove = fn(map, key);
 
 var map = fn(vs, f, acc = []) {

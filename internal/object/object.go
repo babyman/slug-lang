@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-type BuiltinFunction func(args ...Object) Object
+type ForeignFunction func(args ...Object) Object
 
 type ObjectType string
 
@@ -24,7 +24,7 @@ const (
 
 	MODULE_OBJ   = "MODULE"
 	FUNCTION_OBJ = "FUNCTION"
-	BUILTIN_OBJ  = "BUILTIN"
+	FOREIGN_OBJ  = "BUILTIN"
 
 	LIST_OBJ = "LIST"
 	MAP_OBJ  = "MAP"
@@ -151,12 +151,12 @@ func (s *String) MapKey() MapKey {
 	return MapKey{Type: s.Type(), Value: h.Sum64()}
 }
 
-type Builtin struct {
-	Fn BuiltinFunction
+type Foreign struct {
+	Fn ForeignFunction
 }
 
-func (b *Builtin) Type() ObjectType { return BUILTIN_OBJ }
-func (b *Builtin) Inspect() string  { return "builtin function" }
+func (b *Foreign) Type() ObjectType { return FOREIGN_OBJ }
+func (b *Foreign) Inspect() string  { return "foreign function" }
 
 type List struct {
 	Elements []Object

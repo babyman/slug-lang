@@ -593,7 +593,7 @@ func applyFunction(fn object.Object, args []object.Object) object.Object {
 		evaluated := Eval(fn.Body, extendedEnv)
 		return unwrapReturnValue(evaluated)
 
-	case *object.Builtin:
+	case *object.Foreign:
 		return fn.Fn(args...)
 
 	default:
