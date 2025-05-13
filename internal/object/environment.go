@@ -2,6 +2,7 @@ package object
 
 import (
 	"fmt"
+	"slug/internal/ast"
 	"slug/internal/parser"
 )
 
@@ -27,12 +28,13 @@ type Binding struct {
 }
 
 type Environment struct {
-	Store     map[string]*Binding
-	outer     *Environment
-	Src       string
-	Path      string
-	ModuleFqn string
-	StackInfo *StackFrame // Optional stack frame information
+	Store      map[string]*Binding
+	outer      *Environment
+	Src        string
+	Path       string
+	ModuleFqn  string
+	StackInfo  *StackFrame     // Optional stack frame information
+	deferStack []ast.Statement // Stack for deferred statements
 }
 
 func (e *Environment) GetBinding(name string) (*Binding, bool) {
@@ -103,4 +105,15 @@ func reverse(slice []StackFrame) []StackFrame {
 		slice[i], slice[j] = slice[j], slice[i]
 	}
 	return slice
+}
+
+func (e *Environment) RegisterDefer(deferStmt ast.Statement) {
+	e.deferStack = append(e.deferStack, deferStmt)
+}
+
+func (e *Environment) ExecuteDeferred(evalFunc func(stmt ast.Statement, env *Environment)) {
+	defer func() { e.deferStack = nil }() // Always clear defer stack
+	for i := len(e.deferStack) - 1; i >= 0; i-- {
+		evalFunc(e.deferStack[i], e) // Execute each deferred statement
+	}
 }

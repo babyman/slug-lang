@@ -2,14 +2,16 @@ import slug.std.*;
 import slug.io.tcp.*;
 
 var listener = bind("127.0.0.1", 8080);
+defer close(listener);
+
 println("Server listening on 127.0.0.1:8080");
 
 var loop = fn(count = 1) {
 	var conn = accept(listener);
+	defer close(conn);
 	var msg = read(conn, 1024);
 	println(count, "Received:", msg, listener, conn);
 	write(conn, msg);
-	close(conn);
 	if(msg != "bye") {
 		loop(count + 1);
 	}
@@ -17,7 +19,7 @@ var loop = fn(count = 1) {
 
 loop();
 
-close(listener);
+
 
 println("Connection closed");
 

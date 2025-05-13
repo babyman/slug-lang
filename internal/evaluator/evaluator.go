@@ -171,6 +171,9 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 	case *ast.ForeignFunctionDeclaration:
 		return evalForeignFunctionDeclaration(node, env)
 
+	case *ast.DeferStatement:
+		return evalDefer(node, env)
+
 	}
 
 	return nil
@@ -275,6 +278,11 @@ func evalBlockStatement(block *ast.BlockStatement, env *object.Environment) obje
 		Function: "block",
 		File:     env.Path,
 		Position: block.Token.Position,
+	})
+
+	// Execute deferred statements when the block ends
+	defer blockEnv.ExecuteDeferred(func(stmt ast.Statement, env *object.Environment) {
+		Eval(stmt, env)
 	})
 
 	var result object.Object
@@ -1232,4 +1240,10 @@ func evalForeignFunctionDeclaration(stmt *ast.ForeignFunctionDeclaration, env *o
 		return NIL
 	}
 	return newError("unknown foreign function %s", fqn)
+}
+
+func evalDefer(deferStmt *ast.DeferStatement, env *object.Environment) object.Object {
+	// Register the defer statement into the environment's defer stack
+	env.RegisterDefer(deferStmt.Call)
+	return nil // Defer statements do not produce a direct result
 }

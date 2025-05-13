@@ -2,6 +2,8 @@ import slug.std.*;
 import slug.io.tcp.*;
 
 var client = connect("127.0.0.1", 8080);
+defer close(client);
+
 println("connected");
 
 if(args != nil && len(args) > 0) {
@@ -12,5 +14,4 @@ if(args != nil && len(args) > 0) {
 
 println("Got echo:", read(client, 1024));
 
-close(client);
 

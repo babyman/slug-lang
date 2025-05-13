@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"slug/internal/ast"
 	"slug/internal/evaluator"
 	"slug/internal/object"
 	"slug/internal/repl"
@@ -128,6 +129,10 @@ func evaluateModule(module *object.Module, env *object.Environment) error {
 
 	// Parse src into a Program AST
 	program := module.Program
+
+	defer env.ExecuteDeferred(func(stmt ast.Statement, env *object.Environment) {
+		evaluator.Eval(stmt, env)
+	})
 
 	// Evaluate the program within the provided environment
 	evaluated := evaluator.Eval(program, env)

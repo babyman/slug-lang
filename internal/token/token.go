@@ -76,6 +76,7 @@ const (
 	TRY      = "TRY"
 	CATCH    = "CATCH"
 	THROW    = "THROW"
+	DEFER    = "DEFER"
 	MATCH    = "MATCH"
 )
 
@@ -110,7 +111,7 @@ var keywords = map[string]TokenType{
 	"try":   TRY,
 	"catch": CATCH,
 	"throw": THROW,
-	//"defer": DEFER
+	"defer": DEFER,
 
 	// Thread related
 	//"spawn": SPAWN

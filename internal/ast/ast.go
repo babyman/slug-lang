@@ -746,3 +746,17 @@ func (ffd *ForeignFunctionDeclaration) String() string {
 	out.WriteString(";")
 	return out.String()
 }
+
+type DeferStatement struct {
+	Token token.Token // The 'defer' token
+	Call  Statement   // Expression or block to execute later
+}
+
+func (ds *DeferStatement) statementNode()       {}
+func (ds *DeferStatement) TokenLiteral() string { return ds.Token.Literal }
+func (ds *DeferStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString("defer ")
+	out.WriteString(ds.Call.String())
+	return out.String()
+}

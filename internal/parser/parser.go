@@ -201,6 +201,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseImportStatement()
 	case token.NOT_IMPLEMENTED:
 		return p.parseNotImplemented()
+	case token.DEFER:
+		return p.parseDeferStatement()
 	case token.TRY:
 		return p.parseTryCatchStatement()
 	case token.THROW:
@@ -1196,6 +1198,19 @@ func (p *Parser) parseForeignFunctionDeclaration() *ast.ForeignFunctionDeclarati
 
 	if p.peekTokenIs(token.SEMICOLON) {
 		p.nextToken()
+	}
+
+	return stmt
+}
+
+func (p *Parser) parseDeferStatement() *ast.DeferStatement {
+	stmt := &ast.DeferStatement{Token: p.curToken} // Current token is 'defer'
+	p.nextToken()
+
+	if p.curTokenIs(token.LBRACE) {
+		stmt.Call = p.parseBlockStatement()
+	} else {
+		stmt.Call = p.parseExpressionStatement()
 	}
 
 	return stmt
