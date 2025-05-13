@@ -1,0 +1,16 @@
+import slug.std.*;
+import slug.io.tcp.*;
+
+var client = connect("127.0.0.1", 8080);
+println("connected");
+
+if(args != nil && len(args) > 0) {
+	write(client, args[0]);
+} else {
+	write(client, "Echo this from Slug!");
+}
+
+println("Got echo:", read(client, 1024));
+
+close(client);
+

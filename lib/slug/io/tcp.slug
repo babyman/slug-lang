@@ -1,0 +1,12 @@
+
+foreign bind = fn(addr, port);
+
+foreign accept = fn(listener);
+
+foreign connect = fn(addr, port);
+
+foreign read = fn(stream, maxBytes);
+
+foreign write = fn(stream, data);
+
+foreign close = fn(handle);

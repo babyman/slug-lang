@@ -5,14 +5,20 @@ import (
 )
 
 var foreignFunctions = map[string]*object.Foreign{
+	"slug.io.tcp.bind":    fnIoTcpBind(),
+	"slug.io.tcp.accept":  fnIoTcpAccept(),
+	"slug.io.tcp.connect": fnIoTcpConnect(),
+	"slug.io.tcp.read":    fnIoTcpRead(),
+	"slug.io.tcp.write":   fnIoTcpWrite(),
+	"slug.io.tcp.close":   fnIoTcpClose(),
+
 	"slug.std.len":     fnStdLen(),
 	"slug.std.println": fnStdPrintLn(),
 	"slug.std.type":    fnStdType(),
-	// map functions
-	"slug.std.get":    fnStdGet(),
-	"slug.std.keys":   fnStdKeys(),
-	"slug.std.put":    fnStdPut(),
-	"slug.std.remove": fnStdRemove(),
+	"slug.std.get":     fnStdGet(),
+	"slug.std.keys":    fnStdKeys(),
+	"slug.std.put":     fnStdPut(),
+	"slug.std.remove":  fnStdRemove(),
 
 	// string functions
 	"slug.strings.contains":   fnStringsContains(),
