@@ -8,7 +8,7 @@ run:
 
 test: release
 	go test ./... || exit 1
-	@for file in $(shell find ./tests -name "*.slug"); do \
+	@for file in $(shell find ./tests -name "*.slug" | sort); do \
 		echo "Running tests for $$file"; \
 		./bin/$(BINARY_NAME) --root ./tests $$file || exit 1; \
 	done

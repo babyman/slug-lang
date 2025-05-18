@@ -535,9 +535,11 @@ func testEval(input string) object.Object {
 	l := lexer.New(input)
 	p := parser.New(l, input)
 	program := p.ParseProgram()
-	env := object.NewEnvironment()
 
-	return Eval(program, env)
+	evaluator := Evaluator{}
+	evaluator.PushEnv(object.NewEnvironment())
+	defer evaluator.PopEnv()
+	return evaluator.Eval(program)
 }
 
 func testIntegerObject(t *testing.T, obj object.Object, expected int64) bool {

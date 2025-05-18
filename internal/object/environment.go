@@ -108,12 +108,14 @@ func reverse(slice []StackFrame) []StackFrame {
 }
 
 func (e *Environment) RegisterDefer(deferStmt ast.Statement) {
+	//println(">>> Stashing deferred block: ", deferStmt.String())
 	e.deferStack = append(e.deferStack, deferStmt)
 }
 
-func (e *Environment) ExecuteDeferred(evalFunc func(stmt ast.Statement, env *Environment)) {
+func (e *Environment) ExecuteDeferred(evalFunc func(stmt ast.Statement)) {
 	defer func() { e.deferStack = nil }() // Always clear defer stack
 	for i := len(e.deferStack) - 1; i >= 0; i-- {
-		evalFunc(e.deferStack[i], e) // Execute each deferred statement
+		evalFunc(e.deferStack[i]) // Execute each deferred statement
+		//println("<<< Executing deferred block: ", e.deferStack[i].String())
 	}
 }

@@ -2,24 +2,30 @@ import slug.std.*;
 import slug.io.tcp.*;
 
 var listener = bind("127.0.0.1", 8080);
-defer close(listener);
+defer {
+	listener.close();
+	println("Listener closed", listener);
+}
 
-println("Server listening on 127.0.0.1:8080");
+println("Server listening on 127.0.0.1:8080", listener);
 
-var loop = fn(count = 1) {
-	var conn = accept(listener);
-	defer close(conn);
-	var msg = read(conn, 1024);
-	println(count, "Received:", msg, listener, conn);
-	write(conn, msg);
+var serverLoop = fn(count = 1) {
+	var connection = listener.accept();
+	defer {
+		connection.close();
+		println("<<< connection closed", connection);
+	}
+	var msg = connection.read(1024);
+	println(count, "Connection received:", msg, listener, connection);
+	connection.write(msg);
 	if(msg != "bye") {
-		loop(count + 1);
+		serverLoop(count + 1);
 	}
 }
 
-loop();
+serverLoop();
+
+println("Server loop exited");
 
 
-
-println("Connection closed");
 

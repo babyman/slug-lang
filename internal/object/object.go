@@ -21,6 +21,7 @@ const (
 	STRING_OBJ  = "STRING"
 
 	RETURN_VALUE_OBJ = "RETURN_VALUE"
+	TAIL_CALL_OBJ    = "TAIL_CALL"
 
 	MODULE_OBJ   = "MODULE"
 	FUNCTION_OBJ = "FUNCTION"
@@ -114,9 +115,10 @@ func (m *Module) Inspect() string {
 }
 
 type Function struct {
-	Parameters []*ast.FunctionParameter
-	Body       *ast.BlockStatement
-	Env        *Environment
+	Parameters  []*ast.FunctionParameter
+	Body        *ast.BlockStatement
+	Env         *Environment
+	HasTailCall bool
 }
 
 func (f *Function) Type() ObjectType { return FUNCTION_OBJ }
@@ -249,5 +251,28 @@ func (s *Slice) Inspect() string {
 		out.WriteString(":")
 		out.WriteString(s.Step.Inspect())
 	}
+	return out.String()
+}
+
+// TailCall is a special object used for tail call optimization
+type TailCall struct {
+	Function  Object
+	Arguments []Object
+}
+
+func (tc *TailCall) Type() ObjectType { return TAIL_CALL_OBJ }
+func (tc *TailCall) Inspect() string {
+	var out bytes.Buffer
+	out.WriteString("tailcall(")
+	out.WriteString(tc.Function.Inspect())
+	out.WriteString(", [")
+
+	args := []string{}
+	for _, arg := range tc.Arguments {
+		args = append(args, arg.Inspect())
+	}
+	out.WriteString(strings.Join(args, ", "))
+
+	out.WriteString("])")
 	return out.String()
 }

@@ -261,7 +261,7 @@ func (ie *IfExpression) String() string {
 	out.WriteString(ie.ThenBranch.String())
 
 	if ie.ElseBranch != nil {
-		out.WriteString("else ")
+		out.WriteString(" else ")
 		out.WriteString(ie.ElseBranch.String())
 	}
 
@@ -269,9 +269,10 @@ func (ie *IfExpression) String() string {
 }
 
 type FunctionLiteral struct {
-	Token      token.Token // The 'fn' token
-	Parameters []*FunctionParameter
-	Body       *BlockStatement
+	Token       token.Token // The 'fn' token
+	Parameters  []*FunctionParameter
+	Body        *BlockStatement
+	HasTailCall bool // Whether this function has tail calls
 }
 
 func (fl *FunctionLiteral) expressionNode()      {}
@@ -294,9 +295,10 @@ func (fl *FunctionLiteral) String() string {
 }
 
 type CallExpression struct {
-	Token     token.Token // The '(' token
-	Function  Expression  // Identifier or FunctionLiteral
-	Arguments []Expression
+	Token      token.Token // The '(' token
+	Function   Expression  // Identifier or FunctionLiteral
+	Arguments  []Expression
+	IsTailCall bool // Whether this is a tail call
 }
 
 func (ce *CallExpression) expressionNode()      {}

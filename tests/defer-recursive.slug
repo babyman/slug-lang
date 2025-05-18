@@ -1,0 +1,64 @@
+import slug.std.*;
+import slug.test.*;
+
+var rfc1 = 5;
+
+var rf1 = fn(a) {
+	match a {
+		0 => a;
+		v => {
+			defer {
+				rfc1 = rfc1 - 1;
+				// println("<<< rf1 defer ", a, rfc1);
+			}
+			// println("    rf1 before", a, rfc1);
+			rfc1.assertEqual(a);
+			rf1( a - 1 );
+		}
+	}
+}
+
+rf1(rfc1).assertEqual(0);
+
+
+
+var rfc2 = 5;
+
+var rf2 = fn(a) {
+	if ( a <= 0 ) {
+		a;
+	} else {
+		defer {
+			rfc2 = rfc2 - 1;
+			// println("<<< rf2 defer ", a, rfc2);
+		}
+		// println("    rf2 before", a, rfc2);
+		rfc2.assertEqual(a);
+		rf2( a - 1 );
+	}
+}
+
+
+rf2(rfc2).assertEqual(0);
+
+
+
+var rfc3 = 5;
+
+var rf3 = fn(a) {
+	defer {
+		rfc3 = rfc3 - 1;
+		// println("<<< rf3 defer ", a, rfc3)
+	}
+	// println("    rf3 before", a, rfc3);
+	rfc3.assertEqual(a);
+	if(a > 0) {
+		rf3(a - 1);
+	} else {
+		a;
+	}
+}
+
+rf3(rfc3).assertEqual(0);
+
+

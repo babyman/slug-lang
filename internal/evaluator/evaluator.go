@@ -13,47 +13,75 @@ var (
 	FALSE = &object.Boolean{Value: false}
 )
 
-func Eval(node ast.Node, env *object.Environment) object.Object {
+type Evaluator struct {
+	envStack []*object.Environment // Environment stack encapsulated in an evaluator struct
+}
+
+func (e *Evaluator) PushEnv(env *object.Environment) {
+	e.envStack = append(e.envStack, env)
+	//println(">", strings.Repeat("-", len(e.envStack)))
+}
+
+func (e *Evaluator) CurrentEnv() *object.Environment {
+	// Access the current environment from the top frame
+	if len(e.envStack) == 0 {
+		panic("Environment stack is empty in the current frame")
+	}
+	return e.envStack[len(e.envStack)-1]
+}
+
+func (e *Evaluator) PopEnv() {
+	if len(e.envStack) == 0 {
+		panic("Attempted to pop from an empty environment stack")
+	}
+	e.CurrentEnv().ExecuteDeferred(func(stmt ast.Statement) {
+		e.Eval(stmt)
+	})
+	e.envStack = e.envStack[:len(e.envStack)-1]
+	//println("<", strings.Repeat("-", len(e.envStack)))
+}
+
+func (e *Evaluator) Eval(node ast.Node) object.Object {
 	switch node := node.(type) {
 
 	// Statements
 	case *ast.Program:
-		return evalProgram(node, env)
+		return e.evalProgram(node)
 
 	case *ast.BlockStatement:
-		return evalBlockStatement(node, env)
+		return e.evalBlockStatement(node)
 
 	case *ast.ExpressionStatement:
-		return Eval(node.Expression, env)
+		return e.Eval(node.Expression)
 
 	case *ast.ReturnStatement:
-		val := Eval(node.ReturnValue, env)
-		if isError(val) {
+		val := e.Eval(node.ReturnValue)
+		if e.isError(val) {
 			return val
 		}
 		return &object.ReturnValue{Value: val}
 
 	case *ast.ImportStatement:
-		return evalImportStatement(node, env)
+		return e.evalImportStatement(node)
 
 	case *ast.MatchExpression:
-		return evalMatchExpression(node, env)
+		return e.evalMatchExpression(node)
 
 	case *ast.VarStatement:
-		val := Eval(node.Value, env)
-		if isError(val) {
+		val := e.Eval(node.Value)
+		if e.isError(val) {
 			return val
 		}
-		if _, err := patternMatches(node.Pattern, val, env, false); err != nil {
+		if _, err := e.patternMatches(node.Pattern, val, false); err != nil {
 			return newError(err.Error())
 		}
 
 	case *ast.ValStatement:
-		val := Eval(node.Value, env)
-		if isError(val) {
+		val := e.Eval(node.Value)
+		if e.isError(val) {
 			return val
 		}
-		if _, err := patternMatches(node.Pattern, val, env, true); err != nil {
+		if _, err := e.patternMatches(node.Pattern, val, true); err != nil {
 			return newError(err.Error())
 		}
 
@@ -71,11 +99,11 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		return NIL
 
 	case *ast.PrefixExpression:
-		right := Eval(node.Right, env)
-		if isError(right) {
+		right := e.Eval(node.Right)
+		if e.isError(right) {
 			return right
 		}
-		return evalPrefixExpression(node.Operator, right)
+		return e.evalPrefixExpression(node.Operator, right)
 
 	case *ast.InfixExpression:
 		// Special case for assignment
@@ -87,13 +115,13 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 			}
 
 			// Evaluate right side
-			right := Eval(node.Right, env)
-			if isError(right) {
+			right := e.Eval(node.Right)
+			if e.isError(right) {
 				return right
 			}
 
 			// Try to assign the value (variable is already defined)
-			val, err := env.Assign(ident.Value, right)
+			val, err := e.CurrentEnv().Assign(ident.Value, right)
 			if err != nil {
 				return newError(err.Error())
 			}
@@ -102,88 +130,121 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		}
 
 		// Regular infix expressions
-		left := Eval(node.Left, env)
-		if isError(left) {
+		left := e.Eval(node.Left)
+		if e.isError(left) {
 			return left
 		}
 
-		right := Eval(node.Right, env)
-		if isError(right) {
+		right := e.Eval(node.Right)
+		if e.isError(right) {
 			return right
 		}
 
-		return evalInfixExpression(node.Operator, left, right)
+		return e.evalInfixExpression(node.Operator, left, right)
 
 	case *ast.IfExpression:
-		return evalIfExpression(node, env)
+		return e.evalIfExpression(node)
 
 	case *ast.Identifier:
-		return evalIdentifier(node, env)
+		return e.evalIdentifier(node)
 
 	case *ast.FunctionLiteral:
 		params := node.Parameters
 		body := node.Body
-		return &object.Function{Parameters: params, Env: env, Body: body}
+
+		return &object.Function{
+			Parameters:  params,
+			Env:         e.CurrentEnv(),
+			Body:        body,
+			HasTailCall: node.HasTailCall,
+		}
 
 	case *ast.CallExpression:
-		function := Eval(node.Function, env)
-		if isError(function) {
+		function := e.Eval(node.Function)
+		if e.isError(function) {
 			return function
 		}
 
-		args := evalExpressions(node.Arguments, env)
-		if len(args) == 1 && isError(args[0]) {
+		args := e.evalExpressions(node.Arguments)
+		if len(args) == 1 && e.isError(args[0]) {
 			return args[0]
 		}
 
-		return applyFunction(function, args)
+		// If this is a tail call, wrap it in a TailCall object instead of evaluating
+		if node.IsTailCall {
+			//println("tail call")
+			return &object.TailCall{
+				Function:  function,
+				Arguments: args,
+			}
+		}
+
+		// For non-tail calls, invoke the function directly
+		return e.applyFunction(function, args)
 
 	case *ast.ListLiteral:
-		elements := evalExpressions(node.Elements, env)
-		if len(elements) == 1 && isError(elements[0]) {
+		elements := e.evalExpressions(node.Elements)
+		if len(elements) == 1 && e.isError(elements[0]) {
 			return elements[0]
 		}
 		return &object.List{Elements: elements}
 
 	case *ast.IndexExpression:
-		left := Eval(node.Left, env)
-		if isError(left) {
+		left := e.Eval(node.Left)
+		if e.isError(left) {
 			return left
 		}
-		index := Eval(node.Index, env)
-		if isError(index) {
+		index := e.Eval(node.Index)
+		if e.isError(index) {
 			return index
 		}
-		return evalIndexExpression(left, index)
+		return e.evalIndexExpression(left, index)
 
 	case *ast.SliceExpression:
-		return evalSliceExpression(node, env)
+		return e.evalSliceExpression(node)
 
 	case *ast.MapLiteral:
-		return evalMapLiteral(node, env)
+		return e.evalMapLiteral(node)
 
 	case *ast.ThrowStatement:
-		return evalThrowStatement(node, env)
+		return e.evalThrowStatement(node)
 
 	case *ast.TryCatchStatement:
-		return evalTryCatchStatement(node, env)
+		return e.evalTryCatchStatement(node)
 
 	case *ast.ForeignFunctionDeclaration:
-		return evalForeignFunctionDeclaration(node, env)
+		return e.evalForeignFunctionDeclaration(node)
 
 	case *ast.DeferStatement:
-		return evalDefer(node, env)
+		return e.evalDefer(node)
 
 	}
 
 	return nil
 }
 
-func evalProgram(program *ast.Program, env *object.Environment) object.Object {
+func (e *Evaluator) evalProgram(program *ast.Program) object.Object {
+	//println("program")
 	var result object.Object
 
 	for _, statement := range program.Statements {
-		result = Eval(statement, env)
+		result = e.Eval(statement)
+
+		for {
+			if returnVal, ok := result.(*object.TailCall); ok {
+				result = e.applyFunction(returnVal.Function, returnVal.Arguments)
+				//println("tail call", result.Type())
+			} else if returnVal, ok := result.(*object.ReturnValue); ok {
+				rv, ok := returnVal.Value.(*object.TailCall)
+				if ok {
+					result = rv
+				} else {
+					break
+				}
+			} else {
+				break
+			}
+		}
 
 		switch result := result.(type) {
 		case *object.ReturnValue:
@@ -198,14 +259,13 @@ func evalProgram(program *ast.Program, env *object.Environment) object.Object {
 	return result
 }
 
-func evalImportStatement(importStatement *ast.ImportStatement, env *object.Environment) object.Object {
-
-	module, err := LoadModule(mapIdentifiersToStrings(importStatement.PathParts))
+func (e *Evaluator) evalImportStatement(importStatement *ast.ImportStatement) object.Object {
+	module, err := LoadModule(e.mapIdentifiersToStrings(importStatement.PathParts))
 	if err != nil {
 		return newError(err.Error())
 	}
 	if module.Env != nil {
-		return handleModuleImport(importStatement, env, module)
+		return e.handleModuleImport(importStatement, module)
 	}
 
 	// if the module is not in the registry, create a new Module object and cache it
@@ -217,14 +277,19 @@ func evalImportStatement(importStatement *ast.ImportStatement, env *object.Envir
 	// Evaluate the module
 	module.Env = moduleEnv
 
-	Eval(module.Program, moduleEnv)
+	//println("import", module.Name)
+	e.PushEnv(moduleEnv)
+	e.Eval(module.Program)
+	e.PopEnv()
 
 	// Import the module into the current environment
-	return handleModuleImport(importStatement, env, module)
+	return e.handleModuleImport(importStatement, module)
 }
 
-func handleModuleImport(importStatement *ast.ImportStatement, env *object.Environment, module *object.Module) object.Object {
+func (e *Evaluator) handleModuleImport(importStatement *ast.ImportStatement, module *object.Module) object.Object {
 	// Handle named symbols import, wildcard import, or namespace import
+	env := e.CurrentEnv()
+
 	if importStatement.Wildcard {
 		// Import all symbols into the current environment
 		for name, val := range module.Env.Store {
@@ -264,7 +329,7 @@ func handleModuleImport(importStatement *ast.ImportStatement, env *object.Enviro
 	return NIL
 }
 
-func mapIdentifiersToStrings(identifiers []*ast.Identifier) []string {
+func (e *Evaluator) mapIdentifiersToStrings(identifiers []*ast.Identifier) []string {
 	parts := []string{}
 	for _, id := range identifiers {
 		parts = append(parts, id.Value)
@@ -272,29 +337,33 @@ func mapIdentifiersToStrings(identifiers []*ast.Identifier) []string {
 	return parts
 }
 
-func evalBlockStatement(block *ast.BlockStatement, env *object.Environment) object.Object {
+func (e *Evaluator) evalBlockStatement(block *ast.BlockStatement) object.Object {
 	// Create a new environment with an associated stack frame
-	blockEnv := object.NewEnclosedEnvironment(env, &object.StackFrame{
+	//println("block")
+	blockEnv := object.NewEnclosedEnvironment(e.CurrentEnv(), &object.StackFrame{
 		Function: "block",
-		File:     env.Path,
+		File:     e.CurrentEnv().Path,
 		Position: block.Token.Position,
 	})
+	e.PushEnv(blockEnv)
+	defer e.PopEnv()
 
-	// Execute deferred statements when the block ends
-	defer blockEnv.ExecuteDeferred(func(stmt ast.Statement, env *object.Environment) {
-		Eval(stmt, env)
-	})
-
+	// Variable to store the result of the evaluation
 	var result object.Object
+
 	for _, statement := range block.Statements {
-		result = Eval(statement, blockEnv)
+
+		result = e.Eval(statement)
+
 		if result != nil {
+			//println("stmt", result.Type())
 			rt := result.Type()
 			if rt == object.RETURN_VALUE_OBJ || rt == object.ERROR_OBJ {
 				return result
 			}
 		}
 	}
+
 	return result
 }
 
@@ -305,42 +374,42 @@ func nativeBoolToBooleanObject(input bool) *object.Boolean {
 	return FALSE
 }
 
-func evalPrefixExpression(operator string, right object.Object) object.Object {
+func (e *Evaluator) evalPrefixExpression(operator string, right object.Object) object.Object {
 	switch operator {
 	case "!":
-		return evalBangOperatorExpression(right)
+		return e.evalBangOperatorExpression(right)
 	case "-":
-		return evalMinusPrefixOperatorExpression(right)
+		return e.evalMinusPrefixOperatorExpression(right)
 	case "~":
-		return evalComplementPrefixOperatorExpression(right)
+		return e.evalComplementPrefixOperatorExpression(right)
 	default:
 		return newError("unknown operator: %s%s", operator, right.Type())
 	}
 }
 
-func evalInfixExpression(
+func (e *Evaluator) evalInfixExpression(
 	operator string,
 	left, right object.Object,
 ) object.Object {
 	switch {
 	case left.Type() == object.INTEGER_OBJ && right.Type() == object.INTEGER_OBJ:
-		return evalIntegerInfixExpression(operator, left, right)
+		return e.evalIntegerInfixExpression(operator, left, right)
 	case left.Type() == object.STRING_OBJ && right.Type() == object.STRING_OBJ:
-		return evalStringInfixExpression(operator, left, right)
+		return e.evalStringInfixExpression(operator, left, right)
 	case operator == "==":
 		return nativeBoolToBooleanObject(left == right)
 	case operator == "!=":
 		return nativeBoolToBooleanObject(left != right)
 	case operator == ":+" && left.Type() == object.LIST_OBJ:
-		return evalListInfixExpression(operator, left, right)
+		return e.evalListInfixExpression(operator, left, right)
 	case operator == "+:" && right.Type() == object.LIST_OBJ:
-		return evalListInfixExpression(operator, left, right)
+		return e.evalListInfixExpression(operator, left, right)
 	case left.Type() == object.LIST_OBJ && right.Type() == object.LIST_OBJ:
-		return evalListInfixExpression(operator, left, right)
+		return e.evalListInfixExpression(operator, left, right)
 	case left.Type() == object.BOOLEAN_OBJ && right.Type() == object.BOOLEAN_OBJ:
-		return evalBooleanInfixExpression(operator, left, right)
+		return e.evalBooleanInfixExpression(operator, left, right)
 	case left.Type() == object.STRING_OBJ || right.Type() == object.STRING_OBJ:
-		return evalStringPlusOtherInfixExpression(operator, left, right)
+		return e.evalStringPlusOtherInfixExpression(operator, left, right)
 	case left.Type() != right.Type():
 		return newError("type mismatch: %s %s %s",
 			left.Type(), operator, right.Type())
@@ -350,7 +419,7 @@ func evalInfixExpression(
 	}
 }
 
-func evalBangOperatorExpression(right object.Object) object.Object {
+func (e *Evaluator) evalBangOperatorExpression(right object.Object) object.Object {
 	switch right {
 	case TRUE:
 		return FALSE
@@ -363,7 +432,7 @@ func evalBangOperatorExpression(right object.Object) object.Object {
 	}
 }
 
-func evalMinusPrefixOperatorExpression(right object.Object) object.Object {
+func (e *Evaluator) evalMinusPrefixOperatorExpression(right object.Object) object.Object {
 	if right.Type() != object.INTEGER_OBJ {
 		return newError("unknown operator: -%s", right.Type())
 	}
@@ -372,7 +441,7 @@ func evalMinusPrefixOperatorExpression(right object.Object) object.Object {
 	return &object.Integer{Value: -value}
 }
 
-func evalComplementPrefixOperatorExpression(right object.Object) object.Object {
+func (e *Evaluator) evalComplementPrefixOperatorExpression(right object.Object) object.Object {
 	if right.Type() != object.INTEGER_OBJ {
 		return newError("unknown operator: -%s", right.Type())
 	}
@@ -381,7 +450,7 @@ func evalComplementPrefixOperatorExpression(right object.Object) object.Object {
 	return &object.Integer{Value: ^value}
 }
 
-func evalBooleanInfixExpression(
+func (e *Evaluator) evalBooleanInfixExpression(
 	operator string,
 	left, right object.Object,
 ) object.Object {
@@ -399,7 +468,7 @@ func evalBooleanInfixExpression(
 	}
 }
 
-func evalIntegerInfixExpression(
+func (e *Evaluator) evalIntegerInfixExpression(
 	operator string,
 	left, right object.Object,
 ) object.Object {
@@ -445,7 +514,7 @@ func evalIntegerInfixExpression(
 	}
 }
 
-func evalStringInfixExpression(
+func (e *Evaluator) evalStringInfixExpression(
 	operator string,
 	left, right object.Object,
 ) object.Object {
@@ -466,7 +535,7 @@ func evalStringInfixExpression(
 
 }
 
-func evalListInfixExpression(
+func (e *Evaluator) evalListInfixExpression(
 	operator string,
 	left, right object.Object,
 ) object.Object {
@@ -503,7 +572,7 @@ func evalListInfixExpression(
 	}
 }
 
-func evalStringPlusOtherInfixExpression(
+func (e *Evaluator) evalStringPlusOtherInfixExpression(
 	operator string,
 	left, right object.Object,
 ) object.Object {
@@ -520,29 +589,27 @@ func evalStringPlusOtherInfixExpression(
 
 }
 
-func evalIfExpression(
+func (e *Evaluator) evalIfExpression(
 	ie *ast.IfExpression,
-	env *object.Environment,
 ) object.Object {
-	condition := Eval(ie.Condition, env)
-	if isError(condition) {
+	condition := e.Eval(ie.Condition)
+	if e.isError(condition) {
 		return condition
 	}
 
-	if isTruthy(condition) {
-		return Eval(ie.ThenBranch, env)
+	if e.isTruthy(condition) {
+		return e.Eval(ie.ThenBranch)
 	} else if ie.ElseBranch != nil {
-		return Eval(ie.ElseBranch, env)
+		return e.Eval(ie.ElseBranch)
 	} else {
 		return NIL
 	}
 }
 
-func evalIdentifier(
+func (e *Evaluator) evalIdentifier(
 	node *ast.Identifier,
-	env *object.Environment,
 ) object.Object {
-	if val, ok := env.Get(node.Value); ok {
+	if val, ok := e.CurrentEnv().Get(node.Value); ok {
 		// If it is a Module, return the Module object itself
 		if module, ok := val.(*object.Module); ok {
 			return module
@@ -553,7 +620,7 @@ func evalIdentifier(
 	return newError("identifier not found: " + node.Value)
 }
 
-func isTruthy(obj object.Object) bool {
+func (e *Evaluator) isTruthy(obj object.Object) bool {
 	switch obj {
 	case NIL:
 		return false
@@ -570,22 +637,21 @@ func newError(format string, a ...interface{}) *object.Error {
 	return &object.Error{Message: fmt.Sprintf(format, a...)}
 }
 
-func isError(obj object.Object) bool {
+func (e *Evaluator) isError(obj object.Object) bool {
 	if obj != nil {
 		return obj.Type() == object.ERROR_OBJ
 	}
 	return false
 }
 
-func evalExpressions(
+func (e *Evaluator) evalExpressions(
 	exps []ast.Expression,
-	env *object.Environment,
 ) []object.Object {
 	var result []object.Object
 
-	for _, e := range exps {
-		evaluated := Eval(e, env)
-		if isError(evaluated) {
+	for _, err := range exps {
+		evaluated := e.Eval(err)
+		if e.isError(evaluated) {
 			return []object.Object{evaluated}
 		}
 		result = append(result, evaluated)
@@ -594,14 +660,33 @@ func evalExpressions(
 	return result
 }
 
-func applyFunction(fn object.Object, args []object.Object) object.Object {
-	switch fn := fn.(type) {
+func (e *Evaluator) applyFunction(fnObj object.Object, args []object.Object) object.Object {
+	switch fn := fnObj.(type) {
 	case *object.Function:
-		extendedEnv := extendFunctionEnv(fn, args)
-		evaluated := Eval(fn.Body, extendedEnv)
-		return unwrapReturnValue(evaluated)
+
+		// Create a new call frame and push it
+		//println("call")
+		e.PushEnv(e.extendFunctionEnv(fn, args))
+
+		// Evaluate function body
+		result := e.Eval(fn.Body)
+
+		e.PopEnv()
+
+		for {
+			if returnVal, ok := result.(*object.TailCall); ok {
+				result = e.applyFunction(returnVal.Function, returnVal.Arguments)
+			} else if returnVal, ok := result.(*object.ReturnValue); ok {
+				result = returnVal.Value
+			} else {
+				break
+			}
+		}
+
+		return result
 
 	case *object.Foreign:
+		//println("foreign")
 		return fn.Fn(args...)
 
 	default:
@@ -609,7 +694,7 @@ func applyFunction(fn object.Object, args []object.Object) object.Object {
 	}
 }
 
-func extendFunctionEnv(
+func (e *Evaluator) extendFunctionEnv(
 	fn *object.Function,
 	args []object.Object,
 ) *object.Environment {
@@ -630,32 +715,10 @@ func extendFunctionEnv(
 			break
 		}
 
-		// Handle destructuring (h:t)
-		if param.Destructure != nil {
-			if i >= numArgs {
-				env.Define(param.Destructure.Head.Value, NIL)
-				env.Define(param.Destructure.Tail.Value, NIL)
-			} else {
-				arg := args[i]
-
-				list := arg.(*object.List)
-				if len(list.Elements) > 0 {
-					env.Define(param.Destructure.Head.Value, list.Elements[0])
-					env.Define(param.Destructure.Tail.Value, &object.List{
-						Elements: list.Elements[1:],
-					})
-				} else {
-					env.Define(param.Destructure.Head.Value, NIL)
-					env.Define(param.Destructure.Tail.Value, &object.List{})
-				}
-			}
-			continue
-		}
-
 		// Handle default values
 		if i >= numArgs {
 			if param.Default != nil {
-				defaultValue := Eval(param.Default, env)
+				defaultValue := e.Eval(param.Default)
 				env.Define(param.Name.Value, defaultValue)
 			} else {
 				env.Define(param.Name.Value, NIL)
@@ -668,7 +731,7 @@ func extendFunctionEnv(
 	return env
 }
 
-func unwrapReturnValue(obj object.Object) object.Object {
+func (e *Evaluator) unwrapReturnValue(obj object.Object) object.Object {
 	if returnValue, ok := obj.(*object.ReturnValue); ok {
 		return returnValue.Value
 	}
@@ -676,15 +739,14 @@ func unwrapReturnValue(obj object.Object) object.Object {
 	return obj
 }
 
-func evalMapLiteral(
+func (e *Evaluator) evalMapLiteral(
 	node *ast.MapLiteral,
-	env *object.Environment,
 ) object.Object {
 	pairs := make(map[object.MapKey]object.MapPair)
 
 	for keyNode, valueNode := range node.Pairs {
-		key := Eval(keyNode, env)
-		if isError(key) {
+		key := e.Eval(keyNode)
+		if e.isError(key) {
 			return key
 		}
 
@@ -693,8 +755,8 @@ func evalMapLiteral(
 			return newError("unusable as map key: %s", key.Type())
 		}
 
-		value := Eval(valueNode, env)
-		if isError(value) {
+		value := e.Eval(valueNode)
+		if e.isError(value) {
 			return value
 		}
 
@@ -705,12 +767,12 @@ func evalMapLiteral(
 	return &object.Map{Pairs: pairs}
 }
 
-func evalMatchExpression(node *ast.MatchExpression, env *object.Environment) object.Object {
+func (e *Evaluator) evalMatchExpression(node *ast.MatchExpression) object.Object {
 	// Evaluate the match value if provided
 	var matchValue object.Object
 	if node.Value != nil {
-		matchValue = Eval(node.Value, env)
-		if isError(matchValue) {
+		matchValue = e.Eval(node.Value)
+		if e.isError(matchValue) {
 			return matchValue
 		}
 	}
@@ -718,34 +780,9 @@ func evalMatchExpression(node *ast.MatchExpression, env *object.Environment) obj
 	// Iterate through patterns
 	for _, matchCase := range node.Cases {
 		// Create a new scope for pattern variables
-		patternEnv := object.NewEnclosedEnvironment(env, nil)
-
-		// Match against the provided value or evaluate the condition
-		matched := false
-		var err error
-		if matchValue != nil {
-			// Match the case's pattern against the matchValue
-			matched, err = patternMatches(matchCase.Pattern, matchValue, patternEnv, false)
-			if err != nil {
-				return newError("pattern match error: %s", err.Error())
-			}
-		} else {
-			// Valueless match condition
-			matched = evaluatePatternAsCondition(matchCase.Pattern, patternEnv)
-		}
-
-		// Evaluate guard condition if pattern matches
-		if matched && matchCase.Guard != nil {
-			guardResult := Eval(matchCase.Guard, patternEnv)
-			if isError(guardResult) {
-				return guardResult
-			}
-			matched = isTruthy(guardResult)
-		}
-
-		// If the pattern matched, evaluate the body
+		result, matched := e.evalMatchCase(matchValue, matchCase)
 		if matched {
-			return Eval(matchCase.Body, patternEnv)
+			return result
 		}
 	}
 
@@ -753,8 +790,44 @@ func evalMatchExpression(node *ast.MatchExpression, env *object.Environment) obj
 	return NIL
 }
 
-// patternMatches checks if a value matches a pattern and binds variables
-func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.Environment, isConstant bool) (bool, error) {
+func (e *Evaluator) evalMatchCase(matchValue object.Object, matchCase *ast.MatchCase) (object.Object, bool) {
+	patternEnv := object.NewEnclosedEnvironment(e.CurrentEnv(), nil)
+	e.PushEnv(patternEnv)
+	defer e.PopEnv()
+
+	// Match against the provided value or evaluate the condition
+	matched := false
+	var err error
+	if matchValue != nil {
+		// Match the case's pattern against the matchValue
+		matched, err = e.patternMatches(matchCase.Pattern, matchValue, false)
+		if err != nil {
+			return newError("pattern match error: %s", err.Error()), true
+		}
+	} else {
+		// Valueless match condition
+		matched = e.evaluatePatternAsCondition(matchCase.Pattern)
+	}
+
+	// Evaluate guard condition if pattern matches
+	if matched && matchCase.Guard != nil {
+		guardResult := e.Eval(matchCase.Guard)
+		if e.isError(guardResult) {
+			return guardResult, true
+		}
+		matched = e.isTruthy(guardResult)
+	}
+
+	// If the pattern matched, evaluate the body
+	if matched {
+		return e.Eval(matchCase.Body), true
+	}
+	return nil, false
+}
+
+// e.patternMatches checks if a value matches a pattern and binds variables
+func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object, isConstant bool) (bool, error) {
+	env := e.CurrentEnv()
 	switch p := pattern.(type) {
 	case *ast.WildcardPattern:
 		// Wildcard matches anything
@@ -775,11 +848,11 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 
 	case *ast.LiteralPattern:
 		// Evaluate the literal and compare with the value
-		literalValue := Eval(p.Value, env)
-		if isError(literalValue) {
+		literalValue := e.Eval(p.Value)
+		if e.isError(literalValue) {
 			return false, fmt.Errorf("error while evaluating literal pattern value: %s", literalValue)
 		}
-		return objectsEqual(literalValue, value), nil
+		return e.objectsEqual(literalValue, value), nil
 
 	case *ast.IdentifierPattern:
 		// Bind the value to the identifier
@@ -794,7 +867,10 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 	case *ast.MultiPattern:
 		// Check if value matches any of the patterns
 		for _, subPattern := range p.Patterns {
-			matched, err := patternMatches(subPattern, value, object.NewEnclosedEnvironment(env, nil), isConstant)
+			encEnv := object.NewEnclosedEnvironment(env, nil)
+			e.PushEnv(encEnv)
+			matched, err := e.patternMatches(subPattern, value, isConstant)
+			e.PopEnv()
 			if err != nil {
 				return false, err
 			}
@@ -825,16 +901,17 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 
 		// scoped environment to capture the match bindings, these will be copied to the parent env on success
 		scoped := object.NewEnclosedEnvironment(env, nil)
+		e.PushEnv(scoped)
 
 		for i, elemPattern := range p.Elements {
 			if spread, isSpread := elemPattern.(*ast.SpreadPattern); isSpread {
-				matched, err := patternMatches(spread, &object.List{Elements: arr.Elements[i:]}, scoped, isConstant)
+				matched, err := e.patternMatches(spread, &object.List{Elements: arr.Elements[i:]}, isConstant)
 				if err != nil || !matched {
 					return false, err
 				}
 				break
 			} else {
-				matched, err := patternMatches(elemPattern, arr.Elements[i], scoped, isConstant)
+				matched, err := e.patternMatches(elemPattern, arr.Elements[i], isConstant)
 				if err != nil || !matched {
 					return false, err
 				}
@@ -854,6 +931,8 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 			}
 		}
 
+		e.PopEnv()
+
 		return true, nil
 
 	case *ast.MapPattern:
@@ -872,6 +951,7 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 
 		// scoped environment to capture the match bindings, these will be copied to the parent env on success
 		scoped := object.NewEnclosedEnvironment(env, nil)
+		e.PushEnv(scoped)
 
 		// Check if all required fields are present
 		for key, subPattern := range p.Pairs {
@@ -890,7 +970,7 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 			}
 
 			// Check if value matches subpattern
-			matched, err := patternMatches(subPattern, pair.Value, scoped, isConstant)
+			matched, err := e.patternMatches(subPattern, pair.Value, isConstant)
 			if !matched || err != nil {
 				return false, err
 			}
@@ -902,7 +982,7 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 			if ok {
 				if len(usedKeys) >= len(mapObj.Pairs) {
 					// map is empty
-					_, err := patternMatches(pair, &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}, scoped, isConstant)
+					_, err := e.patternMatches(pair, &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}, isConstant)
 					if err != nil {
 						return false, err
 					}
@@ -920,7 +1000,7 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 							copiedPairs[mapKey] = pair
 						}
 					}
-					_, err := patternMatches(pair, &object.Map{Pairs: copiedPairs}, scoped, isConstant)
+					_, err := e.patternMatches(pair, &object.Map{Pairs: copiedPairs}, isConstant)
 					if err != nil {
 						return false, err
 					}
@@ -944,6 +1024,8 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 			}
 		}
 
+		e.PopEnv()
+
 		return true, nil
 	}
 
@@ -952,7 +1034,7 @@ func patternMatches(pattern ast.MatchPattern, value object.Object, env *object.E
 }
 
 // evaluatePatternAsCondition evaluates patterns as conditions for valueless match
-func evaluatePatternAsCondition(pattern ast.MatchPattern, env *object.Environment) bool {
+func (e *Evaluator) evaluatePatternAsCondition(pattern ast.MatchPattern) bool {
 	switch p := pattern.(type) {
 	case *ast.WildcardPattern:
 		// Wildcard always matches
@@ -960,24 +1042,24 @@ func evaluatePatternAsCondition(pattern ast.MatchPattern, env *object.Environmen
 
 	case *ast.LiteralPattern:
 		// Evaluate the literal and check if truthy
-		result := Eval(p.Value, env)
-		if isError(result) {
+		result := e.Eval(p.Value)
+		if e.isError(result) {
 			return false
 		}
-		return isTruthy(result)
+		return e.isTruthy(result)
 
 	case *ast.IdentifierPattern:
 		// Look up identifier and check if truthy
-		value, ok := env.Get(p.Value.Value)
+		value, ok := e.CurrentEnv().Get(p.Value.Value)
 		if !ok {
 			return false
 		}
-		return isTruthy(value)
+		return e.isTruthy(value)
 
 	case *ast.MultiPattern:
 		// Check if any subpattern is truthy
 		for _, subPattern := range p.Patterns {
-			if evaluatePatternAsCondition(subPattern, env) {
+			if e.evaluatePatternAsCondition(subPattern) {
 				return true
 			}
 		}
@@ -988,7 +1070,7 @@ func evaluatePatternAsCondition(pattern ast.MatchPattern, env *object.Environmen
 }
 
 // objectsEqual compares two objects for equality
-func objectsEqual(a, b object.Object) bool {
+func (e *Evaluator) objectsEqual(a, b object.Object) bool {
 	if a.Type() != b.Type() {
 		return false
 	}
@@ -1013,7 +1095,7 @@ func objectsEqual(a, b object.Object) bool {
 		}
 
 		for i, elem := range aVal.Elements {
-			if !objectsEqual(elem, bArr.Elements[i]) {
+			if !e.objectsEqual(elem, bArr.Elements[i]) {
 				return false
 			}
 		}
@@ -1028,7 +1110,7 @@ func objectsEqual(a, b object.Object) bool {
 
 		for k, v := range aVal.Pairs {
 			bPair, ok := mapObj.Pairs[k]
-			if !ok || !objectsEqual(v.Value, bPair.Value) {
+			if !ok || !e.objectsEqual(v.Value, bPair.Value) {
 				return false
 			}
 		}
@@ -1039,7 +1121,7 @@ func objectsEqual(a, b object.Object) bool {
 	return false
 }
 
-func evalMapIndexExpression(obj, index object.Object) object.Object {
+func (e *Evaluator) evalMapIndexExpression(obj, index object.Object) object.Object {
 	mapObj := obj.(*object.Map)
 
 	key, ok := index.(object.Hashable)
@@ -1055,14 +1137,15 @@ func evalMapIndexExpression(obj, index object.Object) object.Object {
 	return pair.Value
 }
 
-func evalThrowStatement(node *ast.ThrowStatement, env *object.Environment) object.Object {
-	val := Eval(node.Value, env)
-	if isError(val) {
+func (e *Evaluator) evalThrowStatement(node *ast.ThrowStatement) object.Object {
+	val := e.Eval(node.Value)
+	if e.isError(val) {
 		return val
 	}
 	if val.Type() != object.MAP_OBJ {
 		return newError("throw argument must be a Map, got %s", val.Type())
 	}
+	env := e.CurrentEnv()
 	return &object.RuntimeError{
 		Payload: val,
 		StackTrace: env.GatherStackTrace(&object.StackFrame{
@@ -1073,9 +1156,9 @@ func evalThrowStatement(node *ast.ThrowStatement, env *object.Environment) objec
 	}
 }
 
-func evalTryCatchStatement(node *ast.TryCatchStatement, env *object.Environment) object.Object {
+func (e *Evaluator) evalTryCatchStatement(node *ast.TryCatchStatement) object.Object {
 	// Execute the try block
-	tryResult := Eval(node.TryBlock, env)
+	tryResult := e.Eval(node.TryBlock)
 
 	err, isRuntimeError := tryResult.(*object.RuntimeError)
 
@@ -1088,7 +1171,10 @@ func evalTryCatchStatement(node *ast.TryCatchStatement, env *object.Environment)
 	catchMatch := node.CatchBlock
 
 	// Otherwise, handle the error (it must be a RuntimeError)
+	env := e.CurrentEnv()
 	catchEnv := object.NewEnclosedEnvironment(env, nil)
+	e.PushEnv(catchEnv)
+	defer e.PopEnv()
 
 	// bind the error payload to the catch pattern
 	_, bindError := catchEnv.Define(catchMatch.Value.String(), err.Payload)
@@ -1096,46 +1182,46 @@ func evalTryCatchStatement(node *ast.TryCatchStatement, env *object.Environment)
 		return newError(bindError.Error())
 	}
 
-	return evalMatchExpression(catchMatch, catchEnv)
+	return e.evalMatchExpression(catchMatch)
 }
 
-func evalIndexExpression(left, index object.Object) object.Object {
+func (e *Evaluator) evalIndexExpression(left, index object.Object) object.Object {
 
 	switch {
 	case left.Type() == object.STRING_OBJ:
 		if slice, ok := index.(*object.Slice); ok {
 			if str, ok := left.(*object.String); ok {
-				return evalStringSlice(str.Value, slice)
+				return e.evalStringSlice(str.Value, slice)
 			}
 		}
-		return evalStringIndexExpression(left, index)
+		return e.evalStringIndexExpression(left, index)
 	case left.Type() == object.LIST_OBJ && index.Type() == object.INTEGER_OBJ:
-		return evalListIndexExpression(left, index)
+		return e.evalListIndexExpression(left, index)
 	case left.Type() == object.LIST_OBJ:
 		if slice, ok := index.(*object.Slice); ok {
 			if arr, ok := left.(*object.List); ok {
-				return evalListSlice(arr.Elements, slice)
+				return e.evalListSlice(arr.Elements, slice)
 			}
 		}
-		return evalListIndexExpression(left, index)
+		return e.evalListIndexExpression(left, index)
 	case left.Type() == object.MAP_OBJ:
-		return evalMapIndexExpression(left, index)
+		return e.evalMapIndexExpression(left, index)
 	default:
 		return newError("index operator not supported: %s", left.Type())
 	}
 }
 
-func evalSliceExpression(node *ast.SliceExpression, env *object.Environment) object.Object {
-	start := Eval(node.Start, env)
-	if isError(start) {
+func (e *Evaluator) evalSliceExpression(node *ast.SliceExpression) object.Object {
+	start := e.Eval(node.Start)
+	if e.isError(start) {
 		return start
 	}
-	end := Eval(node.End, env)
-	if isError(end) {
+	end := e.Eval(node.End)
+	if e.isError(end) {
 		return end
 	}
-	step := Eval(node.Step, env)
-	if isError(step) {
+	step := e.Eval(node.Step)
+	if e.isError(step) {
 		return step
 	}
 	return &object.Slice{
@@ -1145,7 +1231,7 @@ func evalSliceExpression(node *ast.SliceExpression, env *object.Environment) obj
 	}
 }
 
-func evalListIndexExpression(list, index object.Object) object.Object {
+func (e *Evaluator) evalListIndexExpression(list, index object.Object) object.Object {
 	listObject := list.(*object.List)
 	idx := index.(*object.Integer).Value
 	max := int64(len(listObject.Elements) - 1)
@@ -1161,7 +1247,7 @@ func evalListIndexExpression(list, index object.Object) object.Object {
 	return listObject.Elements[idx]
 }
 
-func evalStringIndexExpression(str, index object.Object) object.Object {
+func (e *Evaluator) evalStringIndexExpression(str, index object.Object) object.Object {
 	stringObject := str.(*object.String)
 	idx := index.(*object.Integer).Value
 	max := int64(len(stringObject.Value) - 1)
@@ -1177,8 +1263,8 @@ func evalStringIndexExpression(str, index object.Object) object.Object {
 	return &object.String{Value: string(stringObject.Value[idx])}
 }
 
-func evalListSlice(elements []object.Object, slice *object.Slice) object.Object {
-	start, end, step := computeSliceIndices(len(elements), slice)
+func (e *Evaluator) evalListSlice(elements []object.Object, slice *object.Slice) object.Object {
+	start, end, step := e.computeSliceIndices(len(elements), slice)
 	var result []object.Object
 	for i := start; i < end; i += step {
 		result = append(result, elements[i])
@@ -1186,8 +1272,8 @@ func evalListSlice(elements []object.Object, slice *object.Slice) object.Object 
 	return &object.List{Elements: result}
 }
 
-func evalStringSlice(value string, slice *object.Slice) object.Object {
-	start, end, step := computeSliceIndices(len(value), slice)
+func (e *Evaluator) evalStringSlice(value string, slice *object.Slice) object.Object {
+	start, end, step := e.computeSliceIndices(len(value), slice)
 	var result string
 	for i := start; i < end; i += step {
 		result += string(value[i])
@@ -1195,7 +1281,7 @@ func evalStringSlice(value string, slice *object.Slice) object.Object {
 	return &object.String{Value: result}
 }
 
-func computeSliceIndices(length int, slice *object.Slice) (int, int, int) {
+func (e *Evaluator) computeSliceIndices(length int, slice *object.Slice) (int, int, int) {
 	start := 0
 	end := length
 	step := 1
@@ -1226,7 +1312,8 @@ func computeSliceIndices(length int, slice *object.Slice) (int, int, int) {
 	return start, end, step
 }
 
-func evalForeignFunctionDeclaration(stmt *ast.ForeignFunctionDeclaration, env *object.Environment) object.Object {
+func (e *Evaluator) evalForeignFunctionDeclaration(stmt *ast.ForeignFunctionDeclaration) object.Object {
+	env := e.CurrentEnv()
 	modulePath := env.ModuleFqn
 	functionName := stmt.Name.Value
 
@@ -1242,8 +1329,8 @@ func evalForeignFunctionDeclaration(stmt *ast.ForeignFunctionDeclaration, env *o
 	return newError("unknown foreign function %s", fqn)
 }
 
-func evalDefer(deferStmt *ast.DeferStatement, env *object.Environment) object.Object {
+func (e *Evaluator) evalDefer(deferStmt *ast.DeferStatement) object.Object {
 	// Register the defer statement into the environment's defer stack
-	env.RegisterDefer(deferStmt.Call)
+	e.CurrentEnv().RegisterDefer(deferStmt.Call)
 	return nil // Defer statements do not produce a direct result
 }
