@@ -88,9 +88,17 @@ func (l *Lexer) NextToken() token.Token {
 	case ')':
 		tok = newToken(token.RPAREN, l.ch, startPosition)
 	case '"':
-		tok.Type = token.STRING
-		tok.Position = startPosition
-		tok.Literal = l.readString()
+		if l.peekChar() == '"' && l.peekTwoChars() == '"' {
+			// Handle multi-line string
+			tok.Type = token.STRING
+			tok.Position = startPosition
+			tok.Literal = l.readMultiLineString()
+		} else {
+			// Handle regular string
+			tok.Type = token.STRING
+			tok.Position = startPosition
+			tok.Literal = l.readString()
+		}
 	case '[':
 		tok = newToken(token.LBRACKET, l.ch, startPosition)
 	case ']':
@@ -249,6 +257,51 @@ func (l *Lexer) readString() string {
 		} else {
 			result.WriteRune(rune(l.ch)) // Add normal character
 		}
+	}
+
+	return result.String()
+}
+
+func (l *Lexer) readMultiLineString() string {
+	var result strings.Builder
+
+	// Ignore the initial '"""'
+	for i := 0; i < 3; i++ {
+		l.readChar()
+	}
+
+	if l.ch == '\n' {
+		l.readChar()
+	}
+
+	// Collect characters until closing `"""`
+	for {
+		// Check for the closing `"""`
+		if l.ch == '"' && l.peekChar() == '"' && l.peekTwoChars() == '"' {
+			// Retain the final newline before the closing `"""`
+			if len(result.String()) > 0 && result.String()[result.Len()-1] == '\n' {
+				// todo: this seems clumsy
+				original := result.String()          // Get the current string
+				trimmed := original[:result.Len()-1] // Trim the last character
+				result.Reset()                       // Reset the builder
+				result.WriteString(trimmed)
+			}
+
+			// Consume the closing `"""`
+			l.readChar()
+			l.readChar()
+			l.readChar()
+			break
+		}
+
+		if l.ch == 0 {
+			// Handle unterminated multi-line string
+			break
+		}
+
+		// Add characters to the result
+		result.WriteRune(rune(l.ch))
+		l.readChar()
 	}
 
 	return result.String()

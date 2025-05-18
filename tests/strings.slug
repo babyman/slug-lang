@@ -15,6 +15,13 @@ import slug.test.*;
 
 var s = "Hello Slug!";
 
+var ms = """
+Hello
+Slug!
+""";
+
+ms.assertEqual("Hello\nSlug!");
+
 
 // length
 // -----------------------
