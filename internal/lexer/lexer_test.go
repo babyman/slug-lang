@@ -40,6 +40,10 @@ true || false;
 ...
 ..
 f2=fn
+???
++:
+:+
+"\n\t\\\""
 // comment at eof
 //`
 
@@ -167,6 +171,10 @@ f2=fn
 		{token.IDENT, "f2"},
 		{token.ASSIGN, "="},
 		{token.FUNCTION, "fn"},
+		{token.NOT_IMPLEMENTED, "???"},
+		{token.PREPEND_ITEM, "+:"},
+		{token.APPEND_ITEM, ":+"},
+		{token.STRING, "\n\t\\\""},
 		{token.EOF, ""},
 	}
 

@@ -1,6 +1,15 @@
 import slug.strings.*;
 import slug.test.*;
 
+// String escape sequences:
+//
+// - `\n` -> newline
+// - `\t` -> tab
+// - `\\` -> backslash
+// - `\"` -> double quote
+//
+
+
 // String functions
 // -----------------------
 

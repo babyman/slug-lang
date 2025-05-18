@@ -1,6 +1,9 @@
 package lexer
 
-import "slug/internal/token"
+import (
+	"slug/internal/token"
+	"strings"
+)
 
 type Lexer struct {
 	input        string
@@ -222,14 +225,33 @@ func (l *Lexer) readNumber() string {
 }
 
 func (l *Lexer) readString() string {
-	position := l.position + 1
+	var result strings.Builder
+
 	for {
 		l.readChar()
 		if l.ch == '"' || l.ch == 0 {
 			break
 		}
+
+		// Handle escape sequences
+		if l.ch == '\\' {
+			l.readChar() // Move to the next character
+			switch l.ch {
+			case 'n':
+				result.WriteRune('\n')
+			case 't':
+				result.WriteRune('\t')
+			case '\\':
+				result.WriteRune('\\')
+			case '"':
+				result.WriteRune('"')
+			}
+		} else {
+			result.WriteRune(rune(l.ch)) // Add normal character
+		}
 	}
-	return l.input[position:l.position]
+
+	return result.String()
 }
 
 func isLetter(ch byte) bool {
