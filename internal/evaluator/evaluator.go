@@ -5,6 +5,7 @@ import (
 	"slug/internal/ast"
 	"slug/internal/object"
 	"slug/internal/token"
+	"strings"
 )
 
 var (
@@ -396,6 +397,8 @@ func (e *Evaluator) evalInfixExpression(
 		return e.evalIntegerInfixExpression(operator, left, right)
 	case left.Type() == object.STRING_OBJ && right.Type() == object.STRING_OBJ:
 		return e.evalStringInfixExpression(operator, left, right)
+	case operator == "*" && left.Type() == object.STRING_OBJ && right.Type() == object.INTEGER_OBJ:
+		return e.evalStringMultiplication(left, right)
 	case operator == "==":
 		return nativeBoolToBooleanObject(left == right)
 	case operator == "!=":
@@ -535,6 +538,37 @@ func (e *Evaluator) evalStringInfixExpression(
 
 }
 
+func (e *Evaluator) evalStringPlusOtherInfixExpression(
+	operator string,
+	left, right object.Object,
+) object.Object {
+	leftVal := left.Inspect()
+	rightVal := right.Inspect()
+
+	switch operator {
+	case "+":
+		return &object.String{Value: leftVal + rightVal}
+	default:
+		return newError("unknown operator: %s %s %s",
+			left.Type(), operator, right.Type())
+	}
+}
+
+func (e *Evaluator) evalStringMultiplication(
+	left, right object.Object,
+) object.Object {
+	leftVal := left.(*object.String).Value
+	rightVal := right.(*object.Integer).Value
+
+	if rightVal < 0 {
+		return newError("repetition count must be a non-negative INTEGER, got %d", rightVal)
+	}
+
+	// Repeat the string
+	repeated := strings.Repeat(leftVal, int(rightVal))
+	return &object.String{Value: repeated}
+}
+
 func (e *Evaluator) evalListInfixExpression(
 	operator string,
 	left, right object.Object,
@@ -570,23 +604,6 @@ func (e *Evaluator) evalListInfixExpression(
 		return newError("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
 	}
-}
-
-func (e *Evaluator) evalStringPlusOtherInfixExpression(
-	operator string,
-	left, right object.Object,
-) object.Object {
-	leftVal := left.Inspect()
-	rightVal := right.Inspect()
-
-	switch operator {
-	case "+":
-		return &object.String{Value: leftVal + rightVal}
-	default:
-		return newError("unknown operator: %s %s %s",
-			left.Type(), operator, right.Type())
-	}
-
 }
 
 func (e *Evaluator) evalIfExpression(

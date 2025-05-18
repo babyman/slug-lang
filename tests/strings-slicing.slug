@@ -8,6 +8,12 @@ var str = "hello";
 str[3].assertEqual("l");
 
 
+// repeating strings
+// -----------------
+
+("a" * 5).assertEqual("aaaaa");
+
+
 // slicing
 // -------
 
