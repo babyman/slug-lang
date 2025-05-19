@@ -1,24 +1,23 @@
 package evaluator
 
 import (
+	"bytes"
 	"fmt"
 	"slug/internal/object"
 )
 
-func fnStdPrintLn() *object.Foreign {
+func fnStdPrint() *object.Foreign {
 	return &object.Foreign{
 		Fn: func(args ...object.Object) object.Object {
+			var out bytes.Buffer
 			for i, arg := range args {
-				fmt.Print(arg.Inspect())
+				out.WriteString(arg.Inspect())
 				if i < len(args)-1 {
-					fmt.Print(" ")
+					out.WriteString(" ")
 				}
 			}
-			if len(args) > 0 {
-				fmt.Println()
-			}
-
-			return NIL
+			fmt.Print(out.String())
+			return &object.String{Value: out.String()}
 		},
 	}
 }

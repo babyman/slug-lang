@@ -974,10 +974,6 @@ func (p *Parser) parseFunctionLiteral() ast.Expression {
 	// Analyze function body for tail calls
 	lit.HasTailCall = p.checkForTailCalls(lit.Body)
 
-	if lit.HasTailCall {
-		//println("Function has tail call: ", lit.HasTailCall, lit.String())
-	}
-
 	return lit
 }
 
@@ -1104,7 +1100,7 @@ func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression {
 }
 
 func (p *Parser) parseExpressionList(end token.TokenType) []ast.Expression {
-	list := []ast.Expression{}
+	var list []ast.Expression
 
 	if p.peekTokenIs(end) {
 		p.nextToken()
@@ -1112,12 +1108,34 @@ func (p *Parser) parseExpressionList(end token.TokenType) []ast.Expression {
 	}
 
 	p.nextToken()
-	list = append(list, p.parseExpression(LOWEST))
+
+	// Handle spread syntax here
+	if p.curTokenIs(token.ELLIPSIS) {
+		p.nextToken()
+		spreadExpr := &ast.SpreadExpression{
+			Token: p.curToken,
+			Value: p.parseExpression(LOWEST),
+		}
+		list = append(list, spreadExpr)
+	} else {
+		list = append(list, p.parseExpression(LOWEST))
+	}
 
 	for p.peekTokenIs(token.COMMA) {
 		p.nextToken()
 		p.nextToken()
-		list = append(list, p.parseExpression(LOWEST))
+
+		// Handle spread syntax on subsequent arguments
+		if p.curTokenIs(token.ELLIPSIS) {
+			p.nextToken()
+			spreadExpr := &ast.SpreadExpression{
+				Token: p.curToken,
+				Value: p.parseExpression(LOWEST),
+			}
+			list = append(list, spreadExpr)
+		} else {
+			list = append(list, p.parseExpression(LOWEST))
+		}
 	}
 
 	if !p.expectPeek(end) {

@@ -166,9 +166,29 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			return function
 		}
 
-		args := e.evalExpressions(node.Arguments)
-		if len(args) == 1 && e.isError(args[0]) {
-			return args[0]
+		var args []object.Object
+		for _, arg := range node.Arguments {
+			if spreadExpr, ok := arg.(*ast.SpreadExpression); ok {
+				spreadValue := e.Eval(spreadExpr.Value)
+				if e.isError(spreadValue) {
+					return spreadValue
+				}
+
+				// Ensure the spread value is a list
+				list, ok := spreadValue.(*object.List)
+				if !ok {
+					return newError("spread operator can only be used on lists, got %s", spreadValue.Type())
+				}
+
+				// Append all elements of the list to args
+				args = append(args, list.Elements...)
+			} else {
+				evaluatedArg := e.Eval(arg)
+				if e.isError(evaluatedArg) {
+					return evaluatedArg
+				}
+				args = append(args, evaluatedArg)
+			}
 		}
 
 		// If this is a tail call, wrap it in a TailCall object instead of evaluating

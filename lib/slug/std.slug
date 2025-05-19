@@ -8,8 +8,13 @@ foreign type = fn(val);
 // get the length of a string, list or map
 foreign len = fn(obj);
 
+// print values
+foreign print = fn(...args);
+
 // print values followed by a newline
-foreign println = fn(...args);
+var println = fn(...args) {
+    print(...args) + print("\n");
+}
 
 // get the list of keys used a map
 foreign keys = fn(map);

@@ -763,30 +763,16 @@ func (ds *DeferStatement) String() string {
 	return out.String()
 }
 
-// InterpolatedString represents strings with embedded expressions like "Hello, {{user}}!"
-type InterpolatedString struct {
-	Token      token.Token       // The token for the string
-	Components []StringComponent // Mix of plain text and interpolation expressions
+type SpreadExpression struct {
+	Token token.Token // The `...` token
+	Value Expression  // The expression to spread
 }
 
-// StringComponent represents either plain text or an expression in {{...}}
-type StringComponent struct {
-	PlainText string
-	Expr      Expression // If Expr is nil, this is plain text
-}
-
-func (is *InterpolatedString) expressionNode() {}
-func (is *InterpolatedString) TokenLiteral() string {
-	return is.Token.Literal
-}
-func (is *InterpolatedString) String() string {
-	var parts []string
-	for _, component := range is.Components {
-		if component.Expr != nil {
-			parts = append(parts, "{{"+component.Expr.String()+"}}")
-		} else {
-			parts = append(parts, component.PlainText)
-		}
-	}
-	return strings.Join(parts, "")
+func (se *SpreadExpression) expressionNode()      {}
+func (se *SpreadExpression) TokenLiteral() string { return se.Token.Literal }
+func (se *SpreadExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString("...")
+	out.WriteString(se.Value.String())
+	return out.String()
 }

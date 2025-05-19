@@ -12,13 +12,13 @@ var foreignFunctions = map[string]*object.Foreign{
 	"slug.io.tcp.write":   fnIoTcpWrite(),
 	"slug.io.tcp.close":   fnIoTcpClose(),
 
-	"slug.std.len":     fnStdLen(),
-	"slug.std.println": fnStdPrintLn(),
-	"slug.std.type":    fnStdType(),
-	"slug.std.get":     fnStdGet(),
-	"slug.std.keys":    fnStdKeys(),
-	"slug.std.put":     fnStdPut(),
-	"slug.std.remove":  fnStdRemove(),
+	"slug.std.len":    fnStdLen(),
+	"slug.std.print":  fnStdPrint(),
+	"slug.std.type":   fnStdType(),
+	"slug.std.get":    fnStdGet(),
+	"slug.std.keys":   fnStdKeys(),
+	"slug.std.put":    fnStdPut(),
+	"slug.std.remove": fnStdRemove(),
 
 	// string functions
 	"slug.strings.contains":   fnStringsContains(),
