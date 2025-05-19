@@ -13,7 +13,8 @@ foreign print = fn(...args);
 
 // print values followed by a newline
 var println = fn(...args) {
-    print(...args) + print("\n");
+    print(...args)
+    print("\n");
 }
 
 // get the list of keys used a map

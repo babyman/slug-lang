@@ -40,14 +40,13 @@ assert(out == 4, "expected 4, got " + out);
 // -----------------------
 
 var f = fn(...args) {
-    // println() will print and return the args as a string + '\n'
-    println(...args);
+    args;
 }
 
-f(1, 2, 3).assertEqual("1 2 3\n");
-f(...[1 ,2]).assertEqual("1 2\n");
-f(0, ...[1 ,2]).assertEqual("0 1 2\n");
-f(...[1 ,2], 9).assertEqual("1 2 9\n");
-f(0, ...[1 ,2], 9).assertEqual("0 1 2 9\n");
-f(...[1 ,2] :+ 3).assertEqual("1 2 3\n");
-f(0,...[1 ,2] :+ 3, 9).assertEqual("0 1 2 3 9\n");
+f(1, 2, 3).assertListEqual([1, 2, 3]);
+f(...[1 ,2]).assertListEqual([1, 2]);
+f(0, ...[1 ,2]).assertListEqual([0, 1, 2]);
+f(...[1 ,2], 9).assertListEqual([1, 2, 9]);
+f(0, ...[1 ,2], 9).assertListEqual([0, 1, 2, 9]);
+f(...[1 ,2] :+ 3).assertListEqual([1, 2, 3]);
+f(0,...[1 ,2] :+ 3, 9).assertListEqual([0, 1, 2, 3, 9]);

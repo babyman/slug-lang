@@ -17,7 +17,8 @@ func fnStdPrint() *object.Foreign {
 				}
 			}
 			fmt.Print(out.String())
-			return &object.String{Value: out.String()}
+			//return &object.String{Value: out.String()}
+			return NIL
 		},
 	}
 }
