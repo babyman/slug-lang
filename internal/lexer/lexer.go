@@ -2,129 +2,35 @@ package lexer
 
 import (
 	"slug/internal/token"
-	"strings"
 )
 
 type Lexer struct {
 	input        string
-	position     int  // current position in input (points to current char)
-	readPosition int  // current reading position in input (after current char)
-	ch           byte // current char under examination
+	position     int       // current position in input (points to current char)
+	readPosition int       // current reading position in input (after current char)
+	ch           byte      // current char under examination
+	prevMode     Tokenizer // Current tokenizer strategy
+	currentMode  Tokenizer // Current tokenizer strategy
+}
+
+type Tokenizer interface {
+	NextToken() token.Token
 }
 
 func New(input string) *Lexer {
 	l := &Lexer{input: input}
+	l.switchMode(NewGeneralTokenizer(l))
 	l.readChar()
 	return l
 }
 
+func (l *Lexer) switchMode(mode Tokenizer) {
+	l.prevMode = l.currentMode
+	l.currentMode = mode
+}
+
 func (l *Lexer) NextToken() token.Token {
-	var tok token.Token
-
-	l.skipWhitespace()
-
-	startPosition := l.position // Record the current position as the start of the token
-
-	switch l.ch {
-	case '=':
-		tok = l.handleCompoundToken2(token.ASSIGN, '=', token.EQ, '>', token.ROCKET)
-	case '+':
-		tok = l.handleCompoundToken(token.PLUS, ':', token.PREPEND_ITEM)
-	case '-':
-		tok = newToken(token.MINUS, l.ch, startPosition)
-	case '!':
-		tok = l.handleCompoundToken(token.BANG, '=', token.NOT_EQ)
-	case '/':
-		tok = newToken(token.SLASH, l.ch, startPosition)
-	case '*':
-		tok = newToken(token.ASTERISK, l.ch, startPosition)
-	case '%':
-		tok = newToken(token.PERCENT, l.ch, startPosition)
-	case '~':
-		tok = newToken(token.COMPLEMENT, l.ch, startPosition)
-	case '&':
-		tok = l.handleCompoundToken(token.BITWISE_AND, '&', token.LOGICAL_AND)
-	case '|':
-		tok = l.handleCompoundToken(token.BITWISE_OR, '|', token.LOGICAL_OR)
-	case '_':
-		tok = newToken(token.UNDERSCORE, l.ch, startPosition)
-	case '^':
-		tok = newToken(token.BITWISE_XOR, l.ch, startPosition)
-	case '<':
-		tok = l.handleCompoundToken2(token.LT, '=', token.LT_EQ, '<', token.SHIFT_LEFT)
-	case '>':
-		tok = l.handleCompoundToken2(token.GT, '=', token.GT_EQ, '>', token.SHIFT_RIGHT)
-	case ';':
-		tok = newToken(token.SEMICOLON, l.ch, startPosition)
-	case ':':
-		tok = l.handleCompoundToken(token.COLON, '+', token.APPEND_ITEM)
-	case ',':
-		tok = newToken(token.COMMA, l.ch, startPosition)
-	case '.':
-		if l.peekChar() == '.' && l.peekTwoChars() == '.' {
-			tok = token.Token{Type: token.ELLIPSIS, Literal: "...", Position: startPosition}
-			l.readChar()
-			l.readChar()
-			//} else if l.peekChar() == '.'{
-			//	l.readChar()
-			//	tok = token.Token{Type: token.RANGE, Literal: ".."}
-		} else {
-			tok = newToken(token.PERIOD, l.ch, startPosition)
-		}
-	case '?':
-		if l.peekChar() == '?' && l.peekTwoChars() == '?' {
-			tok = token.Token{Type: token.NOT_IMPLEMENTED, Literal: "???", Position: startPosition}
-			l.readChar()
-			l.readChar()
-		} else {
-			tok = newToken(token.ILLEGAL, l.ch, startPosition)
-		}
-	case '{':
-		tok = newToken(token.LBRACE, l.ch, startPosition)
-	case '}':
-		tok = newToken(token.RBRACE, l.ch, startPosition)
-	case '(':
-		tok = newToken(token.LPAREN, l.ch, startPosition)
-	case ')':
-		tok = newToken(token.RPAREN, l.ch, startPosition)
-	case '"':
-		if l.peekChar() == '"' && l.peekTwoChars() == '"' {
-			// Handle multi-line string
-			tok.Type = token.STRING
-			tok.Position = startPosition
-			tok.Literal = l.readMultiLineString()
-		} else {
-			// Handle regular string
-			tok.Type = token.STRING
-			tok.Position = startPosition
-			tok.Literal = l.readString()
-		}
-	case '[':
-		tok = newToken(token.LBRACKET, l.ch, startPosition)
-	case ']':
-		tok = newToken(token.RBRACKET, l.ch, startPosition)
-	case 0:
-		tok.Literal = ""
-		tok.Type = token.EOF
-		tok.Position = startPosition
-	default:
-		if isLetter(l.ch) {
-			tok.Literal = l.readIdentifier()
-			tok.Type = token.LookupIdent(tok.Literal)
-			tok.Position = startPosition
-			return tok
-		} else if isDigit(l.ch) {
-			tok.Type = token.INT
-			tok.Literal = l.readNumber()
-			tok.Position = startPosition
-			return tok
-		} else {
-			tok = newToken(token.ILLEGAL, l.ch, startPosition)
-		}
-	}
-
-	l.readChar()
-	return tok
+	return l.currentMode.NextToken()
 }
 
 func (l *Lexer) handleCompoundToken(
@@ -230,81 +136,6 @@ func (l *Lexer) readNumber() string {
 		l.readChar()
 	}
 	return l.input[position:l.position]
-}
-
-func (l *Lexer) readString() string {
-	var result strings.Builder
-
-	for {
-		l.readChar()
-		if l.ch == '"' || l.ch == 0 {
-			break
-		}
-
-		// Handle escape sequences
-		if l.ch == '\\' {
-			l.readChar() // Move to the next character
-			switch l.ch {
-			case 'n':
-				result.WriteRune('\n')
-			case 't':
-				result.WriteRune('\t')
-			case '\\':
-				result.WriteRune('\\')
-			case '"':
-				result.WriteRune('"')
-			}
-		} else {
-			result.WriteRune(rune(l.ch)) // Add normal character
-		}
-	}
-
-	return result.String()
-}
-
-func (l *Lexer) readMultiLineString() string {
-	var result strings.Builder
-
-	// Ignore the initial '"""'
-	for i := 0; i < 3; i++ {
-		l.readChar()
-	}
-
-	if l.ch == '\n' {
-		l.readChar()
-	}
-
-	// Collect characters until closing `"""`
-	for {
-		// Check for the closing `"""`
-		if l.ch == '"' && l.peekChar() == '"' && l.peekTwoChars() == '"' {
-			// Retain the final newline before the closing `"""`
-			if len(result.String()) > 0 && result.String()[result.Len()-1] == '\n' {
-				// todo: this seems clumsy
-				original := result.String()          // Get the current string
-				trimmed := original[:result.Len()-1] // Trim the last character
-				result.Reset()                       // Reset the builder
-				result.WriteString(trimmed)
-			}
-
-			// Consume the closing `"""`
-			l.readChar()
-			l.readChar()
-			l.readChar()
-			break
-		}
-
-		if l.ch == 0 {
-			// Handle unterminated multi-line string
-			break
-		}
-
-		// Add characters to the result
-		result.WriteRune(rune(l.ch))
-		l.readChar()
-	}
-
-	return result.String()
 }
 
 func isLetter(ch byte) bool {

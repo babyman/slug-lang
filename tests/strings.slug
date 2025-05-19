@@ -23,6 +23,9 @@ Slug!
 ms.assertEqual("Hello\nSlug!");
 
 
+"  ".assertEqual("  ");
+
+
 // length
 // -----------------------
 assertEqual(s.len(), 11);

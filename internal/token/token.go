@@ -24,6 +24,9 @@ const (
 	APPEND_ITEM  = ":+"
 	PREPEND_ITEM = "+:"
 
+	INTERPOLATION_START = "{{"
+	INTERPOLATION_END   = "}}"
+
 	LT    = "<"
 	LT_EQ = "<="
 	GT    = ">"

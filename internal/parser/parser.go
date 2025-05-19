@@ -27,30 +27,31 @@ const (
 )
 
 var precedences = map[token.TokenType]int{
-	token.ASSIGN:       LOWEST, // Assignment has lowest precedence
-	token.EQ:           EQUALS,
-	token.NOT_EQ:       EQUALS,
-	token.LOGICAL_AND:  LOGICAL_AND,
-	token.LOGICAL_OR:   LOGICAL_OR,
-	token.BITWISE_AND:  BITWISE_AND,
-	token.BITWISE_OR:   BITWISE_OR,
-	token.BITWISE_XOR:  BITWISE_XOR,
-	token.SHIFT_LEFT:   SHIFT,
-	token.SHIFT_RIGHT:  SHIFT,
-	token.LT:           COMPARISON,
-	token.LT_EQ:        COMPARISON,
-	token.GT:           COMPARISON,
-	token.GT_EQ:        COMPARISON,
-	token.PLUS:         SUM,
-	token.MINUS:        SUM,
-	token.SLASH:        PRODUCT,
-	token.ASTERISK:     PRODUCT,
-	token.PERCENT:      PRODUCT,
-	token.APPEND_ITEM:  PRODUCT,
-	token.PREPEND_ITEM: PRODUCT,
-	token.PERIOD:       CALL,
-	token.LPAREN:       CALL,
-	token.LBRACKET:     INDEX,
+	token.ASSIGN:              LOWEST, // Assignment has lowest precedence
+	token.EQ:                  EQUALS,
+	token.NOT_EQ:              EQUALS,
+	token.LOGICAL_AND:         LOGICAL_AND,
+	token.LOGICAL_OR:          LOGICAL_OR,
+	token.BITWISE_AND:         BITWISE_AND,
+	token.BITWISE_OR:          BITWISE_OR,
+	token.BITWISE_XOR:         BITWISE_XOR,
+	token.SHIFT_LEFT:          SHIFT,
+	token.SHIFT_RIGHT:         SHIFT,
+	token.LT:                  COMPARISON,
+	token.LT_EQ:               COMPARISON,
+	token.GT:                  COMPARISON,
+	token.GT_EQ:               COMPARISON,
+	token.PLUS:                SUM,
+	token.MINUS:               SUM,
+	token.SLASH:               PRODUCT,
+	token.ASTERISK:            PRODUCT,
+	token.PERCENT:             PRODUCT,
+	token.APPEND_ITEM:         PRODUCT,
+	token.PREPEND_ITEM:        PRODUCT,
+	token.PERIOD:              CALL,
+	token.LPAREN:              CALL,
+	token.INTERPOLATION_START: CALL,
+	token.LBRACKET:            INDEX,
 }
 
 type (
@@ -119,6 +120,7 @@ func New(l *lexer.Lexer, source string) *Parser {
 	p.registerInfix(token.PERIOD, p.parseFunctionFirstCallExpression)
 	p.registerInfix(token.LPAREN, p.parseCallExpression)
 	p.registerInfix(token.LBRACKET, p.parseIndexExpression)
+	p.registerInfix(token.INTERPOLATION_START, p.parseInterpolationExpression)
 
 	// Read two tokens, so curToken and peekToken are both set
 	p.nextToken()
@@ -176,7 +178,7 @@ func (p *Parser) ParseProgram() *ast.Program {
 	program := &ast.Program{}
 	program.Statements = []ast.Statement{}
 
-	for !p.curTokenIs(token.EOF) {
+	for !p.curTokenIs(token.EOF) && !p.curTokenIs(token.ILLEGAL) {
 		stmt := p.parseStatement()
 		if stmt != nil {
 			program.Statements = append(program.Statements, stmt)
@@ -805,6 +807,34 @@ func (p *Parser) parseGroupedExpression() ast.Expression {
 	}
 
 	return exp
+}
+
+func (p *Parser) parseInterpolationExpression(left ast.Expression) ast.Expression {
+
+	expression := &ast.InfixExpression{
+		Token:    p.curToken,
+		Operator: "+",
+		Left:     left,
+	}
+	p.nextToken()
+
+	expression.Right = p.parseExpression(LOWEST)
+
+	if !p.expectPeek(token.INTERPOLATION_END) {
+		return nil
+	}
+
+	if p.peekTokenIs(token.STRING) {
+		p.nextToken()
+		expression = &ast.InfixExpression{
+			Token:    p.curToken,
+			Operator: "+",
+			Left:     expression,
+			Right:    p.parseStringLiteral(),
+		}
+	}
+
+	return expression
 }
 
 func (p *Parser) parseIfExpression() ast.Expression {

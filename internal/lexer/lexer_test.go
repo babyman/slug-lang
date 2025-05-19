@@ -11,7 +11,7 @@ func TestNextToken(t *testing.T) {
 var ten = 10;
 
 var add = fn(x, y) {
-  x + y;
+ x + y;
 };
 
 var result = add(five, ten);
@@ -33,6 +33,7 @@ true || false;
 10 & 9;
 10 | 9;
 10 ^ 9;
+""
 "foobar"
 "foo bar"
 [1, 2];
@@ -43,7 +44,6 @@ f2=fn
 ???
 +:
 :+
-"\n\t\\\""
 // comment at eof
 //`
 
@@ -152,6 +152,7 @@ f2=fn
 		{token.BITWISE_XOR, "^"},
 		{token.INT, "9"},
 		{token.SEMICOLON, ";"},
+		{token.STRING, ""},
 		{token.STRING, "foobar"},
 		{token.STRING, "foo bar"},
 		{token.LBRACKET, "["},
@@ -174,7 +175,6 @@ f2=fn
 		{token.NOT_IMPLEMENTED, "???"},
 		{token.PREPEND_ITEM, "+:"},
 		{token.APPEND_ITEM, ":+"},
-		{token.STRING, "\n\t\\\""},
 		{token.EOF, ""},
 	}
 
@@ -184,8 +184,67 @@ f2=fn
 		tok := l.NextToken()
 
 		if tok.Type != tt.expectedType {
-			t.Fatalf("tests[%d] - tokentype wrong. expected=%q, got=%q",
-				i, tt.expectedType, tok.Type)
+			t.Fatalf("tests[%d] - tokentype wrong. expected=%q, got=%q: '%q'",
+				i, tt.expectedType, tok.Type, tok.Literal)
+		}
+
+		if tok.Literal != tt.expectedLiteral {
+			t.Fatalf("tests[%d] - literal wrong. expected=%q, got=%q",
+				i, tt.expectedLiteral, tok.Literal)
+		}
+	}
+}
+
+func TestNextStringToken(t *testing.T) {
+	input := `"\n\t\\\""
+"start{{slug}}end"
+"{{slug}}"
+"\{\{slug"
+"""
+A
+multi-line
+{{slug}}
+string
+"""
+// comment at eof
+//`
+
+	tests := []struct {
+		expectedType    token.TokenType
+		expectedLiteral string
+	}{
+		{token.STRING, "\n\t\\\""},
+
+		{token.STRING, "start"},
+		{token.INTERPOLATION_START, "{{"},
+		{token.IDENT, "slug"},
+		{token.INTERPOLATION_END, "}}"},
+		{token.STRING, "end"},
+
+		{token.STRING, ""},
+		{token.INTERPOLATION_START, "{{"},
+		{token.IDENT, "slug"},
+		{token.INTERPOLATION_END, "}}"},
+
+		{token.STRING, "{{slug"},
+
+		{token.STRING, "A\nmulti-line\n"},
+		{token.INTERPOLATION_START, "{{"},
+		{token.IDENT, "slug"},
+		{token.INTERPOLATION_END, "}}"},
+		{token.STRING, "\nstring"},
+
+		{token.EOF, ""},
+	}
+
+	l := New(input)
+
+	for i, tt := range tests {
+		tok := l.NextToken()
+
+		if tok.Type != tt.expectedType {
+			t.Fatalf("tests[%d] - tokentype wrong. expected=%q, got=%q: '%q'",
+				i, tt.expectedType, tok.Type, tok.Literal)
 		}
 
 		if tok.Literal != tt.expectedLiteral {
