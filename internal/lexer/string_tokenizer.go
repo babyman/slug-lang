@@ -41,6 +41,8 @@ func (s *SingleLineStringTokenizer) NextToken() token.Token {
 			switch s.lexer.ch {
 			case 'n':
 				result.WriteRune('\n')
+			case 'r':
+				result.WriteRune('\r')
 			case 't':
 				result.WriteRune('\t')
 			case '\\':

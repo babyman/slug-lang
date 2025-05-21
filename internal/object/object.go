@@ -154,11 +154,15 @@ func (s *String) MapKey() MapKey {
 }
 
 type Foreign struct {
-	Fn ForeignFunction
+	Fn    ForeignFunction
+	Name  string
+	Arity int
 }
 
 func (b *Foreign) Type() ObjectType { return FOREIGN_OBJ }
-func (b *Foreign) Inspect() string  { return "foreign function" }
+func (b *Foreign) Inspect() string {
+	return "foreign " + b.Name + "(" + fmt.Sprintf("%d", b.Arity) + ") { <native fn> }"
+}
 
 type List struct {
 	Elements []Object

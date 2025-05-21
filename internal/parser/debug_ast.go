@@ -308,6 +308,49 @@ func WalkAST(node ast.Node) interface{} {
 			"3.catchBlock": WalkAST(n.CatchBlock),
 		}
 
+	case *ast.ValStatement:
+		return map[string]interface{}{
+			"0.type":     "ValStatement",
+			"1.position": n.Token.Position,
+			"2.token":    n.TokenLiteral(),
+			"3.pattern":  WalkAST(n.Pattern),
+			"4.value":    WalkAST(n.Value),
+		}
+
+	case *ast.NotImplemented:
+		return map[string]interface{}{
+			"0.type":     "NotImplemented",
+			"1.position": n.Token.Position,
+			"2.token":    n.TokenLiteral(),
+		}
+
+	case *ast.ForeignFunctionDeclaration:
+		parameters := make([]interface{}, len(n.Parameters))
+		for i, param := range n.Parameters {
+			parameters[i] = WalkAST(param)
+		}
+		return map[string]interface{}{
+			"0.type":       "ForeignFunctionDeclaration",
+			"1.position":   n.Token.Position,
+			"2.token":      n.TokenLiteral(),
+			"3.name":       WalkAST(n.Name),
+			"4.parameters": parameters,
+		}
+
+	case *ast.DeferStatement:
+		return map[string]interface{}{
+			"0.type":  "DeferStatement",
+			"1.token": n.TokenLiteral(),
+			"2.call":  WalkAST(n.Call),
+		}
+
+	case *ast.SpreadExpression:
+		return map[string]interface{}{
+			"0.type":  "SpreadExpression",
+			"1.token": n.Token.Literal,
+			"2.value": WalkAST(n.Value),
+		}
+
 	default:
 		return map[string]interface{}{
 			"0.type": "Unknown",

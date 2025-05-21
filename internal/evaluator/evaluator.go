@@ -702,7 +702,7 @@ func (e *Evaluator) applyFunction(fnObj object.Object, args []object.Object) obj
 	case *object.Function:
 
 		// Create a new call frame and push it
-		//println("call")
+		//println("call", fn.HasTailCall)
 		e.PushEnv(e.extendFunctionEnv(fn, args))
 
 		// Evaluate function body
@@ -723,7 +723,7 @@ func (e *Evaluator) applyFunction(fnObj object.Object, args []object.Object) obj
 		return result
 
 	case *object.Foreign:
-		//println("foreign")
+		//println(fn.Inspect())
 		return fn.Fn(args...)
 
 	default:
@@ -1357,6 +1357,8 @@ func (e *Evaluator) evalForeignFunctionDeclaration(stmt *ast.ForeignFunctionDecl
 	fqn := modulePath + "." + functionName
 
 	if foreignFn, exists := foreignFunctions[fqn]; exists {
+		foreignFn.Name = functionName
+		foreignFn.Arity = len(stmt.Parameters)
 		_, err := env.Define(functionName, foreignFn)
 		if err != nil {
 			return newError(err.Error())

@@ -3,8 +3,11 @@ OS := $(shell uname)
 
 run:
 	# e.g. make run ARGS='--root ./tests --debug-ast ./tests/nil.slug'
-	go run ./cmd/app/ $(ARGS)
+	time go run ./cmd/app/ $(ARGS)
 
+live:
+	# requires `entr` see https://eradman.com/entrproject/
+	find . \( -name "*.slug" -o -name "*.go" \) | entr -r time go run ./cmd/app/ $(ARGS)
 
 test: release
 	go test ./... || exit 1

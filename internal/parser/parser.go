@@ -513,41 +513,10 @@ func (p *Parser) parseMatchExpression() ast.Expression {
 		p.nextToken() // Move to the next case or closing brace
 	}
 
-	// Mark tail calls in match cases
-	p.markTailCallsInMatch(match)
-
 	return match
 }
 
-// markTailCallsInMatch detects and marks tail calls in match expression cases
-func (p *Parser) markTailCallsInMatch(match *ast.MatchExpression) {
-	for _, matchCase := range match.Cases {
-		if matchCase.Body != nil && len(matchCase.Body.Statements) > 0 {
-			lastStmt := matchCase.Body.Statements[len(matchCase.Body.Statements)-1]
-
-			// Check for return statements with call expressions
-			if returnStmt, ok := lastStmt.(*ast.ReturnStatement); ok {
-				if callExpr, ok := returnStmt.ReturnValue.(*ast.CallExpression); ok {
-					//println("||] Found tail call in match case", callExpr.String())
-					callExpr.IsTailCall = true
-				}
-			}
-
-			// Check for expression statements with call expressions
-			if exprStmt, ok := lastStmt.(*ast.ExpressionStatement); ok {
-				if callExpr, ok := exprStmt.Expression.(*ast.CallExpression); ok {
-					//println("||} Found tail call in match case", callExpr.String())
-					callExpr.IsTailCall = true
-				}
-
-				// Check for if expressions with tail calls
-				if ifExpr, ok := exprStmt.Expression.(*ast.IfExpression); ok {
-					p.markTailCallsInIf(ifExpr)
-				}
-			}
-		}
-	}
-}
+// No commented out code needed here - replaced with the new implementation
 
 func (p *Parser) parseMatchCase() *ast.MatchCase {
 	matchCase := &ast.MatchCase{Token: p.curToken}
@@ -883,60 +852,7 @@ func (p *Parser) parseIfExpression() ast.Expression {
 		}
 	}
 
-	// Mark tail calls in the branches
-	p.markTailCallsInIf(expression)
-
 	return expression
-}
-
-// markTailCallsInIf detects and marks tail calls in if-else branches
-func (p *Parser) markTailCallsInIf(ifExpr *ast.IfExpression) {
-	// Check for tail calls in then branch
-	if len(ifExpr.ThenBranch.Statements) > 0 {
-		lastStmt := ifExpr.ThenBranch.Statements[len(ifExpr.ThenBranch.Statements)-1]
-
-		// Check for return statements with call expressions
-		if returnStmt, ok := lastStmt.(*ast.ReturnStatement); ok {
-			if callExpr, ok := returnStmt.ReturnValue.(*ast.CallExpression); ok {
-				//println("xx Found tail call in match case", callExpr.String())
-				callExpr.IsTailCall = true
-			}
-		}
-
-		// Check for expression statements with call expressions
-		if exprStmt, ok := lastStmt.(*ast.ExpressionStatement); ok {
-			if callExpr, ok := exprStmt.Expression.(*ast.CallExpression); ok {
-				//println("yy Found tail call in match case", callExpr.String())
-				callExpr.IsTailCall = true
-			}
-		}
-	}
-
-	// Check for tail calls in else branch
-	if ifExpr.ElseBranch != nil && len(ifExpr.ElseBranch.Statements) > 0 {
-		lastStmt := ifExpr.ElseBranch.Statements[len(ifExpr.ElseBranch.Statements)-1]
-
-		// Check for return statements with call expressions
-		if returnStmt, ok := lastStmt.(*ast.ReturnStatement); ok {
-			if callExpr, ok := returnStmt.ReturnValue.(*ast.CallExpression); ok {
-				//println("zz Found tail call in match case", callExpr.String())
-				callExpr.IsTailCall = true
-			}
-		}
-
-		// Check for expression statements with call expressions
-		if exprStmt, ok := lastStmt.(*ast.ExpressionStatement); ok {
-			if callExpr, ok := exprStmt.Expression.(*ast.CallExpression); ok {
-				//println("aa Found tail call in match case", callExpr.String())
-				callExpr.IsTailCall = true
-			}
-
-			// Check for nested if expressions
-			if nestedIf, ok := exprStmt.Expression.(*ast.IfExpression); ok {
-				p.markTailCallsInIf(nestedIf)
-			}
-		}
-	}
 }
 
 func (p *Parser) parseBlockStatement() *ast.BlockStatement {
@@ -972,50 +888,83 @@ func (p *Parser) parseFunctionLiteral() ast.Expression {
 	lit.Body = p.parseBlockStatement()
 
 	// Analyze function body for tail calls
-	lit.HasTailCall = p.checkForTailCalls(lit.Body)
+	setTailCallFlags(lit)
 
 	return lit
 }
 
-// checkForTailCalls examines a block statement for tail calls
-func (p *Parser) checkForTailCalls(block *ast.BlockStatement) bool {
+// setTailCallFlags analyzes a function literal and marks call expressions in tail position
+func setTailCallFlags(fn *ast.FunctionLiteral) {
+	if fn.Body == nil || len(fn.Body.Statements) == 0 {
+		return
+	}
+
+	// Check for tail calls in the function body
+	hasTailCall := checkTailCallsInBlock(fn.Body)
+	fn.HasTailCall = hasTailCall
+}
+
+// checkTailCallsInBlock checks for tail calls in a block statement
+func checkTailCallsInBlock(block *ast.BlockStatement) bool {
 	if len(block.Statements) == 0 {
 		return false
 	}
 
-	// Check the last statement for a tail call
+	// Only the last statement in a block can contain a tail call
 	lastStmt := block.Statements[len(block.Statements)-1]
+	return checkTailCallsInStatement(lastStmt)
+}
 
-	// If it's a return statement, check if it's returning a call expression
-	if returnStmt, ok := lastStmt.(*ast.ReturnStatement); ok {
-		if callExpr, ok := returnStmt.ReturnValue.(*ast.CallExpression); ok {
-			callExpr.IsTailCall = true
-			return true
-		}
+// checkTailCallsInStatement checks for tail calls in a statement
+func checkTailCallsInStatement(stmt ast.Statement) bool {
+	switch s := stmt.(type) {
+	case *ast.ReturnStatement:
+		// In a return statement, the returned expression might be a tail call
+		return markTailCall(s.ReturnValue)
+
+	case *ast.ExpressionStatement:
+		// In an expression statement at the end of a block, the expression might be a tail call
+		return markTailCall(s.Expression)
+
+	default:
+		return false
+	}
+}
+
+// markTailCall marks call expressions as tail calls and returns whether a tail call was found
+func markTailCall(expr ast.Expression) bool {
+	if expr == nil {
 		return false
 	}
 
-	// If it's an expression statement, check if it's a call expression
-	if exprStmt, ok := lastStmt.(*ast.ExpressionStatement); ok {
-		if callExpr, ok := exprStmt.Expression.(*ast.CallExpression); ok {
-			callExpr.IsTailCall = true
-			return true
-		}
-	}
+	switch e := expr.(type) {
+	case *ast.CallExpression:
+		// This is a direct tail call
+		e.IsTailCall = true
+		return true
 
-	// Check if it's an if expression with tail calls in branches
-	if exprStmt, ok := lastStmt.(*ast.ExpressionStatement); ok {
-		if ifExpr, ok := exprStmt.Expression.(*ast.IfExpression); ok {
-			thenHasTail := p.checkForTailCalls(ifExpr.ThenBranch)
-			elseHasTail := false
-			if ifExpr.ElseBranch != nil {
-				elseHasTail = p.checkForTailCalls(ifExpr.ElseBranch)
+	case *ast.IfExpression:
+		// An if expression has tail calls if both branches have tail calls in their final statements
+		thenHasTail := checkTailCallsInBlock(e.ThenBranch)
+		elseHasTail := false
+		if e.ElseBranch != nil {
+			elseHasTail = checkTailCallsInBlock(e.ElseBranch)
+		}
+		return thenHasTail || elseHasTail
+
+	case *ast.MatchExpression:
+		// A match expression has tail calls if any of its cases have tail calls
+		hasAnyTailCall := false
+		for _, matchCase := range e.Cases {
+			if matchCase.Body != nil && checkTailCallsInBlock(matchCase.Body) {
+				hasAnyTailCall = true
 			}
-			return thenHasTail || elseHasTail
 		}
-	}
+		return hasAnyTailCall
 
-	return false
+	default:
+		return false
+	}
 }
 
 func (p *Parser) parseFunctionParameters() []*ast.FunctionParameter {

@@ -29,10 +29,12 @@ var template = 'Hello, {{user}}!' // {{user}} stays literal
 
 - Interpolated strings support **escape sequences** and **expression interpolation**.
 - Escape sequences inside interpolated strings:
-    - `\n` → newline
+    - `\r` → carriage return (CR)
+    - `\n` → newline (LF)
     - `\t` → tab
     - `\\` → backslash
     - `\"` → double quote
+    - `\{` → curly brace
 - Expressions enclosed in `{{ ... }}` are evaluated dynamically using the current scope.
 
 **Examples**:
