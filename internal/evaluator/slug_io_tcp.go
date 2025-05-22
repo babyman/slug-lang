@@ -2,6 +2,7 @@ package evaluator
 
 import (
 	"fmt"
+	"io"
 	"math/rand"
 	"net"
 	"slug/internal/object"
@@ -141,7 +142,11 @@ func fnIoTcpRead() *object.Foreign {
 			buf := make([]byte, max)
 			n, err := conn.Read(buf)
 			if err != nil {
-				return newError(err.Error())
+				if err == io.EOF {
+					return NIL
+				} else {
+					return newError(err.Error())
+				}
 			}
 
 			return &object.String{Value: string(buf[:n])}

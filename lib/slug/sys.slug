@@ -1,3 +1,7 @@
 
-// read an environment variable, nil if not set
+// env reads an environment variable by its name and returns its value 
+// Parameters:
+//   str - the name of the environment variable to read
+// Returns:
+//   string value of the environment variable, or nil if variable is not set
 foreign env = fn(str);

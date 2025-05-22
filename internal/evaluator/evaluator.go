@@ -736,7 +736,7 @@ func (e *Evaluator) extendFunctionEnv(
 	args []object.Object,
 ) *object.Environment {
 	env := object.NewEnclosedEnvironment(fn.Env, &object.StackFrame{
-		Function: "function", // String representation of the function
+		Function: "call", // String representation of the function
 		File:     fn.Env.Path,
 		Position: fn.Body.Token.Position,
 	})

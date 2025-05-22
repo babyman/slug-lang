@@ -1,0 +1,7 @@
+import slug.strings.*;
+import slug.test.*;
+
+"1,2,3".split(",").len().assertEqual(3);
+
+"1,2,3".split(",", 2).len().assertEqual(2);
+
