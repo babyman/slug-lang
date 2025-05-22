@@ -1,0 +1,16 @@
+
+foreign clock = fn();
+
+foreign clockNanos = fn();
+
+// delta creates a function that measures time difference between calls
+// Parameters:
+//   f: function that returns a time value
+// Returns:
+//   function that returns time elapsed since first call to f
+var delta = fn(f) {
+	var start = f();
+	fn() {
+		f() - start;
+	}
+}

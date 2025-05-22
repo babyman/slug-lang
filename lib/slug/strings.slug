@@ -1,3 +1,4 @@
+import slug.std.{len};
 
 foreign trim = fn(str);
 
@@ -8,3 +9,22 @@ foreign startsWith = fn(str, sew);
 foreign endsWith = fn(str, seq);
 
 foreign indexOf = fn(str, seq);
+
+// split splits a string into a list of substrings based on a delimiter
+// Parameters:
+//   str: The input string to split
+//   delimiter: The delimiter string to split on
+//   max: Maximum number of splits to perform (-1 for unlimited)
+//   count: Internal counter for number of splits performed
+//   strs: Internal accumulator for storing split strings
+// Returns:
+//   Array of substrings split by the delimiter
+var split = fn(str, delimiter, max = -1, count = 1, strs = []) {
+	match str.indexOf(delimiter) {
+		n if n >= 0 && (max < 0 || count < max) => {
+			val i = n + delimiter.len();
+			split(str[i:], delimiter, max, count + 1, strs :+ str[:n]);
+		}
+		_ => strs :+ str;
+	}
+}

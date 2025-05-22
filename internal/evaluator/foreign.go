@@ -28,4 +28,7 @@ var foreignFunctions = map[string]*object.Foreign{
 	"slug.strings.trim":       fnStringsTrim(),
 
 	"slug.sys.env": fnSysEnv(),
+
+	"slug.time.clock":      fnTimeClock(),
+	"slug.time.clockNanos": fnTimeClockNanos(),
 }
