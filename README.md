@@ -36,6 +36,287 @@ Repl
 
 Slug has a simple repl if launched without a script.
 
+# Introduction to the Slug Programming Language: A Developer's Guide
+
+Welcome to the **Slug Programming Language**! Slug is a versatile, functional-first language that blends simplicity,
+expressiveness, and power to enable developers to write readable and maintainable code. This tutorial will introduce you
+to the core concepts of Slug, its syntax, and its idiomatic use cases.
+
+By the end of this guide, you will have a foundational understanding of Slug’s features, allowing you to build
+structured, functional, and elegant programs.
+
+---
+
+## Table of Contents
+
+1. **Getting Started with Slug**
+    - Writing Your First Slug Program
+2. **Core Building Blocks**
+    - Variables: `var` and `val`
+    - Functions and Closures
+3. **Functional Programming Constructs**
+    - Map, Filter, and Reduce
+    - Pattern Matching
+    - Higher-Order Functions
+4. **Data Structures**
+    - Lists
+    - Maps
+5. **Flow Control**
+    - Conditionals (`if`/`else`)
+    - Error Handling with `try`/`catch` and `throw`
+6. **Working Example**
+    - Building a Functional Pipeline
+
+---
+
+## 1. Getting Started with Slug
+
+### Writing Your First Slug Program
+
+Create a file called `hello_world.slug` and add the following:
+
+```
+import slug.std.*;
+
+println("Hello, Slug!");
+```
+
+Run it with:
+
+```shell script
+slug hello_world.slug
+```
+
+You should see:
+
+```
+Hello, Slug!
+```
+
+---
+
+## 2. Core Building Blocks
+
+### Variables in Slug
+
+Slug supports two types of variable declarations:
+
+1. **Mutable Variables** (`var`): Can change over time.
+2. **Immutable Variables** (`val`): Fixed once initialized.
+
+Examples:
+
+```
+import slug.std.*;
+
+var counter = 0;  // Mutable variable
+val greeting = "Hello"; // Immutable constant
+
+counter = counter + 1;  // Reassigning is allowed with var
+counter.println();       // Prints: 1
+```
+
+---
+
+### Functions and Closures
+
+Functions are first-class citizens in Slug. They can be passed as arguments, returned from other functions, or stored in
+variables.
+
+Example of defining and calling functions:
+
+```
+import slug.std.*;
+
+val add = fn(a, b) { a + b }  // A function that adds two numbers
+println(add(3, 4));           // Output: 7
+```
+
+Functions can close over their surrounding environment, making them closures:
+
+```
+import slug.std.*;
+
+val multiplier = fn(factor) {
+    fn(num) { num * factor }
+};
+
+val double = multiplier(2);
+println(double(5));  // Output: 10
+```
+
+---
+
+## 3. Functional Programming Constructs
+
+Slug excels at **functional programming**, empowering you with concise tools and expressive patterns.
+
+### Map, Filter, and Reduce
+
+- **Map**: Transform a list using a function.
+- **Filter**: Keep elements that satisfy a condition.
+- **Reduce**: Aggregate a list into a single value.
+
+```
+import slug.std.*;
+
+val list = [1, 2, 3, 4, 5];
+
+val squares = list.map(fn(v) { v * v });  // [1, 4, 9, 16, 25]
+val evens = list.filter(fn(v) { v % 2 == 0 });  // [2, 4]
+val sum = list.reduce(0, fn(acc, v) { acc + v });  // 15
+
+println(squares);
+println(evens);
+println(sum);
+```
+
+---
+
+### Pattern Matching (Inspired by `match`)
+
+Use `match` to destructure and inspect values directly.
+
+```
+import slug.std.*;
+
+val classify = fn(value) {
+    match value {
+        0 => "zero";
+        1 => "one";
+        _ => "other";  // Catch-all case
+    }
+};
+
+println(classify(1));  // Output: one
+println(classify(5));  // Output: other
+```
+
+`match` can also destructure complex data like lists:
+
+```
+import slug.std.*;
+
+val sumList = fn(list) {
+    match list {
+        [h, ...t] => h + sumList(t);  // Head and Tail destructuring
+        [] => 0;                      // Base case
+    }
+};
+
+println(sumList([1, 2, 3]));  // Output: 6
+```
+
+---
+
+### Higher-Order Functions
+
+Slug supports higher-order functions: functions that accept and return functions.
+
+Example:
+
+```
+import slug.std.*;
+
+val applyTwice = fn(f, v) { f(f(v)) };
+
+val increment = fn(x) { x + 1 };
+println(applyTwice(increment, 10));  // Output: 12
+```
+
+---
+
+## 4. Data Structures
+
+### Lists
+
+A list is a collection of elements. It supports operations like indexing, appending, and slicing.
+
+```
+import slug.std.*;
+
+val list = [10, 20, 30];
+println(list[1]);    // Output: 20
+println(list[-1]);   // Output: 30
+println(list[:1]);   // Output: [10]
+println(list[1:]);   // Output: [20, 30]
+```
+
+### Maps
+
+Maps are key-value stores in Slug.
+
+```
+import slug.std.*;
+
+val myMap = {};
+put(myMap, "name", "Slug");
+println(get(myMap, "name"));  // Output: Slug
+```
+
+---
+
+## 5. Flow Control
+
+### Conditionals: `if`/`else`
+
+```
+import slug.std.*;
+
+val max = fn(a, b) {
+    if (a > b) {
+        a
+    } else {
+        b
+    }
+};
+
+println(max(3, 5));  // Output: 5
+```
+
+### Error Handling with `try`/`catch` and `throw`
+
+```
+import slug.std.*;
+
+val process = fn(value) {
+    try {
+        if (value < 0) {
+            throw NegativeValueError({msg:"Negative value not allowed"});
+        }
+        value * 2
+    } catch (err) {
+        {...} => println("Caught error:", err.msg);
+        _ => nil;
+    }
+};
+
+println(process(-1));  // Output: Caught error: Negative value not allowed
+```
+
+---
+
+## 6. Working Example: Functional Data Pipeline
+
+We’ll build a pipeline that processes a list of numbers by:
+
+- Squaring each number.
+- Filtering for even numbers.
+- Finding the sum of the remaining elements.
+
+```
+import slug.std.*;
+
+val numbers = [1, 2, 3, 4, 5, 6];
+
+val result = numbers
+    .map(fn(x) { x * x })          // [1, 4, 9, 16, 25, 36]
+    .filter(fn(x) { x % 2 == 0 })  // [4, 16, 36]
+    .reduce(0, fn(acc, x) { acc + x });  // 56
+
+println("Result:", result);  // Output: Result: 56
+```
+
 Comments
 ===
 
@@ -95,5 +376,3 @@ substituting the `.` for file path separators, for example `slug.system` will be
 
 - project root (default current directory)
 - the $SLUG_HOME/lib directory
-
----
