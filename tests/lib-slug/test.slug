@@ -9,6 +9,10 @@ assert(true, "with a message");
 assert(1 == 1);
 assert(1 == 1, "with a message");
 
+true.assertTrue();
+
+false.assertFalse();
+
 
 //
 // assert 2 values are equal

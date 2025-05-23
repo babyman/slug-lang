@@ -1,20 +1,26 @@
 import slug.std.*;
-import slug.lists.{ listEquals };
+import slug.list.{ listEquals };
 
 var assert = fn(a, msg = nil) {
     if ( a.type() == "BOOLEAN" && !a ) {
         if ( !msg ) {
-            msg = a + " is not true";
+            msg = "{{a}} ({{a.type()}}) is not true";
         }
         throw AssertionError({msg: msg});
     }
+}
+
+var assertTrue = assert;
+
+var assertFalse = fn(a, msg = nil) {
+    assert( !a, msg);
 }
 
 
 var assertEqual = fn(a, b, msg = nil) {
     if ( a != b ) {
         if ( !msg ) {
-            msg = a + " is not equal to " + b;
+            msg = "{{a}} is not equal to {{b}}";
         }
         throw AssertionError({msg: msg});
     }
@@ -24,7 +30,7 @@ var assertEqual = fn(a, b, msg = nil) {
 var assertListEqual = fn(a, b, msg = nil) {
     if ( !(a == b || listEquals(a, b)) ) {
         if ( !msg ) {
-            msg = "List '" + a + "' is not equal to '" + b + "'";
+            msg = "List '{{a}}' is not equal to '{{b}}'";
         }
         throw AssertionError({msg: msg});
     }

@@ -1,0 +1,57 @@
+
+// Reads entire file content as a string. Returns error if file cannot be read.
+// readFile(path: string) -> string
+foreign readFile = fn(path);
+
+// Writes string content to a file, creating it if it doesn't exist or overwriting if it does.
+// Returns nil on success or error if write fails.
+// writeFile(path: string, contents: string) -> nil
+foreign writeFile = fn(path, contents);
+
+// Appends string content to end of file, creating it if it doesn't exist.
+// Returns nil on success or error if write fails.
+// appendFile(path: string, contents: string) -> nil
+foreign appendFile = fn(path, contents);
+
+foreign info = fn(path);
+
+// Returns true if the file exists and is accessible.
+foreign exists = fn(path);
+
+// Returns true if the path is a directory.
+foreign isDir = fn(path);
+
+// Returns the list of filenames in a directory (not recursive).
+foreign ls = fn(path);
+
+// remove a file or empty directory
+foreign rm = fn(path);
+
+val READ_MODE = "r"
+val WRITE_MODE = "w"
+val APPEND_MODE = "a"
+
+// Mode could be "r" (read), "w" (write), "a" (append). Returns a handle.
+foreign openFile = fn(path, mode);
+
+// Reads next line from an open file handle in text mode.
+// Returns the line as string or error if read fails.
+// readLine(handle: number) -> string
+foreign readLine = fn(handle);
+
+// Read a fixed number of bytes.
+// readBytes(handle, count: number)
+
+// Writes string content to an open file handle.
+// Returns number of bytes written or error if write fails.
+// write(handle: number, content: string) -> number
+foreign write = fn(handle, content);
+
+foreign closeFile = fn(handle)
+
+var readLines = fn(file, lines = []) {
+	match file.readLine() {
+		nil => lines
+		str => readLines(file, lines :+ str[:-1]) // -1 to trim the newline
+	}
+}

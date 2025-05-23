@@ -1,0 +1,15 @@
+import slug.string.*;
+import slug.test.*;
+
+"1,2,3".split(",").len().assertEqual(3);
+
+"1,2,3".split(",", 2).len().assertEqual(2);
+
+"A".isLower().assertFalse();
+"a".isLower().assertTrue();
+
+"A".isUpper().assertTrue();
+"a".isUpper().assertFalse();
+
+"a".toUpper().assertEqual("A");
+"A".toLower().assertEqual("a");

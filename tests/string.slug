@@ -1,4 +1,4 @@
-import slug.strings.*;
+import slug.string.*;
 import slug.test.*;
 
 // String escape sequences:
@@ -24,6 +24,10 @@ ms.assertEqual("Hello\nSlug!");
 
 
 "  ".assertEqual("  ");
+
+"  ".trim().assertEqual("");
+
+" a ".trim().assertEqual("a");
 
 
 // length

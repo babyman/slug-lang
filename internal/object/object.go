@@ -37,6 +37,7 @@ type MapKey struct {
 }
 
 type Hashable interface {
+	Object
 	MapKey() MapKey
 }
 
@@ -208,6 +209,18 @@ func (h *Map) Inspect() string {
 	out.WriteString("}")
 
 	return out.String()
+}
+
+// Put simplify adding objects to a map
+func (h *Map) Put(k Hashable, v Object) *Map {
+	if h.Pairs == nil {
+		h.Pairs = map[MapKey]MapPair{}
+	}
+	h.Pairs[k.MapKey()] = MapPair{
+		Key:   k,
+		Value: v,
+	}
+	return h
 }
 
 type RuntimeError struct {

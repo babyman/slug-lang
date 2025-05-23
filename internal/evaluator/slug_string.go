@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func fnStringsTrim() *object.Foreign {
+func fnStringTrim() *object.Foreign {
 	return &object.Foreign{Fn: func(args ...object.Object) object.Object {
 		if len(args) != 1 {
 			return newError("wrong number of arguments. got=%d, want=1", len(args))
@@ -21,7 +21,7 @@ func fnStringsTrim() *object.Foreign {
 	}
 }
 
-func fnStringsContains() *object.Foreign {
+func fnStringContains() *object.Foreign {
 	return &object.Foreign{Fn: func(args ...object.Object) object.Object {
 		if len(args) != 2 {
 			return newError("wrong number of arguments. got=%d, want=2", len(args))
@@ -41,7 +41,7 @@ func fnStringsContains() *object.Foreign {
 	}
 }
 
-func fnStringsStartsWith() *object.Foreign {
+func fnStringStartsWith() *object.Foreign {
 	return &object.Foreign{Fn: func(args ...object.Object) object.Object {
 		if len(args) != 2 {
 			return newError("wrong number of arguments. got=%d, want=2", len(args))
@@ -60,7 +60,7 @@ func fnStringsStartsWith() *object.Foreign {
 	}
 }
 
-func fnStringsEndsWith() *object.Foreign {
+func fnStringEndsWith() *object.Foreign {
 	return &object.Foreign{Fn: func(args ...object.Object) object.Object {
 		if len(args) != 2 {
 			return newError("wrong number of arguments. got=%d, want=2", len(args))
@@ -79,7 +79,7 @@ func fnStringsEndsWith() *object.Foreign {
 	}
 }
 
-func fnStringsIndexOf() *object.Foreign {
+func fnStringIndexOf() *object.Foreign {
 	return &object.Foreign{Fn: func(args ...object.Object) object.Object {
 		if len(args) < 2 {
 			return newError("wrong number of arguments. got=%d, want=2", len(args))
@@ -97,6 +97,70 @@ func fnStringsIndexOf() *object.Foreign {
 			return &object.Integer{Value: int64(strings.Index(arg.Value[start:], args[1].(*object.String).Value))}
 		default:
 			return newError("argument to `indexOf` not supported, got %s", args[0].Type())
+		}
+	},
+	}
+}
+
+func fnStringToUpper() *object.Foreign {
+	return &object.Foreign{Fn: func(args ...object.Object) object.Object {
+		if len(args) != 1 {
+			return newError("wrong number of arguments. got=%d, want=1", len(args))
+		}
+
+		switch arg := args[0].(type) {
+		case *object.String:
+			return &object.String{Value: strings.ToUpper(arg.Value)}
+		default:
+			return newError("argument to `toUpper` not supported, got %s", args[0].Type())
+		}
+	},
+	}
+}
+
+func fnStringToLower() *object.Foreign {
+	return &object.Foreign{Fn: func(args ...object.Object) object.Object {
+		if len(args) != 1 {
+			return newError("wrong number of arguments. got=%d, want=1", len(args))
+		}
+
+		switch arg := args[0].(type) {
+		case *object.String:
+			return &object.String{Value: strings.ToLower(arg.Value)}
+		default:
+			return newError("argument to `toLower` not supported, got %s", args[0].Type())
+		}
+	},
+	}
+}
+
+func fnStringIsUpper() *object.Foreign {
+	return &object.Foreign{Fn: func(args ...object.Object) object.Object {
+		if len(args) != 1 {
+			return newError("wrong number of arguments. got=%d, want=1", len(args))
+		}
+
+		switch arg := args[0].(type) {
+		case *object.String:
+			return nativeBoolToBooleanObject(arg.Value == strings.ToUpper(arg.Value))
+		default:
+			return newError("argument to `isUpper` not supported, got %s", args[0].Type())
+		}
+	},
+	}
+}
+
+func fnStringIsLower() *object.Foreign {
+	return &object.Foreign{Fn: func(args ...object.Object) object.Object {
+		if len(args) != 1 {
+			return newError("wrong number of arguments. got=%d, want=1", len(args))
+		}
+
+		switch arg := args[0].(type) {
+		case *object.String:
+			return nativeBoolToBooleanObject(arg.Value == strings.ToLower(arg.Value))
+		default:
+			return newError("argument to `isLower` not supported, got %s", args[0].Type())
 		}
 	},
 	}
