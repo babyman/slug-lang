@@ -24,7 +24,7 @@ foreign keys = fn(map);
 foreign get = fn(map, key);
 
 // put a value into a map
-foreign put = fn(map, key, val);
+foreign put = fn(map, key, value);
 
 // remove a key from a map
 foreign remove = fn(map, key);

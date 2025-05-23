@@ -112,7 +112,7 @@ import slug.std.*;
 var counter = 0;  // Mutable variable
 val greeting = "Hello"; // Immutable constant
 
-counter = counter + 1;  // Reassigning is allowed with var
+counter = counter + 1;   // Reassigning is allowed with var
 counter.println();       // Prints: 1
 ```
 
@@ -129,7 +129,7 @@ Example of defining and calling functions:
 import slug.std.*;
 
 val add = fn(a, b) { a + b }  // A function that adds two numbers
-println(add(3, 4));           // Output: 7
+add(3, 4).println();          // Output: 7
 ```
 
 Functions can close over their surrounding environment, making them closures:
@@ -142,8 +142,26 @@ val multiplier = fn(factor) {
 };
 
 val double = multiplier(2);
-println(double(5));  // Output: 10
+double(5).println();  // Output: 10
 ```
+
+### Function Chaining in Slug
+
+Slug supports function chaining, which allows for a cleaner and more expressive syntax. When a variable is placed before
+a function call in the format `var.call()`, it is automatically passed as the first parameter to the function. The
+result is equivalent to invoking the function as `call(var)`.
+
+Example:
+
+```
+slug import slug.std.*;
+
+1.println();// Using function chaining 1.println(); // Outputs: 1
+println(1);// Equivalent traditional function call println(1);
+```
+
+By supporting function chaining, Slug simplifies code readability and enables a more fluid programming style, especially
+when writing pipelines or working with multiple transformations.
 
 ---
 
@@ -162,18 +180,18 @@ import slug.std.*;
 
 val list = [1, 2, 3, 4, 5];
 
-val squares = list.map(fn(v) { v * v });  // [1, 4, 9, 16, 25]
-val evens = list.filter(fn(v) { v % 2 == 0 });  // [2, 4]
+val squares = list.map(fn(v) { v * v });           // [1, 4, 9, 16, 25]
+val evens = list.filter(fn(v) { v % 2 == 0 });     // [2, 4]
 val sum = list.reduce(0, fn(acc, v) { acc + v });  // 15
 
-println(squares);
-println(evens);
-println(sum);
+squares.println();
+evens.println();
+sum.println();
 ```
 
 ---
 
-### Pattern Matching (Inspired by `match`)
+### Pattern Matching
 
 Use `match` to destructure and inspect values directly.
 
@@ -188,8 +206,8 @@ val classify = fn(value) {
     }
 };
 
-println(classify(1));  // Output: one
-println(classify(5));  // Output: other
+classify(1).println();  // Output: one
+classify(5).println();  // Output: other
 ```
 
 `match` can also destructure complex data like lists:
@@ -204,7 +222,7 @@ val sumList = fn(list) {
     }
 };
 
-println(sumList([1, 2, 3]));  // Output: 6
+sumList([1, 2, 3]).println();  // Output: 6
 ```
 
 ---
@@ -221,7 +239,7 @@ import slug.std.*;
 val applyTwice = fn(f, v) { f(f(v)) };
 
 val increment = fn(x) { x + 1 };
-println(applyTwice(increment, 10));  // Output: 12
+applyTwice(increment, 10).println();  // Output: 12
 ```
 
 ---
@@ -236,10 +254,10 @@ A list is a collection of elements. It supports operations like indexing, append
 import slug.std.*;
 
 val list = [10, 20, 30];
-println(list[1]);    // Output: 20
-println(list[-1]);   // Output: 30
-println(list[:1]);   // Output: [10]
-println(list[1:]);   // Output: [20, 30]
+list[1].println();    // Output: 20
+list[-1].println();   // Output: 30
+list[:1].println();   // Output: [10]
+list[1:].println();   // Output: [20, 30]
 ```
 
 ### Maps
@@ -249,9 +267,9 @@ Maps are key-value stores in Slug.
 ```
 import slug.std.*;
 
-val myMap = {};
-put(myMap, "name", "Slug");
-println(get(myMap, "name"));  // Output: Slug
+var myMap = {};
+myMap = put(myMap, "name", "Slug");
+get(myMap, "name").println();  // Output: Slug
 ```
 
 ---
@@ -271,7 +289,7 @@ val max = fn(a, b) {
     }
 };
 
-println(max(3, 5));  // Output: 5
+max(3, 5).println();  // Output: 5
 ```
 
 ### Error Handling with `try`/`catch` and `throw`
@@ -291,7 +309,7 @@ val process = fn(value) {
     }
 };
 
-println(process(-1));  // Output: Caught error: Negative value not allowed
+process(-1).println();  // Output: Caught error: Negative value not allowed
 ```
 
 ---
