@@ -5,6 +5,8 @@
 // return a string value indicating the type of `val`
 foreign type = fn(val);
 
+foreign defined = fn(val);
+
 // get the length of a string, list or map
 foreign len = fn(obj);
 
@@ -50,5 +52,3 @@ var reduce = fn(vs, v, f) {
 		[] => v;
 	}
 }
-
-

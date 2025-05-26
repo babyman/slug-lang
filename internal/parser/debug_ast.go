@@ -20,9 +20,9 @@ func WalkAST(node ast.Node) interface{} {
 			"1.statements": statements,
 		}
 
-	case *ast.VarStatement:
+	case *ast.VarExpression:
 		return map[string]interface{}{
-			"0.type":     "VarStatement",
+			"0.type":     "VarExpression",
 			"1.position": n.Token.Position,
 			"2.token":    n.TokenLiteral(),
 			"3.pattern":  WalkAST(n.Pattern),
@@ -35,20 +35,6 @@ func WalkAST(node ast.Node) interface{} {
 			"1.position":    n.Token.Position,
 			"2.token":       n.TokenLiteral(),
 			"3.returnValue": WalkAST(n.ReturnValue),
-		}
-
-	case *ast.ImportStatement:
-		symbols := []interface{}{}
-		for _, sym := range n.Symbols {
-			symbols = append(symbols, sym.String())
-		}
-		return map[string]interface{}{
-			"0.type":      "ImportStatement",
-			"1.position":  n.Token.Position,
-			"2.token":     n.TokenLiteral(),
-			"3.pathParts": n.PathAsString(),
-			"4.cases":     symbols,
-			"5.wildcard":  n.Wildcard,
 		}
 
 	case *ast.ExpressionStatement:
@@ -308,9 +294,9 @@ func WalkAST(node ast.Node) interface{} {
 			"3.catchBlock": WalkAST(n.CatchBlock),
 		}
 
-	case *ast.ValStatement:
+	case *ast.ValExpression:
 		return map[string]interface{}{
-			"0.type":     "ValStatement",
+			"0.type":     "ValExpression",
 			"1.position": n.Token.Position,
 			"2.token":    n.TokenLiteral(),
 			"3.pattern":  WalkAST(n.Pattern),

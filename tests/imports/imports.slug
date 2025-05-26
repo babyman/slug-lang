@@ -1,8 +1,9 @@
-import slug.test.*;
+var {*} = import(
+    "slug.std",
+    "functions"
+);
 
-import functions.*;
-import functions.{sqr};
-import functions.{sum as f};
+var {sqr, sum: f} = import("functions");
 
 
 51.sqr().assertEqual(2601);

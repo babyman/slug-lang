@@ -1,4 +1,6 @@
-import slug.test.*;
+var {*} = import(
+    "slug.test"
+);
 
 //
 // in Slug constants / immutable values are declared using `val`
@@ -8,9 +10,10 @@ import slug.test.*;
 // simple val declaration
 // ----------------------
 
-val CONST = 10;
+val CONST = val CON = 10;
 
 CONST.assertEqual(10);
+CON.assertEqual(10);
 
 
 if (true) {

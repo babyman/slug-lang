@@ -1,9 +1,10 @@
 //
 // test circular imports
 //
-import slug.std.*;
-//import imports.b.{add};
-import imports.b.*;
+var {*} = import(
+    "slug.std",
+    "imports.b"
+);
 
 var sub = fn(a, b) {
     a - b;

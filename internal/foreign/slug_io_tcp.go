@@ -1,4 +1,4 @@
-package evaluator
+package foreign
 
 import (
 	"fmt"
@@ -44,21 +44,21 @@ func unpackInt(arg object.Object, argName string) (int64, error) {
 
 func fnIoTcpBind() *object.Foreign {
 	return &object.Foreign{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
 			addr, err := unpackString(args[0], "")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			port, err := unpackInt(args[1], "")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", addr, port))
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			id := nextIoTcpId()
@@ -70,21 +70,21 @@ func fnIoTcpBind() *object.Foreign {
 
 func fnIoTcpAccept() *object.Foreign {
 	return &object.Foreign{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
 			id, err := unpackInt(args[0], "")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			listener, ok := ioTcpListeners[id]
 			if !ok {
-				return newError("invalid listener ID")
+				return ctx.NewError("invalid listener ID")
 			}
 
 			conn, err := listener.Accept()
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			connID := nextIoTcpId()
@@ -96,21 +96,21 @@ func fnIoTcpAccept() *object.Foreign {
 
 func fnIoTcpConnect() *object.Foreign {
 	return &object.Foreign{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
 			addr, err := unpackString(args[0], "")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			port, err := unpackInt(args[1], "")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", addr, port))
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			id := nextIoTcpId()
@@ -122,30 +122,30 @@ func fnIoTcpConnect() *object.Foreign {
 
 func fnIoTcpRead() *object.Foreign {
 	return &object.Foreign{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
 			id, err := unpackInt(args[0], "")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			max, err := unpackInt(args[1], "")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			conn, ok := ioTcpConns[id]
 			if !ok {
-				return newError("invalid conn ID")
+				return ctx.NewError("invalid conn ID")
 			}
 
 			buf := make([]byte, max)
 			n, err := conn.Read(buf)
 			if err != nil {
 				if err == io.EOF {
-					return NIL
+					return ctx.Nil()
 				} else {
-					return newError(err.Error())
+					return ctx.NewError(err.Error())
 				}
 			}
 
@@ -156,26 +156,26 @@ func fnIoTcpRead() *object.Foreign {
 
 func fnIoTcpWrite() *object.Foreign {
 	return &object.Foreign{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
 			id, err := unpackInt(args[0], "")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			data, err := unpackString(args[1], "")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			conn, ok := ioTcpConns[id]
 			if !ok {
-				return newError("invalid conn ID")
+				return ctx.NewError("invalid conn ID")
 			}
 
 			n, err := conn.Write([]byte(data))
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			return &object.Integer{Value: int64(n)}
@@ -185,26 +185,26 @@ func fnIoTcpWrite() *object.Foreign {
 
 func fnIoTcpClose() *object.Foreign {
 	return &object.Foreign{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
 			id, err := unpackInt(args[0], "")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			if l, ok := ioTcpListeners[id]; ok {
 				l.Close()
 				delete(ioTcpListeners, id)
-				return NIL
+				return ctx.Nil()
 			}
 
 			if c, ok := ioTcpConns[id]; ok {
 				c.Close()
 				delete(ioTcpConns, id)
-				return NIL
+				return ctx.Nil()
 			}
 
-			return NIL
+			return ctx.Nil()
 		},
 	}
 }

@@ -1,4 +1,6 @@
-import slug.std.*;
+var {*} = import (
+    "slug.std"
+);
 
 var sayHi = fn(args) {
     if(args != nil && args.len() > 0) {

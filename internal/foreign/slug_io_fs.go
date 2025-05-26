@@ -1,4 +1,4 @@
-package evaluator
+package foreign
 
 import (
 	"bufio"
@@ -26,19 +26,19 @@ func nextIoFileId() int64 {
 
 func fnIoFsReadFile() *object.Foreign {
 	return &object.Foreign{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
-				return newError("wrong number of arguments to `readFile`, got=%d, want=1", len(args))
+				return ctx.NewError("wrong number of arguments to `readFile`, got=%d, want=1", len(args))
 			}
 
 			path, err := unpackString(args[0], "path")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			data, err := os.ReadFile(path)
 			if err != nil {
-				return newError("failed to read file: %s", err.Error())
+				return ctx.NewError("failed to read file: %s", err.Error())
 			}
 
 			return &object.String{Value: string(data)}
@@ -48,57 +48,57 @@ func fnIoFsReadFile() *object.Foreign {
 
 func fnIoFsWriteFile() *object.Foreign {
 	return &object.Foreign{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 2 {
-				return newError("wrong number of arguments to `writeFile`, got=%d, want=2", len(args))
+				return ctx.NewError("wrong number of arguments to `writeFile`, got=%d, want=2", len(args))
 			}
 
 			path, err := unpackString(args[0], "path")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			content, err := unpackString(args[1], "contents")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			err = os.WriteFile(path, []byte(content), 0644)
 			if err != nil {
-				return newError("failed to write file: %s", err.Error())
+				return ctx.NewError("failed to write file: %s", err.Error())
 			}
 
-			return NIL
+			return ctx.Nil()
 		},
 	}
 }
 
 func fnIoFsAppendFile() *object.Foreign {
 	return &object.Foreign{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 2 {
-				return newError("wrong number of arguments to `appendFile`, got=%d, want=2", len(args))
+				return ctx.NewError("wrong number of arguments to `appendFile`, got=%d, want=2", len(args))
 			}
 
 			path, err := unpackString(args[0], "path")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			content, err := unpackString(args[1], "contents")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 			if err != nil {
-				return newError("failed to open file: %s", err.Error())
+				return ctx.NewError("failed to open file: %s", err.Error())
 			}
 			defer f.Close()
 
 			bytes, err := f.WriteString(content)
 			if err != nil {
-				return newError("failed to append to file: %s", err.Error())
+				return ctx.NewError("failed to append to file: %s", err.Error())
 			}
 
 			return &object.Integer{Value: int64(bytes)}
@@ -108,48 +108,48 @@ func fnIoFsAppendFile() *object.Foreign {
 
 func fnIoFsExists() *object.Foreign {
 	return &object.Foreign{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
-				return newError("wrong number of arguments to `fileExists`, got=%d, want=1", len(args))
+				return ctx.NewError("wrong number of arguments to `fileExists`, got=%d, want=1", len(args))
 			}
 
 			path, err := unpackString(args[0], "path")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			_, err = os.Stat(path)
 			if os.IsNotExist(err) {
-				return nativeBoolToBooleanObject(false)
+				return ctx.NativeBoolToBooleanObject(false)
 			}
 
-			return nativeBoolToBooleanObject(true)
+			return ctx.NativeBoolToBooleanObject(true)
 		},
 	}
 }
 
 func fnIoFsInfo() *object.Foreign {
 	return &object.Foreign{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
-				return newError("wrong number of arguments to `isDirectory`, got=%d, want=1", len(args))
+				return ctx.NewError("wrong number of arguments to `isDirectory`, got=%d, want=1", len(args))
 			}
 
 			path, err := unpackString(args[0], "path")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			info, err := os.Stat(path)
 			if err != nil {
-				return newError("failed to get file info: %s", err.Error())
+				return ctx.NewError("failed to get file info: %s", err.Error())
 			}
 			m := &object.Map{}
 			m.Put(&object.String{Value: "name"}, &object.String{Value: info.Name()}).
 				Put(&object.String{Value: "size"}, &object.Integer{Value: info.Size()}).
 				Put(&object.String{Value: "mode"}, &object.Integer{Value: int64(info.Mode())}).
 				Put(&object.String{Value: "modTime"}, &object.Integer{Value: info.ModTime().Unix()}).
-				Put(&object.String{Value: "isDir"}, nativeBoolToBooleanObject(info.IsDir()))
+				Put(&object.String{Value: "isDir"}, ctx.NativeBoolToBooleanObject(info.IsDir()))
 			return m
 		},
 	}
@@ -157,41 +157,41 @@ func fnIoFsInfo() *object.Foreign {
 
 func fnIoFsIsDir() *object.Foreign {
 	return &object.Foreign{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
-				return newError("wrong number of arguments to `isDirectory`, got=%d, want=1", len(args))
+				return ctx.NewError("wrong number of arguments to `isDirectory`, got=%d, want=1", len(args))
 			}
 
 			path, err := unpackString(args[0], "path")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			info, err := os.Stat(path)
 			if err != nil {
-				return newError("failed to get file info: %s", err.Error())
+				return ctx.NewError("failed to get file info: %s", err.Error())
 			}
 
-			return nativeBoolToBooleanObject(info.IsDir())
+			return ctx.NativeBoolToBooleanObject(info.IsDir())
 		},
 	}
 }
 
 func fnIoFsLs() *object.Foreign {
 	return &object.Foreign{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
-				return newError("wrong number of arguments to `listDir`, got=%d, want=1", len(args))
+				return ctx.NewError("wrong number of arguments to `listDir`, got=%d, want=1", len(args))
 			}
 
 			path, err := unpackString(args[0], "path")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			files, err := os.ReadDir(path)
 			if err != nil {
-				return newError("failed to read directory: %s", err.Error())
+				return ctx.NewError("failed to read directory: %s", err.Error())
 			}
 
 			var result []object.Object
@@ -206,19 +206,19 @@ func fnIoFsLs() *object.Foreign {
 
 func fnIoFsOpenFile() *object.Foreign {
 	return &object.Foreign{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 2 {
-				return newError("wrong number of arguments to `openFile`, got=%d, want=2", len(args))
+				return ctx.NewError("wrong number of arguments to `openFile`, got=%d, want=2", len(args))
 			}
 
 			path, err := unpackString(args[0], "path")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			mode, err := unpackString(args[1], "mode")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			flag := os.O_RDONLY
@@ -230,7 +230,7 @@ func fnIoFsOpenFile() *object.Foreign {
 
 			file, err := os.OpenFile(path, flag, 0644)
 			if err != nil {
-				return newError("failed to open file: %s", err.Error())
+				return ctx.NewError("failed to open file: %s", err.Error())
 			}
 
 			fileID := nextIoFileId()
@@ -243,19 +243,19 @@ func fnIoFsOpenFile() *object.Foreign {
 
 func fnIoFsReadLine() *object.Foreign {
 	return &object.Foreign{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
-				return newError("wrong number of arguments to `readLine`, got=%d, want=1", len(args))
+				return ctx.NewError("wrong number of arguments to `readLine`, got=%d, want=1", len(args))
 			}
 
 			handle, err := unpackInt(args[0], "handle")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			file, ok := ioFileFiles[handle]
 			if !ok {
-				return newError("invalid file handle: %d", handle)
+				return ctx.NewError("invalid file handle: %d", handle)
 			}
 
 			reader, ok := ioFileReaders[handle]
@@ -266,9 +266,9 @@ func fnIoFsReadLine() *object.Foreign {
 			line, err := reader.ReadString('\n')
 			if err != nil {
 				if err == io.EOF {
-					return NIL
+					return ctx.Nil()
 				} else {
-					return newError("failed to read line: %s", err.Error())
+					return ctx.NewError("failed to read line: %s", err.Error())
 				}
 			}
 
@@ -279,29 +279,29 @@ func fnIoFsReadLine() *object.Foreign {
 
 func fnIoFsWrite() *object.Foreign {
 	return &object.Foreign{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 2 {
-				return newError("wrong number of arguments to `write`, got=%d, want=2", len(args))
+				return ctx.NewError("wrong number of arguments to `write`, got=%d, want=2", len(args))
 			}
 
 			handle, err := unpackInt(args[0], "handle")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			content, err := unpackString(args[1], "content")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			file, ok := ioFileFiles[handle]
 			if !ok {
-				return newError("invalid file handle: %d", handle)
+				return ctx.NewError("invalid file handle: %d", handle)
 			}
 
 			bytes, err := file.WriteString(content)
 			if err != nil {
-				return newError("failed to write to file: %s", err.Error())
+				return ctx.NewError("failed to write to file: %s", err.Error())
 			}
 
 			return &object.Integer{Value: int64(bytes)}
@@ -311,51 +311,51 @@ func fnIoFsWrite() *object.Foreign {
 
 func fnIoFsRm() *object.Foreign {
 	return &object.Foreign{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
-				return newError("wrong number of arguments to `rm`, got=%d, want=1", len(args))
+				return ctx.NewError("wrong number of arguments to `rm`, got=%d, want=1", len(args))
 			}
 
 			path, err := unpackString(args[0], "path")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			err = os.Remove(path)
 			if err != nil {
-				return newError("failed to remove file: %s", err.Error())
+				return ctx.NewError("failed to remove file: %s", err.Error())
 			}
 
-			return NIL
+			return ctx.Nil()
 		},
 	}
 }
 
 func fnIoFsCloseFile() *object.Foreign {
 	return &object.Foreign{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
-				return newError("wrong number of arguments to `closeFile`, got=%d, want=1", len(args))
+				return ctx.NewError("wrong number of arguments to `closeFile`, got=%d, want=1", len(args))
 			}
 
 			handle, err := unpackInt(args[0], "handle")
 			if err != nil {
-				return newError(err.Error())
+				return ctx.NewError(err.Error())
 			}
 
 			file, ok := ioFileFiles[handle]
 			if !ok {
-				return newError("invalid file handle: %d", handle)
+				return ctx.NewError("invalid file handle: %d", handle)
 			}
 
 			err = file.Close()
 			if err != nil {
-				return newError("failed to close file: %s", err.Error())
+				return ctx.NewError("failed to close file: %s", err.Error())
 			}
 
 			delete(ioFileReaders, handle)
 			delete(ioFileFiles, handle)
-			return NIL
+			return ctx.Nil()
 		},
 	}
 }

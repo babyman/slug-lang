@@ -27,6 +27,9 @@ const (
 	INTERPOLATION_START = "{{"
 	INTERPOLATION_END   = "}}"
 
+	MATCH_KEYS_EXACT = "{|"
+	MATCH_KEYS_CLOSE = "|}"
+
 	LT    = "<"
 	LT_EQ = "<="
 	GT    = ">"
@@ -74,8 +77,6 @@ const (
 	ELSE     = "ELSE"
 	RETURN   = "RETURN"
 	NIL      = "NIL"
-	IMPORT   = "IMPORT"
-	AS       = "AS"
 	TRY      = "TRY"
 	CATCH    = "CATCH"
 	THROW    = "THROW"
@@ -94,15 +95,10 @@ var keywords = map[string]TokenType{
 	"nil":     NIL,
 	"true":    TRUE,
 	"false":   FALSE,
-	"foreign": FOREIGN,
 	"fn":      FUNCTION,
+	"foreign": FOREIGN,
 	"val":     VAL,
 	"var":     VAR,
-
-	// import etc
-	"import": IMPORT,
-	"as":     AS,
-	//"export": EXPORT
 
 	// flow control
 	"if":     IF,
@@ -115,11 +111,6 @@ var keywords = map[string]TokenType{
 	"catch": CATCH,
 	"throw": THROW,
 	"defer": DEFER,
-
-	// Thread related
-	//"spawn": SPAWN
-	//"send": SEND
-	//"receive": RECEIVE
 }
 
 func LookupIdent(ident string) TokenType {

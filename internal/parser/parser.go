@@ -94,6 +94,8 @@ func New(l *lexer.Lexer, source string) *Parser {
 	p.registerPrefix(token.LBRACKET, p.parseListLiteral)
 	p.registerPrefix(token.LBRACE, p.parseMapLiteral)
 	p.registerPrefix(token.MATCH, p.parseMatchExpression)
+	p.registerPrefix(token.VAR, p.parseVarStatement)
+	p.registerPrefix(token.VAL, p.parseValStatement)
 
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
@@ -191,16 +193,10 @@ func (p *Parser) ParseProgram() *ast.Program {
 
 func (p *Parser) parseStatement() ast.Statement {
 	switch p.curToken.Type {
-	case token.VAR:
-		return p.parseVarStatement()
-	case token.VAL:
-		return p.parseValStatement()
 	case token.FOREIGN:
 		return p.parseForeignFunctionDeclaration()
 	case token.RETURN:
 		return p.parseReturnStatement()
-	case token.IMPORT:
-		return p.parseImportStatement()
 	case token.NOT_IMPLEMENTED:
 		return p.parseNotImplemented()
 	case token.DEFER:
@@ -214,10 +210,11 @@ func (p *Parser) parseStatement() ast.Statement {
 	}
 }
 
-func (p *Parser) parseVarStatement() *ast.VarStatement {
-	stmt := &ast.VarStatement{Token: p.curToken}
+func (p *Parser) parseVarStatement() ast.Expression {
+	varExp := &ast.VarExpression{Token: p.curToken}
 
-	if !(p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.LBRACKET) || p.peekTokenIs(token.LBRACE)) {
+	if !(p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.LBRACKET) ||
+		p.peekTokenIs(token.LBRACE) || p.peekTokenIs(token.MATCH_KEYS_EXACT)) {
 		p.addError("expected identifier, list, or map literal after 'var'")
 		return nil
 	}
@@ -225,7 +222,7 @@ func (p *Parser) parseVarStatement() *ast.VarStatement {
 	// consume var
 	p.nextToken()
 
-	stmt.Pattern = p.parseMatchPattern()
+	varExp.Pattern = p.parseMatchPattern()
 
 	if !p.expectPeek(token.ASSIGN) {
 		return nil
@@ -233,17 +230,13 @@ func (p *Parser) parseVarStatement() *ast.VarStatement {
 
 	p.nextToken()
 
-	stmt.Value = p.parseExpression(LOWEST)
+	varExp.Value = p.parseExpression(LOWEST)
 
-	if p.peekTokenIs(token.SEMICOLON) {
-		p.nextToken()
-	}
-
-	return stmt
+	return varExp
 }
 
-func (p *Parser) parseValStatement() *ast.ValStatement {
-	stmt := &ast.ValStatement{Token: p.curToken}
+func (p *Parser) parseValStatement() ast.Expression {
+	valExp := &ast.ValExpression{Token: p.curToken}
 
 	if !(p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.LBRACKET) || p.peekTokenIs(token.LBRACE)) {
 		p.addError("expected identifier, list, or map literal after 'val'")
@@ -253,7 +246,7 @@ func (p *Parser) parseValStatement() *ast.ValStatement {
 	// consume var
 	p.nextToken()
 
-	stmt.Pattern = p.parseMatchPattern()
+	valExp.Pattern = p.parseMatchPattern()
 
 	if !p.expectPeek(token.ASSIGN) {
 		return nil
@@ -261,13 +254,9 @@ func (p *Parser) parseValStatement() *ast.ValStatement {
 
 	p.nextToken()
 
-	stmt.Value = p.parseExpression(LOWEST)
+	valExp.Value = p.parseExpression(LOWEST)
 
-	if p.peekTokenIs(token.SEMICOLON) {
-		p.nextToken()
-	}
-
-	return stmt
+	return valExp
 }
 
 func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
@@ -282,74 +271,6 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	}
 
 	return stmt
-}
-
-// Enhance the error message in parseImportStatement for invalid imports
-func (p *Parser) parseImportStatement() *ast.ImportStatement {
-	stmt := &ast.ImportStatement{Token: p.curToken}
-
-	// Parse the module path
-	if !p.expectPeek(token.IDENT) {
-		return nil
-	}
-
-	stmt.PathParts = append(stmt.PathParts, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
-
-	for p.peekTokenIs(token.PERIOD) {
-		p.nextToken() // Consume '.'
-		if p.peekTokenIs(token.IDENT) {
-			p.nextToken()
-			stmt.PathParts = append(stmt.PathParts, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
-		}
-	}
-
-	// Check for wildcard or braces with symbols
-	if p.curTokenIs(token.PERIOD) {
-		p.nextToken()
-		if p.curTokenIs(token.ASTERISK) {
-			stmt.Wildcard = true
-		} else if p.curTokenIs(token.LBRACE) {
-			stmt.Symbols = p.parseImportSymbols()
-		}
-	}
-
-	if !stmt.Wildcard && len(stmt.Symbols) == 0 {
-		p.addError("invalid import: must specify `*` or `{symbols}`")
-		return nil
-	}
-
-	if p.peekTokenIs(token.SEMICOLON) {
-		p.nextToken()
-	}
-
-	return stmt
-}
-
-func (p *Parser) parseImportSymbols() []*ast.ImportSymbol {
-	var symbols []*ast.ImportSymbol
-
-	for !p.peekTokenIs(token.RBRACE) {
-		p.nextToken()
-
-		symbol := &ast.ImportSymbol{Name: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}}
-
-		// Check for alias using "as"
-		if p.peekTokenIs(token.AS) {
-			p.nextToken() // Consume "as"
-			p.nextToken() // Consume "as"
-			symbol.Alias = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-		}
-
-		symbols = append(symbols, symbol)
-
-		// Handle comma between symbols
-		if p.peekTokenIs(token.COMMA) {
-			p.nextToken()
-		}
-	}
-	p.expectPeek(token.RBRACE)
-
-	return symbols
 }
 
 func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
@@ -601,6 +522,9 @@ func (p *Parser) parseMatchPattern() ast.MatchPattern {
 	case token.LBRACE:
 		// Map pattern
 		return p.parseMapPattern()
+	case token.MATCH_KEYS_EXACT:
+		// Map pattern
+		return p.parseMapPattern()
 	default:
 		p.peekError(p.curToken.Type)
 		return nil
@@ -664,9 +588,11 @@ func (p *Parser) parseListPattern() ast.MatchPattern {
 
 func (p *Parser) parseMapPattern() *ast.MapPattern {
 	mapPattern := &ast.MapPattern{
-		Token:  p.curToken,
-		Pairs:  make(map[string]ast.MatchPattern),
-		Spread: false,
+		Token:     p.curToken,
+		Pairs:     make(map[string]ast.MatchPattern),
+		Spread:    false,
+		Exact:     false,
+		SelectAll: false,
 	}
 
 	// Empty map pattern
@@ -675,15 +601,31 @@ func (p *Parser) parseMapPattern() *ast.MapPattern {
 		return mapPattern
 	}
 
-	for !p.peekTokenIs(token.RBRACE) {
+	if p.curTokenIs(token.MATCH_KEYS_EXACT) {
+		mapPattern.Exact = true
+	}
+
+	if p.peekTokenIs(token.ASTERISK) {
+		p.nextToken()
+		p.expectPeek(token.RBRACE)
+		mapPattern.SelectAll = true
+		return mapPattern
+	}
+
+	for !p.peekTokenIs(token.MATCH_KEYS_CLOSE) && !p.peekTokenIs(token.RBRACE) {
 		p.nextToken()
 
 		readSpread := p.curTokenIs(token.ELLIPSIS)
 		if readSpread {
-			value := p.parseMatchPattern()
-			mapPattern.Pairs[token.ELLIPSIS] = value
-			mapPattern.Spread = true
-			continue
+			if mapPattern.Exact {
+				p.addError("spread not allowed in exact match")
+				return nil
+			} else {
+				value := p.parseMatchPattern()
+				mapPattern.Pairs[token.ELLIPSIS] = value
+				mapPattern.Spread = true
+				continue
+			}
 		}
 
 		readIdent := p.curTokenIs(token.LBRACKET)
@@ -715,12 +657,18 @@ func (p *Parser) parseMapPattern() *ast.MapPattern {
 				Value: &ast.Identifier{Token: p.curToken, Value: key.String()}}
 		}
 
-		if !p.peekTokenIs(token.RBRACE) && !p.expectPeek(token.COMMA) {
+		if p.peekTokenIs(token.MATCH_KEYS_CLOSE) || p.peekTokenIs(token.RBRACE) {
+			// ok
+		} else if !p.expectPeek(token.COMMA) {
 			return nil
 		}
 	}
 
-	if !p.expectPeek(token.RBRACE) {
+	if mapPattern.Exact {
+		if !p.expectPeek(token.MATCH_KEYS_CLOSE) {
+			return nil
+		}
+	} else if !p.expectPeek(token.RBRACE) {
 		return nil
 	}
 

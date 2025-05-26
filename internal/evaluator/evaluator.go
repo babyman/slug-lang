@@ -9,13 +9,32 @@ import (
 )
 
 var (
-	NIL   = &object.Nil{}
-	TRUE  = &object.Boolean{Value: true}
-	FALSE = &object.Boolean{Value: false}
+	NIL     = &object.Nil{}
+	TRUE    = &object.Boolean{Value: true}
+	FALSE   = &object.Boolean{Value: false}
+	runtime = &Runtime{
+		pidCounter: 0,
+		scheduler: &Scheduler{
+			runQueue: make(chan *Process, 100),
+		},
+		processes: make(map[int]*Process),
+	}
 )
 
 type Evaluator struct {
 	envStack []*object.Environment // Environment stack encapsulated in an evaluator struct
+	Process  *Process              // can be null
+}
+
+func (e *Evaluator) PID() int {
+	if e.Process == nil {
+		return 0
+	}
+	return e.Process.PID
+}
+
+func (e *Evaluator) Nil() *object.Nil {
+	return NIL
 }
 
 func (e *Evaluator) PushEnv(env *object.Environment) {
@@ -62,13 +81,10 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 		}
 		return &object.ReturnValue{Value: val}
 
-	case *ast.ImportStatement:
-		return e.evalImportStatement(node)
-
 	case *ast.MatchExpression:
 		return e.evalMatchExpression(node)
 
-	case *ast.VarStatement:
+	case *ast.VarExpression:
 		val := e.Eval(node.Value)
 		if e.isError(val) {
 			return val
@@ -76,8 +92,9 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 		if _, err := e.patternMatches(node.Pattern, val, false); err != nil {
 			return newError(err.Error())
 		}
+		return val // Return the assigned value
 
-	case *ast.ValStatement:
+	case *ast.ValExpression:
 		val := e.Eval(node.Value)
 		if e.isError(val) {
 			return val
@@ -85,6 +102,10 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 		if _, err := e.patternMatches(node.Pattern, val, true); err != nil {
 			return newError(err.Error())
 		}
+		return val // Return the assigned value
+
+	case *ast.ForeignFunctionDeclaration:
+		return e.evalForeignFunctionDeclaration(node)
 
 	// Expressions
 	case *ast.IntegerLiteral:
@@ -94,7 +115,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 		return &object.String{Value: node.Value}
 
 	case *ast.Boolean:
-		return nativeBoolToBooleanObject(node.Value)
+		return e.NativeBoolToBooleanObject(node.Value)
 
 	case *ast.Nil:
 		return NIL
@@ -233,9 +254,6 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 	case *ast.TryCatchStatement:
 		return e.evalTryCatchStatement(node)
 
-	case *ast.ForeignFunctionDeclaration:
-		return e.evalForeignFunctionDeclaration(node)
-
 	case *ast.DeferStatement:
 		return e.evalDefer(node)
 
@@ -280,13 +298,13 @@ func (e *Evaluator) evalProgram(program *ast.Program) object.Object {
 	return result
 }
 
-func (e *Evaluator) evalImportStatement(importStatement *ast.ImportStatement) object.Object {
-	module, err := LoadModule(e.mapIdentifiersToStrings(importStatement.PathParts))
+func (e *Evaluator) LoadModule(pathParts []string) (*object.Module, error) {
+	module, err := LoadModule(pathParts)
 	if err != nil {
-		return newError(err.Error())
+		return nil, err
 	}
 	if module.Env != nil {
-		return e.handleModuleImport(importStatement, module)
+		return module, nil
 	}
 
 	// if the module is not in the registry, create a new Module object and cache it
@@ -304,50 +322,7 @@ func (e *Evaluator) evalImportStatement(importStatement *ast.ImportStatement) ob
 	e.PopEnv()
 
 	// Import the module into the current environment
-	return e.handleModuleImport(importStatement, module)
-}
-
-func (e *Evaluator) handleModuleImport(importStatement *ast.ImportStatement, module *object.Module) object.Object {
-	// Handle named symbols import, wildcard import, or namespace import
-	env := e.CurrentEnv()
-
-	if importStatement.Wildcard {
-		// Import all symbols into the current environment
-		for name, val := range module.Env.Store {
-			if val.IsConstant {
-				if _, err := env.DefineConstant(name, val.Value); err != nil {
-					return newError(err.Error())
-				}
-			} else {
-				if _, err := env.Define(name, val.Value); err != nil {
-					return newError(err.Error())
-				}
-			}
-		}
-	} else if len(importStatement.Symbols) > 0 {
-		// Import specific symbols
-		for _, sym := range importStatement.Symbols {
-			if binding, ok := module.Env.GetBinding(sym.Name.Value); ok {
-				alias := sym.Name.Value
-				if sym.Alias != nil {
-					alias = sym.Alias.Value
-				}
-				if binding.IsConstant {
-					if _, err := env.DefineConstant(alias, binding.Value); err != nil {
-						return newError(err.Error())
-					}
-				} else {
-					if _, err := env.Define(alias, binding.Value); err != nil {
-						return newError(err.Error())
-					}
-				}
-			} else {
-				return newError("symbol '%s' not found in module '%s'", sym.Name.Value, module.Name)
-			}
-		}
-	}
-
-	return NIL
+	return module, nil
 }
 
 func (e *Evaluator) mapIdentifiersToStrings(identifiers []*ast.Identifier) []string {
@@ -388,7 +363,7 @@ func (e *Evaluator) evalBlockStatement(block *ast.BlockStatement) object.Object 
 	return result
 }
 
-func nativeBoolToBooleanObject(input bool) *object.Boolean {
+func (e *Evaluator) NativeBoolToBooleanObject(input bool) *object.Boolean {
 	if input {
 		return TRUE
 	}
@@ -420,9 +395,9 @@ func (e *Evaluator) evalInfixExpression(
 	case operator == "*" && left.Type() == object.STRING_OBJ && right.Type() == object.INTEGER_OBJ:
 		return e.evalStringMultiplication(left, right)
 	case operator == "==":
-		return nativeBoolToBooleanObject(left == right)
+		return e.NativeBoolToBooleanObject(left == right)
 	case operator == "!=":
-		return nativeBoolToBooleanObject(left != right)
+		return e.NativeBoolToBooleanObject(left != right)
 	case operator == ":+" && left.Type() == object.LIST_OBJ:
 		return e.evalListInfixExpression(operator, left, right)
 	case operator == "+:" && right.Type() == object.LIST_OBJ:
@@ -482,9 +457,9 @@ func (e *Evaluator) evalBooleanInfixExpression(
 
 	switch operator {
 	case "&&":
-		return nativeBoolToBooleanObject(leftVal && rightVal)
+		return e.NativeBoolToBooleanObject(leftVal && rightVal)
 	case "||":
-		return nativeBoolToBooleanObject(leftVal || rightVal)
+		return e.NativeBoolToBooleanObject(leftVal || rightVal)
 	default:
 		return newError("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
@@ -520,17 +495,17 @@ func (e *Evaluator) evalIntegerInfixExpression(
 	case ">>":
 		return &object.Integer{Value: leftVal >> rightVal}
 	case "<":
-		return nativeBoolToBooleanObject(leftVal < rightVal)
+		return e.NativeBoolToBooleanObject(leftVal < rightVal)
 	case "<=":
-		return nativeBoolToBooleanObject(leftVal <= rightVal)
+		return e.NativeBoolToBooleanObject(leftVal <= rightVal)
 	case ">":
-		return nativeBoolToBooleanObject(leftVal > rightVal)
+		return e.NativeBoolToBooleanObject(leftVal > rightVal)
 	case ">=":
-		return nativeBoolToBooleanObject(leftVal >= rightVal)
+		return e.NativeBoolToBooleanObject(leftVal >= rightVal)
 	case "==":
-		return nativeBoolToBooleanObject(leftVal == rightVal)
+		return e.NativeBoolToBooleanObject(leftVal == rightVal)
 	case "!=":
-		return nativeBoolToBooleanObject(leftVal != rightVal)
+		return e.NativeBoolToBooleanObject(leftVal != rightVal)
 	default:
 		return newError("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
@@ -548,9 +523,9 @@ func (e *Evaluator) evalStringInfixExpression(
 	case "+":
 		return &object.String{Value: leftVal + rightVal}
 	case "==":
-		return nativeBoolToBooleanObject(leftVal == rightVal)
+		return e.NativeBoolToBooleanObject(leftVal == rightVal)
 	case "!=":
-		return nativeBoolToBooleanObject(leftVal != rightVal)
+		return e.NativeBoolToBooleanObject(leftVal != rightVal)
 	default:
 		return newError("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
@@ -646,6 +621,11 @@ func (e *Evaluator) evalIfExpression(
 func (e *Evaluator) evalIdentifier(
 	node *ast.Identifier,
 ) object.Object {
+
+	if builtin, ok := builtins[node.Value]; ok {
+		return builtin
+	}
+
 	if val, ok := e.CurrentEnv().Get(node.Value); ok {
 		// If it is a Module, return the Module object itself
 		if module, ok := val.(*object.Module); ok {
@@ -668,6 +648,10 @@ func (e *Evaluator) isTruthy(obj object.Object) bool {
 	default:
 		return true
 	}
+}
+
+func (e *Evaluator) NewError(format string, a ...interface{}) *object.Error {
+	return newError(format, a...)
 }
 
 func newError(format string, a ...interface{}) *object.Error {
@@ -724,7 +708,7 @@ func (e *Evaluator) applyFunction(fnObj object.Object, args []object.Object) obj
 
 	case *object.Foreign:
 		//println(fn.Inspect())
-		return fn.Fn(args...)
+		return fn.Fn(e, args...)
 
 	default:
 		return newError("not a function: %s", fn.Type())
@@ -979,6 +963,24 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 			return false, nil
 		}
 
+		if p.SelectAll {
+			// Copy all key-value pairs into current scope
+			for _, pair := range mapObj.Pairs {
+				if str, ok := pair.Key.(*object.String); ok {
+					if isConstant {
+						if _, err := env.DefineConstant(str.Value, pair.Value); err != nil {
+							return false, err
+						}
+					} else {
+						if _, err := env.Define(str.Value, pair.Value); err != nil {
+							return false, err
+						}
+					}
+				}
+			}
+			return true, nil
+		}
+
 		// Empty map pattern matches empty map
 		if len(p.Pairs) == 0 {
 			return len(mapObj.Pairs) == 0, nil
@@ -989,6 +991,7 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 		// scoped environment to capture the match bindings, these will be copied to the parent env on success
 		scoped := object.NewEnclosedEnvironment(env, nil)
 		e.PushEnv(scoped)
+		defer e.PopEnv()
 
 		// Check if all required fields are present
 		for key, subPattern := range p.Pairs {
@@ -1011,6 +1014,10 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 			if !matched || err != nil {
 				return false, err
 			}
+		}
+
+		if p.Exact && len(usedKeys) != len(mapObj.Pairs) {
+			return false, nil
 		}
 
 		// If a spread pattern is used, collect unused keys into a new map
@@ -1061,7 +1068,7 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 			}
 		}
 
-		e.PopEnv()
+		//e.PopEnv()
 
 		return true, nil
 	}
@@ -1349,16 +1356,16 @@ func (e *Evaluator) computeSliceIndices(length int, slice *object.Slice) (int, i
 	return start, end, step
 }
 
-func (e *Evaluator) evalForeignFunctionDeclaration(stmt *ast.ForeignFunctionDeclaration) object.Object {
+func (e *Evaluator) evalForeignFunctionDeclaration(ff *ast.ForeignFunctionDeclaration) object.Object {
 	env := e.CurrentEnv()
 	modulePath := env.ModuleFqn
-	functionName := stmt.Name.Value
+	functionName := ff.Name.Value
 
 	fqn := modulePath + "." + functionName
 
-	if foreignFn, exists := foreignFunctions[fqn]; exists {
+	if foreignFn, exists := lookupForeign(fqn); exists {
 		foreignFn.Name = functionName
-		foreignFn.Arity = len(stmt.Parameters)
+		foreignFn.Arity = len(ff.Parameters)
 		_, err := env.Define(functionName, foreignFn)
 		if err != nil {
 			return newError(err.Error())

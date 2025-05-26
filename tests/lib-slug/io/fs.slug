@@ -1,0 +1,56 @@
+var {*} = import(
+    "slug.io.fs",
+    "slug.std",
+    "slug.test"
+);
+
+var filename = "test.txt";
+var hello = "Hello Slug!\n";
+var goodbye = "Goodbye Slug!\n";
+
+// read / write / append entire file content
+// -----------------------------------------
+filename.writeFile(hello);
+filename.appendFile(goodbye);
+filename.readFile().assertEqual(hello + goodbye);
+
+// inspect the file
+// ----------------
+
+var info = filename.info();
+info.name.assertEqual(filename);
+info.isDir.assertFalse();
+(info.mode > 0).assertTrue();
+(info.modTime > 0).assertTrue();
+(info.size > 0).assertTrue();
+
+filename.isDir().assertFalse();
+
+filename.exists().assertTrue();
+
+// remove the file
+// ---------------
+filename.rm();
+
+// read / write / append file with handle
+// --------------------------------------
+var fileOut = filename.openFile(WRITE_MODE)
+fileOut.write(hello)
+fileOut.closeFile()
+
+var fileAppend = filename.openFile(APPEND_MODE)
+fileAppend.write(goodbye)
+fileAppend.closeFile()
+
+var fileIn = filename.openFile(READ_MODE)
+defer filename.rm()
+defer fileIn.closeFile()
+
+fileIn.readLines().len().assertEqual(2);
+
+// ls
+// ---------
+
+("./".ls().len() > 0).assertTrue()
+
+

@@ -1,4 +1,6 @@
-import slug.test.*;
+var {*} = import(
+    "slug.test"
+);
 
 var name = "Slug";
 var num = 10;

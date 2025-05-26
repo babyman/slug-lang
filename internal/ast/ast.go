@@ -44,15 +44,15 @@ func (p *Program) String() string {
 	return out.String()
 }
 
-type VarStatement struct {
+type VarExpression struct {
 	Token   token.Token // the token.VAR token
 	Pattern MatchPattern
 	Value   Expression
 }
 
-func (ls *VarStatement) statementNode()       {}
-func (ls *VarStatement) TokenLiteral() string { return ls.Token.Literal }
-func (ls *VarStatement) String() string {
+func (ls *VarExpression) expressionNode()      {}
+func (ls *VarExpression) TokenLiteral() string { return ls.Token.Literal }
+func (ls *VarExpression) String() string {
 	var out bytes.Buffer
 
 	out.WriteString(ls.TokenLiteral() + " ")
@@ -65,6 +65,55 @@ func (ls *VarStatement) String() string {
 
 	out.WriteString(";")
 
+	return out.String()
+}
+
+type ValExpression struct {
+	Token   token.Token  // The token.VAL token
+	Pattern MatchPattern // Constant name
+	Value   Expression   // The assigned value
+}
+
+func (vs *ValExpression) expressionNode()      {}
+func (vs *ValExpression) TokenLiteral() string { return vs.Token.Literal }
+func (vs *ValExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(vs.TokenLiteral() + " ")
+	out.WriteString(vs.Pattern.String())
+	out.WriteString(" = ")
+	if vs.Value != nil {
+		out.WriteString(vs.Value.String())
+	}
+	out.WriteString(";")
+	return out.String()
+}
+
+type ForeignFunctionDeclaration struct {
+	Token      token.Token // The `FOREIGN` token
+	Name       *Identifier // Name of the foreign function
+	Parameters []*FunctionParameter
+}
+
+func (ffd *ForeignFunctionDeclaration) statementNode()       {}
+func (ffd *ForeignFunctionDeclaration) TokenLiteral() string { return ffd.Token.Literal }
+func (ffd *ForeignFunctionDeclaration) String() string {
+	var out bytes.Buffer
+	out.WriteString("foreign ")
+	out.WriteString(ffd.Name.String())
+	out.WriteString(" = ")
+
+	params := []string{}
+	for _, p := range ffd.Parameters {
+		params = append(params, p.String())
+	}
+
+	out.WriteString(ffd.TokenLiteral())
+	out.WriteString("(")
+	out.WriteString(strings.Join(params, ", "))
+	out.WriteString(") ")
+
+	out.WriteString(";")
 	return out.String()
 }
 
@@ -87,53 +136,6 @@ func (rs *ReturnStatement) String() string {
 	out.WriteString(";")
 
 	return out.String()
-}
-
-type ImportSymbol struct {
-	Name  *Identifier // The symbol being imported (e.g., "sqr")
-	Alias *Identifier // Optional alias for the symbol (e.g., "as a")
-}
-
-func (is *ImportSymbol) String() string {
-	if is.Alias != nil {
-		return is.Name.String() + " as " + is.Alias.String()
-	}
-	return is.Name.String()
-}
-
-type ImportStatement struct {
-	Token     token.Token     // The 'import' token
-	PathParts []*Identifier   // Dot-separated identifiers for module path (e.g., math.Arithmetic)
-	Symbols   []*ImportSymbol // Symbols being imported, with optional aliases
-	Wildcard  bool            // Whether the import uses a wildcard (*)
-}
-
-func (is *ImportStatement) statementNode()       {}
-func (is *ImportStatement) TokenLiteral() string { return is.Token.Literal }
-func (is *ImportStatement) String() string {
-	var out bytes.Buffer
-
-	out.WriteString("import ")
-	out.WriteString(is.PathAsString())
-
-	if is.Wildcard {
-		out.WriteString(".*")
-	} else if len(is.Symbols) > 0 {
-		symbols := []string{}
-		for _, sym := range is.Symbols {
-			symbols = append(symbols, sym.String())
-		}
-		out.WriteString(".{" + strings.Join(symbols, ", ") + "}")
-	}
-	return out.String()
-}
-
-func (is *ImportStatement) PathAsString() string {
-	parts := []string{}
-	for _, part := range is.PathParts {
-		parts = append(parts, part.Value)
-	}
-	return strings.Join(parts, ".")
 }
 
 type ExpressionStatement struct {
@@ -525,6 +527,16 @@ type MatchPattern interface {
 	String() string
 }
 
+// AllPattern  (_)
+type AllPattern struct {
+	Token token.Token // The '*' token
+}
+
+func (wp *AllPattern) expressionNode()      {}
+func (wp *AllPattern) patternNode()         {}
+func (wp *AllPattern) TokenLiteral() string { return wp.Token.Literal }
+func (wp *AllPattern) String() string       { return "*" }
+
 // WildcardPattern  (_)
 type WildcardPattern struct {
 	Token token.Token // The '_' token
@@ -625,19 +637,21 @@ func (ap *ListPattern) String() string {
 
 // MapPattern for matching map structure
 type MapPattern struct {
-	Token  token.Token
-	Pairs  map[string]MatchPattern
-	Spread bool // Whether _ is present to match additional fields
+	Token     token.Token             // The token representing the map pattern.
+	Pairs     map[string]MatchPattern // List of keys for matching (for `{key}`).
+	Spread    bool                    // Whether ... is present to match additional fields
+	Exact     bool                    // True for exact match patterns `{|k1, k2|}`.
+	SelectAll bool                    // True for wildcard match `{*}`.
 }
 
-func (lp *MapPattern) expressionNode()      {}
-func (hp *MapPattern) patternNode()         {}
-func (hp *MapPattern) TokenLiteral() string { return hp.Token.Literal }
-func (hp *MapPattern) String() string {
+func (mp *MapPattern) expressionNode()      {}
+func (mp *MapPattern) patternNode()         {}
+func (mp *MapPattern) TokenLiteral() string { return mp.Token.Literal }
+func (mp *MapPattern) String() string {
 	var out bytes.Buffer
 	pairs := []string{}
 
-	for key, pattern := range hp.Pairs {
+	for key, pattern := range mp.Pairs {
 		if key == "_" {
 			pairs = append(pairs, "_")
 		} else {
@@ -646,7 +660,16 @@ func (hp *MapPattern) String() string {
 	}
 
 	out.WriteString("{")
+	if mp.Exact {
+		out.WriteString("|")
+	}
+	if mp.SelectAll {
+		out.WriteString("*")
+	}
 	out.WriteString(strings.Join(pairs, ", "))
+	if mp.Exact {
+		out.WriteString("|")
+	}
 	out.WriteString("}")
 
 	return out.String()
@@ -692,27 +715,6 @@ func (tcs *TryCatchStatement) String() string {
 	return out.String()
 }
 
-type ValStatement struct {
-	Token   token.Token  // The token.VAL token
-	Pattern MatchPattern // Constant name
-	Value   Expression   // The assigned value
-}
-
-func (vs *ValStatement) statementNode()       {}
-func (vs *ValStatement) TokenLiteral() string { return vs.Token.Literal }
-func (vs *ValStatement) String() string {
-	var out bytes.Buffer
-
-	out.WriteString(vs.TokenLiteral() + " ")
-	out.WriteString(vs.Pattern.String())
-	out.WriteString(" = ")
-	if vs.Value != nil {
-		out.WriteString(vs.Value.String())
-	}
-	out.WriteString(";")
-	return out.String()
-}
-
 type NotImplemented struct {
 	Token token.Token // The ??? token
 }
@@ -720,34 +722,6 @@ type NotImplemented struct {
 func (ni *NotImplemented) expressionNode()      {}
 func (ni *NotImplemented) TokenLiteral() string { return ni.Token.Literal }
 func (ni *NotImplemented) String() string       { return ni.Token.Literal }
-
-type ForeignFunctionDeclaration struct {
-	Token      token.Token // The `FOREIGN` token
-	Name       *Identifier // Name of the foreign function
-	Parameters []*FunctionParameter
-}
-
-func (ffd *ForeignFunctionDeclaration) statementNode()       {}
-func (ffd *ForeignFunctionDeclaration) TokenLiteral() string { return ffd.Token.Literal }
-func (ffd *ForeignFunctionDeclaration) String() string {
-	var out bytes.Buffer
-	out.WriteString("foreign ")
-	out.WriteString(ffd.Name.String())
-	out.WriteString(" = ")
-
-	params := []string{}
-	for _, p := range ffd.Parameters {
-		params = append(params, p.String())
-	}
-
-	out.WriteString(ffd.TokenLiteral())
-	out.WriteString("(")
-	out.WriteString(strings.Join(params, ", "))
-	out.WriteString(") ")
-
-	out.WriteString(";")
-	return out.String()
-}
 
 type DeferStatement struct {
 	Token token.Token // The 'defer' token

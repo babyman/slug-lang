@@ -1,5 +1,7 @@
-import slug.std.*;
-import slug.test.*;
+var {*} = import(
+    "slug.std",
+    "slug.test"
+);
 
 // simple equality checks
 

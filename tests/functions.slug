@@ -1,5 +1,7 @@
-import slug.std.*;
-import slug.test.*;
+var {*} = import(
+    "slug.std",
+    "slug.test"
+);
 
 // declare a function
 var sqr = fn(a) { a * a }

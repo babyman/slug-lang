@@ -1,52 +1,101 @@
 
-// Reads entire file content as a string. Returns error if file cannot be read.
-// readFile(path: string) -> string
+// readFile reads entire file content as a string
+// Parameters:
+//   path: path to the file to read
+// Returns:
+//   string content of file, or error if file cannot be read
 foreign readFile = fn(path);
 
-// Writes string content to a file, creating it if it doesn't exist or overwriting if it does.
-// Returns nil on success or error if write fails.
-// writeFile(path: string, contents: string) -> nil
+// writeFile writes string content to a file
+// Parameters:
+//   path: path to file to write
+//   contents: string data to write
+// Returns:
+//   nil on success, error if write fails
 foreign writeFile = fn(path, contents);
 
-// Appends string content to end of file, creating it if it doesn't exist.
-// Returns nil on success or error if write fails.
-// appendFile(path: string, contents: string) -> nil
+// appendFile appends string content to end of file
+// Parameters:
+//   path: path to file to append to
+//   contents: string data to append
+// Returns:
+//   nil on success, error if write fails
 foreign appendFile = fn(path, contents);
 
+// info gets information about a file
+// Parameters:
+//   path: path to file to get info for
+// Returns:
+//   object containing file metadata
 foreign info = fn(path);
 
-// Returns true if the file exists and is accessible.
+// exists checks if a file exists and is accessible
+// Parameters:
+//   path: path to check
+// Returns:
+//   true if file exists and is accessible, false otherwise
 foreign exists = fn(path);
 
-// Returns true if the path is a directory.
+// isDir checks if path points to a directory
+// Parameters:
+//   path: path to check
+// Returns:
+//   true if path is a directory, false otherwise
 foreign isDir = fn(path);
 
-// Returns the list of filenames in a directory (not recursive).
+// ls lists contents of a directory (non-recursively)
+// Parameters:
+//   path: directory path to list
+// Returns:
+//   list of filenames in the directory
 foreign ls = fn(path);
 
-// remove a file or empty directory
+// rm removes a file or empty directory
+// Parameters:
+//   path: path to remove
+// Returns:
+//   nil on success, error if removal fails
 foreign rm = fn(path);
 
 val READ_MODE = "r"
 val WRITE_MODE = "w"
 val APPEND_MODE = "a"
 
-// Mode could be "r" (read), "w" (write), "a" (append). Returns a handle.
+// openFile opens a file in specified mode
+// Parameters:
+//   path: path to file to open
+//   mode: "r" for read, "w" for write, "a" for append
+// Returns:
+//   file handle number on success, error if open fails
 foreign openFile = fn(path, mode);
 
-// Reads next line from an open file handle in text mode.
-// Returns the line as string or error if read fails.
-// readLine(handle: number) -> string
+// readLine reads the next line from an open file
+// Parameters:
+//   handle: file handle from openFile
+// Returns:
+//   string containing next line, or error if read fails
 foreign readLine = fn(handle);
 
-// Read a fixed number of bytes.
-// readBytes(handle, count: number)
+// readBytes reads a fixed number of bytes from file
+// Parameters:
+//   handle: file handle from openFile
+//   count: number of bytes to read
+// Returns:
+//   string containing read bytes, or error if read fails
 
-// Writes string content to an open file handle.
-// Returns number of bytes written or error if write fails.
-// write(handle: number, content: string) -> number
+// write writes string content to an open file
+// Parameters:
+//   handle: file handle from openFile
+//   content: string data to write
+// Returns:
+//   number of bytes written, or error if write fails
 foreign write = fn(handle, content);
 
+// closeFile closes an open file handle
+// Parameters:
+//   handle: file handle to close
+// Returns:
+//   nil on success, error if close fails
 foreign closeFile = fn(handle)
 
 var readLines = fn(file, lines = []) {

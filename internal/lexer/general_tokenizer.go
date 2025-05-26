@@ -39,7 +39,7 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 	case '&':
 		tok = g.lexer.handleCompoundToken(token.BITWISE_AND, '&', token.LOGICAL_AND)
 	case '|':
-		tok = g.lexer.handleCompoundToken(token.BITWISE_OR, '|', token.LOGICAL_OR)
+		tok = g.lexer.handleCompoundToken2(token.BITWISE_OR, '|', token.LOGICAL_OR, '}', token.MATCH_KEYS_CLOSE)
 	case '_':
 		tok = newToken(token.UNDERSCORE, g.lexer.ch, startPosition)
 	case '^':
@@ -74,7 +74,7 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 			tok = newToken(token.ILLEGAL, g.lexer.ch, startPosition)
 		}
 	case '{':
-		tok = g.lexer.handleCompoundToken(token.LBRACE, '{', token.INTERPOLATION_START)
+		tok = g.lexer.handleCompoundToken2(token.LBRACE, '{', token.INTERPOLATION_START, '|', token.MATCH_KEYS_EXACT)
 	case '}':
 		if g.lexer.peekChar() == '}' && g.lexer.peekTwoChars() == '"' {
 			g.lexer.readChar() // consume the }

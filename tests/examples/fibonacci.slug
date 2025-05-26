@@ -1,4 +1,6 @@
-import slug.test.*;
+var {*} = import(
+    "slug.test"
+);
 
 //
 // Fibonacci sequence calculation using simple recursion

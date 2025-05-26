@@ -4,43 +4,8 @@ import (
 	"fmt"
 	"slug/internal/ast"
 	"slug/internal/lexer"
-	"slug/internal/token"
 	"testing"
 )
-
-func TestVarStatements(t *testing.T) {
-	tests := []struct {
-		input              string
-		expectedIdentifier string
-		expectedValue      interface{}
-	}{
-		{"var x = 5;", "x", 5},
-		{"var y = true;", "y", true},
-		{"var foobar = y;", "foobar", "y"},
-	}
-
-	for _, tt := range tests {
-		l := lexer.New(tt.input)
-		p := New(l, tt.input)
-		program := p.ParseProgram()
-		checkParserErrors(t, p)
-
-		if len(program.Statements) != 1 {
-			t.Fatalf("program.Statements does not contain 1 statements. got=%d",
-				len(program.Statements))
-		}
-
-		stmt := program.Statements[0]
-		if !testVarStatement(t, stmt, tt.expectedIdentifier) {
-			return
-		}
-
-		val := stmt.(*ast.VarStatement).Value
-		if !testLiteralExpression(t, val, tt.expectedValue) {
-			return
-		}
-	}
-}
 
 func TestReturnStatements(t *testing.T) {
 	tests := []struct {
@@ -74,65 +39,6 @@ func TestReturnStatements(t *testing.T) {
 		}
 		if testLiteralExpression(t, returnStmt.ReturnValue, tt.expectedValue) {
 			return
-		}
-	}
-}
-
-func TestImportStatement(t *testing.T) {
-	tests := []struct {
-		input          string
-		expectedResult *ast.ImportStatement
-	}{
-		{input: "import test.system.os.*;", expectedResult: &ast.ImportStatement{
-			Token:     token.Token{Type: token.IMPORT, Literal: "import"},
-			PathParts: []*ast.Identifier{{Value: "test"}, {Value: "system"}, {Value: "os"}},
-			Symbols:   nil,
-			Wildcard:  true,
-		}},
-		{input: "import test.{sqr};", expectedResult: &ast.ImportStatement{
-			Token:     token.Token{Type: token.IMPORT, Literal: "import"},
-			PathParts: []*ast.Identifier{{Value: "test"}},
-			Symbols:   []*ast.ImportSymbol{{Name: &ast.Identifier{Value: "sqr"}}},
-			Wildcard:  false,
-		}},
-		{input: "import test.{sqr, double};", expectedResult: &ast.ImportStatement{
-			Token:     token.Token{Type: token.IMPORT, Literal: "import"},
-			PathParts: []*ast.Identifier{{Value: "test"}},
-			Symbols:   []*ast.ImportSymbol{{Name: &ast.Identifier{Value: "sqr"}}, {Name: &ast.Identifier{Value: "double"}}},
-			Wildcard:  false,
-		}},
-		{input: "import test.{double as sqr};", expectedResult: &ast.ImportStatement{
-			Token:     token.Token{Type: token.IMPORT, Literal: "import"},
-			PathParts: []*ast.Identifier{{Value: "test"}},
-			Symbols:   []*ast.ImportSymbol{{Name: &ast.Identifier{Value: "double"}, Alias: &ast.Identifier{Value: "sqr"}}},
-			Wildcard:  false,
-		}},
-	}
-
-	for _, tt := range tests {
-		l := lexer.New(tt.input)
-		p := New(l, tt.input)
-		program := p.ParseProgram()
-
-		checkParserErrors(t, p)
-
-		if len(program.Statements) != 1 {
-			t.Fatalf("program.Statements does not contain 1 statements. got=%d",
-				len(program.Statements))
-		}
-		i := program.Statements[0]
-		importStmt, ok := i.(*ast.ImportStatement)
-		if !ok {
-			t.Fatalf("program.Statements[0] is not ast.ImportStatement. got=%T", i)
-		}
-		if importStmt.Wildcard != tt.expectedResult.Wildcard {
-			t.Fatalf("importStmt.Wildcard is not %t. got=%t", tt.expectedResult.Wildcard, importStmt.Wildcard)
-		}
-		if importStmt.PathParts[0].Value != tt.expectedResult.PathParts[0].Value {
-			t.Fatalf("importStmt.PathParts[0].Value is not %s. got=%s", tt.expectedResult.PathParts[0].Value, importStmt.PathParts[0].Value)
-		}
-		if len(importStmt.Symbols) != len(tt.expectedResult.Symbols) {
-			t.Fatalf("Symbols is not %s. got=%s", tt.expectedResult.Symbols, importStmt.Symbols)
 		}
 	}
 }
@@ -1016,32 +922,6 @@ func TestParsingMapLiteralsWithExpressions(t *testing.T) {
 
 		testFunc(value)
 	}
-}
-
-func testVarStatement(t *testing.T, s ast.Statement, name string) bool {
-	if s.TokenLiteral() != "var" {
-		t.Errorf("s.TokenLiteral not 'var'. got=%q", s.TokenLiteral())
-		return false
-	}
-
-	varStmt, ok := s.(*ast.VarStatement)
-	if !ok {
-		t.Errorf("s not *ast.VarStatement. got=%T", s)
-		return false
-	}
-
-	if varStmt.Pattern.String() != name {
-		t.Errorf("varStmt.Pattern.Value not '%s'. got=%s", name, varStmt.Pattern.String())
-		return false
-	}
-
-	if varStmt.Pattern.TokenLiteral() != name {
-		t.Errorf("varStmt.Pattern.TokenLiteral() not '%s'. got=%s",
-			name, varStmt.Pattern.TokenLiteral())
-		return false
-	}
-
-	return true
 }
 
 func testInfixExpression(t *testing.T, exp ast.Expression, left interface{},

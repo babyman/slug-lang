@@ -1,12 +1,15 @@
-import slug.test.*;
+var {*} = import(
+    "slug.test"
+);
 
 //
 // simple var declaration
 // ----------------------
 
-var x = 10;
+var x = var y = 10;
 
 x.assertEqual(10);
+y.assertEqual(10);
 
 var x = x + 1;
 

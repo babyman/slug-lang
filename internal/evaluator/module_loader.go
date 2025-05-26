@@ -46,10 +46,12 @@ func LoadModule(pathParts []string) (*object.Module, error) {
 		if slugHome == "" {
 			return nil, fmt.Errorf("error reading module '%s': SLUG_HOME environment variable is not set", moduleName)
 		}
-		modulePath = fmt.Sprintf("%s/lib/%s.slug", slugHome, moduleRelativePath)
-		moduleSrc, err = ioutil.ReadFile(modulePath)
+		libPath := fmt.Sprintf("%s/lib/%s.slug", slugHome, moduleRelativePath)
+		moduleSrc, err = ioutil.ReadFile(libPath)
 		if err != nil {
-			return nil, fmt.Errorf("error reading module '%s': %s", moduleName, err)
+			return nil, fmt.Errorf("error reading module (%s / %s) '%s': %s", modulePath, libPath, moduleName, err)
+		} else {
+			modulePath = libPath
 		}
 	}
 

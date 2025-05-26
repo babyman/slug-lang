@@ -1,0 +1,28 @@
+
+// spawn creates a new actor process that executes the given function
+// Parameters:
+//   f: function to execute in the new process
+//   args: optional arguments to pass to the function
+// Returns:
+//   integer PID of the newly created process
+foreign spawn = fn(f, ...args);
+
+// self returns the PID of the current process
+// Returns:
+//   integer PID of the calling process, error if called outside process context
+foreign self = fn();
+
+// send delivers a message to the specified process
+// Parameters:
+//   pid: process ID of the recipient
+//   message: data to send to the process
+// Returns:
+//   the recipient's PID
+foreign send = fn(pid, message);
+
+// receive waits for a message to arrive in the process mailbox
+// Parameters:
+//   timeout: optional integer timeout in milliseconds
+// Returns:
+//   received message data, or nil on timeout
+foreign receive = fn(timeout);

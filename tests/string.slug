@@ -1,5 +1,7 @@
-import slug.string.*;
-import slug.test.*;
+var {*} = import(
+    "slug.string",
+    "slug.test"
+);
 
 // String escape sequences:
 //

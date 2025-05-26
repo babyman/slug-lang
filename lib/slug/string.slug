@@ -1,4 +1,6 @@
-import slug.std.{len};
+var {len} = import (
+    "slug.std"
+);
 
 foreign trim = fn(str);
 

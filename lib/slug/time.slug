@@ -3,6 +3,8 @@ foreign clock = fn();
 
 foreign clockNanos = fn();
 
+foreign sleep = fn(millis);
+
 // delta creates a function that measures time difference between calls
 // Parameters:
 //   f: function that returns a time value
@@ -14,3 +16,22 @@ var delta = fn(f) {
 		f() - start;
 	}
 }
+
+// secsToMillis converts seconds to milliseconds
+// Parameters:
+//   secs: number of seconds
+// Returns:
+//   equivalent milliseconds value
+var secsToMillis = fn(secs) {
+    secs * 1000
+}
+
+// minsToMillis converts minutes to milliseconds 
+// Parameters:
+//   mins: number of minutes
+// Returns:
+//   equivalent milliseconds value
+var minsToMillis = fn(mins) {
+    mins * 60 * 1000
+}
+

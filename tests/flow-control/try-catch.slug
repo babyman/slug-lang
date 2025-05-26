@@ -1,4 +1,6 @@
-import slug.std.*;
+var {*} = import(
+    "slug.std"
+);
 
 //
 // throwing a catching errors
