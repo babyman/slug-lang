@@ -129,9 +129,16 @@ func evaluateModule(module *object.Module, env *object.Environment) error {
 	// Parse src into a Program AST
 	program := module.Program
 
-	e := evaluator.Evaluator{}
+	e := evaluator.Evaluator{
+		Process: &evaluator.Process{
+			PID:     evaluator.NewPID(),
+			Mailbox: make(chan object.Message, 10), // Buffered mailbox
+		},
+	}
 	e.PushEnv(env)
 	defer e.PopEnv()
+
+	evaluator.AddProcess(e.Process)
 
 	//println(" ---- begin ----")
 	//defer println(" ---- done ----")

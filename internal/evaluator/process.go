@@ -5,23 +5,20 @@ import (
 )
 
 type Process struct {
-	PID       int
+	PID       int64
 	Mailbox   chan object.Message // FIFO queue for messages
 	Evaluator *Evaluator
 	Function  *object.Function //func(args ...object.Object) // Function to be executed
 	Args      []object.Object  // Arguments passed to the process
 }
 
-func (p *Process) self() int {
+func (p *Process) self() int64 {
 	return p.PID
 }
 
-func (p *Process) run() int {
+func (p *Process) run() int64 {
 	if runtime.processes[p.PID] != nil {
-		println("process running", p.PID)
 		p.Evaluator.applyFunction(p.Function, p.Args)
-	} else {
-		println("skipping removed or invalid process", p.PID)
 	}
 	return p.PID
 }

@@ -25,14 +25,14 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.io.tcp.write":   fnIoTcpWrite(),
 		"slug.io.tcp.close":   fnIoTcpClose(),
 
-		"slug.std.type":    fnStdType(),
-		"slug.std.defined": fnStdDefined(),
-		"slug.std.len":     fnStdLen(),
-		"slug.std.print":   fnStdPrint(),
-		"slug.std.get":     fnStdGet(),
-		"slug.std.keys":    fnStdKeys(),
-		"slug.std.put":     fnStdPut(),
-		"slug.std.remove":  fnStdRemove(),
+		"slug.std.type":      fnStdType(),
+		"slug.std.isDefined": fnStdIsDefined(),
+		"slug.std.len":       fnStdLen(),
+		"slug.std.print":     fnStdPrint(),
+		"slug.std.get":       fnStdGet(),
+		"slug.std.keys":      fnStdKeys(),
+		"slug.std.put":       fnStdPut(),
+		"slug.std.remove":    fnStdRemove(),
 
 		// string functions
 		"slug.string.contains":   fnStringContains(),

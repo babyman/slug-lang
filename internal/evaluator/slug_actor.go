@@ -16,7 +16,7 @@ func fnActorSpawn() *object.Foreign {
 			}
 			processArgs := args[1:] // Remaining args to pass to function
 			pid := runtime.spawn(fn, processArgs...)
-			return &object.Integer{Value: int64(pid)}
+			return &object.Integer{Value: pid}
 		},
 	}
 }
@@ -49,7 +49,7 @@ func fnActorSend() *object.Foreign {
 				From: ctx.PID(),
 				Data: args[1],
 			}
-			runtime.Send(int(pid.Value), *msg)
+			runtime.Send(pid.Value, *msg)
 			return pid
 		},
 	}

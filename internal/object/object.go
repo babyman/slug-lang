@@ -18,7 +18,7 @@ import (
 //   - Boolean type conversion via NativeBoolToBooleanObject()
 type EvaluatorContext interface {
 	CurrentEnv() *Environment
-	PID() int
+	PID() int64
 	NewError(message string, a ...interface{}) *Error
 	Nil() *Nil
 	NativeBoolToBooleanObject(input bool) *Boolean
@@ -313,7 +313,7 @@ func (tc *TailCall) Inspect() string {
 }
 
 type Message struct {
-	From int
+	From int64
 	Data Object
 }
 

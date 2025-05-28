@@ -9,16 +9,9 @@ import (
 )
 
 var (
-	NIL     = &object.Nil{}
-	TRUE    = &object.Boolean{Value: true}
-	FALSE   = &object.Boolean{Value: false}
-	runtime = &Runtime{
-		pidCounter: 0,
-		scheduler: &Scheduler{
-			runQueue: make(chan *Process, 100),
-		},
-		processes: make(map[int]*Process),
-	}
+	NIL   = &object.Nil{}
+	TRUE  = &object.Boolean{Value: true}
+	FALSE = &object.Boolean{Value: false}
 )
 
 type Evaluator struct {
@@ -26,7 +19,7 @@ type Evaluator struct {
 	Process  *Process              // can be null
 }
 
-func (e *Evaluator) PID() int {
+func (e *Evaluator) PID() int64 {
 	if e.Process == nil {
 		return 0
 	}

@@ -59,7 +59,7 @@ func fnStdType() *object.Foreign {
 	}
 }
 
-func fnStdDefined() *object.Foreign {
+func fnStdIsDefined() *object.Foreign {
 	return &object.Foreign{Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 		if len(args) != 1 {
 			return ctx.NewError("wrong number of arguments. got=%d, want=1",
