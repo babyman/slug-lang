@@ -1,0 +1,94 @@
+var {*} = import(
+    "slug.std",
+    "slug.test"
+);
+
+var list = ["v1", "v2"]
+var emptyList = []
+
+// ensure that match vars shadow outer scope
+var h1 = "shadowed";
+
+
+// match non-empty list
+// --------------------
+match list {
+    [] => fail();
+    [...] => true;
+    _ => fail();
+}
+
+match list {
+    [...] => true; // will also match empty list
+    _ => fail();
+}
+
+// match non-empty list, capture the spread
+// ----------------------------------------
+match list {
+    [...t] => t.len().assertEqual(2);
+    _ => fail();
+}
+
+// match values and capture the spread
+// -----------------------------------
+match list {
+    [h1, ...t] => {
+        t.len().assertEqual(1);
+        h1.assertEqual("v1");
+    }
+    _ => fail();
+}
+
+match list {
+    [h1, h2, ...t] => {
+        t.len().assertEqual(0);
+        h1.assertEqual("v1");
+        h2.assertEqual("v2");
+    }
+    _ => fail();
+}
+
+match list {
+    [h1, ...] => h1.assertEqual("v1");
+    _ => fail();
+}
+
+// match on a literal
+// ------------------
+match list {
+    ["v1", h2, ...] => h2.assertEqual("v2");
+    _ => fail();
+}
+
+match list {
+    ["--not h1--", h2, ...] => fail();
+    _ => true;
+}
+
+// exact matching
+// --------------
+match list {
+    [h1, h2] => {
+        h1.assertEqual("v1");
+        h2.assertEqual("v2");
+    }
+    _ => fail();
+}
+
+match list {
+    [h1] => fail();
+    _ => true;
+}
+
+// match empty list
+// ---------------
+match emptyList {
+    [] => true;
+    _ => fail();
+}
+
+match emptyList {
+    [...] => true;
+    _ => fail();
+}
