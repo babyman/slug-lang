@@ -52,3 +52,11 @@ var reduce = fn(vs, v, f) {
 		[] => v;
 	}
 }
+
+var zeroIfAbove = fn(a, b) {
+	if ( a < b ) {
+		a
+	} else {
+		0
+	}
+}

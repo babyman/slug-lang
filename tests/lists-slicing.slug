@@ -20,6 +20,11 @@ arr[:2].assertListEqual(["h", "e"]);
 
 arr[0:4].assertListEqual(["h", "e", "l", "l"]);
 
+arr[0:10].assertListEqual(["h", "e", "l", "l", "o"]);
+
+arr[10:].assertListEqual([]);
+
+(arr[:2] + arr[4:]).assertListEqual(["h", "e", "o"]);
 
 // slicing with step value
 // -----------------------

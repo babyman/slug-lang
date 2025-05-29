@@ -2,6 +2,12 @@ package evaluator
 
 import (
 	"slug/internal/object"
+	"sync"
+)
+
+var (
+	actorRegistry     = make(map[string]int64)
+	actorRegistryLock sync.RWMutex
 )
 
 func fnActorSpawn() *object.Foreign {
@@ -74,6 +80,79 @@ func fnActorReceive() *object.Foreign {
 				return ctx.Nil() // Indicate timeout or no messages
 			}
 			return msg.Data
+		},
+	}
+}
+
+func fnActorRegister() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) != 2 {
+				return ctx.NewError("register expects PID and name arguments")
+			}
+			pid, ok := args[0].(*object.Integer)
+			if !ok {
+				return ctx.NewError("first argument to register must be a PID")
+			}
+			name, ok := args[1].(*object.String)
+			if !ok {
+				return ctx.NewError("second argument to register must be a string name")
+			}
+
+			actorRegistryLock.Lock()
+			actorRegistry[name.Value] = pid.Value
+			actorRegistryLock.Unlock()
+
+			return &object.Integer{Value: pid.Value}
+		},
+	}
+}
+
+func fnActorUnregister() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) != 2 {
+				return ctx.NewError("unregister expects PID and name arguments")
+			}
+			pid, ok := args[0].(*object.Integer)
+			if !ok {
+				return ctx.NewError("first argument to unregister must be a PID")
+			}
+			name, ok := args[1].(*object.String)
+			if !ok {
+				return ctx.NewError("second argument to unregister must be a string name")
+			}
+
+			actorRegistryLock.Lock()
+			if existingPID, exists := actorRegistry[name.Value]; exists && existingPID == pid.Value {
+				delete(actorRegistry, name.Value)
+			}
+			actorRegistryLock.Unlock()
+
+			return &object.Integer{Value: pid.Value}
+		},
+	}
+}
+
+func fnActorWhereIs() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return ctx.NewError("whereIs expects a name argument")
+			}
+			name, ok := args[0].(*object.String)
+			if !ok {
+				return ctx.NewError("argument to whereIs must be a string name")
+			}
+
+			actorRegistryLock.RLock()
+			pid, exists := actorRegistry[name.Value]
+			actorRegistryLock.RUnlock()
+
+			if !exists {
+				return ctx.Nil()
+			}
+			return &object.Integer{Value: pid}
 		},
 	}
 }

@@ -1,0 +1,17 @@
+
+var max = fn(a, b) {
+	if ( a > b ) {
+		a
+	} else {
+		b
+	}
+}
+
+var min = fn(a, b) {
+	if ( a < b ) {
+		a
+	} else {
+		b
+	}
+}
+

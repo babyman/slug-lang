@@ -1,3 +1,8 @@
+var {*} = import(
+	"slug.std",
+	"slug.math",
+	"slug.list"
+);
 
 // spawn creates a new actor process that executes the given function
 // Parameters:
@@ -26,3 +31,51 @@ foreign send = fn(pid, message);
 // Returns:
 //   received message data, or nil on timeout
 foreign receive = fn(timeout);
+
+foreign register = fn (pid, name);
+
+foreign unregister = fn (pid, name);
+
+foreign whereIs = fn(name);
+
+var groupCreate = fn(name, ...members) {
+	spawn(var grp = fn(members, next = 0) {
+		println("{{self()}} waiting with members {{members}}!");
+		match receive() {
+			{tag: "add", member} => grp(members :+ member, next);
+			{tag: "remove", member} => grp(members.removeValue(member), next);
+			{tag: "send", message} => {
+					members.map(fn(v) {v.send(message)});
+					grp(members, next);
+				}
+			{tag: "sendOne", message} => {
+					members[next].send(message);
+					grp(members, zeroIfAbove(next + 1, len(members)));
+				}
+			message => {
+					members[next].send(message);
+					grp(members, zeroIfAbove(next + 1, len(members)));
+				}
+		}
+	}, members).register(name)
+}
+
+var groupAdd = fn(name, pid) {
+	whereIs(name).send({tag: "add", member: pid})
+}
+
+var groupRemove = fn(name, pid) {
+	whereIs(name).send({tag: "remove", member: pid})
+}
+
+var groupSend = fn(name, message) {
+	whereIs(name).send({tag: "send", message: message})
+}
+
+var groupSendOne = fn(name, message) {
+	whereIs(name).send({tag: "sendOne", message: message})
+}
+
+var supervisedGroup = fn(name, ...pids) {
+    ???;
+}

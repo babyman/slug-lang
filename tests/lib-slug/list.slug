@@ -1,0 +1,17 @@
+var {*} = import(
+    "slug.test",
+    "slug.list"
+);
+
+var arr = ["h", "e", "l", "l", "o"];
+
+arr.indexOfValue("z").assertEqual(-1);
+arr.indexOfValue("h").assertEqual(0);
+arr.indexOfValue("l").assertEqual(2);
+arr.indexOfValue("o").assertEqual(4);
+
+arr.removeValue("z").assertListEqual(arr);
+arr.removeValue("h").assertListEqual(["e", "l", "l", "o"]);
+arr.removeValue("o").assertListEqual(["h", "e", "l", "l"]);
+arr.removeValue("l").assertListEqual(["h", "e", "l", "o"]);
+

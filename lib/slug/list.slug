@@ -1,4 +1,4 @@
-var {len} = import (
+var {*} = import (
     "slug.std"
 );
 
@@ -9,5 +9,25 @@ var listEquals = fn(a, b, idx = 0) {
         listEquals(a, b, idx + 1);
     } else {
         false;
+    }
+}
+
+var indexOfValue = fn(list, value, idx = 0) {
+    if(idx > len(list)) {
+        -1
+    } else if (list[idx] == value) {
+        idx
+    } else {
+        indexOfValue(list, value, idx + 1)
+    }
+}
+
+var removeValue = fn(list, value) {
+    match indexOfValue(list, value) {
+        i if i >= 0 => {
+            val j = i + 1;
+            list[:i] + list[j:];
+        }
+        _ => list;
     }
 }

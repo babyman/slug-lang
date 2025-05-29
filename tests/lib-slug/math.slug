@@ -1,0 +1,10 @@
+var {*} = import(
+    "slug.test",
+    "slug.math"
+);
+
+max(1, 2).assertEqual(2);
+max(10, 2).assertEqual(10);
+
+min(1, 2).assertEqual(1);
+min(10, 2).assertEqual(2);
