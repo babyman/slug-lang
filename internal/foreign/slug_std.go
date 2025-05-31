@@ -195,3 +195,65 @@ func fnStdRemove() *object.Foreign {
 		},
 	}
 }
+
+func fnStdUpdate() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) != 3 {
+				return ctx.NewError("wrong number of arguments. got=%d, want=3", len(args))
+			}
+
+			if args[0].Type() != object.LIST_OBJ {
+				return ctx.NewError("argument to `update` must be list, got %s", args[0].Type())
+			}
+
+			list := args[0].(*object.List)
+			index, ok := args[1].(*object.Integer)
+			if !ok {
+				return ctx.NewError("index must be INTEGER, got %s", args[1].Type())
+			}
+
+			if index.Value < 0 || index.Value >= int64(len(list.Elements)) {
+				return ctx.NewError("index out of range: %d", index.Value)
+			}
+
+			newElements := make([]object.Object, len(list.Elements))
+			copy(newElements, list.Elements)
+			newElements[index.Value] = args[2]
+
+			return &object.List{Elements: newElements}
+		},
+	}
+}
+
+func fnStdSwap() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) != 3 {
+				return ctx.NewError("wrong number of arguments. got=%d, want=3", len(args))
+			}
+
+			if args[0].Type() != object.LIST_OBJ {
+				return ctx.NewError("argument to `swap` must be list, got %s", args[0].Type())
+			}
+
+			list := args[0].(*object.List)
+			index1, ok1 := args[1].(*object.Integer)
+			index2, ok2 := args[2].(*object.Integer)
+			if !ok1 || !ok2 {
+				return ctx.NewError("indices must be INTEGER, got %s and %s", args[1].Type(), args[2].Type())
+			}
+
+			if index1.Value < 0 || index1.Value >= int64(len(list.Elements)) ||
+				index2.Value < 0 || index2.Value >= int64(len(list.Elements)) {
+				return ctx.NewError("index out of range")
+			}
+
+			newElements := make([]object.Object, len(list.Elements))
+			copy(newElements, list.Elements)
+			newElements[index1.Value], newElements[index2.Value] = newElements[index2.Value], newElements[index1.Value]
+
+			return &object.List{Elements: newElements}
+		},
+	}
+}

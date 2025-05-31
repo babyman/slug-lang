@@ -13,18 +13,22 @@ var (
 func fnMathRndSeed() *object.Foreign {
 	return &object.Foreign{
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
-			if len(args) != 1 {
-				return ctx.NewError("wrong number of arguments. got=%d, want=1", len(args))
-			}
 
-			// Validate the seed (must be an integer)
-			seedArg, ok := args[0].(*object.Integer)
-			if !ok {
-				return ctx.NewError("argument to `seed` must be an INTEGER, got=%s", args[0].Type())
-			}
+			if len(args) == 0 {
 
-			// Set the random seed
-			mathRnd = rand.New(rand.NewSource(seedArg.Value))
+				mathRnd = nil
+
+			} else {
+
+				// Validate the seed (must be an integer)
+				seedArg, ok := args[0].(*object.Integer)
+				if !ok {
+					return ctx.NewError("argument to `seed` must be an INTEGER, got=%s", args[0].Type())
+				}
+
+				// Set the random seed
+				mathRnd = rand.New(rand.NewSource(seedArg.Value))
+			}
 
 			return ctx.Nil()
 		},

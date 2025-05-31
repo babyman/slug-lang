@@ -1,5 +1,6 @@
 var {*} = import (
-    "slug.std"
+    "slug.std",
+    "slug.math"
 );
 
 var listEquals = fn(a, b, idx = 0) {
@@ -25,9 +26,20 @@ var indexOfValue = fn(list, value, idx = 0) {
 var removeValue = fn(list, value) {
     match indexOfValue(list, value) {
         i if i >= 0 => {
-            val j = i + 1;
-            list[:i] + list[j:];
+            list[:i] + list[i + 1:];
         }
         _ => list;
     }
+}
+
+var shuffle = var fisherYatesShuffle = fn(list) {
+    var _shuffle = fn(list, i) {
+        if(i == 0) {
+            list;
+        } else {
+            val j = rndRange(0, i)
+            _shuffle(list.swap(i, j), i - 1)
+        }
+    };
+    _shuffle(list, len(list) - 1);
 }
