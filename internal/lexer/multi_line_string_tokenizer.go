@@ -23,6 +23,7 @@ func (m *MultiLineStringTokenizer) NextToken() token.Token {
 		}
 
 		if m.lexer.ch == '{' && m.lexer.peekChar() == '{' {
+			m.lexer.switchMode(NewGeneralTokenizer(m.lexer))
 			break
 		}
 
@@ -35,14 +36,13 @@ func (m *MultiLineStringTokenizer) NextToken() token.Token {
 			trimmed := original[:result.Len()-1] // Trim the last character
 			result.Reset()                       // Reset the builder
 			result.WriteString(trimmed)
+			m.lexer.setMode(NewGeneralTokenizer(m.lexer))
 			break
 		}
 
 		result.WriteByte(m.lexer.ch)
 		m.lexer.readChar()
 	}
-
-	m.lexer.switchMode(NewGeneralTokenizer(m.lexer)) // Fall back after multi-line string
 
 	return token.Token{
 		Type:     token.STRING,

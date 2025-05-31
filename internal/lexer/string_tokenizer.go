@@ -26,12 +26,14 @@ func (s *SingleLineStringTokenizer) NextToken() token.Token {
 
 		if s.lexer.ch == '{' && s.lexer.peekChar() == '{' {
 			// Switch to interpolation mode
+			s.lexer.switchMode(NewGeneralTokenizer(s.lexer))
 			break
 		}
 
 		if s.lexer.ch == '"' {
 			// End of the single-line string
 			s.lexer.readChar() // Consume the closing `"`
+			s.lexer.setMode(NewGeneralTokenizer(s.lexer))
 			break
 		}
 
@@ -61,9 +63,6 @@ func (s *SingleLineStringTokenizer) NextToken() token.Token {
 
 		s.lexer.readChar()
 	}
-
-	// Fall back to the general tokenizer mode after the string ends
-	s.lexer.switchMode(NewGeneralTokenizer(s.lexer))
 
 	return token.Token{
 		Type:     token.STRING,

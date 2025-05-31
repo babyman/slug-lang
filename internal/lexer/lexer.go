@@ -9,7 +9,7 @@ type Lexer struct {
 	position     int       // current position in input (points to current char)
 	readPosition int       // current reading position in input (after current char)
 	ch           byte      // current char under examination
-	prevMode     Tokenizer // Current tokenizer strategy
+	prevMode     Tokenizer // Prev tokenizer strategy if we are in interpolation mode
 	currentMode  Tokenizer // Current tokenizer strategy
 }
 
@@ -24,8 +24,15 @@ func New(input string) *Lexer {
 	return l
 }
 
+// retain previous mode, this should be called when parsing a string
 func (l *Lexer) switchMode(mode Tokenizer) {
 	l.prevMode = l.currentMode
+	l.currentMode = mode
+}
+
+// clear the previous mode, this should be called when we are exiting string interpolation mode
+func (l *Lexer) setMode(mode Tokenizer) {
+	l.prevMode = nil
 	l.currentMode = mode
 }
 

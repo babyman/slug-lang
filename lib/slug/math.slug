@@ -2,24 +2,21 @@ var {*} = import(
 	"slug.std"
 );
 
-var _searchList = fn(vals, sel, f, idx = 0) {
+// todo: one day this will be private
+var _searchList = fn(vals, result, f, idx = 0) {
 	if(len(vals) > idx) {
-		_searchList(vals, f(vals[idx], sel), f, idx + 1)
+		_searchList(vals, f(vals[idx], result), f, idx + 1)
 	} else {
-		sel
+		result
 	}
 }
 
-
 var max = fn(a, ...b) {
-	val _privatemax = fn(x, y) {if (x > y) {x} else {y}
-};
-
-	_searchList(b, a, _privatemax);
+	val _max = fn(x, y) {if (x > y) {x} else {y}};
+	_searchList(b, a, _max);
 }
 
 var min = fn(a, ...b) {
-	val _privatemin = fn(x, y) {if (x < y) {x} else {y}
-};
-	_searchList(b, a, _privatemin);
+	val _min = fn(x, y) {if (x < y) {x} else {y}};
+	_searchList(b, a, _min);
 }

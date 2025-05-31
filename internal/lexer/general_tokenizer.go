@@ -66,9 +66,6 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 			tok = token.Token{Type: token.ELLIPSIS, Literal: "...", Position: startPosition}
 			g.lexer.readChar()
 			g.lexer.readChar()
-			//} else if l.peekChar() == '.'{
-			//	l.readChar()
-			//	tok = token.Token{Type: token.RANGE, Literal: ".."}
 		} else {
 			tok = newToken(token.PERIOD, g.lexer.ch, startPosition)
 		}
@@ -83,11 +80,11 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 	case '{':
 		tok = g.lexer.handleCompoundToken2(token.LBRACE, '{', token.INTERPOLATION_START, '|', token.MATCH_KEYS_EXACT)
 	case '}':
-		if g.lexer.peekChar() == '}' && g.lexer.peekTwoChars() == '"' {
+		if g.lexer.prevMode != nil && g.lexer.peekChar() == '}' && g.lexer.peekTwoChars() == '"' {
 			g.lexer.readChar() // consume the }
 			g.lexer.readChar() // Consume the closing "
 			tok = token.Token{Type: token.INTERPOLATION_END, Literal: "}}", Position: startPosition}
-		} else if g.lexer.peekChar() == '}' {
+		} else if g.lexer.prevMode != nil && g.lexer.peekChar() == '}' {
 			g.lexer.readChar() // consume the }
 			tok = token.Token{Type: token.INTERPOLATION_END, Literal: "}}", Position: startPosition}
 			g.lexer.switchMode(g.lexer.prevMode) // Return to the previous string tokenizer
