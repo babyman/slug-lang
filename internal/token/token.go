@@ -91,10 +91,12 @@ type Token struct {
 }
 
 var keywords = map[string]TokenType{
+	// constants
+	"nil":   NIL,
+	"true":  TRUE,
+	"false": FALSE,
+
 	// declarations
-	"nil":     NIL,
-	"true":    TRUE,
-	"false":   FALSE,
 	"fn":      FUNCTION,
 	"foreign": FOREIGN,
 	"val":     VAL,

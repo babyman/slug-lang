@@ -20,3 +20,13 @@ var min = fn(a, ...b) {
 	val _min = fn(x, y) {if (x < y) {x} else {y}};
 	_searchList(b, a, _min);
 }
+
+// random_range generates a random integer in the range [min, max] (exclusive).
+// min: Minimum value of the range (integer).
+// max: Maximum value of the range (integer).
+// Returns: a random integer in the specified range.
+foreign rndRange = fn(min, max);
+
+// seed sets the seed of the random number generator for deterministic results.
+// value: An integer seed.
+foreign rndSeed = fn(value);

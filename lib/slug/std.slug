@@ -31,6 +31,10 @@ foreign put = fn(map, key, value);
 // remove a key from a map
 foreign remove = fn(map, key);
 
+var compute = fn(map, key, f) {
+    map.put(key, f(key, map[key]));
+}
+
 var map = fn(vs, f, acc = []) {
 	match vs {
 		[h, ...t] => map(t, f, acc :+ h.f());

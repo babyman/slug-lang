@@ -77,6 +77,21 @@ match list {
 }
 
 match list {
+    [_, h2] => h2.assertEqual("v2");
+    _ => fail();
+}
+
+match list {
+    [h1, _] => h1.assertEqual("v1");
+    _ => fail();
+}
+
+match list {
+    [_, _] => println("any list with only 2 items");
+    _ => fail();
+}
+
+match list {
     [h1] => fail();
     _ => true;
 }

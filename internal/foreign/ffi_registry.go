@@ -25,6 +25,9 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.io.tcp.write":   fnIoTcpWrite(),
 		"slug.io.tcp.close":   fnIoTcpClose(),
 
+		"slug.math.rndRange": fnMathRndRange(),
+		"slug.math.rndSeed":  fnMathRndSeed(),
+
 		"slug.std.type":      fnStdType(),
 		"slug.std.isDefined": fnStdIsDefined(),
 		"slug.std.len":       fnStdLen(),
