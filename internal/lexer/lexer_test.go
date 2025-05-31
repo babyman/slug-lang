@@ -44,6 +44,7 @@ f2=fn
 ???
 +:
 :+
+(_hello)
 // comment at eof
 //`
 
@@ -175,6 +176,9 @@ f2=fn
 		{token.NOT_IMPLEMENTED, "???"},
 		{token.PREPEND_ITEM, "+:"},
 		{token.APPEND_ITEM, ":+"},
+		{token.LPAREN, "("},
+		{token.IDENT, "_hello"},
+		{token.RPAREN, ")"},
 		{token.EOF, ""},
 	}
 

@@ -1,17 +1,25 @@
+var {*} = import(
+	"slug.std"
+);
 
-var max = fn(a, b) {
-	if ( a > b ) {
-		a
+var _searchList = fn(vals, sel, f, idx = 0) {
+	if(len(vals) > idx) {
+		_searchList(vals, f(vals[idx], sel), f, idx + 1)
 	} else {
-		b
+		sel
 	}
 }
 
-var min = fn(a, b) {
-	if ( a < b ) {
-		a
-	} else {
-		b
-	}
+
+var max = fn(a, ...b) {
+	val _privatemax = fn(x, y) {if (x > y) {x} else {y}
+};
+
+	_searchList(b, a, _privatemax);
 }
 
+var min = fn(a, ...b) {
+	val _privatemin = fn(x, y) {if (x < y) {x} else {y}
+};
+	_searchList(b, a, _privatemin);
+}

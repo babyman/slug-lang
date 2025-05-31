@@ -3,7 +3,8 @@ var {*} = import(
     "slug.math"
 );
 
-max(1, 2).assertEqual(2);
+// println("loaded");
+max(1, 2, 3, 2).assertEqual(3);
 max(10, 2).assertEqual(10);
 
 min(1, 2).assertEqual(1);

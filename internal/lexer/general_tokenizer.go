@@ -41,7 +41,14 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 	case '|':
 		tok = g.lexer.handleCompoundToken2(token.BITWISE_OR, '|', token.LOGICAL_OR, '}', token.MATCH_KEYS_CLOSE)
 	case '_':
-		tok = newToken(token.UNDERSCORE, g.lexer.ch, startPosition)
+		if isLetter(g.lexer.peekChar()) {
+			tok.Literal = g.lexer.readIdentifier()
+			tok.Type = token.LookupIdent(tok.Literal)
+			tok.Position = startPosition
+			return tok
+		} else {
+			tok = newToken(token.UNDERSCORE, g.lexer.ch, startPosition)
+		}
 	case '^':
 		tok = newToken(token.BITWISE_XOR, g.lexer.ch, startPosition)
 	case '<':
