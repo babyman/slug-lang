@@ -15,3 +15,13 @@ var {*} = import(
 
 "a".toUpper().assertEqual("A");
 "A".toLower().assertEqual("a");
+
+"hello Slug!".startsWith("hello").assertTrue();
+"hello Slug!".startsWith("Slug!").assertFalse();
+
+"hello Slug!".endsWith("hello").assertFalse();
+"hello Slug!".endsWith("Slug!").assertTrue();
+
+"hello Slug!".contains("hello").assertTrue();
+"hello Slug!".contains("goodbye").assertFalse();
+

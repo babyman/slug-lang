@@ -21,64 +21,6 @@ func fnStringTrim() *object.Foreign {
 	}
 }
 
-func fnStringContains() *object.Foreign {
-	return &object.Foreign{Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
-		if len(args) != 2 {
-			return ctx.NewError("wrong number of arguments. got=%d, want=2", len(args))
-		}
-		if args[0].Type() != args[1].Type() {
-			return ctx.NewError("arguments to `contains` must be the same type, got %s and %s", args[0].Type(), args[1].Type())
-		}
-
-		switch arg := args[0].(type) {
-		case *object.String:
-			return ctx.NativeBoolToBooleanObject(strings.Contains(arg.Value, args[1].(*object.String).Value))
-			// todo support for lists contains()
-		default:
-			return ctx.NewError("argument to `contains` not supported, got %s", args[0].Type())
-		}
-	},
-	}
-}
-
-func fnStringStartsWith() *object.Foreign {
-	return &object.Foreign{Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
-		if len(args) != 2 {
-			return ctx.NewError("wrong number of arguments. got=%d, want=2", len(args))
-		}
-		if args[0].Type() != args[1].Type() {
-			return ctx.NewError("arguments to `startsWith` must be the same type, got %s and %s", args[0].Type(), args[1].Type())
-		}
-
-		switch arg := args[0].(type) {
-		case *object.String:
-			return ctx.NativeBoolToBooleanObject(strings.HasPrefix(arg.Value, args[1].(*object.String).Value))
-		default:
-			return ctx.NewError("argument to `startsWith` not supported, got %s", args[0].Type())
-		}
-	},
-	}
-}
-
-func fnStringEndsWith() *object.Foreign {
-	return &object.Foreign{Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
-		if len(args) != 2 {
-			return ctx.NewError("wrong number of arguments. got=%d, want=2", len(args))
-		}
-		if args[0].Type() != args[1].Type() {
-			return ctx.NewError("arguments to `endsWith` must be the same type, got %s and %s", args[0].Type(), args[1].Type())
-		}
-
-		switch arg := args[0].(type) {
-		case *object.String:
-			return ctx.NativeBoolToBooleanObject(strings.HasSuffix(arg.Value, args[1].(*object.String).Value))
-		default:
-			return ctx.NewError("argument to `endsWith` not supported, got %s", args[0].Type())
-		}
-	},
-	}
-}
-
 func fnStringIndexOf() *object.Foreign {
 	return &object.Foreign{Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 		if len(args) < 2 {
@@ -129,38 +71,6 @@ func fnStringToLower() *object.Foreign {
 			return &object.String{Value: strings.ToLower(arg.Value)}
 		default:
 			return ctx.NewError("argument to `toLower` not supported, got %s", args[0].Type())
-		}
-	},
-	}
-}
-
-func fnStringIsUpper() *object.Foreign {
-	return &object.Foreign{Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
-		if len(args) != 1 {
-			return ctx.NewError("wrong number of arguments. got=%d, want=1", len(args))
-		}
-
-		switch arg := args[0].(type) {
-		case *object.String:
-			return ctx.NativeBoolToBooleanObject(arg.Value == strings.ToUpper(arg.Value))
-		default:
-			return ctx.NewError("argument to `isUpper` not supported, got %s", args[0].Type())
-		}
-	},
-	}
-}
-
-func fnStringIsLower() *object.Foreign {
-	return &object.Foreign{Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
-		if len(args) != 1 {
-			return ctx.NewError("wrong number of arguments. got=%d, want=1", len(args))
-		}
-
-		switch arg := args[0].(type) {
-		case *object.String:
-			return ctx.NativeBoolToBooleanObject(arg.Value == strings.ToLower(arg.Value))
-		default:
-			return ctx.NewError("argument to `isLower` not supported, got %s", args[0].Type())
 		}
 	},
 	}

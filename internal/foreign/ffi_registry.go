@@ -35,15 +35,10 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.std.remove":    fnStdRemove(),
 
 		// string functions
-		"slug.string.contains":   fnStringContains(),
-		"slug.string.endsWith":   fnStringEndsWith(),
-		"slug.string.indexOf":    fnStringIndexOf(),
-		"slug.string.isLower":    fnStringIsLower(),
-		"slug.string.isUpper":    fnStringIsUpper(),
-		"slug.string.startsWith": fnStringStartsWith(),
-		"slug.string.toLower":    fnStringToLower(),
-		"slug.string.toUpper":    fnStringToUpper(),
-		"slug.string.trim":       fnStringTrim(),
+		"slug.string.indexOf": fnStringIndexOf(),
+		"slug.string.toLower": fnStringToLower(),
+		"slug.string.toUpper": fnStringToUpper(),
+		"slug.string.trim":    fnStringTrim(),
 
 		"slug.sys.env": fnSysEnv(),
 

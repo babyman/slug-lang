@@ -1,14 +1,8 @@
-var {len} = import (
+var {*} = import (
     "slug.std"
 );
 
 foreign trim = fn(str);
-
-foreign contains = fn(str, seq);
-
-foreign startsWith = fn(str, sew);
-
-foreign endsWith = fn(str, seq);
 
 foreign indexOf = fn(str, seq);
 
@@ -16,9 +10,25 @@ foreign toUpper = fn(str);
 
 foreign toLower = fn(str);
 
-foreign isUpper = fn(str);
+var contains = fn(str, seq) {
+	str.indexOf(seq) >= 0;
+}
 
-foreign isLower = fn(str);
+var startsWith = fn(str, start) {
+	str[:len(start)] == start;
+}
+
+var endsWith = fn(str, end) {
+	str[len(str) - len(end):] == end;
+}
+
+var isUpper = fn(str) {
+	str == str.toUpper();
+}
+
+var isLower = fn(str) {
+	str == str.toLower();
+}
 
 // split splits a string into a list of substrings based on a delimiter
 // Parameters:
