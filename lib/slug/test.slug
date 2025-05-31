@@ -1,5 +1,9 @@
-var {*} = import ("slug.std");
-var {listEquals} = import ("slug.list");
+var {*} = import(
+    "slug.std"
+);
+var {listEquals} = import(
+    "slug.list"
+);
 
 var assert = fn(a, msg = nil) {
     if ( a.type() == "BOOLEAN" && !a ) {

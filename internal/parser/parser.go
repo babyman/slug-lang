@@ -1057,54 +1057,77 @@ func (p *Parser) parseIndexExpression(left ast.Expression) ast.Expression {
 		Left:  left,
 	}
 
-	p.nextToken() // Consume '[' and parse the index or slice
-
-	// Check for slice syntax start:end or start:end:step
-	if p.curTokenIs(token.COLON) || p.peekTokenIs(token.COLON) {
-		expr.Index = p.parseSliceExpression()
+	sliceParams := p.parseIndexExpressionList()
+	if len(sliceParams) == 0 {
+		return nil
+	} else if len(sliceParams) == 1 && sliceParams[0] != nil {
+		expr.Index = sliceParams[0]
 	} else {
-		expr.Index = p.parseExpression(LOWEST)
+		slice := &ast.SliceExpression{
+			Token: p.curToken,
+		}
+		if len(sliceParams) == 3 && sliceParams[2] != nil {
+			slice.Step = sliceParams[2]
+		}
+		if len(sliceParams) >= 2 && sliceParams[1] != nil {
+			slice.End = sliceParams[1]
+		}
+		if len(sliceParams) >= 1 && sliceParams[0] != nil {
+			slice.Start = sliceParams[0]
+		}
+		expr.Index = slice
+	}
+
+	return expr
+}
+
+func (p *Parser) parseIndexExpressionList() []ast.Expression {
+	var list []ast.Expression
+
+	// Advance past '['
+	p.nextToken()
+
+	// Parse individual components of the slice (up to 3 parts)
+	slice := false
+	i := 0
+	for i < 3 {
+		if p.curTokenIs(token.COLON) { // Handle ':'
+			// Append nil for an omitted part
+			slice = true
+			list = append(list, nil)
+			if p.peekTokenIs(token.RBRACKET) {
+				break
+			}
+		} else if p.curTokenIs(token.RBRACKET) { // End of slice
+			break
+		} else {
+			// Parse an expression for a part
+			list = append(list, p.parseExpression(LOWEST))
+
+			// Check for the next delimiter or end
+			if p.peekTokenIs(token.COLON) && i <= 1 {
+				slice = true
+				p.nextToken()
+			}
+			if p.peekTokenIs(token.RBRACKET) {
+				break
+			}
+		}
+		p.nextToken()
+		i++
+	}
+
+	if slice {
+		for len(list) < 3 {
+			list = append(list, nil)
+		}
 	}
 
 	if !p.expectPeek(token.RBRACKET) {
 		return nil
 	}
-	return expr
-}
 
-func (p *Parser) parseSliceExpression() ast.Expression {
-	// Create the slice node
-	slice := &ast.SliceExpression{
-		Token: p.curToken,
-	}
-
-	if !p.peekTokenIs(token.RBRACKET) {
-
-		if !p.curTokenIs(token.COLON) {
-			slice.Start = p.parseExpression(LOWEST)
-			p.nextToken()
-		}
-
-		if !p.peekTokenIs(token.RBRACKET) {
-			p.nextToken()
-
-			if !p.curTokenIs(token.COLON) {
-				slice.End = p.parseExpression(LOWEST)
-			}
-
-			if !p.peekTokenIs(token.RBRACKET) {
-				p.nextToken()
-
-				if !p.peekTokenIs(token.RBRACKET) {
-					p.nextToken()
-					slice.Step = p.parseExpression(LOWEST)
-				} else if !p.curTokenIs(token.COLON) {
-					slice.Step = p.parseExpression(LOWEST)
-				}
-			}
-		}
-	}
-	return slice
+	return list
 }
 
 func (p *Parser) parseMapLiteral() ast.Expression {

@@ -40,7 +40,6 @@ foreign whereIs = fn(name);
 
 var groupCreate = fn(name, ...members) {
 	spawn(var grp = fn(members, next = 0) {
-		println("{{self()}} waiting with members {{members}}!");
 		match receive() {
 			{tag: "add", member} => grp(members :+ member, next);
 			{tag: "remove", member} => grp(members.removeValue(member), next);
