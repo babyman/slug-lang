@@ -174,6 +174,8 @@ val textLength = len("hello");   // 5
   println("Welcome to Slug!");   // Outputs: Welcome to Slug!\n
 ```
 
+---
+
 ### Variables in Slug
 
 Slug supports two types of variable declarations:
