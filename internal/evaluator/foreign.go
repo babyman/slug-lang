@@ -6,7 +6,10 @@ import (
 )
 
 var builtins = map[string]*object.Foreign{
-	"import": fnBuiltinImport(),
+	"import":  fnBuiltinImport(),
+	"len":     fnBuiltinLen(),
+	"print":   fnBuiltinPrint(),
+	"println": fnBuiltinPrintLn(),
 }
 
 var foreignFunctions map[string]*object.Foreign

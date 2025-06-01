@@ -1,49 +1,8 @@
 package foreign
 
 import (
-	"bytes"
-	"fmt"
 	"slug/internal/object"
 )
-
-func fnStdPrint() *object.Foreign {
-	return &object.Foreign{
-		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
-			var out bytes.Buffer
-			for i, arg := range args {
-				out.WriteString(arg.Inspect())
-				if i < len(args)-1 {
-					out.WriteString(" ")
-				}
-			}
-			fmt.Print(out.String())
-			//return &object.String{Value: out.String()}
-			return ctx.Nil()
-		},
-	}
-}
-
-func fnStdLen() *object.Foreign {
-	return &object.Foreign{Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
-		if len(args) != 1 {
-			return ctx.NewError("wrong number of arguments. got=%d, want=1",
-				len(args))
-		}
-
-		switch arg := args[0].(type) {
-		case *object.List:
-			return &object.Integer{Value: int64(len(arg.Elements))}
-		case *object.Map:
-			return &object.Integer{Value: int64(len(arg.Pairs))}
-		case *object.String:
-			return &object.Integer{Value: int64(len(arg.Value))}
-		default:
-			return ctx.NewError("argument to `len` not supported, got %s",
-				args[0].Type())
-		}
-	},
-	}
-}
 
 func fnStdType() *object.Foreign {
 	return &object.Foreign{Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
