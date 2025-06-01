@@ -52,6 +52,8 @@ structured, functional, and elegant programs.
 1. **Getting Started with Slug**
     - Writing Your First Slug Program
 2. **Core Building Blocks**
+    - Keywords
+    - Built-in Functions
     - Variables: `var` and `val`
     - Functions and Closures
 3. **Functional Programming Constructs**
@@ -96,6 +98,81 @@ Hello, Slug!
 ---
 
 ## 2. Core Building Blocks
+
+### Keywords in Slug
+
+Below is a concise reference list of the keywords in Slug, along with their descriptions. These keywords form the
+foundational building blocks of the language.
+
+#### **Constants**
+
+- `nil`: Represents the absence of a value or "nothing."
+- `true` / `false`: Boolean constants representing logical truth and falsehood.
+
+#### **Variable Declarations**
+
+- `var`: Declares a mutable variable, allowing its value to be reassigned.
+- `val`: Declares an immutable constant, ensuring its value cannot be changed once initialized.
+
+#### **Control Flow**
+
+- `if` / `else`: Define conditional logic. The `if` block executes when the condition evaluates to true, while `else`
+  provides the alternative block.
+- `match`: A powerful pattern-matching construct for handling various cases based on the structure of values.
+- `return`: Exits a function and optionally returns a value.
+
+#### **Functionality**
+
+- `fn`: Declares a function or closure, a reusable logic block that can be called with arguments.
+
+#### **Error Handling**
+
+- `try` / `catch`: Used for exception handling. Code within `try` is monitored for errors, and `catch` provides the
+  response logic.
+- `throw`: Explicitly raises an error within the program.
+- `defer`: Ensures a block of code runs after its enclosing scope exits, often used for cleanup tasks.
+
+---
+
+### Built-in Functions
+
+Slug provides a small set of built-in functions designed to serve core operations and promote simplicity in program
+design. These built-ins are globally available and do not require explicit imports. Here's an overview of the built-ins:
+
+#### **`import`**
+
+- **Purpose**: Dynamically loads external modules and provides access to their exported variables and functions.
+- **Usage**: Accepts one or more module paths as string arguments. Returns a map containing the bindings from the
+  imported modules.
+- **Example**:
+
+```slug
+val {*} = import("slug.std");
+```
+
+#### **`len`**
+
+- **Purpose**: Returns the length of a supported object.
+- **Usage**: Accepts a single argument, which can be a list, map, or string. Returns the length as an integer.
+- **Example**:
+
+```
+val size = len([1, 2, 3]);       // 3
+val textLength = len("hello");   // 5
+```
+
+#### **`print`** and **`println`**
+
+- **Purpose**: Output formatted text to the console.
+    - **`print`**: Outputs without a trailing newline.
+    - **`println`**: Outputs followed by a newline.
+- **Usage**: Both accept one or more arguments of any type, outputting their string representations separated by spaces.
+- **Examples**:
+
+``` slug
+  print("Hello", "Slug!");       // Outputs: Hello Slug!
+  println("Welcome to Slug!");   // Outputs: Welcome to Slug!\n
+```
 
 ### Variables in Slug
 
