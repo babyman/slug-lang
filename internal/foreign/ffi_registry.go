@@ -43,7 +43,8 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.string.toUpper": fnStringToUpper(),
 		"slug.string.trim":    fnStringTrim(),
 
-		"slug.sys.env": fnSysEnv(),
+		"slug.sys.env":    fnSysEnv(),
+		"slug.sys.setEnv": fnSysSetEnv(),
 
 		"slug.time.clock":      fnTimeClock(),
 		"slug.time.clockNanos": fnTimeClockNanos(),

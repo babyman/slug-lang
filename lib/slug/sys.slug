@@ -5,3 +5,5 @@
 // Returns:
 //   string value of the environment variable, or nil if variable is not set
 foreign env = fn(str);
+
+foreign setEnv = fn(str);

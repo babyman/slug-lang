@@ -29,3 +29,31 @@ func fnSysEnv() *object.Foreign {
 		},
 	}
 }
+
+func fnSysSetEnv() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) != 2 {
+				return ctx.NewError("wrong number of arguments. got=%d, want=2",
+					len(args))
+			}
+
+			key := args[0]
+			value := args[1]
+
+			if key.Type() != object.STRING_OBJ {
+				return ctx.NewError("first argument must be STRING, got=%s", key.Type())
+			}
+			if value.Type() != object.STRING_OBJ {
+				return ctx.NewError("second argument must be STRING, got=%s", value.Type())
+			}
+
+			err := os.Setenv(key.(*object.String).Value, value.(*object.String).Value)
+			if err != nil {
+				return ctx.NewError("failed to set environment variable: %v", err)
+			}
+
+			return ctx.Nil()
+		},
+	}
+}
