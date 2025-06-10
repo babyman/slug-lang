@@ -7,6 +7,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"slug/internal/evaluator"
+	"slug/internal/log"
 	"slug/internal/object"
 	"slug/internal/repl"
 	"strings"
@@ -15,11 +16,17 @@ import (
 var (
 	rootPath string
 	debugAST bool // New debug-ast flag
+	logLevel string
+	logFile  string
+	color    bool
 )
 
 func init() {
 	flag.StringVar(&rootPath, "root", ".", "Set the root context for the program (used for imports)")
 	flag.BoolVar(&debugAST, "debug-ast", false, "Render the AST as a JSON file")
+	flag.StringVar(&logLevel, "log-level", "NONE", "Log level: debug, info, warn, error, none")
+	flag.StringVar(&logFile, "log-file", "", "Log file path (if not set, logs to stderr)")
+	flag.BoolVar(&color, "log-color", true, "Enable color output in terminal")
 }
 
 func main() {
@@ -32,6 +39,9 @@ func main() {
 		printHelp()
 		os.Exit(0) // Exit after printing help
 	}
+
+	log.InitLogger(logLevel, logFile, color)
+	defer log.Close()
 
 	if len(flag.Args()) > 0 { // Remaining arguments after flags
 		// If an argument is passed, treat it as a filename to execute
@@ -64,6 +74,9 @@ Options:
   -root <path>       Set the root context for the program (used for imports). Default is '.'
   -debug-ast         Render the AST as a JSON file.
   -help              Display this help information and exit.
+  -log-level <level> Set the log level: debug, info, warn, error, none. Default is 'none'.
+  -log-file <path>   Specify a log file to write logs. Default is stderr.
+  -log-color         Enable (default) or disable colored log output in the terminal.
 
 Details:
 This is the Slug programming language. 
@@ -72,6 +85,7 @@ You can provide a filename to execute a Slug program, or run without arguments t
 Examples:
   slug                          Start the interactive REPL
   slug -root=/path/to/root      Start the REPL with a specific root path
+  slug -log-level=debug         Start with debug logging enabled
   slug myfile.slug              Execute the provided Slug file
   slug myfile.slug arg1 arg2    Execute the file with command-line arguments`)
 }
@@ -140,8 +154,8 @@ func evaluateModule(module *object.Module, env *object.Environment) error {
 
 	evaluator.AddProcess(e.Process)
 
-	//println(" ---- begin ----")
-	//defer println(" ---- done ----")
+	log.Info(" ---- begin ----")
+	defer log.Info(" ---- done ----")
 
 	// Evaluate the program within the provided environment
 	evaluated := e.Eval(program)
