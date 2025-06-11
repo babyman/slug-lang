@@ -66,7 +66,7 @@ func LoadModule(pathParts []string) (*object.Module, error) {
 
 	if DebugAST {
 		if err := parser.WriteASTToJSON(module.Program, module.Path+".ast.json"); err != nil {
-			return nil, fmt.Errorf("failed to write AST to JSON: %v", err)
+			return nil, fmt.Errorf("Failed to write AST to JSON: %v", err)
 		}
 	}
 

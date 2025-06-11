@@ -1,16 +1,7 @@
-var {*} = import(
-	"slug.std",
-	"slug.math",
-	"slug.list"
-);
+// mode = roundrobin | broadcast
+foreign mailbox = fn(mode);
 
-// spawn creates a new actor process that executes the given function
-// Parameters:
-//   f: function to execute in the new process
-//   args: optional arguments to pass to the function
-// Returns:
-//   integer PID of the newly created process
-foreign spawn = fn(f, ...args);
+foreign bindActor = fn(pid, f, ...args);
 
 // self returns the PID of the current process
 // Returns:
@@ -23,7 +14,7 @@ foreign self = fn();
 //   message: data to send to the process
 // Returns:
 //   the recipient's PID
-foreign send = fn(pid, message);
+foreign send = fn(pid, ...messages);
 
 // receive waits for a message to arrive in the process mailbox
 // Parameters:
@@ -32,49 +23,22 @@ foreign send = fn(pid, message);
 //   received message data, or nil on timeout
 foreign receive = fn(timeout);
 
+// returns the pid of the mailbox to a name
 foreign register = fn (pid, name);
 
 foreign unregister = fn (pid, name);
 
 foreign whereIs = fn(name);
 
-var groupCreate = fn(name, ...members) {
-	spawn(var grp = fn(members, next = 0) {
-		match receive() {
-			{tag: "add", member} => grp(members :+ member, next);
-			{tag: "remove", member} => grp(members.removeValue(member), next);
-			{tag: "send", message} => {
-					members.map(fn(v) {v.send(message)});
-					grp(members, next);
-				}
-			{tag: "sendOne", message} => {
-					members[next].send(message);
-					grp(members, zeroIfAbove(next + 1, len(members)));
-				}
-			message => {
-					members[next].send(message);
-					grp(members, zeroIfAbove(next + 1, len(members)));
-				}
-		}
-	}, members).register(name)
-}
+foreign children = fn(pid);
 
-var groupAdd = fn(name, pid) {
-	whereIs(name).send({tag: "add", member: pid})
-}
+foreign supervisor = fn();
 
-var groupRemove = fn(name, pid) {
-	whereIs(name).send({tag: "remove", member: pid})
-}
+foreign supervise = fn(supervisorPid, ...childPids);
 
-var groupSend = fn(name, message) {
-	whereIs(name).send({tag: "send", message: message})
-}
+foreign terminate = fn(pid);
 
-var groupSendOne = fn(name, message) {
-	whereIs(name).send({tag: "sendOne", message: message})
-}
-
-var supervisedGroup = fn(name, ...pids) {
-    ???;
+var supervisedBy = fn(pid, supervisorPid) {
+	supervisorPid.supervise(pid);
+	pid;
 }

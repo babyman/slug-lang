@@ -14,16 +14,18 @@ import (
 type Level int
 
 const (
-	DEBUG Level = iota
+	TRACE Level = iota
+	DEBUG
 	INFO
 	WARN
 	ERROR
 	NONE
 )
 
-var levelNames = [...]string{"DEBUG", "INFO", "WARN", "ERROR", "NONE"}
+var levelNames = [...]string{"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "NONE"}
 
 var levelColors = [...]string{
+	"\033[90m", // Grey
 	"\033[36m", // Cyan
 	"\033[32m", // Green
 	"\033[33m", // Yellow
@@ -83,6 +85,8 @@ func isTerminal(w io.Writer) bool {
 
 func parseLevel(s string) Level {
 	switch strings.ToLower(s) {
+	case "trace":
+		return TRACE
 	case "debug":
 		return DEBUG
 	case "warn":
@@ -142,6 +146,7 @@ func (l *Logger) setupLogRotation(path string) {
 	}()
 }
 
+func Trace(format string, v ...any) { Log.log(TRACE, format, v...) }
 func Debug(format string, v ...any) { Log.log(DEBUG, format, v...) }
 func Info(format string, v ...any)  { Log.log(INFO, format, v...) }
 func Warn(format string, v ...any)  { Log.log(WARN, format, v...) }

@@ -3,6 +3,7 @@ package evaluator
 import (
 	"fmt"
 	"slug/internal/ast"
+	"slug/internal/log"
 	"slug/internal/object"
 	"slug/internal/token"
 	"strings"
@@ -16,14 +17,56 @@ var (
 
 type Evaluator struct {
 	envStack []*object.Environment // Environment stack encapsulated in an evaluator struct
-	Process  *Process              // can be null
+	Actor    *Actor                // can be null
 }
 
 func (e *Evaluator) PID() int64 {
-	if e.Process == nil {
+	if e.Actor == nil {
 		return 0
 	}
-	return e.Process.PID
+	return e.Actor.MailboxPID
+}
+
+func (e *Evaluator) Receive(timeout int64) (object.Object, bool) {
+	if e.Actor == nil {
+		return nil, false
+	}
+	message, b := e.Actor.WaitForMessage(timeout)
+	if !b {
+		return nil, false
+	}
+	log.Debug("ACT: %d (%d) message received: %s\n", e.Actor.PID, e.Actor.MailboxPID, message.String())
+	switch m := message.(type) {
+	case UserMessage:
+		return m.Payload.(object.Object), true
+	case ActorExited:
+		notification := &object.Map{}
+		notification.Put(&object.String{Value: "tag"}, &object.String{Value: "__exit__"})
+		notification.Put(&object.String{Value: "from"}, &object.Integer{Value: m.MailboxPID})
+		notification.Put(&object.String{Value: "fn"}, m.Function)
+		notification.Put(&object.String{Value: "args"}, &object.List{Elements: m.Args})
+		notification.Put(&object.String{Value: "reason"}, &object.String{Value: m.Reason})
+		notification.Put(&object.String{Value: "result"}, m.Result)
+
+		if m.Result != nil {
+			if lm, ok := (*m.LastMessage).(UserMessage); ok {
+				notification.Put(&object.String{Value: "lastMessage"}, lm.Payload.(object.Object))
+			}
+		}
+
+		messages := &object.List{}
+		for _, msg := range m.QueuedMessages {
+			messages.Elements = append(messages.Elements, msg.Payload.(object.Object))
+		}
+		notification.Put(&object.String{Value: "mailbox"}, messages)
+		return notification, true
+	default:
+		log.Warn("ACT: %d (%d) Unknown message type: %T", e.Actor.PID, e.Actor.MailboxPID, m)
+		notification := &object.Map{}
+		notification.Put(&object.String{Value: "tag"}, &object.String{Value: "__unknown_message__"})
+		notification.Put(&object.String{Value: "type"}, &object.String{Value: fmt.Sprintf("%T", m)})
+		return notification, true
+	}
 }
 
 func (e *Evaluator) Nil() *object.Nil {
@@ -215,7 +258,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 		}
 
 		// For non-tail calls, invoke the function directly
-		return e.applyFunction(function, args)
+		return e.ApplyFunction(function, args)
 
 	case *ast.ListLiteral:
 		elements := e.evalExpressions(node.Elements)
@@ -264,7 +307,7 @@ func (e *Evaluator) evalProgram(program *ast.Program) object.Object {
 
 		for {
 			if returnVal, ok := result.(*object.TailCall); ok {
-				result = e.applyFunction(returnVal.Function, returnVal.Arguments)
+				result = e.ApplyFunction(returnVal.Function, returnVal.Arguments)
 				//println("tail call", result.Type())
 			} else if returnVal, ok := result.(*object.ReturnValue); ok {
 				rv, ok := returnVal.Value.(*object.TailCall)
@@ -674,7 +717,7 @@ func (e *Evaluator) evalExpressions(
 	return result
 }
 
-func (e *Evaluator) applyFunction(fnObj object.Object, args []object.Object) object.Object {
+func (e *Evaluator) ApplyFunction(fnObj object.Object, args []object.Object) object.Object {
 	switch fn := fnObj.(type) {
 	case *object.Function:
 
@@ -689,7 +732,7 @@ func (e *Evaluator) applyFunction(fnObj object.Object, args []object.Object) obj
 
 		for {
 			if returnVal, ok := result.(*object.TailCall); ok {
-				result = e.applyFunction(returnVal.Function, returnVal.Arguments)
+				result = e.ApplyFunction(returnVal.Function, returnVal.Arguments)
 			} else if returnVal, ok := result.(*object.ReturnValue); ok {
 				result = returnVal.Value
 			} else {

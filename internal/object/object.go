@@ -10,15 +10,11 @@ import (
 
 // EvaluatorContext provides the bridge between native Go code and the interpreter,
 // allowing Foreign Function Interface (FFI) implementations to access the current
-// execution context and helper methods. It provides:
-//   - Access to current environment scope via CurrentEnv()
-//   - Process ID for actor-based concurrency via PID()
-//   - Error creation through NewError()
-//   - Nil value generation through Nil()
-//   - Boolean type conversion via NativeBoolToBooleanObject()
+// execution context and helper methods.
 type EvaluatorContext interface {
 	CurrentEnv() *Environment
 	PID() int64
+	Receive(timeout int64) (Object, bool)
 	NewError(message string, a ...interface{}) *Error
 	Nil() *Nil
 	NativeBoolToBooleanObject(input bool) *Boolean
@@ -44,9 +40,8 @@ const (
 	FUNCTION_OBJ = "FUNCTION"
 	FOREIGN_OBJ  = "BUILTIN"
 
-	LIST_OBJ    = "LIST"
-	MAP_OBJ     = "MAP"
-	MESSAGE_OBJ = "MESSAGE"
+	LIST_OBJ = "LIST"
+	MAP_OBJ  = "MAP"
 )
 
 type MapKey struct {
@@ -310,14 +305,4 @@ func (tc *TailCall) Inspect() string {
 
 	out.WriteString("])")
 	return out.String()
-}
-
-type Message struct {
-	From int64
-	Data Object
-}
-
-func (m *Message) Type() ObjectType { return MESSAGE_OBJ }
-func (m *Message) Inspect() string {
-	return fmt.Sprintf("message(from: %d, data: %s)", m.From, m.Data.Inspect())
 }

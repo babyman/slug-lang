@@ -24,7 +24,7 @@ var (
 func init() {
 	flag.StringVar(&rootPath, "root", ".", "Set the root context for the program (used for imports)")
 	flag.BoolVar(&debugAST, "debug-ast", false, "Render the AST as a JSON file")
-	flag.StringVar(&logLevel, "log-level", "NONE", "Log level: debug, info, warn, error, none")
+	flag.StringVar(&logLevel, "log-level", "NONE", "Log level: trace, debug, info, warn, error, none")
 	flag.StringVar(&logFile, "log-file", "", "Log file path (if not set, logs to stderr)")
 	flag.BoolVar(&color, "log-color", true, "Enable color output in terminal")
 }
@@ -74,7 +74,7 @@ Options:
   -root <path>       Set the root context for the program (used for imports). Default is '.'
   -debug-ast         Render the AST as a JSON file.
   -help              Display this help information and exit.
-  -log-level <level> Set the log level: debug, info, warn, error, none. Default is 'none'.
+  -log-level <level> Set the log level: trace, debug, info, warn, error, none. Default is 'none'.
   -log-file <path>   Specify a log file to write logs. Default is stderr.
   -log-color         Enable (default) or disable colored log output in the terminal.
 
@@ -144,15 +144,10 @@ func evaluateModule(module *object.Module, env *object.Environment) error {
 	program := module.Program
 
 	e := evaluator.Evaluator{
-		Process: &evaluator.Process{
-			PID:     evaluator.NewPID(),
-			Mailbox: make(chan object.Message, 10), // Buffered mailbox
-		},
+		Actor: evaluator.CreateMainActor(),
 	}
 	e.PushEnv(env)
 	defer e.PopEnv()
-
-	evaluator.AddProcess(e.Process)
 
 	log.Info(" ---- begin ----")
 	defer log.Info(" ---- done ----")
