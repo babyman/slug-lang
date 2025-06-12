@@ -21,7 +21,7 @@ var _logger = fn(logLevel = __NONE) {
         {tag:"configure", level} => _logger(level)
         {tag:"log", level, ...l} if level >= logLevel => {
                 val tag = sprintf("%s%-5s%s", __COLOURS[level], __LEVELS[level], __RESET_COLOR);
-                var msg = l.message;
+                var msg = sprintf(l.message, ...l.args);
                 if (msg[-1] != "\n") {
                     msg = msg + "\n";
                 }
@@ -31,20 +31,21 @@ var _logger = fn(logLevel = __NONE) {
     _logger(logLevel);
 }
 
+// create a mailbox and bind the logging function to it
 var _log_actor = mailbox().bindActor(_logger);
-
-var _log = fn(level, message) {
-    _log_actor.send({ tag: "log", time: clock(), level: level, message: message })
-}
 
 var configureLogging = fn(level) {
     val lvl = __LEVELS.indexOfValue(level);
     _log_actor.send({ tag:"configure", level: lvl })
 }
 
-var logTrace = fn(message) { _log(__TRACE, message) }
-var logDebug = fn(message) { _log(__DEBUG, message) }
-var logInfo = fn(message) { _log(__INFO, message) }
-var logWarn = fn(message) { _log(__WARN, message) }
-var logError = fn(message) { _log(__ERROR, message) }
-var logNone = fn(message) { _log(__NONE, message) }
+var _log = fn(level, message, args) {
+    _log_actor.send({ tag: "log", time: clock(), level: level, message: message, args: args })
+}
+
+var logTrace = fn(message, ...args) { _log(__TRACE, message, args) }
+var logDebug = fn(message, ...args) { _log(__DEBUG, message, args) }
+var logInfo = fn(message, ...args) { _log(__INFO, message, args) }
+var logWarn = fn(message, ...args) { _log(__WARN, message, args) }
+var logError = fn(message, ...args) { _log(__ERROR, message, args) }
+var logNone = fn(message, ...args) { _log(__NONE, message, args) }
