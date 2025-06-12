@@ -1,6 +1,8 @@
 
 foreign clock = fn();
 
+foreign fmtClock = fn(millis, fmt);
+
 foreign clockNanos = fn();
 
 foreign sleep = fn(millis);

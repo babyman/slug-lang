@@ -30,6 +30,8 @@ func GetForeignFunctions() map[string]*object.Foreign {
 
 		"slug.std.type":      fnStdType(),
 		"slug.std.isDefined": fnStdIsDefined(),
+		"slug.std.printf":    fnStdPrintf(),
+		"slug.std.sprintf":   fnStdSprintf(),
 		"slug.std.update":    fnStdUpdate(),
 		"slug.std.swap":      fnStdSwap(),
 		"slug.std.get":       fnStdGet(),
@@ -47,6 +49,7 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.sys.setEnv": fnSysSetEnv(),
 
 		"slug.time.clock":      fnTimeClock(),
+		"slug.time.fmtClock":   fnTimeFmtClock(),
 		"slug.time.clockNanos": fnTimeClockNanos(),
 		"slug.time.sleep":      fnTimeSleep(),
 	}

@@ -144,7 +144,7 @@ func evaluateModule(module *object.Module, env *object.Environment) error {
 	program := module.Program
 
 	e := evaluator.Evaluator{
-		Actor: evaluator.CreateMainActor(),
+		Actor: evaluator.CreateMainThreadMailbox(),
 	}
 	e.PushEnv(env)
 	defer e.PopEnv()

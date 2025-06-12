@@ -7,6 +7,10 @@ foreign type = fn(val);
 
 foreign isDefined = fn(val);
 
+foreign printf = fn(str, ...args);
+
+foreign sprintf = fn(str, ...args);
+
 // get the list of keys used a map
 foreign keys = fn(map);
 

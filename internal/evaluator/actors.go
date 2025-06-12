@@ -276,8 +276,6 @@ func (m *Mailbox) run() {
 			case Shutdown:
 				//fmt.Printf("Mailbox %d received stop message\n", m.PID)
 				System.RemoveMailbox(m.PID)
-				// todo unregister
-				// todo unsupervise
 				for _, actor := range m.Actors {
 					m.UnbindActor(actor.PID, false)
 				}
@@ -331,12 +329,12 @@ func (m *Mailbox) BindActor(actor *Actor) {
 }
 
 func (m *Mailbox) UnbindActor(actorPID int64, failed bool) {
-	for i, a := range m.Actors {
-		if a.PID == actorPID {
+	for i, actor := range m.Actors {
+		if actor.PID == actorPID {
 			log.Trace("ACT: %d (%d), unbinding Actor\n", actorPID, m.PID)
 			m.Actors = append(m.Actors[:i], m.Actors[i+1:]...)
-			a.InTray <- UnboundActor{}
-			close(a.InTray)
+			actor.InTray <- UnboundActor{}
+			close(actor.InTray)
 			if !failed && len(m.Actors) == 0 {
 				m.InTray <- Shutdown{}
 			}
@@ -436,15 +434,11 @@ func (a *ActorSystem) SendData(toPid int64, data any) {
 }
 
 func (a *ActorSystem) UnbindFailedActor(toPid int64, actorPID int64) {
-	if mailbox, exists := a.mailboxes[toPid]; exists {
-		mailbox.InTray <- UnbindActor{ActorPID: actorPID, Failed: true}
-	}
+	a.Send(toPid, UnbindActor{ActorPID: actorPID, Failed: true})
 }
 
 func (a *ActorSystem) UnbindActor(toPid int64, actorPID int64) {
-	if mailbox, exists := a.mailboxes[toPid]; exists {
-		mailbox.InTray <- UnbindActor{ActorPID: actorPID, Failed: false}
-	}
+	a.Send(toPid, UnbindActor{ActorPID: actorPID, Failed: false})
 }
 
 func (a *ActorSystem) Supervise(supervisorPid, supervisedPid int64) {
@@ -488,8 +482,8 @@ func (a *ActorSystem) Register(toPid int64, name string) {
 
 func (a *ActorSystem) Unregister(name string) {
 	a.mailboxRegistryLock.Lock()
+	defer a.mailboxRegistryLock.Unlock()
 	delete(a.mailboxRegistry, name)
-	a.mailboxRegistryLock.Unlock()
 }
 
 func (a *ActorSystem) WhereIs(name string) (int64, bool) {
@@ -511,12 +505,29 @@ func (a *ActorSystem) WhoIs(pid int64) (string, bool) {
 	return "", false
 }
 
-func (a *ActorSystem) RemoveMailbox(pid int64) {
-	a.mailboxesLock.Lock()
-	defer a.mailboxesLock.Unlock()
-	if _, exists := a.mailboxes[pid]; exists {
-		delete(a.mailboxes, pid)
+func (a *ActorSystem) RemoveMailbox(mailboxPid int64) {
+
+	a.mailboxRegistryLock.Lock()
+	for name, registeredPid := range a.mailboxRegistry {
+		if registeredPid == mailboxPid {
+			delete(a.mailboxRegistry, name)
+		}
 	}
+	a.mailboxRegistryLock.Unlock()
+
+	a.supervisorsLock.Lock()
+	for supervised, supervisorPid := range a.supervisors {
+		if supervisorPid == mailboxPid {
+			delete(a.supervisors, supervised)
+		}
+	}
+	a.supervisorsLock.Unlock()
+
+	a.mailboxesLock.Lock()
+	if _, exists := a.mailboxes[mailboxPid]; exists {
+		delete(a.mailboxes, mailboxPid)
+	}
+	a.mailboxesLock.Unlock()
 }
 
 func (a *ActorSystem) Shutdown() {
@@ -529,25 +540,13 @@ func (a *ActorSystem) Shutdown() {
 		log.Trace("BOX SHUTDOWN: %d, closing InTray\n", mailbox.PID)
 		close(mailbox.InTray)
 	}
-
-	a.mailboxesLock.Lock()
-	a.mailboxes = nil
-	a.mailboxesLock.Unlock()
-
-	a.supervisorsLock.Lock()
-	a.supervisors = nil
-	a.supervisorsLock.Unlock()
-
-	a.mailboxRegistryLock.Lock()
-	a.mailboxRegistry = nil
-	a.mailboxRegistryLock.Unlock()
 }
 
 // =====================================================================================================================
 // =====================================================================================================================
 // =====================================================================================================================
 
-func CreateMainActor() *Actor {
+func CreateMainThreadMailbox() *Actor {
 	pid := System.NextMailboxId()
 	actor := &Actor{
 		PID:     System.NextMailboxId(),

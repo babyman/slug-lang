@@ -58,3 +58,35 @@ func fnTimeSleep() *object.Foreign {
 		},
 	}
 }
+
+func fnTimeFmtClock() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			// Validate the number of arguments
+			if len(args) != 2 {
+				return ctx.NewError("wrong number of arguments. got=%d, want=2", len(args))
+			}
+
+			// First argument: milliseconds (integer)
+			millisArg, ok := args[0].(*object.Integer)
+			if !ok {
+				return ctx.NewError("first argument to `formatMillis` must be INTEGER, got=%s", args[0].Type())
+			}
+
+			// Second argument: format string
+			formatArg, ok := args[1].(*object.String)
+			if !ok {
+				return ctx.NewError("second argument to `formatMillis` must be STRING, got=%s", args[1].Type())
+			}
+
+			// Convert milliseconds to time.Time
+			t := time.UnixMilli(millisArg.Value)
+
+			// Format the time using the provided format string
+			formattedTime := t.Format(formatArg.Value)
+
+			// Return the formatted string
+			return &object.String{Value: formattedTime}
+		},
+	}
+}

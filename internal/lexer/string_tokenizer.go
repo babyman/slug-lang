@@ -53,6 +53,10 @@ func (s *SingleLineStringTokenizer) NextToken() token.Token {
 				result.WriteRune('"')
 			case '{':
 				result.WriteRune('{')
+			case '0', '1', '2', '3', '4', '5', '6', '7':
+				// Handle octal escape sequences
+				octalValue := s.consumeOctal(s.lexer.ch)
+				result.WriteRune(rune(octalValue))
 			default:
 				result.WriteRune('\\')
 				result.WriteByte(s.lexer.ch)
@@ -69,4 +73,18 @@ func (s *SingleLineStringTokenizer) NextToken() token.Token {
 		Literal:  result.String(),
 		Position: startPosition,
 	}
+}
+
+// consumeOctal interprets up to three octal digits to return their numeric value.
+func (s *SingleLineStringTokenizer) consumeOctal(firstChar byte) int {
+	value := int(firstChar - '0') // Convert the first octal digit
+	for i := 0; i < 2; i++ {      // Consume up to two more octal digits
+		next := s.lexer.peekChar()
+		if next < '0' || next > '7' {
+			break
+		}
+		s.lexer.readChar() // Consume the next octal digit
+		value = value*8 + int(next-'0')
+	}
+	return value
 }

@@ -112,7 +112,7 @@ func (l *Logger) log(level Level, format string, v ...any) {
 	if l.color {
 		tag = fmt.Sprintf("%s%-5s%s", levelColors[level], tag, resetColor)
 	}
-	l.logger.Printf("[%s] %s", tag, msg)
+	l.logger.Printf("[%-5s] %s", tag, msg)
 }
 
 func (l *Logger) reopenLogFile(path string) {

@@ -1,6 +1,7 @@
 package foreign
 
 import (
+	"fmt"
 	"slug/internal/object"
 )
 
@@ -34,6 +35,50 @@ func fnStdIsDefined() *object.Foreign {
 
 		return ctx.NativeBoolToBooleanObject(ok)
 	},
+	}
+}
+
+func fnStdPrintf() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) < 1 {
+				return ctx.NewError("wrong number of arguments. got=%d, want>=1", len(args))
+			}
+
+			format, ok := args[0].(*object.String)
+			if !ok {
+				return ctx.NewError("first argument must be a format STRING, got %s", args[0].Type())
+			}
+
+			fmtArgs := make([]interface{}, len(args)-1)
+			for i := 1; i < len(args); i++ {
+				fmtArgs[i-1] = args[i].Inspect()
+			}
+			fmt.Printf(format.Value, fmtArgs...)
+			return ctx.Nil()
+		},
+	}
+}
+
+func fnStdSprintf() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) < 1 {
+				return ctx.NewError("wrong number of arguments. got=%d, want>=1", len(args))
+			}
+
+			format, ok := args[0].(*object.String)
+			if !ok {
+				return ctx.NewError("first argument must be a format STRING, got %s", args[0].Type())
+			}
+
+			fmtArgs := make([]interface{}, len(args)-1)
+			for i := 1; i < len(args); i++ {
+				fmtArgs[i-1] = args[i].Inspect()
+			}
+
+			return &object.String{Value: fmt.Sprintf(format.Value, fmtArgs...)}
+		},
 	}
 }
 
