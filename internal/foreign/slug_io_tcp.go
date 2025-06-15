@@ -5,6 +5,7 @@ import (
 	"io"
 	"math/rand"
 	"net"
+	"slug/internal/dec64"
 	"slug/internal/object"
 	"sync"
 )
@@ -33,13 +34,13 @@ func unpackString(arg object.Object, argName string) (string, error) {
 	return value.Value, nil
 }
 
-func unpackInt(arg object.Object, argName string) (int64, error) {
+func unpackNumber(arg object.Object, argName string) (int64, error) {
 
-	if arg.Type() != object.INTEGER_OBJ {
-		return -1, fmt.Errorf("argument to `%s` must be a interger, got=%s", argName, arg.Type())
+	if arg.Type() != object.NUMBER_OBJ {
+		return -1, fmt.Errorf("argument to `%s` must be a NUMBER, got=%s", argName, arg.Type())
 	}
-	value := arg.(*object.Integer)
-	return value.Value, nil
+	value := arg.(*object.Number)
+	return value.Value.ToInt64(), nil
 }
 
 func fnIoTcpBind() *object.Foreign {
@@ -51,7 +52,7 @@ func fnIoTcpBind() *object.Foreign {
 				return ctx.NewError(err.Error())
 			}
 
-			port, err := unpackInt(args[1], "")
+			port, err := unpackNumber(args[1], "")
 			if err != nil {
 				return ctx.NewError(err.Error())
 			}
@@ -63,7 +64,7 @@ func fnIoTcpBind() *object.Foreign {
 
 			id := nextIoTcpId()
 			ioTcpListeners[id] = listener
-			return &object.Integer{Value: id}
+			return &object.Number{Value: dec64.FromInt64(id)}
 		},
 	}
 }
@@ -72,7 +73,7 @@ func fnIoTcpAccept() *object.Foreign {
 	return &object.Foreign{
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
-			id, err := unpackInt(args[0], "")
+			id, err := unpackNumber(args[0], "")
 			if err != nil {
 				return ctx.NewError(err.Error())
 			}
@@ -89,7 +90,7 @@ func fnIoTcpAccept() *object.Foreign {
 
 			connID := nextIoTcpId()
 			ioTcpConns[connID] = conn
-			return &object.Integer{Value: connID}
+			return &object.Number{Value: dec64.FromInt64(connID)}
 		},
 	}
 }
@@ -103,7 +104,7 @@ func fnIoTcpConnect() *object.Foreign {
 				return ctx.NewError(err.Error())
 			}
 
-			port, err := unpackInt(args[1], "")
+			port, err := unpackNumber(args[1], "")
 			if err != nil {
 				return ctx.NewError(err.Error())
 			}
@@ -115,7 +116,7 @@ func fnIoTcpConnect() *object.Foreign {
 
 			id := nextIoTcpId()
 			ioTcpConns[id] = conn
-			return &object.Integer{Value: id}
+			return &object.Number{Value: dec64.FromInt64(id)}
 		},
 	}
 }
@@ -124,12 +125,12 @@ func fnIoTcpRead() *object.Foreign {
 	return &object.Foreign{
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
-			id, err := unpackInt(args[0], "")
+			id, err := unpackNumber(args[0], "")
 			if err != nil {
 				return ctx.NewError(err.Error())
 			}
 
-			max, err := unpackInt(args[1], "")
+			max, err := unpackNumber(args[1], "")
 			if err != nil {
 				return ctx.NewError(err.Error())
 			}
@@ -158,7 +159,7 @@ func fnIoTcpWrite() *object.Foreign {
 	return &object.Foreign{
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
-			id, err := unpackInt(args[0], "")
+			id, err := unpackNumber(args[0], "")
 			if err != nil {
 				return ctx.NewError(err.Error())
 			}
@@ -178,7 +179,7 @@ func fnIoTcpWrite() *object.Foreign {
 				return ctx.NewError(err.Error())
 			}
 
-			return &object.Integer{Value: int64(n)}
+			return &object.Number{Value: dec64.FromInt64(int64(n))}
 		},
 	}
 }
@@ -187,7 +188,7 @@ func fnIoTcpClose() *object.Foreign {
 	return &object.Foreign{
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
-			id, err := unpackInt(args[0], "")
+			id, err := unpackNumber(args[0], "")
 			if err != nil {
 				return ctx.NewError(err.Error())
 			}

@@ -3,6 +3,7 @@ package evaluator
 import (
 	"fmt"
 	"slug/internal/ast"
+	"slug/internal/dec64"
 	"slug/internal/log"
 	"slug/internal/object"
 	"slug/internal/token"
@@ -42,7 +43,7 @@ func (e *Evaluator) Receive(timeout int64) (object.Object, bool) {
 	case ActorExited:
 		notification := &object.Map{}
 		notification.Put(&object.String{Value: "tag"}, &object.String{Value: "__exit__"})
-		notification.Put(&object.String{Value: "from"}, &object.Integer{Value: m.MailboxPID})
+		notification.Put(&object.String{Value: "from"}, &object.Number{Value: dec64.FromInt64(m.MailboxPID)})
 		notification.Put(&object.String{Value: "fn"}, m.Function)
 		notification.Put(&object.String{Value: "args"}, &object.List{Elements: m.Args})
 		notification.Put(&object.String{Value: "reason"}, &object.String{Value: m.Reason})
@@ -144,8 +145,8 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 		return e.evalForeignFunctionDeclaration(node)
 
 	// Expressions
-	case *ast.IntegerLiteral:
-		return &object.Integer{Value: node.Value}
+	case *ast.NumberLiteral:
+		return &object.Number{Value: node.Value}
 
 	case *ast.StringLiteral:
 		return &object.String{Value: node.Value}
@@ -250,7 +251,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 
 		// If this is a tail call, wrap it in a TailCall object instead of evaluating
 		if node.IsTailCall {
-			//println("tail call")
+			//log.Trace("tail call")
 			return &object.TailCall{
 				Function:  function,
 				Arguments: args,
@@ -352,7 +353,7 @@ func (e *Evaluator) LoadModule(pathParts []string) (*object.Module, error) {
 	// Evaluate the module
 	module.Env = moduleEnv
 
-	//println("import", module.Name)
+	log.Info("import: %v", module.Name)
 	e.PushEnv(moduleEnv)
 	e.Eval(module.Program)
 	e.PopEnv()
@@ -424,11 +425,11 @@ func (e *Evaluator) evalInfixExpression(
 	left, right object.Object,
 ) object.Object {
 	switch {
-	case left.Type() == object.INTEGER_OBJ && right.Type() == object.INTEGER_OBJ:
+	case left.Type() == object.NUMBER_OBJ && right.Type() == object.NUMBER_OBJ:
 		return e.evalIntegerInfixExpression(operator, left, right)
 	case left.Type() == object.STRING_OBJ && right.Type() == object.STRING_OBJ:
 		return e.evalStringInfixExpression(operator, left, right)
-	case operator == "*" && left.Type() == object.STRING_OBJ && right.Type() == object.INTEGER_OBJ:
+	case operator == "*" && left.Type() == object.STRING_OBJ && right.Type() == object.NUMBER_OBJ:
 		return e.evalStringMultiplication(left, right)
 	case operator == "==":
 		return e.NativeBoolToBooleanObject(left == right)
@@ -467,21 +468,21 @@ func (e *Evaluator) evalBangOperatorExpression(right object.Object) object.Objec
 }
 
 func (e *Evaluator) evalMinusPrefixOperatorExpression(right object.Object) object.Object {
-	if right.Type() != object.INTEGER_OBJ {
+	if right.Type() != object.NUMBER_OBJ {
 		return newError("unknown operator: -%s", right.Type())
 	}
 
-	value := right.(*object.Integer).Value
-	return &object.Integer{Value: -value}
+	value := right.(*object.Number).Value
+	return &object.Number{Value: value.Neg()}
 }
 
 func (e *Evaluator) evalComplementPrefixOperatorExpression(right object.Object) object.Object {
-	if right.Type() != object.INTEGER_OBJ {
+	if right.Type() != object.NUMBER_OBJ {
 		return newError("unknown operator: -%s", right.Type())
 	}
 
-	value := right.(*object.Integer).Value
-	return &object.Integer{Value: ^value}
+	value := right.(*object.Number).Value
+	return &object.Number{Value: ^value}
 }
 
 func (e *Evaluator) evalBooleanInfixExpression(
@@ -506,42 +507,42 @@ func (e *Evaluator) evalIntegerInfixExpression(
 	operator string,
 	left, right object.Object,
 ) object.Object {
-	leftVal := left.(*object.Integer).Value
-	rightVal := right.(*object.Integer).Value
+	leftVal := left.(*object.Number).Value
+	rightVal := right.(*object.Number).Value
 
 	switch operator {
 	case "+":
-		return &object.Integer{Value: leftVal + rightVal}
+		return &object.Number{Value: leftVal.Add(rightVal)}
 	case "-":
-		return &object.Integer{Value: leftVal - rightVal}
+		return &object.Number{Value: leftVal.Sub(rightVal)}
 	case "*":
-		return &object.Integer{Value: leftVal * rightVal}
+		return &object.Number{Value: leftVal.Mul(rightVal)}
 	case "/":
-		return &object.Integer{Value: leftVal / rightVal}
+		return &object.Number{Value: leftVal.Div(rightVal, 14, dec64.RoundHalfUp)} // todo make this a constant at least, should really be config
 	case "%":
-		return &object.Integer{Value: leftVal % rightVal}
+		return &object.Number{Value: leftVal.Mod(rightVal)}
 	case "&":
-		return &object.Integer{Value: leftVal & rightVal}
+		return &object.Number{Value: leftVal & rightVal}
 	case "|":
-		return &object.Integer{Value: leftVal | rightVal}
+		return &object.Number{Value: leftVal | rightVal}
 	case "^":
-		return &object.Integer{Value: leftVal ^ rightVal}
+		return &object.Number{Value: leftVal ^ rightVal}
 	case "<<":
-		return &object.Integer{Value: leftVal << rightVal}
+		return &object.Number{Value: leftVal << rightVal}
 	case ">>":
-		return &object.Integer{Value: leftVal >> rightVal}
+		return &object.Number{Value: leftVal >> rightVal}
 	case "<":
-		return e.NativeBoolToBooleanObject(leftVal < rightVal)
+		return e.NativeBoolToBooleanObject(leftVal.Lt(rightVal))
 	case "<=":
-		return e.NativeBoolToBooleanObject(leftVal <= rightVal)
+		return e.NativeBoolToBooleanObject(leftVal.Lte(rightVal))
 	case ">":
-		return e.NativeBoolToBooleanObject(leftVal > rightVal)
+		return e.NativeBoolToBooleanObject(leftVal.Gt(rightVal))
 	case ">=":
-		return e.NativeBoolToBooleanObject(leftVal >= rightVal)
+		return e.NativeBoolToBooleanObject(leftVal.Gte(rightVal))
 	case "==":
-		return e.NativeBoolToBooleanObject(leftVal == rightVal)
+		return e.NativeBoolToBooleanObject(leftVal.Eq(rightVal))
 	case "!=":
-		return e.NativeBoolToBooleanObject(leftVal != rightVal)
+		return e.NativeBoolToBooleanObject(!leftVal.Eq(rightVal))
 	default:
 		return newError("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
@@ -589,10 +590,10 @@ func (e *Evaluator) evalStringMultiplication(
 	left, right object.Object,
 ) object.Object {
 	leftVal := left.(*object.String).Value
-	rightVal := right.(*object.Integer).Value
+	rightVal := right.(*object.Number).Value.ToInt64()
 
 	if rightVal < 0 {
-		return newError("repetition count must be a non-negative INTEGER, got %d", rightVal)
+		return newError("repetition count must be a non-negative NUMBER, got %d", rightVal)
 	}
 
 	// Repeat the string
@@ -1156,8 +1157,8 @@ func (e *Evaluator) objectsEqual(a, b object.Object) bool {
 	}
 
 	switch aVal := a.(type) {
-	case *object.Integer:
-		return aVal.Value == b.(*object.Integer).Value
+	case *object.Number:
+		return aVal.Value.Eq(b.(*object.Number).Value)
 
 	case *object.Boolean:
 		return aVal.Value == b.(*object.Boolean).Value
@@ -1275,7 +1276,7 @@ func (e *Evaluator) evalIndexExpression(left, index object.Object) object.Object
 			}
 		}
 		return e.evalStringIndexExpression(left, index)
-	case left.Type() == object.LIST_OBJ && index.Type() == object.INTEGER_OBJ:
+	case left.Type() == object.LIST_OBJ && index.Type() == object.NUMBER_OBJ:
 		return e.evalListIndexExpression(left, index)
 	case left.Type() == object.LIST_OBJ:
 		if slice, ok := index.(*object.Slice); ok {
@@ -1313,7 +1314,7 @@ func (e *Evaluator) evalSliceExpression(node *ast.SliceExpression) object.Object
 
 func (e *Evaluator) evalListIndexExpression(list, index object.Object) object.Object {
 	listObject := list.(*object.List)
-	idx := index.(*object.Integer).Value
+	idx := index.(*object.Number).Value.ToInt64()
 	max := int64(len(listObject.Elements) - 1)
 
 	if idx < 0 {
@@ -1329,7 +1330,7 @@ func (e *Evaluator) evalListIndexExpression(list, index object.Object) object.Ob
 
 func (e *Evaluator) evalStringIndexExpression(str, index object.Object) object.Object {
 	stringObject := str.(*object.String)
-	idx := index.(*object.Integer).Value
+	idx := index.(*object.Number).Value.ToInt64()
 	max := int64(len(stringObject.Value) - 1)
 
 	if idx < 0 {
@@ -1367,13 +1368,13 @@ func (e *Evaluator) computeSliceIndices(length int, slice *object.Slice) (int, i
 	step := 1
 
 	if slice.Start != nil {
-		start = int(slice.Start.(*object.Integer).Value)
+		start = int(slice.Start.(*object.Number).Value.ToInt64())
 	}
 	if slice.End != nil {
-		end = int(slice.End.(*object.Integer).Value)
+		end = int(slice.End.(*object.Number).Value.ToInt64())
 	}
 	if slice.Step != nil {
-		step = int(slice.Step.(*object.Integer).Value)
+		step = int(slice.Step.(*object.Number).Value.ToInt64())
 	}
 
 	if start < 0 {

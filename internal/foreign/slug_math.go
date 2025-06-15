@@ -2,6 +2,7 @@ package foreign
 
 import (
 	"math/rand"
+	"slug/internal/dec64"
 	"slug/internal/object"
 )
 
@@ -21,13 +22,13 @@ func fnMathRndSeed() *object.Foreign {
 			} else {
 
 				// Validate the seed (must be an integer)
-				seedArg, ok := args[0].(*object.Integer)
+				seedArg, ok := args[0].(*object.Number)
 				if !ok {
-					return ctx.NewError("argument to `seed` must be an INTEGER, got=%s", args[0].Type())
+					return ctx.NewError("argument to `seed` must be a NUMBER, got=%s", args[0].Type())
 				}
 
 				// Set the random seed
-				mathRnd = rand.New(rand.NewSource(seedArg.Value))
+				mathRnd = rand.New(rand.NewSource(seedArg.Value.ToInt64()))
 			}
 
 			return ctx.Nil()
@@ -44,34 +45,33 @@ func fnMathRndRange() *object.Foreign {
 			}
 
 			// Validate min (first argument)
-			minArg, ok := args[0].(*object.Integer)
+			minArg, ok := args[0].(*object.Number)
 			if !ok {
-				return ctx.NewError("argument 1 to `random_range` must be an INTEGER, got=%s", args[0].Type())
+				return ctx.NewError("argument 1 to `random_range` must be a NUMBER, got=%s", args[0].Type())
 			}
 
 			// Validate max (second argument)
-			maxArg, ok := args[1].(*object.Integer)
+			maxArg, ok := args[1].(*object.Number)
 			if !ok {
-				return ctx.NewError("argument 2 to `random_range` must be an INTEGER, got=%s", args[1].Type())
+				return ctx.NewError("argument 2 to `random_range` must be a NUMBER, got=%s", args[1].Type())
 			}
 
 			// Ensure min <= max
-			if minArg.Value > maxArg.Value {
-				return ctx.NewError("invalid range: min (%d) cannot be greater than max (%d)", minArg.Value, maxArg.Value)
+			if minArg.Value.Gte(maxArg.Value) {
+				return ctx.NewError("invalid range: min (%v) cannot be greater than max (%v)", minArg.Value, maxArg.Value)
 			}
 
-			// Calculate the range
-			rangeSize := maxArg.Value - minArg.Value
+			result := minArg.Value.ToInt64()
 
-			// For larger ranges, use rand.Int63()
-			result := minArg.Value
+			rangeSize := maxArg.Value.ToInt64() - result
+
 			if mathRnd == nil {
 				result += rand.Int63n(rangeSize)
 			} else {
 				result += mathRnd.Int63n(rangeSize)
 			}
 
-			return &object.Integer{Value: result}
+			return &object.Number{Value: dec64.FromInt64(result)}
 		},
 	}
 }

@@ -2,6 +2,7 @@ package ast
 
 import (
 	"bytes"
+	"slug/internal/dec64"
 	"slug/internal/token"
 	"strings"
 )
@@ -196,14 +197,14 @@ func (b *Nil) expressionNode()      {}
 func (b *Nil) TokenLiteral() string { return b.Token.Literal }
 func (b *Nil) String() string       { return b.Token.Literal }
 
-type IntegerLiteral struct {
+type NumberLiteral struct {
 	Token token.Token
-	Value int64
+	Value dec64.Dec64
 }
 
-func (il *IntegerLiteral) expressionNode()      {}
-func (il *IntegerLiteral) TokenLiteral() string { return il.Token.Literal }
-func (il *IntegerLiteral) String() string       { return il.Token.Literal }
+func (n *NumberLiteral) expressionNode()      {}
+func (n *NumberLiteral) TokenLiteral() string { return n.Token.Literal }
+func (n *NumberLiteral) String() string       { return n.Token.Literal }
 
 type PrefixExpression struct {
 	Token    token.Token // The prefix token, e.g. !
@@ -571,7 +572,7 @@ func (wp *SpreadPattern) String() string {
 // LiteralPattern for matching constants
 type LiteralPattern struct {
 	Token token.Token
-	Value Expression // IntegerLiteral, StringLiteral, Boolean, etc.
+	Value Expression // NumberLiteral, StringLiteral, Boolean, etc.
 }
 
 func (lp *LiteralPattern) expressionNode()      {}

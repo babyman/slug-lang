@@ -122,7 +122,7 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 			tok.Position = startPosition
 			return tok
 		} else if isDigit(g.lexer.ch) {
-			tok.Type = token.INT
+			tok.Type = token.NUMBER
 			tok.Literal = g.lexer.readNumber()
 			tok.Position = startPosition
 			return tok

@@ -1,6 +1,7 @@
 package foreign
 
 import (
+	"slug/internal/dec64"
 	"slug/internal/object"
 	"time"
 )
@@ -13,7 +14,7 @@ func fnTimeClock() *object.Foreign {
 					len(args))
 			}
 
-			return &object.Integer{Value: time.Now().UnixMilli()}
+			return &object.Number{Value: dec64.FromInt64(time.Now().UnixMilli())}
 		},
 	}
 }
@@ -26,7 +27,7 @@ func fnTimeClockNanos() *object.Foreign {
 					len(args))
 			}
 
-			return &object.Integer{Value: time.Now().UnixNano()}
+			return &object.Number{Value: dec64.FromInt64(time.Now().UnixNano())}
 		},
 	}
 }
@@ -40,20 +41,19 @@ func fnTimeSleep() *object.Foreign {
 			}
 
 			// Check if the argument is an integer
-			intArg, ok := args[0].(*object.Integer)
+			intArg, ok := args[0].(*object.Number)
 			if !ok {
-				return ctx.NewError("argument to `sleep` must be an INTEGER, got=%s", args[0].Type())
+				return ctx.NewError("argument to `sleep` must be an NUMBER, got=%s", args[0].Type())
 			}
 
-			// Validate non-negative milliseconds
-			if intArg.Value < 0 {
-				return ctx.NewError("argument to `sleep` must be non-negative, got=%d", intArg.Value)
+			millis := intArg.Value.ToInt64()
+			if millis < 0 {
+				return ctx.NewError("argument to `sleep` must be non-negative, got=%v", intArg.Value)
 			}
 
 			// Pause execution for the specified duration
-			time.Sleep(time.Duration(intArg.Value) * time.Millisecond)
+			time.Sleep(time.Duration(millis) * time.Millisecond)
 
-			// Return ctx.Nil() as there is no meaningful response
 			return ctx.Nil()
 		},
 	}
@@ -68,7 +68,7 @@ func fnTimeFmtClock() *object.Foreign {
 			}
 
 			// First argument: milliseconds (integer)
-			millisArg, ok := args[0].(*object.Integer)
+			millisArg, ok := args[0].(*object.Number)
 			if !ok {
 				return ctx.NewError("first argument to `formatMillis` must be INTEGER, got=%s", args[0].Type())
 			}
@@ -80,7 +80,7 @@ func fnTimeFmtClock() *object.Foreign {
 			}
 
 			// Convert milliseconds to time.Time
-			t := time.UnixMilli(millisArg.Value)
+			t := time.UnixMilli(millisArg.Value.ToInt64())
 
 			// Format the time using the provided format string
 			formattedTime := t.Format(formatArg.Value)

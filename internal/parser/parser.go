@@ -3,9 +3,9 @@ package parser
 import (
 	"fmt"
 	"slug/internal/ast"
+	"slug/internal/dec64"
 	"slug/internal/lexer"
 	"slug/internal/token"
-	"strconv"
 )
 
 const (
@@ -81,7 +81,7 @@ func New(l *lexer.Lexer, source string) *Parser {
 	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
 	p.registerPrefix(token.NIL, p.parseNil)
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
-	p.registerPrefix(token.INT, p.parseIntegerLiteral)
+	p.registerPrefix(token.NUMBER, p.parseNumberLiteral)
 	p.registerPrefix(token.STRING, p.parseStringLiteral)
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
@@ -334,13 +334,13 @@ func (p *Parser) parseIdentifier() ast.Expression {
 	return ident
 }
 
-// Modify parseIntegerLiteral to include line and column
-func (p *Parser) parseIntegerLiteral() ast.Expression {
-	lit := &ast.IntegerLiteral{Token: p.curToken}
+// Modify parseNumberLiteral to include line and column
+func (p *Parser) parseNumberLiteral() ast.Expression {
+	lit := &ast.NumberLiteral{Token: p.curToken}
 
-	value, err := strconv.ParseInt(p.curToken.Literal, 0, 64)
+	value, err := dec64.FromString(p.curToken.Literal)
 	if err != nil {
-		p.addError("could not parse %q as integer", p.curToken.Literal)
+		p.addError("could not parse %q as dec64", p.curToken.Literal)
 		return nil
 	}
 
@@ -512,7 +512,7 @@ func (p *Parser) parseMatchPattern() ast.MatchPattern {
 			Token: p.curToken,
 			Value: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
 		}
-	case token.INT, token.STRING, token.TRUE, token.FALSE, token.NIL:
+	case token.NUMBER, token.STRING, token.TRUE, token.FALSE, token.NIL:
 		// Literal patterns (numbers, strings, booleans, nil)
 		expr := p.parseExpression(LOWEST)
 		return &ast.LiteralPattern{Token: p.curToken, Value: expr}

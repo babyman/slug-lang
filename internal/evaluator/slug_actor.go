@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"slug/internal/dec64"
 	"slug/internal/log"
 	"slug/internal/object"
 )
@@ -22,7 +23,7 @@ func fnActorMailbox() *object.Foreign {
 
 			pid := System.NewMailbox(mode)
 
-			return &object.Integer{Value: pid}
+			return &object.Number{Value: dec64.FromInt64(pid)}
 		},
 	}
 }
@@ -34,7 +35,7 @@ func fnActorBindActor() *object.Foreign {
 				return ctx.NewError("bindActor expects a mailbox PID and function literal")
 			}
 
-			pid, ok := args[0].(*object.Integer)
+			pid, ok := args[0].(*object.Number)
 			if !ok {
 				return ctx.NewError("first argument to bindActor must be integer PID")
 			}
@@ -45,7 +46,7 @@ func fnActorBindActor() *object.Foreign {
 			}
 
 			processArgs := args[2:]
-			_, ok = System.BindNewActor(pid.Value, fn, processArgs...)
+			_, ok = System.BindNewActor(pid.Value.ToInt64(), fn, processArgs...)
 
 			if ok {
 				return pid
@@ -64,7 +65,7 @@ func fnActorSelf() *object.Foreign {
 			if ctx.PID() == 0 {
 				return ctx.NewError("self called outside of process context")
 			}
-			return &object.Integer{Value: ctx.PID()}
+			return &object.Number{Value: dec64.FromInt64(ctx.PID())}
 		},
 	}
 }
@@ -75,14 +76,14 @@ func fnActorSend() *object.Foreign {
 			if len(args) < 2 {
 				return ctx.NewError("send expects a PID and a message")
 			}
-			pid, ok := args[0].(*object.Integer)
+			pid, ok := args[0].(*object.Number)
 			if !ok {
 				return ctx.NewError("first argument to send must be integer PID")
 			}
 
 			for _, arg := range args[1:] {
 				//println("sending: ", arg.Inspect(), " to: ", pid.Value, "<<<")
-				System.SendData(pid.Value, arg)
+				System.SendData(pid.Value.ToInt64(), arg)
 			}
 			return pid
 		},
@@ -97,8 +98,8 @@ func fnActorReceive() *object.Foreign {
 			}
 			var timeout int64 // No timeout by default
 			if len(args) == 1 {
-				if to, ok := args[0].(*object.Integer); ok {
-					timeout = to.Value
+				if to, ok := args[0].(*object.Number); ok {
+					timeout = to.Value.ToInt64()
 				} else {
 					return ctx.NewError("timeout argument must be an integer")
 				}
@@ -119,7 +120,7 @@ func fnActorRegister() *object.Foreign {
 			if len(args) < 2 || len(args) > 2 {
 				return ctx.NewError("register expects PID and name")
 			}
-			pid, ok := args[0].(*object.Integer)
+			pid, ok := args[0].(*object.Number)
 			if !ok {
 				return ctx.NewError("first argument to register must be a PID")
 			}
@@ -128,8 +129,8 @@ func fnActorRegister() *object.Foreign {
 				return ctx.NewError("second argument to register must be a string name")
 			}
 
-			log.Debug("BOX: %d registering as '%s'", pid.Value, name.Value)
-			System.Register(pid.Value, name.Value)
+			log.Debug("BOX: %d registering as '%s'", pid.Value.ToInt64(), name.Value)
+			System.Register(pid.Value.ToInt64(), name.Value)
 			return pid
 		},
 	}
@@ -170,7 +171,7 @@ func fnActorWhereIs() *object.Foreign {
 			if !exists {
 				return ctx.Nil()
 			}
-			return &object.Integer{Value: mailbox}
+			return &object.Number{Value: dec64.FromInt64(mailbox)}
 		},
 	}
 }
@@ -184,7 +185,7 @@ func fnActorSupervisor() *object.Foreign {
 
 			supervisor, exists := System.Supervisor(ctx.PID())
 			if exists {
-				return &object.Integer{Value: supervisor}
+				return &object.Number{Value: dec64.FromInt64(supervisor)}
 			}
 			return ctx.Nil()
 		},
@@ -198,18 +199,18 @@ func fnActorSupervise() *object.Foreign {
 				return ctx.NewError("supervise expects supervisor_pid and actor_pid arguments")
 			}
 
-			supPID, ok := args[0].(*object.Integer)
+			supPID, ok := args[0].(*object.Number)
 			if !ok {
 				return ctx.NewError("first argument must be supervisor PID")
 			}
 
 			for i, arg := range args[1:] {
-				actorPID, ok := arg.(*object.Integer)
+				actorPID, ok := arg.(*object.Number)
 				if !ok {
 					return ctx.NewError("%d argument must be actor PID", i)
 				}
 
-				System.Supervise(supPID.Value, actorPID.Value)
+				System.Supervise(supPID.Value.ToInt64(), actorPID.Value.ToInt64())
 			}
 
 			return supPID
@@ -224,7 +225,7 @@ func fnActorChildren() *object.Foreign {
 			//	return ctx.NewError("children expects a supervisor PID argument")
 			//}
 			//
-			//supPID, ok := args[0].(*object.Integer)
+			//supPID, ok := args[0].(*object.Number)
 			//if !ok {
 			//	return ctx.NewError("argument must be supervisor PID")
 			//}
@@ -233,7 +234,7 @@ func fnActorChildren() *object.Foreign {
 			//
 			//elements := make([]object.Object, len(children))
 			//for i, pid := range children {
-			//	elements[i] = &object.Integer{Value: pid}
+			//	elements[i] = &object.Number{Value: pid}
 			//}
 			//return &object.List{Elements: elements}
 			return ctx.Nil()
@@ -248,7 +249,7 @@ func fnActorTerminate() *object.Foreign {
 			//	return ctx.NewError("terminate expects a PID argument")
 			//}
 			//
-			//pid, ok := args[0].(*object.Integer)
+			//pid, ok := args[0].(*object.Number)
 			//if !ok {
 			//	return ctx.NewError("argument must be PID")
 			//}

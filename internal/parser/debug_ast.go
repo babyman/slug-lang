@@ -80,9 +80,9 @@ func WalkAST(node ast.Node) interface{} {
 			"2.token":    n.TokenLiteral(),
 		}
 
-	case *ast.IntegerLiteral:
+	case *ast.NumberLiteral:
 		return map[string]interface{}{
-			"0.type":     "IntegerLiteral",
+			"0.type":     "NumberLiteral",
 			"1.position": n.Token.Position,
 			"2.token":    n.TokenLiteral(),
 			"3.value":    n.Value,

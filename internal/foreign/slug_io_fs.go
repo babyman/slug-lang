@@ -5,6 +5,7 @@ import (
 	"io"
 	"math/rand"
 	"os"
+	"slug/internal/dec64"
 	"slug/internal/object"
 	"sync"
 )
@@ -101,7 +102,7 @@ func fnIoFsAppendFile() *object.Foreign {
 				return ctx.NewError("failed to append to file: %s", err.Error())
 			}
 
-			return &object.Integer{Value: int64(bytes)}
+			return &object.Number{Value: dec64.FromInt64(int64(bytes))}
 		},
 	}
 }
@@ -146,9 +147,9 @@ func fnIoFsInfo() *object.Foreign {
 			}
 			m := &object.Map{}
 			m.Put(&object.String{Value: "name"}, &object.String{Value: info.Name()}).
-				Put(&object.String{Value: "size"}, &object.Integer{Value: info.Size()}).
-				Put(&object.String{Value: "mode"}, &object.Integer{Value: int64(info.Mode())}).
-				Put(&object.String{Value: "modTime"}, &object.Integer{Value: info.ModTime().Unix()}).
+				Put(&object.String{Value: "size"}, &object.Number{Value: dec64.FromInt64(info.Size())}).
+				Put(&object.String{Value: "mode"}, &object.Number{Value: dec64.FromInt64(int64(info.Mode()))}).
+				Put(&object.String{Value: "modTime"}, &object.Number{Value: dec64.FromInt64(info.ModTime().Unix())}).
 				Put(&object.String{Value: "isDir"}, ctx.NativeBoolToBooleanObject(info.IsDir()))
 			return m
 		},
@@ -236,7 +237,7 @@ func fnIoFsOpenFile() *object.Foreign {
 			fileID := nextIoFileId()
 			ioFileFiles[fileID] = file
 
-			return &object.Integer{Value: fileID}
+			return &object.Number{Value: dec64.FromInt64(fileID)}
 		},
 	}
 }
@@ -248,7 +249,7 @@ func fnIoFsReadLine() *object.Foreign {
 				return ctx.NewError("wrong number of arguments to `readLine`, got=%d, want=1", len(args))
 			}
 
-			handle, err := unpackInt(args[0], "handle")
+			handle, err := unpackNumber(args[0], "handle")
 			if err != nil {
 				return ctx.NewError(err.Error())
 			}
@@ -284,7 +285,7 @@ func fnIoFsWrite() *object.Foreign {
 				return ctx.NewError("wrong number of arguments to `write`, got=%d, want=2", len(args))
 			}
 
-			handle, err := unpackInt(args[0], "handle")
+			handle, err := unpackNumber(args[0], "handle")
 			if err != nil {
 				return ctx.NewError(err.Error())
 			}
@@ -304,7 +305,7 @@ func fnIoFsWrite() *object.Foreign {
 				return ctx.NewError("failed to write to file: %s", err.Error())
 			}
 
-			return &object.Integer{Value: int64(bytes)}
+			return &object.Number{Value: dec64.FromInt64(int64(bytes))}
 		},
 	}
 }
@@ -338,7 +339,7 @@ func fnIoFsCloseFile() *object.Foreign {
 				return ctx.NewError("wrong number of arguments to `closeFile`, got=%d, want=1", len(args))
 			}
 
-			handle, err := unpackInt(args[0], "handle")
+			handle, err := unpackNumber(args[0], "handle")
 			if err != nil {
 				return ctx.NewError(err.Error())
 			}

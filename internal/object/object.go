@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"slug/internal/ast"
+	"slug/internal/dec64"
 	"strings"
 )
 
@@ -29,7 +30,7 @@ const (
 	NIL_OBJ   = "NIL"
 	ERROR_OBJ = "ERROR"
 
-	INTEGER_OBJ = "INTEGER"
+	NUMBER_OBJ  = "INTEGER"
 	BOOLEAN_OBJ = "BOOLEAN"
 	STRING_OBJ  = "STRING"
 
@@ -59,14 +60,14 @@ type Object interface {
 	Inspect() string
 }
 
-type Integer struct {
-	Value int64
+type Number struct {
+	Value dec64.Dec64
 }
 
-func (i *Integer) Type() ObjectType { return INTEGER_OBJ }
-func (i *Integer) Inspect() string  { return fmt.Sprintf("%d", i.Value) }
-func (i *Integer) MapKey() MapKey {
-	return MapKey{Type: i.Type(), Value: uint64(i.Value)}
+func (i *Number) Type() ObjectType { return NUMBER_OBJ }
+func (i *Number) Inspect() string  { return i.Value.String() }
+func (i *Number) MapKey() MapKey {
+	return MapKey{Type: i.Type(), Value: uint64(i.Value.ToInt64())}
 }
 
 type Boolean struct {

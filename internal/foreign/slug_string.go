@@ -1,6 +1,7 @@
 package foreign
 
 import (
+	"slug/internal/dec64"
 	"slug/internal/object"
 	"strings"
 )
@@ -33,10 +34,11 @@ func fnStringIndexOf() *object.Foreign {
 		switch arg := args[0].(type) {
 		case *object.String:
 			start := 0
-			if len(args) > 2 && args[2].Type() == object.INTEGER_OBJ {
-				start = int(args[2].(*object.Integer).Value)
+			if len(args) > 2 && args[2].Type() == object.NUMBER_OBJ {
+				start = args[2].(*object.Number).Value.ToInt()
 			}
-			return &object.Integer{Value: int64(strings.Index(arg.Value[start:], args[1].(*object.String).Value))}
+			index := strings.Index(arg.Value[start:], args[1].(*object.String).Value)
+			return &object.Number{Value: dec64.FromInt(index)}
 		default:
 			return ctx.NewError("argument to `indexOf` not supported, got %s", args[0].Type())
 		}

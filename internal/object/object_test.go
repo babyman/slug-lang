@@ -1,6 +1,9 @@
 package object
 
-import "testing"
+import (
+	"slug/internal/dec64"
+	"testing"
+)
 
 func TestStringMapKey(t *testing.T) {
 	hello1 := &String{Value: "Hello World"}
@@ -41,20 +44,20 @@ func TestBooleanMapKey(t *testing.T) {
 }
 
 func TestIntegerMapKey(t *testing.T) {
-	one1 := &Integer{Value: 1}
-	one2 := &Integer{Value: 1}
-	two1 := &Integer{Value: 2}
-	two2 := &Integer{Value: 2}
+	one1 := &Number{Value: dec64.FromInt64(1)}
+	one2 := &Number{Value: dec64.FromInt64(1)}
+	two1 := &Number{Value: dec64.FromInt64(2)}
+	two2 := &Number{Value: dec64.FromInt64(2)}
 
 	if one1.MapKey() != one2.MapKey() {
-		t.Errorf("integers with same content have different map keys")
+		t.Errorf("numbers with same content have different map keys")
 	}
 
 	if two1.MapKey() != two2.MapKey() {
-		t.Errorf("integers with same content have different map keys")
+		t.Errorf("numbers with same content have different map keys")
 	}
 
 	if one1.MapKey() == two1.MapKey() {
-		t.Errorf("integers with different content have same map keys")
+		t.Errorf("numbers with different content have same map keys, %v : %v", one1, two1)
 	}
 }
