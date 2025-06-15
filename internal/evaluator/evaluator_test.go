@@ -181,11 +181,11 @@ func TestErrorHandling(t *testing.T) {
 	}{
 		{
 			"5 + true;",
-			"type mismatch: INTEGER + BOOLEAN",
+			"type mismatch: NUMBER + BOOLEAN",
 		},
 		{
 			"5 + true; 5;",
-			"type mismatch: INTEGER + BOOLEAN",
+			"type mismatch: NUMBER + BOOLEAN",
 		},
 		{
 			"-true",
@@ -233,7 +233,7 @@ func TestErrorHandling(t *testing.T) {
 		},
 		{
 			`999[1]`,
-			"index operator not supported: INTEGER",
+			"index operator not supported: NUMBER",
 		},
 	}
 
@@ -466,10 +466,10 @@ func TestMapLiterals(t *testing.T) {
 	}
 
 	expected := map[object.MapKey]int64{
-		(&object.String{Value: "one"}).MapKey():              1,
-		(&object.String{Value: "two"}).MapKey():              2,
-		(&object.String{Value: "three"}).MapKey():            3,
-		(&object.Number{Value: dec64.FromInt64(4)}).MapKey(): 4,
+		(&object.String{Value: "one"}).MapKey():            1,
+		(&object.String{Value: "two"}).MapKey():            2,
+		(&object.String{Value: "three"}).MapKey():          3,
+		(&object.Number{Value: dec64.FromInt(4)}).MapKey(): 4,
 		TRUE.MapKey():  5,
 		FALSE.MapKey(): 6,
 	}

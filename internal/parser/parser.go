@@ -340,7 +340,7 @@ func (p *Parser) parseNumberLiteral() ast.Expression {
 
 	value, err := dec64.FromString(p.curToken.Literal)
 	if err != nil {
-		p.addError("could not parse %q as dec64", p.curToken.Literal)
+		p.addError("could not parse %q as number", p.curToken.Literal)
 		return nil
 	}
 
