@@ -130,6 +130,7 @@ func (m *Module) Inspect() string {
 }
 
 type Function struct {
+	Tags        map[string]List
 	Parameters  []*ast.FunctionParameter
 	Body        *ast.BlockStatement
 	Env         *Environment
@@ -169,6 +170,7 @@ func (s *String) MapKey() MapKey {
 }
 
 type Foreign struct {
+	Tags  map[string]List
 	Fn    ForeignFunction
 	Name  string
 	Arity int

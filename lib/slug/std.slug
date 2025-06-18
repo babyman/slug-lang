@@ -3,8 +3,20 @@
 // -------------------------
 
 // return a string value indicating the type of `val`
+@testWith(
+	[nil], "NIL",
+	[true], "BOOLEAN",
+	[1], "NUMBER",
+	["Hello Slug!"], "STRING",
+	[[1, 2]], "LIST",
+	[{key:"value"}], "MAP"
+)
 foreign type = fn(val);
 
+@testWith(
+	["type"], true,
+	["__not_defined__"], false
+)
 foreign isDefined = fn(val);
 
 foreign printf = fn(str, ...args);
@@ -12,6 +24,9 @@ foreign printf = fn(str, ...args);
 foreign sprintf = fn(str, ...args);
 
 // get the list of keys used a map
+@testWith(
+	[{k:1}], ["k"]
+)
 foreign keys = fn(map);
 
 // get a value from a map, nil if not present
@@ -25,6 +40,9 @@ foreign remove = fn(map, key);
 
 foreign update = fn(list, index, value);
 
+@testWith(
+	[[1,2],0,1], [2,1]
+)
 foreign swap = fn(list, index1, index2);
 
 var compute = fn(map, key, f) {

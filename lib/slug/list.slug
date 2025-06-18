@@ -13,6 +13,11 @@ var listEquals = fn(a, b, idx = 0) {
     }
 }
 
+@testWith(
+    [[1, 2], 2], 1,
+    [[1, 2], 1], 0,
+    [[1, 2], 9], -1
+)
 var indexOfValue = fn(list, value, idx = 0) {
     if(idx > len(list)) {
         -1

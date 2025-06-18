@@ -11,11 +11,21 @@ var _searchList = fn(vals, result, f, idx = 0) {
 	}
 }
 
+@testWith(
+	[1, 2, 3], 3,
+	[7, 9, 8], 9,
+	[4, 5, 3], 5
+)
 var max = fn(a, ...b) {
 	val _max = fn(x, y) {if (x > y) {x} else {y}};
 	_searchList(b, a, _max);
 }
 
+@testWith(
+	[1, 2, 3], 1,
+	[4, 3, 5], 3,
+	[6, 5, 4], 4
+)
 var min = fn(a, ...b) {
 	val _min = fn(x, y) {if (x < y) {x} else {y}};
 	_searchList(b, a, _min);

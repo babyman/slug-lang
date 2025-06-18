@@ -20,6 +20,7 @@ const (
 	SLASH      = "/"
 	PERCENT    = "%"
 	UNDERSCORE = "_"
+	AT         = "@"
 
 	APPEND_ITEM  = ":+"
 	PREPEND_ITEM = "+:"

@@ -129,6 +129,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 		if _, err := e.patternMatches(node.Pattern, val, false); err != nil {
 			return newError(err.Error())
 		}
+		e.applyTagsIfPresent(node.Tags, val)
 		return val // Return the assigned value
 
 	case *ast.ValExpression:
@@ -139,6 +140,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 		if _, err := e.patternMatches(node.Pattern, val, true); err != nil {
 			return newError(err.Error())
 		}
+		e.applyTagsIfPresent(node.Tags, val)
 		return val // Return the assigned value
 
 	case *ast.ForeignFunctionDeclaration:
@@ -744,7 +746,6 @@ func (e *Evaluator) ApplyFunction(fnObj object.Object, args []object.Object) obj
 		return result
 
 	case *object.Foreign:
-		//println(fn.Inspect())
 		return fn.Fn(e, args...)
 
 	default:
@@ -1401,6 +1402,7 @@ func (e *Evaluator) evalForeignFunctionDeclaration(ff *ast.ForeignFunctionDeclar
 	fqn := modulePath + "." + functionName
 
 	if foreignFn, exists := lookupForeign(fqn); exists {
+		foreignFn.Tags = e.evalTags(ff.Tags)
 		foreignFn.Name = functionName
 		foreignFn.Arity = len(ff.Parameters)
 		_, err := env.Define(functionName, foreignFn)
@@ -1416,4 +1418,27 @@ func (e *Evaluator) evalDefer(deferStmt *ast.DeferStatement) object.Object {
 	// Register the defer statement into the environment's defer stack
 	e.CurrentEnv().RegisterDefer(deferStmt.Call)
 	return nil // Defer statements do not produce a direct result
+}
+
+func (e *Evaluator) applyTagsIfPresent(tags []*ast.Tag, val object.Object) {
+	if tags != nil {
+		if fn, ok := val.(*object.Function); ok {
+			fn.Tags = e.evalTags(tags)
+		} else if foreignFn, ok := val.(*object.Foreign); ok {
+			foreignFn.Tags = e.evalTags(tags)
+		}
+	}
+}
+
+func (e *Evaluator) evalTags(tags []*ast.Tag) map[string]object.List {
+	result := make(map[string]object.List)
+	for _, tag := range tags {
+		var argList []object.Object
+		for _, arg := range tag.Args {
+			val := e.Eval(arg)
+			argList = append(argList, val)
+		}
+		result[tag.Name] = object.List{Elements: argList}
+	}
+	return result
 }

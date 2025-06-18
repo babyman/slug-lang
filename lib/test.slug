@@ -1,0 +1,68 @@
+var {*} = import(
+	"slug.std",
+	"slug.list",
+	"slug.time",
+	"slug.meta"
+);
+
+var TEST_TAG = "@testWith";
+var timer = delta(clock);
+
+var runTests = fn(f, name, args, stats) {
+	match args {
+		[] => stats;
+		[a, e, ...t] => {
+			try {
+				val out = f(...a);
+				match out.type() {
+					"LIST" if out.listEquals(e) => println("[\033[32mPASS\033[0m] {{name}}({{a}}) == {{out}}");
+					_ if out == e => println("[\033[32mPASS\033[0m] {{name}}({{a}}) == {{out}}");
+					_ => {
+						stats = stats.compute("fail", fn(k, v) { v + 1});
+						println("[\033[31mFAIL\033[0m] {{name}}({{a}}) == {{out}} expected {{e}}");
+					}
+				}
+			} catch err {
+				{type} => {
+					stats = stats.compute("error", fn(k, v) { v + 1});
+					println("[\033[31mERROR\033[0m] {{name}}({{a}}) == threw {{type}} expected {{e}}")
+				}
+			}
+			stats = stats.compute("run", fn(k, v) { v + 1});
+			runTests(f, name, t, stats);
+		}
+	}
+}
+
+var testRunner = fn(module, stats) {
+	var m = import(module);
+	m.keys().filter(fn(k) {
+		m[k].hasTag(TEST_TAG)
+	}).map(fn(k) {
+		var args = m[k].getTag(TEST_TAG);
+		runTests(m[k], k, args, {run:0, fail:0, error:0});
+	}).reduce(stats, fn(vs, new) {
+		vs.compute("run", fn(k, v) {v + new[k]})
+			.compute("fail", fn(k, v) {v + new[k]})
+			.compute("error", fn(k, v) {v + new[k]});
+	});
+}
+
+var run = fn(stats, ...modules) {
+    match modules {
+        [] => """
+
+Results:
+
+Tests run: {{stats.run}}, Failures: {{stats.fail}}, Errors: {{stats.error}}
+
+Total time {{timer()}}ms
+
+""";
+        [h, ...t] => run(testRunner(h, stats), ...t);
+    }
+}
+
+run({run:0, fail:0, error:0}, ...args);
+
+

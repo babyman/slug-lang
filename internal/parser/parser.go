@@ -60,9 +60,10 @@ type (
 )
 
 type Parser struct {
-	l      *lexer.Lexer
-	src    string // source code here
-	errors []string
+	l           *lexer.Lexer
+	src         string // source code here
+	errors      []string
+	pendingTags []*ast.Tag
 
 	curToken  token.Token
 	peekToken token.Token
@@ -205,13 +206,25 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseTryCatchStatement()
 	case token.THROW:
 		return p.parseThrowStatement()
+	case token.AT:
+		tag := p.parseTag()
+		p.pendingTags = append(p.pendingTags, tag)
+		return nil
 	default:
 		return p.parseExpressionStatement()
 	}
 }
 
 func (p *Parser) parseVarStatement() ast.Expression {
-	varExp := &ast.VarExpression{Token: p.curToken}
+
+	varExp := &ast.VarExpression{
+		Token: p.curToken,
+	}
+
+	if p.pendingTags != nil {
+		varExp.Tags = p.pendingTags
+		p.pendingTags = nil
+	}
 
 	if !(p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.LBRACKET) ||
 		p.peekTokenIs(token.LBRACE) || p.peekTokenIs(token.MATCH_KEYS_EXACT)) {
@@ -236,7 +249,14 @@ func (p *Parser) parseVarStatement() ast.Expression {
 }
 
 func (p *Parser) parseValStatement() ast.Expression {
-	valExp := &ast.ValExpression{Token: p.curToken}
+	valExp := &ast.ValExpression{
+		Token: p.curToken,
+	}
+
+	if p.pendingTags != nil {
+		valExp.Tags = p.pendingTags
+		p.pendingTags = nil
+	}
 
 	if !(p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.LBRACKET) || p.peekTokenIs(token.LBRACE)) {
 		p.addError("expected identifier, list, or map literal after 'val'")
@@ -1276,13 +1296,20 @@ func (p *Parser) parseNotImplemented() *ast.ThrowStatement {
 }
 
 func (p *Parser) parseForeignFunctionDeclaration() *ast.ForeignFunctionDeclaration {
-	stmt := &ast.ForeignFunctionDeclaration{Token: p.curToken}
+	foreignFunction := &ast.ForeignFunctionDeclaration{
+		Token: p.curToken,
+	}
+
+	if p.pendingTags != nil {
+		foreignFunction.Tags = p.pendingTags
+		p.pendingTags = nil
+	}
 
 	if !p.expectPeek(token.IDENT) {
 		return nil
 	}
 
-	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	foreignFunction.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 
 	if !p.expectPeek(token.ASSIGN) {
 		return nil
@@ -1296,13 +1323,13 @@ func (p *Parser) parseForeignFunctionDeclaration() *ast.ForeignFunctionDeclarati
 		return nil
 	}
 
-	stmt.Parameters = p.parseFunctionParameters()
+	foreignFunction.Parameters = p.parseFunctionParameters()
 
 	if p.peekTokenIs(token.SEMICOLON) {
 		p.nextToken()
 	}
 
-	return stmt
+	return foreignFunction
 }
 
 func (p *Parser) parseDeferStatement() *ast.DeferStatement {
@@ -1316,6 +1343,27 @@ func (p *Parser) parseDeferStatement() *ast.DeferStatement {
 	}
 
 	return stmt
+}
+
+func (p *Parser) parseTag() *ast.Tag {
+	annotation := &ast.Tag{Token: p.curToken}
+	p.nextToken() // Consume '@'
+
+	// Expect identifier for the annotation name
+	if !p.curTokenIs(token.IDENT) {
+		p.addError("expected annotation name after '@', got %s", p.curToken.Literal)
+		return nil
+	}
+	annotation.Name = "@" + p.curToken.Literal
+
+	// Parse optional argument list
+	if p.peekTokenIs(token.LPAREN) {
+		p.nextToken()
+		args := p.parseExpressionList(token.RPAREN)
+		annotation.Args = args
+	}
+
+	return annotation
 }
 
 // todo put this in a utils file

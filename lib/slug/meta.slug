@@ -1,0 +1,5 @@
+
+foreign hasTag = fn(v, tag);
+
+foreign getTag = fn(v, tag);
+

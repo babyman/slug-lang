@@ -46,6 +46,7 @@ func (p *Program) String() string {
 }
 
 type VarExpression struct {
+	Tags    []*Tag
 	Token   token.Token // the token.VAR token
 	Pattern MatchPattern
 	Value   Expression
@@ -55,6 +56,11 @@ func (ls *VarExpression) expressionNode()      {}
 func (ls *VarExpression) TokenLiteral() string { return ls.Token.Literal }
 func (ls *VarExpression) String() string {
 	var out bytes.Buffer
+
+	for _, a := range ls.Tags {
+		out.WriteString(a.String())
+		out.WriteString(" ")
+	}
 
 	out.WriteString(ls.TokenLiteral() + " ")
 	out.WriteString(ls.Pattern.String())
@@ -70,6 +76,7 @@ func (ls *VarExpression) String() string {
 }
 
 type ValExpression struct {
+	Tags    []*Tag
 	Token   token.Token  // The token.VAL token
 	Pattern MatchPattern // Constant name
 	Value   Expression   // The assigned value
@@ -79,6 +86,11 @@ func (vs *ValExpression) expressionNode()      {}
 func (vs *ValExpression) TokenLiteral() string { return vs.Token.Literal }
 func (vs *ValExpression) String() string {
 	var out bytes.Buffer
+
+	for _, a := range vs.Tags {
+		out.WriteString(a.String())
+		out.WriteString(" ")
+	}
 
 	out.WriteString(vs.TokenLiteral() + " ")
 	out.WriteString(vs.Pattern.String())
@@ -91,6 +103,7 @@ func (vs *ValExpression) String() string {
 }
 
 type ForeignFunctionDeclaration struct {
+	Tags       []*Tag
 	Token      token.Token // The `FOREIGN` token
 	Name       *Identifier // Name of the foreign function
 	Parameters []*FunctionParameter
@@ -100,6 +113,12 @@ func (ffd *ForeignFunctionDeclaration) statementNode()       {}
 func (ffd *ForeignFunctionDeclaration) TokenLiteral() string { return ffd.Token.Literal }
 func (ffd *ForeignFunctionDeclaration) String() string {
 	var out bytes.Buffer
+
+	for _, a := range ffd.Tags {
+		out.WriteString(a.String())
+		out.WriteString(" ")
+	}
+
 	out.WriteString("foreign ")
 	out.WriteString(ffd.Name.String())
 	out.WriteString(" = ")
@@ -749,5 +768,28 @@ func (se *SpreadExpression) String() string {
 	var out bytes.Buffer
 	out.WriteString("...")
 	out.WriteString(se.Value.String())
+	return out.String()
+}
+
+type Tag struct {
+	Token token.Token  // The '@' token
+	Name  string       // The tag name (e.g., "tag")
+	Args  []Expression // Arguments as expressions, e.g., ["42", "x + 1"]
+}
+
+func (a *Tag) expressionNode()      {}
+func (a *Tag) TokenLiteral() string { return a.Token.Literal }
+func (a *Tag) String() string {
+	var out bytes.Buffer
+	out.WriteString(a.Name)
+	if len(a.Args) > 0 {
+		args := []string{}
+		for _, arg := range a.Args {
+			args = append(args, arg.String())
+		}
+		out.WriteString("(")
+		out.WriteString(strings.Join(args, ", "))
+		out.WriteString(")")
+	}
 	return out.String()
 }

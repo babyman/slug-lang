@@ -111,6 +111,8 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 		tok = newToken(token.LBRACKET, g.lexer.ch, startPosition)
 	case ']':
 		tok = newToken(token.RBRACKET, g.lexer.ch, startPosition)
+	case '@':
+		tok = newToken(token.AT, g.lexer.ch, startPosition)
 	case 0:
 		tok.Literal = ""
 		tok.Type = token.EOF
