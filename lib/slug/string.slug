@@ -39,6 +39,9 @@ var isLower = fn(str) {
 //   strs: Internal accumulator for storing split strings
 // Returns:
 //   Array of substrings split by the delimiter
+@testWith(
+	["slug/test", "/"], ["slug", "test"]
+)
 var split = fn(str, delimiter, max = -1, count = 1, strs = []) {
 	match str.indexOf(delimiter) {
 		n if n >= 0 && (max < 0 || count < max) => {
@@ -46,5 +49,29 @@ var split = fn(str, delimiter, max = -1, count = 1, strs = []) {
 			split(str[i:], delimiter, max, count + 1, strs :+ str[:n]);
 		}
 		_ => strs :+ str;
+	}
+}
+
+@testWith(
+	[["slug", "test"], "."], "slug.test"
+)
+var join = fn(strs, delimiter, str) {
+	match strs {
+		[] => str;
+		[h, ...t] if str == nil => join(t, delimiter, h);
+		[h, ...t] => join(t, delimiter, str + delimiter + h);
+	}
+}
+
+@testWith(
+	["slug/test", "/", "."], "slug.test",
+	["slug", "/", "."], "slug",
+	[nil, "/", "."], nil
+)
+var replaceAll = fn(str, replace, with) {
+	if (str == nil) {
+		nil
+	} else {
+		str.split(replace).join(with);
 	}
 }

@@ -746,7 +746,16 @@ func (e *Evaluator) ApplyFunction(fnObj object.Object, args []object.Object) obj
 		return result
 
 	case *object.Foreign:
-		return fn.Fn(e, args...)
+		var result object.Object
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					result = newError("error calling foreign function %s", fn.Name)
+				}
+			}()
+			result = fn.Fn(e, args...)
+		}()
+		return result
 
 	default:
 		return newError("not a function: %s", fn.Type())

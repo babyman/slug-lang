@@ -15,7 +15,7 @@ test: release
 		echo "Running tests for $$file"; \
 		./bin/$(BINARY_NAME) --root ./tests $$file || exit 1; \
 	done
-	slug test slug.math slug.std slug.list
+	slug test slug.math slug.std slug.list slug.string
 
 lc: clean
 	cloc  --exclude-dir=.idea --read-lang-def=slug_cloc_definition.txt .

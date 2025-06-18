@@ -1,12 +1,30 @@
 var {*} = import(
 	"slug.std",
 	"slug.list",
-	"slug.time",
-	"slug.meta"
+	"slug.meta",
+	"slug.string",
+	"slug.time"
 );
 
 var TEST_TAG = "@testWith";
 var timer = delta(clock);
+
+var runTestFn = fn(f, name, stats) {
+	try {
+		f();
+		println("  [\033[32mPASS\033[0m] {{name}}()");
+	} catch err {
+		{type:"AssertionError", msg} => {
+			stats = stats.compute("fail", fn(k, v) { v + 1});
+			println("  [\033[31mFAIL\033[0m] {{name}}(): {{msg}}")
+		}
+		{type} => {
+			stats = stats.compute("error", fn(k, v) { v + 1});
+			println("  [\033[31mERROR\033[0m] {{name}}() threw {{type}}")
+		}
+	}
+	stats.compute("run", fn(k, v) { v + 1});
+}
 
 var runTests = fn(f, name, args, stats) {
 	match args {
@@ -35,13 +53,21 @@ var runTests = fn(f, name, args, stats) {
 }
 
 var testRunner = fn(module, stats) {
+	if(module.endsWith(".slug")) {
+		module = module[:-len(".slug")]
+	}
+	module = module.replaceAll("/", ".")
 	println(module + ":")
 	var m = import(module);
 	m.keys().filter(fn(k) {
-		m[k].hasTag(TEST_TAG)
+		m[k].hasTag(TEST_TAG) || m[k].hasTag("@test")
 	}).map(fn(k) {
 		var args = m[k].getTag(TEST_TAG);
-		runTests(m[k], k, args, {run:0, fail:0, error:0});
+		if(args) {
+			runTests(m[k], k, args, {run:0, fail:0, error:0});
+		} else {
+			runTestFn(m[k], k, {run:0, fail:0, error:0});
+		}
 	}).reduce(stats, fn(vs, new) {
 		vs.compute("run", fn(k, v) {v + new[k]})
 			.compute("fail", fn(k, v) {v + new[k]})
