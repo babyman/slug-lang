@@ -6,6 +6,7 @@ var {*} = import(
     "imports.b"
 );
 
+@export
 var sub = fn(a, b) {
     a - b;
 }

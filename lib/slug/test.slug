@@ -5,6 +5,7 @@ var {listEquals} = import(
     "slug.list"
 );
 
+@export
 var assert = fn(a, msg = nil) {
     if ( a.type() == "BOOLEAN" && !a ) {
         if ( !msg ) {
@@ -14,13 +15,16 @@ var assert = fn(a, msg = nil) {
     }
 }
 
+@export
 var assertTrue = assert;
 
+@export
 var assertFalse = fn(a, msg = nil) {
     assert( !a, msg);
 }
 
 
+@export
 var assertEqual = fn(a, b, msg = nil) {
     if ( a != b ) {
         if ( !msg ) {
@@ -31,6 +35,7 @@ var assertEqual = fn(a, b, msg = nil) {
 }
 
 
+@export
 var assertListEqual = fn(a, b, msg = nil) {
     if ( !(a == b || listEquals(a, b)) ) {
         if ( !msg ) {
@@ -41,6 +46,7 @@ var assertListEqual = fn(a, b, msg = nil) {
 }
 
 
+@export
 var fail = fn(msg = nil) {
     if ( !msg ) {
         msg = "Test failed!";

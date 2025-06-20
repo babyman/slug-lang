@@ -28,8 +28,9 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.math.rndRange": fnMathRndRange(),
 		"slug.math.rndSeed":  fnMathRndSeed(),
 
-		"slug.meta.hasTag": fnMetaHasTag(),
-		"slug.meta.getTag": fnMetaGetTag(),
+		"slug.meta.hasTag":     fnMetaHasTag(),
+		"slug.meta.getTag":     fnMetaGetTag(),
+		"slug.meta.searchTags": fnMetaSearchTags(),
 
 		"slug.std.type":      fnStdType(),
 		"slug.std.isDefined": fnStdIsDefined(),

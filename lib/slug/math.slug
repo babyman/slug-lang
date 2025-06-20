@@ -2,10 +2,9 @@ var {*} = import(
 	"slug.std"
 );
 
-// todo: one day this will be private
-var _searchList = fn(vals, result, f, idx = 0) {
+var searchList = fn(vals, result, f, idx = 0) {
 	if(len(vals) > idx) {
-		_searchList(vals, f(vals[idx], result), f, idx + 1)
+		searchList(vals, f(vals[idx], result), f, idx + 1)
 	} else {
 		result
 	}
@@ -16,9 +15,10 @@ var _searchList = fn(vals, result, f, idx = 0) {
 	[7, 9, 8], 9,
 	[4, 5, 3], 5
 )
+@export
 var max = fn(a, ...b) {
 	val _max = fn(x, y) {if (x > y) {x} else {y}};
-	_searchList(b, a, _max);
+	searchList(b, a, _max);
 }
 
 @testWith(
@@ -26,17 +26,20 @@ var max = fn(a, ...b) {
 	[4, 3, 5], 3,
 	[6, 5, 4], 4
 )
+@export
 var min = fn(a, ...b) {
 	val _min = fn(x, y) {if (x < y) {x} else {y}};
-	_searchList(b, a, _min);
+	searchList(b, a, _min);
 }
 
 // random_range generates a random integer in the range [min, max] (exclusive).
 // min: Minimum value of the range (integer).
 // max: Maximum value of the range (integer).
 // Returns: a random integer in the specified range.
+@export
 foreign rndRange = fn(min, max);
 
 // seed sets the seed of the random number generator for deterministic results.
 // value: An integer seed.
+@export
 foreign rndSeed = fn(value);

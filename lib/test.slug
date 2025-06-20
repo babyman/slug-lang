@@ -1,6 +1,7 @@
 var {*} = import(
 	"slug.std",
 	"slug.list",
+	"slug.map",
 	"slug.meta",
 	"slug.string",
 	"slug.time"
@@ -34,6 +35,7 @@ var runTests = fn(f, name, args, stats) {
 				val out = f(...a);
 				match out.type() {
 					"LIST" if out.listEquals(e) => println("  [\033[32mPASS\033[0m] {{name}}({{a}}) == {{out}}");
+					"MAP" if out.mapEquals(e) => println("  [\033[32mPASS\033[0m] {{name}}({{a}}) == {{out}}");
 					_ if out == e => println("  [\033[32mPASS\033[0m] {{name}}({{a}}) == {{out}}");
 					_ => {
 						stats = stats.compute("fail", fn(k, v) { v + 1});
@@ -58,10 +60,10 @@ var testRunner = fn(module, stats) {
 	}
 	module = module.replaceAll("/", ".")
 	println(module + ":")
-	var m = import(module);
-	m.keys().filter(fn(k) {
-		m[k].hasTag(TEST_TAG) || m[k].hasTag("@test")
-	}).map(fn(k) {
+	// var m = import(module);
+	var m = module.searchTags(TEST_TAG, true)
+				.union(module.searchTags("@test", true))
+	m.keys().map(fn(k) {
 		var args = m[k].getTag(TEST_TAG);
 		if(args) {
 			runTests(m[k], k, args, {run:0, fail:0, error:0});

@@ -1,5 +1,6 @@
 var {*} = import(
     "slug.std",
+    "slug.test",
     "functions"
 );
 

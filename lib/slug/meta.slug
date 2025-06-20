@@ -1,5 +1,9 @@
 
+@export
 foreign hasTag = fn(v, tag);
 
+@export
 foreign getTag = fn(v, tag);
 
+@export
+foreign searchTags = fn(module, tag, ignoreExports = false);

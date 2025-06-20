@@ -4,6 +4,8 @@
 //   str - the name of the environment variable to read
 // Returns:
 //   string value of the environment variable, or nil if variable is not set
+@export
 foreign env = fn(str);
 
+@export
 foreign setEnv = fn(str);

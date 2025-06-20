@@ -29,6 +29,8 @@ type Binding struct {
 
 type Environment struct {
 	Store      map[string]*Binding
+	Exports    map[string]*Binding
+	Imports    map[string]*Binding
 	outer      *Environment
 	Src        string
 	Path       string
@@ -52,20 +54,32 @@ func (e *Environment) Get(name string) (Object, bool) {
 	return b.Value, ok
 }
 
-func (e *Environment) DefineConstant(name string, val Object) (Object, error) {
+func (e *Environment) DefineConstant(name string, val Object, isExported bool) (Object, error) {
 	if v, exists := e.Store[name]; exists && v.IsConstant {
 		return nil, fmt.Errorf("val `%s` is already defined and cannot be reassigned", name)
 	}
 	e.Store[name] = &Binding{Value: val, IsConstant: true}
+	if isExported {
+		if e.Exports == nil {
+			e.Exports = make(map[string]*Binding)
+		}
+		e.Exports[name] = e.Store[name]
+	}
 	return val, nil
 }
 
 // Define adds a new variable with the given name and value to the environment and returns the value
-func (e *Environment) Define(name string, val Object) (Object, error) {
+func (e *Environment) Define(name string, val Object, isExported bool) (Object, error) {
 	if v, exists := e.Store[name]; exists && v.IsConstant {
 		return nil, fmt.Errorf("var `%s` is already defined as a 'val' and cannot be reassigned", name)
 	}
 	e.Store[name] = &Binding{Value: val, IsConstant: false}
+	if isExported {
+		if e.Exports == nil {
+			e.Exports = make(map[string]*Binding)
+		}
+		e.Exports[name] = e.Store[name]
+	}
 	return val, nil
 }
 

@@ -24,11 +24,14 @@ func fnBuiltinImport() *object.Foreign {
 				}
 				module, err := ctx.LoadModule(strings.Split(arg.Inspect(), "."))
 				if err != nil {
-					return newError(err.Error())
+					return ctx.NewError(err.Error())
 				}
-
-				for name, val := range module.Env.Store {
+				for name, val := range module.Env.Exports {
 					m.Put(&object.String{Value: name}, val.Value)
+					if ctx.CurrentEnv().Imports == nil {
+						ctx.CurrentEnv().Imports = make(map[string]*object.Binding)
+					}
+					ctx.CurrentEnv().Imports[name] = val
 				}
 			}
 			return m

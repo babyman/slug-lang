@@ -4,8 +4,10 @@ var {*} = import(
 );
 
 // declare a function
+@export
 var sqr = fn(a) { a * a }
 
+@export
 var sum = fn(ns, acc = 0) {
     match ns {
         [h, ...t] => sum(t, acc + h);

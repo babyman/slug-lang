@@ -1,11 +1,14 @@
 // mode = roundrobin | broadcast
+@export
 foreign mailbox = fn(mode);
 
+@export
 foreign bindActor = fn(pid, f, ...args);
 
 // self returns the PID of the current process
 // Returns:
 //   integer PID of the calling process, error if called outside process context
+@export
 foreign self = fn();
 
 // send delivers a message to the specified process
@@ -14,6 +17,7 @@ foreign self = fn();
 //   message: data to send to the process
 // Returns:
 //   the recipient's PID
+@export
 foreign send = fn(pid, ...messages);
 
 // receive waits for a message to arrive in the process mailbox
@@ -21,23 +25,32 @@ foreign send = fn(pid, ...messages);
 //   timeout: optional integer timeout in milliseconds
 // Returns:
 //   received message data, or nil on timeout
+@export
 foreign receive = fn(timeout);
 
 // returns the pid of the mailbox to a name
+@export
 foreign register = fn (pid, name);
 
+@export
 foreign unregister = fn (pid, name);
 
+@export
 foreign whereIs = fn(name);
 
+@export
 foreign children = fn(pid);
 
+@export
 foreign supervisor = fn();
 
+@export
 foreign supervise = fn(supervisorPid, ...childPids);
 
+@export
 foreign terminate = fn(pid);
 
+@export
 var supervisedBy = fn(pid, supervisorPid) {
 	supervisorPid.supervise(pid);
 	pid;
