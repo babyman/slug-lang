@@ -76,7 +76,7 @@ func (e *Evaluator) Nil() *object.Nil {
 
 func (e *Evaluator) PushEnv(env *object.Environment) {
 	e.envStack = append(e.envStack, env)
-	//println(">", strings.Repeat("-", len(e.envStack)))
+	//log.Trace(">%s", strings.Repeat("-", len(e.envStack)))
 }
 
 func (e *Evaluator) CurrentEnv() *object.Environment {
@@ -95,7 +95,7 @@ func (e *Evaluator) PopEnv() {
 		e.Eval(stmt)
 	})
 	e.envStack = e.envStack[:len(e.envStack)-1]
-	//println("<", strings.Repeat("-", len(e.envStack)))
+	//log.Trace("<%s", strings.Repeat("-", len(e.envStack)))
 }
 
 func (e *Evaluator) Eval(node ast.Node) object.Object {

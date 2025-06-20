@@ -1,6 +1,7 @@
 package foreign
 
 import (
+	"slug/internal/log"
 	"slug/internal/object"
 	"strings"
 )
@@ -113,12 +114,14 @@ func fnMetaSearchTags() *object.Foreign {
 			m := &object.Map{}
 
 			for name, binding := range searchTarget {
-				// Skip imported values if not exported
-				if ignoreExports && module.Env.Imports[name] != nil {
+
+				// ignore imported values
+				if module.Env.Imports != nil && module.Env.Imports[name] != nil {
 					continue
 				}
 
 				if hasTag(binding, tagName.Value) {
+					log.Debug("%s.%s tagged with '%s'", module.Name, name, tagName.Value)
 					m.Put(&object.String{Value: name}, binding.Value)
 				}
 			}
