@@ -3,8 +3,9 @@ var {*} = import(
 )
 
 @testWith(
-	[{k1:1}, {}], false,
+	[{}, {}], true,
 	[{k1:1}, {k1:1}], true,
+	[{k1:1}, {}], false,
 	[{k1:1}, {k2:2}], false
 )
 @export

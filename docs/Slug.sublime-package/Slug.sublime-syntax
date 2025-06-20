@@ -14,6 +14,7 @@
 # - Variadic arguments
 # - Error handling with try/catch
 # - Bitwise operations
+# - Annotations via @tag syntax
 #
 # For more information, see: https://github.com/babyman/slug
 #
@@ -30,6 +31,11 @@ contexts:
       scope: comment.line.double-slash.slug
     - match: \#.*$
       scope: comment.line.number-sign.slug
+
+    # Annotations/Tags
+    - match: (@[a-zA-Z][a-zA-Z0-9_]*)
+      scope: entity.name.tag.slug
+      push: annotation_args
 
     # Include destructuring patterns
     - match: \b(var|val)\s+(\[|\{)
@@ -200,4 +206,19 @@ contexts:
       scope: punctuation.separator.pattern.comma.slug
     - match: \b(if)\b
       scope: keyword.control.conditional.slug
+    - include: main
+
+  annotation_args:
+    - meta_scope: meta.annotation.slug
+    - match: \(
+      scope: punctuation.section.parens.begin.slug
+      push: annotation_parens
+    - match: (?=[^\s])
+      pop: true
+
+  annotation_parens:
+    - meta_scope: meta.annotation.arguments.slug
+    - match: \)
+      scope: punctuation.section.parens.end.slug
+      pop: true
     - include: main
