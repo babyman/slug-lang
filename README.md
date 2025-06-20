@@ -480,12 +480,6 @@ for one or more modules by specifying their paths when invoking the test runner:
 slug test path_to_source.slug
 ````
 
-TIP: run your tests automatically on file change with a tool like ...
-
-```shell
-find . \( -name "*.slug" \) | entr -r time slug test playground.slug
-```
-
 - **Output**: The output displays the number of test cases run, along with detailed pass, fail, and error counts. Each
   test's result is also printed for quick debugging.
 
