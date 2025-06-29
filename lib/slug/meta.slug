@@ -6,4 +6,4 @@ foreign hasTag = fn(v, tag);
 foreign getTag = fn(v, tag);
 
 @export
-foreign searchTags = fn(module, tag, ignoreExports = false);
+foreign searchTags = fn(module, tag, includePrivate = false);

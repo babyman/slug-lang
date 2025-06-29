@@ -6,7 +6,7 @@ var {*} = import (
 foreign trim = fn(str);
 
 @export
-foreign indexOf = fn(str, seq);
+foreign indexOf = fn(str, seq, index = 0);
 
 @export
 foreign toUpper = fn(str);
@@ -66,7 +66,7 @@ var split = fn(str, delimiter, max = -1, count = 1, strs = []) {
 	[["slug", "test"], "."], "slug.test"
 )
 @export
-var join = fn(strs, delimiter, str) {
+var join = fn(strs, delimiter, str = nil) {
 	match strs {
 		[] => str;
 		[h, ...t] if str == nil => join(t, delimiter, h);

@@ -511,7 +511,7 @@ Types
 
 - `Nil`
 - `Boolean`: true or false
-- `Integer`
+- `Number`: DEC64 inspired, very experimental ( https://www.crockford.com/dec64.html )
 - `String`
 - `List`: []
 - `Map`: {}

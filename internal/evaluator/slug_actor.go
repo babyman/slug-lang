@@ -40,13 +40,16 @@ func fnActorBindActor() *object.Foreign {
 				return ctx.NewError("first argument to bindActor must be integer PID")
 			}
 
-			fn, ok := args[1].(*object.Function)
+			fn, ok := args[1].(*object.FunctionGroup)
 			if !ok {
-				return ctx.NewError("second argument to bindActor must be a function")
+				return ctx.NewError("second argument to bindActor must be a function, got %T", args[1])
 			}
 
 			processArgs := args[2:]
-			_, ok = System.BindNewActor(pid.Value.ToInt64(), fn, processArgs...)
+			function, ok := fn.DispatchToFunction(processArgs)
+			f, ok := function.(*object.Function)
+
+			_, ok = System.BindNewActor(pid.Value.ToInt64(), f, processArgs...)
 
 			if ok {
 				return pid

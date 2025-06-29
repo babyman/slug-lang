@@ -127,7 +127,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			return val
 		}
 		isExported := hasExportTag(node.Tags)
-		if _, err := e.patternMatches(node.Pattern, val, false, isExported); err != nil {
+		if _, err := e.patternMatches(node.Pattern, val, false, isExported, false); err != nil {
 			return newError(err.Error())
 		}
 		e.applyTagsIfPresent(node.Tags, val)
@@ -139,7 +139,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			return val
 		}
 		isExported := hasExportTag(node.Tags)
-		if _, err := e.patternMatches(node.Pattern, val, true, isExported); err != nil {
+		if _, err := e.patternMatches(node.Pattern, val, true, isExported, false); err != nil {
 			return newError(err.Error())
 		}
 		e.applyTagsIfPresent(node.Tags, val)
@@ -219,6 +219,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			Parameters:  params,
 			Env:         e.CurrentEnv(),
 			Body:        body,
+			Signature:   node.Signature,
 			HasTailCall: node.HasTailCall,
 		}
 
@@ -255,13 +256,15 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 
 		// If this is a tail call, wrap it in a TailCall object instead of evaluating
 		if node.IsTailCall {
-			//log.Trace("tail call")
+			//log.Trace("function tail call")
+			log.Info("Tail calling %s with %d arguments", node.Token.Literal, len(args))
 			return &object.TailCall{
 				Function:  function,
 				Arguments: args,
 			}
 		}
 
+		log.Info("Calling %s with %d arguments", node.Token.Literal, len(args))
 		// For non-tail calls, invoke the function directly
 		return e.ApplyFunction(function, args)
 
@@ -345,6 +348,7 @@ func (e *Evaluator) LoadModule(pathParts []string) (*object.Module, error) {
 		return nil, err
 	}
 	if module.Env != nil {
+		log.Debug("return loaded module: %v", module.Name)
 		return module, nil
 	}
 
@@ -357,10 +361,11 @@ func (e *Evaluator) LoadModule(pathParts []string) (*object.Module, error) {
 	// Evaluate the module
 	module.Env = moduleEnv
 
-	log.Info("import: %v", module.Name)
+	log.Debug("load module: %v\n", module.Name)
 	e.PushEnv(moduleEnv)
 	e.Eval(module.Program)
 	e.PopEnv()
+	log.Info("Module %s env len %d\n", module.Name, len(module.Env.Bindings))
 
 	// Import the module into the current environment
 	return module, nil
@@ -724,6 +729,15 @@ func (e *Evaluator) evalExpressions(
 
 func (e *Evaluator) ApplyFunction(fnObj object.Object, args []object.Object) object.Object {
 	switch fn := fnObj.(type) {
+	case *object.FunctionGroup:
+
+		f, ok := fn.DispatchToFunction(args)
+		if ok {
+			return e.ApplyFunction(f, args)
+		} else {
+			return newError("No function could be found to call")
+		}
+
 	case *object.Function:
 
 		// Create a new call frame and push it
@@ -760,6 +774,9 @@ func (e *Evaluator) ApplyFunction(fnObj object.Object, args []object.Object) obj
 		return result
 
 	default:
+		if fn == nil {
+			return newError("no function found!")
+		}
 		return newError("not a function: %s", fn.Type())
 	}
 }
@@ -778,10 +795,10 @@ func (e *Evaluator) extendFunctionEnv(
 	for i, param := range fn.Parameters {
 
 		// Handle variadic arguments
-		if param.IsVariadic {
+		if param.IsVariadic && len(args) >= i {
 			env.Define(param.Name.Value, &object.List{
 				Elements: args[i:], // Remaining args as a list
-			}, false)
+			}, false, false)
 			break
 		}
 
@@ -789,12 +806,12 @@ func (e *Evaluator) extendFunctionEnv(
 		if i >= numArgs {
 			if param.Default != nil {
 				defaultValue := e.Eval(param.Default)
-				env.Define(param.Name.Value, defaultValue, false)
+				env.Define(param.Name.Value, defaultValue, false, false)
 			} else {
-				env.Define(param.Name.Value, NIL, false)
+				env.Define(param.Name.Value, NIL, false, false)
 			}
 		} else {
-			env.Define(param.Name.Value, args[i], false)
+			env.Define(param.Name.Value, args[i], false, false)
 		}
 	}
 
@@ -870,7 +887,7 @@ func (e *Evaluator) evalMatchCase(matchValue object.Object, matchCase *ast.Match
 	var err error
 	if matchValue != nil {
 		// Match the case's pattern against the matchValue
-		matched, err = e.patternMatches(matchCase.Pattern, matchValue, false, false)
+		matched, err = e.patternMatches(matchCase.Pattern, matchValue, false, false, false)
 		if err != nil {
 			return newError("pattern match error: %s", err.Error()), true
 		}
@@ -896,7 +913,7 @@ func (e *Evaluator) evalMatchCase(matchValue object.Object, matchCase *ast.Match
 }
 
 // e.patternMatches checks if a value matches a pattern and binds variables
-func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object, isConstant bool, isExport bool) (bool, error) {
+func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object, isConstant bool, isExport bool, isImport bool) (bool, error) {
 	env := e.CurrentEnv()
 	switch p := pattern.(type) {
 	case *ast.WildcardPattern:
@@ -907,10 +924,10 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 		// SpreadPattern matches anything
 		if p.Value != nil {
 			if isConstant {
-				_, err := env.DefineConstant(p.Value.Value, value, isExport)
+				_, err := env.DefineConstant(p.Value.Value, value, isExport, isImport)
 				return err == nil, err
 			} else {
-				_, err := env.Define(p.Value.Value, value, isExport)
+				_, err := env.Define(p.Value.Value, value, isExport, isImport)
 				return err == nil, err
 			}
 		}
@@ -927,10 +944,10 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 	case *ast.IdentifierPattern:
 		// Bind the value to the identifier
 		if isConstant {
-			_, err := env.DefineConstant(p.Value.Value, value, isExport)
+			_, err := env.DefineConstant(p.Value.Value, value, isExport, isImport)
 			return err == nil, err
 		} else {
-			_, err := env.Define(p.Value.Value, value, isExport)
+			_, err := env.Define(p.Value.Value, value, isExport, isImport)
 			return err == nil, err
 		}
 
@@ -939,7 +956,7 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 		for _, subPattern := range p.Patterns {
 			encEnv := object.NewEnclosedEnvironment(env, nil)
 			e.PushEnv(encEnv)
-			matched, err := e.patternMatches(subPattern, value, isConstant, isExport)
+			matched, err := e.patternMatches(subPattern, value, isConstant, isExport, isImport)
 			e.PopEnv()
 			if err != nil {
 				return false, err
@@ -975,13 +992,13 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 
 		for i, elemPattern := range p.Elements {
 			if spread, isSpread := elemPattern.(*ast.SpreadPattern); isSpread {
-				matched, err := e.patternMatches(spread, &object.List{Elements: arr.Elements[i:]}, isConstant, isExport)
+				matched, err := e.patternMatches(spread, &object.List{Elements: arr.Elements[i:]}, isConstant, isExport, isImport)
 				if err != nil || !matched {
 					return false, err
 				}
 				break
 			} else {
-				matched, err := e.patternMatches(elemPattern, arr.Elements[i], isConstant, isExport)
+				matched, err := e.patternMatches(elemPattern, arr.Elements[i], isConstant, isExport, isImport)
 				if err != nil || !matched {
 					return false, err
 				}
@@ -989,13 +1006,14 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 		}
 
 		// Copy bindings from scoped environment to parent environment
-		for name, val := range scoped.Store {
-			if val.IsConstant {
-				if _, err := env.DefineConstant(name, val.Value, isExport); err != nil {
+		for name, binding := range scoped.Bindings {
+			value, _ := scoped.Get(name)
+			if binding.IsMutable {
+				if _, err := env.Define(name, value, isExport, isImport); err != nil {
 					return false, err
 				}
 			} else {
-				if _, err := env.Define(name, val.Value, isExport); err != nil {
+				if _, err := env.DefineConstant(name, value, isExport, isImport); err != nil {
 					return false, err
 				}
 			}
@@ -1012,16 +1030,18 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 			return false, nil
 		}
 
+		isImport := mapObj.HasTag("@import")
+
 		if p.SelectAll {
 			// Copy all key-value pairs into current scope
 			for _, pair := range mapObj.Pairs {
 				if str, ok := pair.Key.(*object.String); ok {
 					if isConstant {
-						if _, err := env.DefineConstant(str.Value, pair.Value, isExport); err != nil {
+						if _, err := env.DefineConstant(str.Value, pair.Value, isExport, isImport); err != nil {
 							return false, err
 						}
 					} else {
-						if _, err := env.Define(str.Value, pair.Value, isExport); err != nil {
+						if _, err := env.Define(str.Value, pair.Value, isExport, isImport); err != nil {
 							return false, err
 						}
 					}
@@ -1059,7 +1079,7 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 			}
 
 			// Check if value matches subpattern
-			matched, err := e.patternMatches(subPattern, pair.Value, isConstant, isExport)
+			matched, err := e.patternMatches(subPattern, pair.Value, isConstant, isExport, isImport)
 			if !matched || err != nil {
 				return false, err
 			}
@@ -1075,7 +1095,7 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 			if ok {
 				if len(usedKeys) >= len(mapObj.Pairs) {
 					// map is empty
-					_, err := e.patternMatches(pair, &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}, isConstant, isExport)
+					_, err := e.patternMatches(pair, &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}, isConstant, isExport, isImport)
 					if err != nil {
 						return false, err
 					}
@@ -1093,7 +1113,7 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 							copiedPairs[mapKey] = pair
 						}
 					}
-					_, err := e.patternMatches(pair, &object.Map{Pairs: copiedPairs}, isConstant, isExport)
+					_, err := e.patternMatches(pair, &object.Map{Pairs: copiedPairs}, isConstant, isExport, isImport)
 					if err != nil {
 						return false, err
 					}
@@ -1103,21 +1123,20 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 		}
 
 		// Copy bindings to parent env
-		for name, val := range scoped.Store {
-			if val.IsConstant {
-				_, err := env.DefineConstant(name, val.Value, isExport)
+		for name, binding := range scoped.Bindings {
+			value, _ := scoped.Get(name)
+			if binding.IsMutable {
+				_, err := env.Define(name, value, isExport, isImport)
 				if err != nil {
 					return false, err
 				}
 			} else {
-				_, err := env.Define(name, val.Value, isExport)
+				_, err := env.DefineConstant(name, value, isExport, isImport)
 				if err != nil {
 					return false, err
 				}
 			}
 		}
-
-		//e.PopEnv()
 
 		return true, nil
 	}
@@ -1270,7 +1289,7 @@ func (e *Evaluator) evalTryCatchStatement(node *ast.TryCatchStatement) object.Ob
 	defer e.PopEnv()
 
 	// bind the error payload to the catch pattern
-	_, bindError := catchEnv.Define(catchMatch.Value.String(), err.Payload, false)
+	_, bindError := catchEnv.Define(catchMatch.Value.String(), err.Payload, false, false)
 	if bindError != nil {
 		return newError(bindError.Error())
 	}
@@ -1416,8 +1435,9 @@ func (e *Evaluator) evalForeignFunctionDeclaration(ff *ast.ForeignFunctionDeclar
 		foreignFn.Tags = e.evalTags(ff.Tags)
 		foreignFn.Name = functionName
 		foreignFn.Arity = len(ff.Parameters)
+		foreignFn.Signature = ff.Signature
 		isExported := hasExportTag(ff.Tags)
-		_, err := env.Define(functionName, foreignFn, isExported)
+		_, err := env.Define(functionName, foreignFn, isExported, false)
 		if err != nil {
 			return newError(err.Error())
 		}

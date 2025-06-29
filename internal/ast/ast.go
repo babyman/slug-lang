@@ -7,6 +7,12 @@ import (
 	"strings"
 )
 
+type FSig struct {
+	Min        int
+	Max        int
+	IsVariadic bool
+}
+
 // The base Node interface
 type Node interface {
 	TokenLiteral() string
@@ -107,6 +113,7 @@ type ForeignFunctionDeclaration struct {
 	Token      token.Token // The `FOREIGN` token
 	Name       *Identifier // Name of the foreign function
 	Parameters []*FunctionParameter
+	Signature  FSig
 }
 
 func (ffd *ForeignFunctionDeclaration) statementNode()       {}
@@ -292,6 +299,7 @@ func (ie *IfExpression) String() string {
 
 type FunctionLiteral struct {
 	Token       token.Token // The 'fn' token
+	Signature   FSig
 	Parameters  []*FunctionParameter
 	Body        *BlockStatement
 	HasTailCall bool // Whether this function has tail calls

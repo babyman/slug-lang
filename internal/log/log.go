@@ -146,11 +146,31 @@ func (l *Logger) setupLogRotation(path string) {
 	}()
 }
 
-func Trace(format string, v ...any) { Log.log(TRACE, format, v...) }
-func Debug(format string, v ...any) { Log.log(DEBUG, format, v...) }
-func Info(format string, v ...any)  { Log.log(INFO, format, v...) }
-func Warn(format string, v ...any)  { Log.log(WARN, format, v...) }
-func Error(format string, v ...any) { Log.log(ERROR, format, v...) }
+func Trace(format string, v ...any) {
+	if Log != nil {
+		Log.log(TRACE, format, v...)
+	}
+}
+func Debug(format string, v ...any) {
+	if Log != nil {
+		Log.log(DEBUG, format, v...)
+	}
+}
+func Info(format string, v ...any) {
+	if Log != nil {
+		Log.log(INFO, format, v...)
+	}
+}
+func Warn(format string, v ...any) {
+	if Log != nil {
+		Log.log(WARN, format, v...)
+	}
+}
+func Error(format string, v ...any) {
+	if Log != nil {
+		Log.log(ERROR, format, v...)
+	}
+}
 
 func Close() {
 	if Log != nil && Log.fileHandle != nil {

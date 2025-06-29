@@ -4,9 +4,30 @@ import (
 	"bytes"
 	"fmt"
 	"hash/fnv"
+	"math"
 	"slug/internal/ast"
 	"slug/internal/dec64"
+	"slug/internal/log"
 	"strings"
+)
+
+const (
+	NIL_OBJ     = "NIL"
+	BOOLEAN_OBJ = "BOOLEAN"
+	NUMBER_OBJ  = "NUMBER"
+	STRING_OBJ  = "STRING"
+
+	LIST_OBJ = "LIST"
+	MAP_OBJ  = "MAP"
+
+	MODULE_OBJ         = "MODULE"
+	FUNCTION_OBJ       = "FUNCTION"
+	FUNCTION_GROUP_OBJ = "FUNCTION_GROUP"
+	FOREIGN_OBJ        = "FOREIGN"
+	ERROR_OBJ          = "ERROR"
+
+	TAIL_CALL_OBJ    = "TAIL_CALL"
+	RETURN_VALUE_OBJ = "RETURN_VALUE"
 )
 
 // EvaluatorContext provides the bridge between native Go code and the interpreter,
@@ -26,25 +47,6 @@ type ForeignFunction func(ctx EvaluatorContext, args ...Object) Object
 
 type ObjectType string
 
-const (
-	NIL_OBJ   = "NIL"
-	ERROR_OBJ = "ERROR"
-
-	NUMBER_OBJ  = "NUMBER"
-	BOOLEAN_OBJ = "BOOLEAN"
-	STRING_OBJ  = "STRING"
-
-	RETURN_VALUE_OBJ = "RETURN_VALUE"
-	TAIL_CALL_OBJ    = "TAIL_CALL"
-
-	MODULE_OBJ   = "MODULE"
-	FUNCTION_OBJ = "FUNCTION"
-	FOREIGN_OBJ  = "BUILTIN"
-
-	LIST_OBJ = "LIST"
-	MAP_OBJ  = "MAP"
-)
-
 type MapKey struct {
 	Type  ObjectType
 	Value uint64
@@ -53,6 +55,12 @@ type MapKey struct {
 type Hashable interface {
 	Object
 	MapKey() MapKey
+}
+
+type Taggable interface {
+	Object
+	HasTag(tag string) bool
+	GetTagParams(tag string) (List, bool)
 }
 
 type Object interface {
@@ -108,10 +116,10 @@ func (e *Error) Type() ObjectType { return ERROR_OBJ }
 func (e *Error) Inspect() string  { return "ERROR: " + e.Message }
 
 type Module struct {
-	Name    string // Module name/namespace (e.g., `Arithmetic` or an alias)
+	Name    string
 	Path    string
 	Src     string
-	Env     *Environment // Module-scoped environment with variables and functions
+	Env     *Environment
 	Program *ast.Program
 }
 
@@ -122,7 +130,7 @@ func (m *Module) Inspect() string {
 	out.WriteString("module ")
 	out.WriteString(m.Name)
 	out.WriteString(" {")
-	for key, val := range m.Env.Store {
+	for key, val := range m.Env.Bindings {
 		out.WriteString(fmt.Sprintf("\n  %s: %s,", key, val.Value.Inspect()))
 	}
 	out.WriteString("\n}")
@@ -130,6 +138,7 @@ func (m *Module) Inspect() string {
 }
 
 type Function struct {
+	Signature   ast.FSig
 	Tags        map[string]List
 	Parameters  []*ast.FunctionParameter
 	Body        *ast.BlockStatement
@@ -155,6 +164,89 @@ func (f *Function) Inspect() string {
 
 	return out.String()
 }
+func (f *Function) HasTag(tag string) bool {
+	return hasTag(tag, f.Tags)
+}
+func (f *Function) GetTagParams(tag string) (List, bool) {
+	return getTagParams(tag, f.Tags)
+}
+
+type FunctionGroup struct {
+	Functions map[ast.FSig]Object
+}
+
+func (fg *FunctionGroup) Type() ObjectType { return FUNCTION_GROUP_OBJ }
+func (fg *FunctionGroup) Inspect() string {
+	var out bytes.Buffer
+	out.WriteString("function group: [")
+	entries := []string{}
+	for signature, fn := range fg.Functions {
+		entries = append(entries, fmt.Sprintf("%v => %s", signature, fn.Inspect()))
+	}
+	out.WriteString(strings.Join(entries, ", "))
+	out.WriteString("]")
+	return out.String()
+}
+func (fg *FunctionGroup) DispatchToFunction(args []Object) (Object, bool) {
+	log.Info("dispatching to function group size: %d, param count %d", len(fg.Functions), len(args))
+
+	n := len(args)
+	var bestMatch Object
+	var bestMax = math.MaxInt
+	var foundNonVariadic bool
+
+	for sig, fn := range fg.Functions {
+		if n >= sig.Min && n <= sig.Max {
+			isVariadic := sig.IsVariadic
+			if sig.Max < bestMax || bestMatch == nil {
+				bestMatch = fn
+				bestMax = sig.Max
+				foundNonVariadic = !isVariadic
+			} else if sig.Max == bestMax {
+				// Prefer non-variadic if Max values are equal
+				if foundNonVariadic && isVariadic {
+					continue
+				}
+				if !foundNonVariadic {
+					bestMatch = fn
+					foundNonVariadic = !isVariadic
+				}
+			}
+		}
+	}
+
+	if bestMatch != nil {
+		log.Debug("best match: %s", bestMatch.Inspect())
+		return bestMatch, true
+	} else {
+		log.Debug("no match found for %v params", n)
+	}
+
+	return &Error{Message: "No suitable function found to dispatch"}, false
+}
+func (fg *FunctionGroup) HasTag(tag string) bool {
+	for _, function := range fg.Functions {
+		switch fn := function.(type) {
+		case Taggable:
+			if fn.HasTag(tag) {
+				return true
+			}
+		}
+	}
+	return false
+}
+func (fg *FunctionGroup) GetTagParams(tag string) (List, bool) {
+	for _, function := range fg.Functions {
+		switch fn := function.(type) {
+		case Taggable:
+			v, ok := fn.GetTagParams(tag)
+			if ok {
+				return v, ok
+			}
+		}
+	}
+	return List{}, false
+}
 
 type String struct {
 	Value string
@@ -165,20 +257,26 @@ func (s *String) Inspect() string  { return s.Value }
 func (s *String) MapKey() MapKey {
 	h := fnv.New64a()
 	h.Write([]byte(s.Value))
-
 	return MapKey{Type: s.Type(), Value: h.Sum64()}
 }
 
 type Foreign struct {
-	Tags  map[string]List
-	Fn    ForeignFunction
-	Name  string
-	Arity int
+	Signature ast.FSig
+	Tags      map[string]List
+	Fn        ForeignFunction
+	Name      string
+	Arity     int
 }
 
-func (b *Foreign) Type() ObjectType { return FOREIGN_OBJ }
-func (b *Foreign) Inspect() string {
-	return "foreign " + b.Name + "(" + fmt.Sprintf("%d", b.Arity) + ") { <native fn> }"
+func (f *Foreign) Type() ObjectType { return FOREIGN_OBJ }
+func (f *Foreign) Inspect() string {
+	return "foreign " + f.Name + "(" + fmt.Sprintf("%d", f.Arity) + ") { <native fn> }"
+}
+func (f *Foreign) HasTag(tag string) bool {
+	return hasTag(tag, f.Tags)
+}
+func (f *Foreign) GetTagParams(tag string) (List, bool) {
+	return getTagParams(tag, f.Tags)
 }
 
 type List struct {
@@ -207,15 +305,16 @@ type MapPair struct {
 }
 
 type Map struct {
+	Tags  map[string]List
 	Pairs map[MapKey]MapPair
 }
 
-func (h *Map) Type() ObjectType { return MAP_OBJ }
-func (h *Map) Inspect() string {
+func (m *Map) Type() ObjectType { return MAP_OBJ }
+func (m *Map) Inspect() string {
 	var out bytes.Buffer
 
 	pairs := []string{}
-	for _, pair := range h.Pairs {
+	for _, pair := range m.Pairs {
 		pairs = append(pairs, fmt.Sprintf("%s: %s",
 			pair.Key.Inspect(), pair.Value.Inspect()))
 	}
@@ -228,15 +327,21 @@ func (h *Map) Inspect() string {
 }
 
 // Put simplify adding objects to a map
-func (h *Map) Put(k Hashable, v Object) *Map {
-	if h.Pairs == nil {
-		h.Pairs = map[MapKey]MapPair{}
+func (m *Map) Put(k Hashable, v Object) *Map {
+	if m.Pairs == nil {
+		m.Pairs = map[MapKey]MapPair{}
 	}
-	h.Pairs[k.MapKey()] = MapPair{
+	m.Pairs[k.MapKey()] = MapPair{
 		Key:   k,
 		Value: v,
 	}
-	return h
+	return m
+}
+func (m *Map) HasTag(tag string) bool {
+	return hasTag(tag, m.Tags)
+}
+func (m *Map) GetTagParams(tag string) (List, bool) {
+	return getTagParams(tag, m.Tags)
 }
 
 type RuntimeError struct {
@@ -308,4 +413,20 @@ func (tc *TailCall) Inspect() string {
 
 	out.WriteString("])")
 	return out.String()
+}
+
+func hasTag(tag string, tags map[string]List) bool {
+	if tags == nil {
+		return false
+	}
+	_, exists := tags[tag]
+	return exists
+}
+
+func getTagParams(tag string, tags map[string]List) (List, bool) {
+	if tags == nil {
+		return List{}, false
+	}
+	list, ok := tags[tag]
+	return list, ok
 }

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"slug/internal/dec64"
-	"slug/internal/log"
 	"slug/internal/object"
 	"strings"
 )
@@ -17,7 +16,11 @@ func fnBuiltinImport() *object.Foreign {
 				return ctx.NewError("import expects at least one argument")
 			}
 
-			m := &object.Map{}
+			m := &object.Map{
+				Tags: map[string]object.List{
+					"@import": {},
+				},
+			}
 
 			for i, arg := range args {
 				if arg.Type() != object.STRING_OBJ {
@@ -27,13 +30,10 @@ func fnBuiltinImport() *object.Foreign {
 				if err != nil {
 					return ctx.NewError(err.Error())
 				}
-				for name, val := range module.Env.Exports {
-					log.Debug("importing %s.%s", arg.Inspect(), name)
-					m.Put(&object.String{Value: name}, val.Value)
-					if ctx.CurrentEnv().Imports == nil {
-						ctx.CurrentEnv().Imports = make(map[string]*object.Binding)
+				for name, binding := range module.Env.Bindings {
+					if binding.Meta.IsExport {
+						m.Put(&object.String{Value: name}, binding.Value)
 					}
-					ctx.CurrentEnv().Imports[name] = val
 				}
 			}
 			return m

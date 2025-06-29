@@ -60,7 +60,6 @@ var testRunner = fn(module, stats) {
 	}
 	module = module.replaceAll("/", ".")
 	println(module + ":")
-	// var m = import(module);
 	var m = module.searchTags(TEST_TAG, true)
 				.union(module.searchTags("@test", true))
 	m.keys().map(fn(k) {
@@ -89,6 +88,7 @@ Total time {{timer()}}ms
 
 """;
         [h, ...t] => run(testRunner(h, stats), ...t);
+        _ => "Unrecognized modules parameter!"
     }
 }
 

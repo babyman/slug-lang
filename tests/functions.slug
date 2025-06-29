@@ -1,7 +1,8 @@
 var {*} = import(
-    "slug.std",
+    // "slug.std",
     "slug.test"
 );
+
 
 // declare a function
 @export
@@ -27,30 +28,30 @@ assert(out == 16, "got:" + out);
 //
 // default parameter value
 // -----------------------
-var f = fn(a, b = 1) { a + b }
-var out = 1.f();
+var f1 = fn(a, b = 1) { a + b }
+var out = 1.f1();
 assert(out == 2, "expected 2, got " + out);
-var out = 1.f(10);
+var out = 1.f1(10);
 assert(out == 11, "expected 11, got " + out)
 
 
 // variadic function example
 // -------------------------
-var f = fn(a, ...b) { a + b.len() }
-var out = 1.f(0, 0, 0);
+var f2 = fn(a, ...b) { a + b.len() }
+var out = 1.f2(0, 0, 0);
 assert(out == 4, "expected 4, got " + out);
 
 // variadic spread example
 // -----------------------
 
-var f = fn(...args) {
+var f3 = fn(...args) {
     args;
 }
 
-f(1, 2, 3).assertListEqual([1, 2, 3]);
-f(...[1 ,2]).assertListEqual([1, 2]);
-f(0, ...[1 ,2]).assertListEqual([0, 1, 2]);
-f(...[1 ,2], 9).assertListEqual([1, 2, 9]);
-f(0, ...[1 ,2], 9).assertListEqual([0, 1, 2, 9]);
-f(...[1 ,2] :+ 3).assertListEqual([1, 2, 3]);
-f(0,...[1 ,2] :+ 3, 9).assertListEqual([0, 1, 2, 3, 9]);
+f3(1, 2, 3).assertListEqual([1, 2, 3]);
+f3(...[1 ,2]).assertListEqual([1, 2]);
+f3(0, ...[1 ,2]).assertListEqual([0, 1, 2]);
+f3(...[1 ,2], 9).assertListEqual([1, 2, 9]);
+f3(0, ...[1 ,2], 9).assertListEqual([0, 1, 2, 9]);
+f3(...[1 ,2] :+ 3).assertListEqual([1, 2, 3]);
+f3(0,...[1 ,2] :+ 3, 9).assertListEqual([0, 1, 2, 3, 9]);

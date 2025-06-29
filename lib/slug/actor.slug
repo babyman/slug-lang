@@ -1,6 +1,6 @@
 // mode = roundrobin | broadcast
 @export
-foreign mailbox = fn(mode);
+foreign mailbox = fn(mode = "roundrobin");
 
 @export
 foreign bindActor = fn(pid, f, ...args);
@@ -26,7 +26,7 @@ foreign send = fn(pid, ...messages);
 // Returns:
 //   received message data, or nil on timeout
 @export
-foreign receive = fn(timeout);
+foreign receive = fn(timeout = 0);
 
 // returns the pid of the mailbox to a name
 @export

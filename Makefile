@@ -10,12 +10,13 @@ live:
 	find . \( -name "*.slug" -o -name "*.go" \) | entr -r time go run ./cmd/app/ $(ARGS)
 
 test: release
+	# e.g. find . \( -name "*.slug" -o -name "*.go" \) | entr -r time make test
 	go test ./... || exit 1
 	@for file in $(shell find ./tests -name "*.slug" | sort); do \
 		echo "Running tests for $$file"; \
-		./bin/$(BINARY_NAME) --root ./tests $$file || exit 1; \
+		./bin/$(BINARY_NAME) -log-level none --root ./tests $$file || exit 1; \
 	done
-	slug test slug.math slug.std slug.list slug.string slug.map
+	slug -log-level none test slug.math slug.std slug.list slug.string slug.map
 
 lc: clean
 	cloc  --exclude-dir=.idea --read-lang-def=slug_cloc_definition.txt .

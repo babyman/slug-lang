@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"math"
 	"slug/internal/ast"
 	"slug/internal/dec64"
 	"slug/internal/lexer"
@@ -848,6 +849,7 @@ func (p *Parser) parseFunctionLiteral() ast.Expression {
 	}
 
 	lit.Parameters = p.parseFunctionParameters()
+	lit.Signature = p.generateSignature(lit.Parameters)
 
 	if !p.expectPeek(token.LBRACE) {
 		return nil
@@ -1008,6 +1010,38 @@ func (p *Parser) parseFunctionFirstCallExpression(left ast.Expression) ast.Expre
 			Index: &ast.StringLiteral{Token: function.Token, Value: function.Value},
 		}
 	}
+}
+
+func (p *Parser) generateSignature(params []*ast.FunctionParameter) ast.FSig {
+
+	minP := len(params)
+	maxP := len(params)
+	variadic := false
+
+	if maxP > 0 && params[maxP-1].IsVariadic {
+		maxP = math.MaxInt
+		minP -= 1
+		variadic = true
+	}
+
+	for i := minP - 1; i >= 0; i-- {
+		param := params[i]
+		if param.Default != nil {
+			minP = i
+		} else {
+			break
+		}
+	}
+
+	sig := ast.FSig{
+		Min:        minP,
+		Max:        maxP,
+		IsVariadic: variadic,
+	}
+
+	//log.Debug("%v\n", sig)
+
+	return sig
 }
 
 func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression {
@@ -1324,6 +1358,7 @@ func (p *Parser) parseForeignFunctionDeclaration() *ast.ForeignFunctionDeclarati
 	}
 
 	foreignFunction.Parameters = p.parseFunctionParameters()
+	foreignFunction.Signature = p.generateSignature(foreignFunction.Parameters)
 
 	if p.peekTokenIs(token.SEMICOLON) {
 		p.nextToken()
