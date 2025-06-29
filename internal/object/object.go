@@ -265,12 +265,11 @@ type Foreign struct {
 	Tags      map[string]List
 	Fn        ForeignFunction
 	Name      string
-	Arity     int
 }
 
 func (f *Foreign) Type() ObjectType { return FOREIGN_OBJ }
 func (f *Foreign) Inspect() string {
-	return "foreign " + f.Name + "(" + fmt.Sprintf("%d", f.Arity) + ") { <native fn> }"
+	return "foreign " + f.Name + "(" + fmt.Sprintf("%v", f.Signature) + ") { <native fn> }"
 }
 func (f *Foreign) HasTag(tag string) bool {
 	return hasTag(tag, f.Tags)

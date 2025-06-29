@@ -1434,7 +1434,6 @@ func (e *Evaluator) evalForeignFunctionDeclaration(ff *ast.ForeignFunctionDeclar
 	if foreignFn, exists := lookupForeign(fqn); exists {
 		foreignFn.Tags = e.evalTags(ff.Tags)
 		foreignFn.Name = functionName
-		foreignFn.Arity = len(ff.Parameters)
 		foreignFn.Signature = ff.Signature
 		isExported := hasExportTag(ff.Tags)
 		_, err := env.Define(functionName, foreignFn, isExported, false)
