@@ -29,12 +29,17 @@ foreign sprintf = fn(str, ...args);
 
 // get the list of keys used a map
 @testWith(
+	[{}], [],
 	[{k:1}], ["k"]
 )
 @export
 foreign keys = fn(map);
 
 // get a value from a map, nil if not present
+@testWith(
+	[{}, "k"], nil,
+	[{k:1}, "k"], 1
+)
 @export
 foreign get = fn(map, key);
 
@@ -88,6 +93,51 @@ var reduce = fn(vs, v, f) {
 	}
 }
 
+@export
+var counter = fn(start = 0) {
+    var count = start - 1;
+    fn() {
+        count = count + 1;
+    };
+}
+
+@testWith(
+	[["a", "b"], fn(){1}], [["a", 1], ["b", 1]]
+)
+@export
+var zipWith = fn(lst, f) {
+	lst.map(fn(v) { [v, f()] });
+}
+
+@testWith(
+	[[]], [],
+	[["a", "b"]], [["a", 0], ["b", 1]]
+)
+@export
+var zipWithIndex = fn(lst) {
+	lst.zipWith(counter(0));
+}
+
+@testWith(
+	[[], []], [],
+	[[1], []], [],
+	[[], [1]], [],
+	[[1], [2]], [[1, 2]]
+)
+@export
+var zip = fn(lst1, lst2, acc = []) {
+	if (len(lst1) == 0 || len(lst2) == 0) {
+		acc
+	} else {
+		zip(lst1[1:], lst2[1:], acc :+ [lst1[0], lst2[0]])
+	}
+}
+
+@testWith(
+	[1, 1], 0,
+	[1, 2], 1,
+	[2, 1], 0
+)
 @export
 var zeroIfAbove = fn(a, b) {
 	if ( a < b ) {
