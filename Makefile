@@ -16,7 +16,7 @@ test: release
 		echo "Running tests for $$file"; \
 		./bin/$(BINARY_NAME) -log-level none --root ./tests $$file || exit 1; \
 	done
-	slug -log-level none test slug.math slug.std slug.list slug.string slug.map
+	slug -log-level none test slug.math slug.std slug.list slug.string slug.map slug.time
 
 lc: clean
 	cloc  --exclude-dir=.idea --read-lang-def=slug_cloc_definition.txt .

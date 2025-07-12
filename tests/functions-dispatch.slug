@@ -1,0 +1,17 @@
+var {*} = import(
+    "slug.test"
+);
+
+var f = fn(a, b = 2) {
+    "a"
+}
+var f = fn(a, b = 2, ...c) {
+    "b"
+}
+
+f(1).assertEqual("a")
+f(1, 2).assertEqual("a")
+
+f(1, 2, 3).assertEqual("b")
+f(1, 2, 3, 4).assertEqual("b")
+f(1, 2, 3, 4, 5).assertEqual("b")

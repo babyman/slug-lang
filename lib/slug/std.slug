@@ -7,9 +7,11 @@
 	[nil], "NIL",
 	[true], "BOOLEAN",
 	[1], "NUMBER",
+	[1.1], "NUMBER",
 	["Hello Slug!"], "STRING",
 	[[1, 2]], "LIST",
-	[{key:"value"}], "MAP"
+	[{key:"value"}], "MAP",
+	[fn(a){}], "FUNCTION"
 )
 @export
 foreign type = fn(val);
@@ -43,11 +45,17 @@ foreign keys = fn(map);
 @export
 foreign get = fn(map, key);
 
-// put a value into a map
+@testWith(
+	[{}, "k", "v"], {k:"v"}
+)
 @export
 foreign put = fn(map, key, value);
 
-// remove a key from a map
+@testWith(
+	[{}, "k"], {},
+	[{k:1}, "k"], {},
+	[{k:1}, "j"], {k:1}
+)
 @export
 foreign remove = fn(map, key);
 
@@ -63,11 +71,18 @@ foreign update = fn(list, index, value);
 @export
 foreign swap = fn(list, index1, index2);
 
+@testWith(
+	[{k:1}, "k", fn(k, v) { v + 1 }], {k:2},
+	[{}, "k", fn(k, v) { v == nil }], {k:true}
+)
 @export
 var compute = fn(map, key, f) {
     map.put(key, f(key, map[key]));
 }
 
+@testWith(
+	[[1,2], fn(n) {n * 2}], [2,4]
+)
 @export
 var map = fn(vs, f, acc = []) {
 	match vs {
@@ -76,6 +91,9 @@ var map = fn(vs, f, acc = []) {
 	}
 }
 
+@testWith(
+	[[1,2,3,4], fn(v) { v % 2 == 0}], [2,4]
+)
 @export
 var filter = fn(vs, f, acc = []) {
 	match vs {
@@ -85,6 +103,11 @@ var filter = fn(vs, f, acc = []) {
 	}
 }
 
+@testWith(
+	[[], 0, fn(a,b) {a+b}], 0,
+	[[1,2,3], 0, fn(a,b) {a+b}], 6,
+	[[1,2,3], 9, fn(a,b) {a+b}], 15
+)
 @export
 var reduce = fn(vs, v, f) {
 	match vs {
