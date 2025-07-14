@@ -3,39 +3,39 @@ var {*} = import (
 );
 
 @export
-foreign trim = fn(str);
+foreign trim = fn(@str str);
 
 @export
-foreign indexOf = fn(str, seq, index = 0);
+foreign indexOf = fn(@str str, @str seq, @num index = 0);
 
 @export
-foreign toUpper = fn(str);
+foreign toUpper = fn(@str str);
 
 @export
-foreign toLower = fn(str);
+foreign toLower = fn(@str str);
 
 @export
-var contains = fn(str, seq) {
+var contains = fn(@str str, @str seq) {
 	str.indexOf(seq) >= 0;
 }
 
 @export
-var startsWith = fn(str, start) {
+var startsWith = fn(@str str, @str start) {
 	str[:len(start)] == start;
 }
 
 @export
-var endsWith = fn(str, end) {
+var endsWith = fn(@str str, @str end) {
 	str[len(str) - len(end):] == end;
 }
 
 @export
-var isUpper = fn(str) {
+var isUpper = fn(@str str) {
 	str == str.toUpper();
 }
 
 @export
-var isLower = fn(str) {
+var isLower = fn(@str str) {
 	str == str.toLower();
 }
 
@@ -52,7 +52,7 @@ var isLower = fn(str) {
 	["slug/test", "/"], ["slug", "test"]
 )
 @export
-var split = fn(str, delimiter, max = -1, count = 1, strs = []) {
+var split = fn(@str str, @str delimiter, @num max = -1, @num count = 1, @list strs = []) {
 	match str.indexOf(delimiter) {
 		n if n >= 0 && (max < 0 || count < max) => {
 			val i = n + delimiter.len();
@@ -66,7 +66,7 @@ var split = fn(str, delimiter, max = -1, count = 1, strs = []) {
 	[["slug", "test"], "."], "slug.test"
 )
 @export
-var join = fn(strs, delimiter, str = nil) {
+var join = fn(strs, @str delimiter, @str str = nil) {
 	match strs {
 		[] => str;
 		[h, ...t] if str == nil => join(t, delimiter, h);
@@ -80,7 +80,7 @@ var join = fn(strs, delimiter, str = nil) {
 	[nil, "/", "."], nil
 )
 @export
-var replaceAll = fn(str, replace, with) {
+var replaceAll = fn(@str str, @str replace, @str with) {
 	if (str == nil) {
 		nil
 	} else {

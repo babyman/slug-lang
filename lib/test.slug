@@ -1,7 +1,7 @@
 var {*} = import(
 	"slug.std",
-	"slug.list",
 	"slug.map",
+	"slug.list",
 	"slug.meta",
 	"slug.string",
 	"slug.time"
@@ -34,8 +34,8 @@ var runTests = fn(f, name, args, stats) {
 			try {
 				val out = f(...a);
 				match out.type() {
-					"LIST" if out.listEquals(e) => println("  [\033[32mPASS\033[0m] {{name}}({{a}}) == {{out}}");
-					"MAP" if out.mapEquals(e) => println("  [\033[32mPASS\033[0m] {{name}}({{a}}) == {{out}}");
+					"LIST" if out.equals(e) => println("  [\033[32mPASS\033[0m] {{name}}({{a}}) == {{out}}");
+					"MAP" if out.equals(e) => println("  [\033[32mPASS\033[0m] {{name}}({{a}}) == {{out}}");
 					_ if out == e => println("  [\033[32mPASS\033[0m] {{name}}({{a}}) == {{out}}");
 					_ => {
 						stats = stats.compute("fail", fn(k, v) { v + 1});

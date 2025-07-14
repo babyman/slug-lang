@@ -8,6 +8,7 @@ import (
 )
 
 type FSig struct {
+	Tags       string
 	Min        int
 	Max        int
 	IsVariadic bool
@@ -350,10 +351,10 @@ func (ce *CallExpression) String() string {
 }
 
 type FunctionParameter struct {
-	Name        *Identifier         // Parameter name
-	Default     Expression          // Default value (optional)
-	IsVariadic  bool                // Whether this is a variadic argument
-	Destructure *DestructureBinding // List destructuring binding (optional)
+	Tags       []*Tag
+	Name       *Identifier // Parameter name
+	Default    Expression  // Default value (optional)
+	IsVariadic bool        // Whether this is a variadic argument
 }
 
 func (p *FunctionParameter) expressionNode()      {}
@@ -361,40 +362,18 @@ func (p *FunctionParameter) TokenLiteral() string { return p.Name.Token.Literal 
 func (p *FunctionParameter) String() string {
 	var out bytes.Buffer
 
-	if p.Destructure != nil {
-		out.WriteString(p.Destructure.String())
-	} else {
-		out.WriteString("(")
-		if p.IsVariadic {
-			out.WriteString("...")
-		}
-		out.WriteString(p.Name.String())
-		if p.Default != nil {
-			out.WriteString("=")
-			out.WriteString(p.Default.String())
-		}
-		out.WriteString(")")
-	}
-
-	return out.String()
-}
-
-// DestructureBinding todo deprecated, replace with proper destructure
-type DestructureBinding struct {
-	Token token.Token // The ':', for example
-	Head  *Identifier // The variable for the head (e.g., "h")
-	Tail  *Identifier // The variable for the tail (e.g., "t")
-}
-
-func (b *DestructureBinding) expressionNode()      {}
-func (b *DestructureBinding) TokenLiteral() string { return b.Token.Literal }
-func (b *DestructureBinding) String() string {
-	var out bytes.Buffer
-
 	out.WriteString("(")
-	out.WriteString(b.Head.String())
-	out.WriteString(":")
-	out.WriteString(b.Tail.String())
+	for _, tag := range p.Tags {
+		out.WriteString(tag.String() + " ")
+	}
+	if p.IsVariadic {
+		out.WriteString("...")
+	}
+	out.WriteString(p.Name.String())
+	if p.Default != nil {
+		out.WriteString("=")
+		out.WriteString(p.Default.String())
+	}
 	out.WriteString(")")
 
 	return out.String()

@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"slug/internal/ast"
@@ -950,6 +951,13 @@ func (p *Parser) parseFunctionParameters() []*ast.FunctionParameter {
 	for {
 		param := &ast.FunctionParameter{}
 
+		// Collect tags (e.g., @int, @str)
+		for p.curTokenIs(token.AT) {
+			tag := p.parseTag()
+			param.Tags = append(param.Tags, tag)
+			p.nextToken()
+		}
+
 		if p.curTokenIs(token.ELLIPSIS) {
 			// Handle variadic parameter (e.g., ...b)
 			p.nextToken()
@@ -1017,6 +1025,7 @@ func (p *Parser) generateSignature(params []*ast.FunctionParameter) ast.FSig {
 	minP := len(params)
 	maxP := len(params)
 	variadic := false
+	var tags bytes.Buffer
 
 	if maxP > 0 && params[maxP-1].IsVariadic {
 		maxP = math.MaxInt
@@ -1033,13 +1042,19 @@ func (p *Parser) generateSignature(params []*ast.FunctionParameter) ast.FSig {
 		}
 	}
 
+	for _, param := range params {
+		for _, tag := range param.Tags {
+			tags.WriteString(tag.String())
+		}
+		tags.WriteString("|")
+	}
+
 	sig := ast.FSig{
+		Tags:       tags.String(),
 		Min:        minP,
 		Max:        maxP,
 		IsVariadic: variadic,
 	}
-
-	//log.Debug("%v\n", sig)
 
 	return sig
 }

@@ -65,12 +65,9 @@ foreign ls = fn(path);
 @export
 foreign rm = fn(path);
 
-@export
-val READ_MODE = "r"
-@export
-val WRITE_MODE = "w"
-@export
-val APPEND_MODE = "a"
+@export val READ_MODE = "r";
+@export val WRITE_MODE = "w";
+@export val APPEND_MODE = "a";
 
 // openFile opens a file in specified mode
 // Parameters:

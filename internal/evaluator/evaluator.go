@@ -122,28 +122,27 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 		return e.evalMatchExpression(node)
 
 	case *ast.VarExpression:
-		val := e.Eval(node.Value)
-		if e.isError(val) {
-			return val
+		variable := e.Eval(node.Value)
+		if e.isError(variable) {
+			return variable
 		}
 		isExported := hasExportTag(node.Tags)
-		if _, err := e.patternMatches(node.Pattern, val, false, isExported, false); err != nil {
+		if _, err := e.patternMatches(node.Pattern, variable, false, isExported, false); err != nil {
 			return newError(err.Error())
 		}
-		e.applyTagsIfPresent(node.Tags, val)
-		return val // Return the assigned value
+		return e.applyTagsIfPresent(node.Tags, variable)
 
 	case *ast.ValExpression:
-		val := e.Eval(node.Value)
-		if e.isError(val) {
-			return val
+		value := e.Eval(node.Value)
+		if e.isError(value) {
+			return value
 		}
 		isExported := hasExportTag(node.Tags)
-		if _, err := e.patternMatches(node.Pattern, val, true, isExported, false); err != nil {
+		if _, err := e.patternMatches(node.Pattern, value, true, isExported, false); err != nil {
 			return newError(err.Error())
 		}
-		e.applyTagsIfPresent(node.Tags, val)
-		return val // Return the assigned value
+		e.applyTagsIfPresent(node.Tags, value)
+		return value // Return the assigned value
 
 	case *ast.ForeignFunctionDeclaration:
 		return e.evalForeignFunctionDeclaration(node)
@@ -1433,6 +1432,7 @@ func (e *Evaluator) evalForeignFunctionDeclaration(ff *ast.ForeignFunctionDeclar
 
 	if foreignFn, exists := lookupForeign(fqn); exists {
 		foreignFn.Tags = e.evalTags(ff.Tags)
+		foreignFn.Parameters = ff.Parameters
 		foreignFn.Name = functionName
 		foreignFn.Signature = ff.Signature
 		isExported := hasExportTag(ff.Tags)
@@ -1451,14 +1451,18 @@ func (e *Evaluator) evalDefer(deferStmt *ast.DeferStatement) object.Object {
 	return nil // Defer statements do not produce a direct result
 }
 
-func (e *Evaluator) applyTagsIfPresent(tags []*ast.Tag, val object.Object) {
+func (e *Evaluator) applyTagsIfPresent(tags []*ast.Tag, val object.Object) object.Object {
 	if tags != nil {
-		if fn, ok := val.(*object.Function); ok {
-			fn.Tags = e.evalTags(tags)
-		} else if foreignFn, ok := val.(*object.Foreign); ok {
-			foreignFn.Tags = e.evalTags(tags)
+		switch t := val.(type) {
+		case *object.Function:
+			t.Tags = e.evalTags(tags)
+		case *object.Foreign:
+			t.Tags = e.evalTags(tags)
+		case *object.Map:
+			t.Tags = e.evalTags(tags)
 		}
 	}
+	return val
 }
 
 func (e *Evaluator) evalTags(tags []*ast.Tag) map[string]object.List {

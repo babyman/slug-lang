@@ -1,17 +1,25 @@
 //
 // the slug standard library
 // -------------------------
+@export val NIL_TYPE = "NIL";
+@export val BOOLEAN_TYPE = "BOOLEAN";
+@export val NUMBER_TYPE = "NUMBER";
+@export val STRING_TYPE = "STRING";
+@export val LIST_TYPE = "LIST";
+@export val MAP_TYPE = "MAP";
+@export val FUNCTION_TYPE = "FUNCTION";
+
 
 // return a string value indicating the type of `val`
 @testWith(
-	[nil], "NIL",
-	[true], "BOOLEAN",
-	[1], "NUMBER",
-	[1.1], "NUMBER",
-	["Hello Slug!"], "STRING",
-	[[1, 2]], "LIST",
-	[{key:"value"}], "MAP",
-	[fn(a){}], "FUNCTION"
+	[nil], NIL_TYPE,
+	[true], BOOLEAN_TYPE,
+	[1], NUMBER_TYPE,
+	[1.1], NUMBER_TYPE,
+	["Hello Slug!"], STRING_TYPE,
+	[[1, 2]], LIST_TYPE,
+	[{key:"value"}], MAP_TYPE,
+	[fn(a){a}], FUNCTION_TYPE
 )
 @export
 foreign type = fn(val);
@@ -24,10 +32,10 @@ foreign type = fn(val);
 foreign isDefined = fn(val);
 
 @export
-foreign printf = fn(str, ...args);
+foreign printf = fn(@str str, ...args);
 
 @export
-foreign sprintf = fn(str, ...args);
+foreign sprintf = fn(@str str, ...args);
 
 // get the list of keys used a map
 @testWith(
@@ -35,7 +43,7 @@ foreign sprintf = fn(str, ...args);
 	[{k:1}], ["k"]
 )
 @export
-foreign keys = fn(map);
+foreign keys = fn(@map map);
 
 // get a value from a map, nil if not present
 @testWith(
@@ -43,13 +51,13 @@ foreign keys = fn(map);
 	[{k:1}, "k"], 1
 )
 @export
-foreign get = fn(map, key);
+foreign get = fn(@map map, key);
 
 @testWith(
 	[{}, "k", "v"], {k:"v"}
 )
 @export
-foreign put = fn(map, key, value);
+foreign put = fn(@map map, key, value);
 
 @testWith(
 	[{}, "k"], {},
@@ -57,26 +65,26 @@ foreign put = fn(map, key, value);
 	[{k:1}, "j"], {k:1}
 )
 @export
-foreign remove = fn(map, key);
+foreign remove = fn(@map map, key);
 
 @testWith(
 	[[1,2,3], 1, 99], [1,99,3]
 )
 @export
-foreign update = fn(list, index, value);
+foreign update = fn(@list list, @num index, value);
 
 @testWith(
 	[[1,2],0,1], [2,1]
 )
 @export
-foreign swap = fn(list, index1, index2);
+foreign swap = fn(@list list, @num index1, @num index2);
 
 @testWith(
 	[{k:1}, "k", fn(k, v) { v + 1 }], {k:2},
 	[{}, "k", fn(k, v) { v == nil }], {k:true}
 )
 @export
-var compute = fn(map, key, f) {
+var compute = fn(@map map, key, f) {
     map.put(key, f(key, map[key]));
 }
 
@@ -84,7 +92,7 @@ var compute = fn(map, key, f) {
 	[[1,2], fn(n) {n * 2}], [2,4]
 )
 @export
-var map = fn(vs, f, acc = []) {
+var map = fn(@list vs, f, acc = []) {
 	match vs {
 		[h, ...t] => map(t, f, acc :+ h.f());
 		[] => acc;
@@ -95,7 +103,7 @@ var map = fn(vs, f, acc = []) {
 	[[1,2,3,4], fn(v) { v % 2 == 0}], [2,4]
 )
 @export
-var filter = fn(vs, f, acc = []) {
+var filter = fn(@list vs, f, acc = []) {
 	match vs {
 		[h, ...t] if h.f() => filter(t, f, acc :+ h);
 		[h, ...t] => filter(t, f, acc);
@@ -109,7 +117,7 @@ var filter = fn(vs, f, acc = []) {
 	[[1,2,3], 9, fn(a,b) {a+b}], 15
 )
 @export
-var reduce = fn(vs, v, f) {
+var reduce = fn(@list vs, v, f) {
 	match vs {
 		[h, ...t] => reduce(t, f(v, h), f);
 		[] => v;
@@ -117,7 +125,7 @@ var reduce = fn(vs, v, f) {
 }
 
 @export
-var counter = fn(start = 0) {
+var counter = fn(@num start = 0) {
     var count = start - 1;
     fn() {
         count = count + 1;
@@ -128,7 +136,7 @@ var counter = fn(start = 0) {
 	[["a", "b"], fn(){1}], [["a", 1], ["b", 1]]
 )
 @export
-var zipWith = fn(lst, f) {
+var zipWith = fn(@list lst, f) {
 	lst.map(fn(v) { [v, f()] });
 }
 
@@ -137,7 +145,7 @@ var zipWith = fn(lst, f) {
 	[["a", "b"]], [["a", 0], ["b", 1]]
 )
 @export
-var zipWithIndex = fn(lst) {
+var zipWithIndex = fn(@list lst) {
 	lst.zipWith(counter(0));
 }
 
@@ -148,7 +156,7 @@ var zipWithIndex = fn(lst) {
 	[[1], [2]], [[1, 2]]
 )
 @export
-var zip = fn(lst1, lst2, acc = []) {
+var zip = fn(@list lst1, @list lst2, acc = []) {
 	if (len(lst1) == 0 || len(lst2) == 0) {
 		acc
 	} else {
@@ -162,7 +170,7 @@ var zip = fn(lst1, lst2, acc = []) {
 	[2, 1], 0
 )
 @export
-var zeroIfAbove = fn(a, b) {
+var zeroIfAbove = fn(@num a, @num b) {
 	if ( a < b ) {
 		a
 	} else {

@@ -16,11 +16,7 @@ func fnBuiltinImport() *object.Foreign {
 				return ctx.NewError("import expects at least one argument")
 			}
 
-			m := &object.Map{
-				Tags: map[string]object.List{
-					"@import": {},
-				},
-			}
+			tempMap := make(map[string]object.Object)
 
 			for i, arg := range args {
 				if arg.Type() != object.STRING_OBJ {
@@ -32,9 +28,29 @@ func fnBuiltinImport() *object.Foreign {
 				}
 				for name, binding := range module.Env.Bindings {
 					if binding.Meta.IsExport {
-						m.Put(&object.String{Value: name}, binding.Value)
+						// check if this is a FunctionGroup, if it is combine it, do not overwrite
+						if fg, ok := binding.Value.(*object.FunctionGroup); ok {
+							if existing, exists := tempMap[name]; exists {
+								if existingFg, ok := existing.(*object.FunctionGroup); ok {
+									for k, v := range fg.Functions {
+										existingFg.Functions[k] = v
+									}
+									continue
+								}
+							}
+						}
+						tempMap[name] = binding.Value
 					}
 				}
+			}
+
+			m := &object.Map{
+				Tags: map[string]object.List{
+					"@import": {},
+				},
+			}
+			for k, v := range tempMap {
+				m.Put(&object.String{Value: k}, v)
 			}
 			return m
 		},

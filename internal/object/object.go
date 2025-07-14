@@ -30,6 +30,15 @@ const (
 	RETURN_VALUE_OBJ = "RETURN_VALUE"
 )
 
+var TypeTags = map[string]string{
+	"@num":  NUMBER_OBJ,
+	"@str":  STRING_OBJ,
+	"@map":  MAP_OBJ,
+	"@list": LIST_OBJ,
+	"@bool": BOOLEAN_OBJ,
+	"@fn":   FUNCTION_GROUP_OBJ,
+}
+
 // EvaluatorContext provides the bridge between native Go code and the interpreter,
 // allowing Foreign Function Interface (FFI) implementations to access the current
 // execution context and helper methods.
@@ -187,43 +196,6 @@ func (fg *FunctionGroup) Inspect() string {
 	out.WriteString("]")
 	return out.String()
 }
-func (fg *FunctionGroup) DispatchToFunction(args []Object) (Object, bool) {
-	log.Info("dispatching to function group size: %d, param count %d", len(fg.Functions), len(args))
-
-	n := len(args)
-	var bestMatch Object
-	var bestMax = math.MaxInt
-	var foundNonVariadic bool
-
-	for sig, fn := range fg.Functions {
-		if n >= sig.Min && n <= sig.Max {
-			isVariadic := sig.IsVariadic
-			if sig.Max < bestMax || bestMatch == nil {
-				bestMatch = fn
-				bestMax = sig.Max
-				foundNonVariadic = !isVariadic
-			} else if sig.Max == bestMax {
-				// Prefer non-variadic if Max values are equal
-				if foundNonVariadic && isVariadic {
-					continue
-				}
-				if !foundNonVariadic {
-					bestMatch = fn
-					foundNonVariadic = !isVariadic
-				}
-			}
-		}
-	}
-
-	if bestMatch != nil {
-		log.Debug("best match: %s", bestMatch.Inspect())
-		return bestMatch, true
-	} else {
-		log.Debug("no match found for %v params", n)
-	}
-
-	return &Error{Message: "No suitable function found to dispatch"}, false
-}
 func (fg *FunctionGroup) HasTag(tag string) bool {
 	for _, function := range fg.Functions {
 		switch fn := function.(type) {
@@ -247,6 +219,78 @@ func (fg *FunctionGroup) GetTagParams(tag string) (List, bool) {
 	}
 	return List{}, false
 }
+func (fg *FunctionGroup) DispatchToFunction(args []Object) (Object, bool) {
+	log.Info("dispatching to function group size: %d, param count %d", len(fg.Functions), len(args))
+
+	n := len(args)
+	var bestMatch Object
+	var bestMax = math.MaxInt
+	var bestScore = -1
+	var foundNonVariadic bool
+
+	for sig, fn := range fg.Functions {
+		if n >= sig.Min && n <= sig.Max {
+			isVariadic := sig.IsVariadic
+
+			var score = 0
+			switch f := fn.(type) {
+			case *Function:
+				score = evaluateFunctionMatch(f.Parameters, args)
+			case *Foreign:
+				score = evaluateFunctionMatch(f.Parameters, args)
+			}
+
+			//fmt.Printf("----- sig max %d, score: %d\n", sig.Max, score)
+
+			if score >= 0 && sig.Max < bestMax || (sig.Max == bestMax && score > bestScore) ||
+				(sig.Max == bestMax && score == bestScore && (!foundNonVariadic || !isVariadic)) {
+				bestMatch = fn
+				bestMax = sig.Max
+				bestScore = score
+				foundNonVariadic = !isVariadic
+			}
+		}
+	}
+
+	if bestMatch != nil {
+		log.Debug("best match: %s", bestMatch.Inspect())
+		//fmt.Printf("-----\nbest match: %s, best max %d, score: %d\n\n", bestMatch.Inspect(), bestMax, bestScore)
+		return bestMatch, true
+	} else {
+		log.Debug("no match found for %v params", n)
+	}
+
+	return &Error{Message: "No suitable function found to dispatch"}, false
+}
+
+func evaluateFunctionMatch(params []*ast.FunctionParameter, args []Object) int {
+	score := 0 // Start with zero matches
+	for i, param := range params {
+		if i >= len(args) {
+			break
+		}
+		arg := args[i]
+		// Check for matching tags
+		for _, tag := range param.Tags {
+			if tagType, exists := TypeTags[tag.Name]; exists {
+				if string(arg.Type()) == tagType {
+					//println("match for tag: ", tag.Name, arg.Type())
+					score++
+					break
+				} else if arg.Type() == NIL_OBJ {
+					score++
+					break
+				} else {
+					// we have a type tag and it's not a match
+					return -1
+				}
+			} else if arg.Type() != NIL_OBJ {
+				log.Warn("no match for argument type %s", arg.Type())
+			}
+		}
+	}
+	return score
+}
 
 type String struct {
 	Value string
@@ -261,10 +305,11 @@ func (s *String) MapKey() MapKey {
 }
 
 type Foreign struct {
-	Signature ast.FSig
-	Tags      map[string]List
-	Fn        ForeignFunction
-	Name      string
+	Signature  ast.FSig
+	Tags       map[string]List
+	Parameters []*ast.FunctionParameter
+	Fn         ForeignFunction
+	Name       string
 }
 
 func (f *Foreign) Type() ObjectType { return FOREIGN_OBJ }

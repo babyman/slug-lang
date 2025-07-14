@@ -271,14 +271,6 @@ func WalkAST(node ast.Node) interface{} {
 			"2.pairs":    pairs,
 		}
 
-	case *ast.DestructureBinding:
-		return map[string]interface{}{
-			"0.type":     "DestructureBinding",
-			"1.position": n.Token.Position,
-			"2.head":     WalkAST(n.Head),
-			"3.tail":     WalkAST(n.Tail),
-		}
-
 	case *ast.ThrowStatement:
 		return map[string]interface{}{
 			"0.type":  "ThrowStatement",

@@ -1,13 +1,13 @@
 var {*} = import(
     "slug.std"
 );
-var {listEquals} = import(
+var {equals} = import(
     "slug.list"
 );
 
 @export
 var assert = fn(a, msg = nil) {
-    if ( a.type() == "BOOLEAN" && !a ) {
+    if ( a.type() == BOOLEAN_TYPE && !a ) {
         if ( !msg ) {
             msg = "{{a}} ({{a.type()}}) is not true";
         }
@@ -36,8 +36,8 @@ var assertEqual = fn(a, b, msg = nil) {
 
 
 @export
-var assertListEqual = fn(a, b, msg = nil) {
-    if ( !(a == b || listEquals(a, b)) ) {
+var assertEqual = fn(@list a, @list b, msg = nil) {
+    if ( !(a == b || equals(a, b)) ) {
         if ( !msg ) {
             msg = "List '{{a}}' is not equal to '{{b}}'";
         }
