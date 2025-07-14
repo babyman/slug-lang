@@ -3,13 +3,13 @@
 foreign clock = fn();
 
 @export
-foreign fmtClock = fn(millis, fmt);
+foreign fmtClock = fn(@num millis, @str fmt);
 
 @export
 foreign clockNanos = fn();
 
 @export
-foreign sleep = fn(millis);
+foreign sleep = fn(@num millis);
 
 // delta creates a function that measures time difference between calls
 // Parameters:
@@ -33,7 +33,7 @@ var delta = fn(f) {
 	[1], 1000
 )
 @export
-var secsToMillis = fn(secs) {
+var secsToMillis = fn(@num secs) {
     secs * 1000
 }
 
@@ -46,7 +46,7 @@ var secsToMillis = fn(secs) {
 	[1], 60000
 )
 @export
-var minsToMillis = fn(mins) {
+var minsToMillis = fn(@num mins) {
     mins * 60 * 1000
 }
 

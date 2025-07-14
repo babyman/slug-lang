@@ -5,7 +5,7 @@
 // Returns:
 //   string content of file, or error if file cannot be read
 @export
-foreign readFile = fn(path);
+foreign readFile = fn(@str path);
 
 // writeFile writes string content to a file
 // Parameters:
@@ -14,7 +14,7 @@ foreign readFile = fn(path);
 // Returns:
 //   nil on success, error if write fails
 @export
-foreign writeFile = fn(path, contents);
+foreign writeFile = fn(@str path, @str contents);
 
 // appendFile appends string content to end of file
 // Parameters:
@@ -23,7 +23,7 @@ foreign writeFile = fn(path, contents);
 // Returns:
 //   nil on success, error if write fails
 @export
-foreign appendFile = fn(path, contents);
+foreign appendFile = fn(@str path, @str contents);
 
 // info gets information about a file
 // Parameters:
@@ -31,7 +31,7 @@ foreign appendFile = fn(path, contents);
 // Returns:
 //   object containing file metadata
 @export
-foreign info = fn(path);
+foreign info = fn(@str path);
 
 // exists checks if a file exists and is accessible
 // Parameters:
@@ -39,7 +39,7 @@ foreign info = fn(path);
 // Returns:
 //   true if file exists and is accessible, false otherwise
 @export
-foreign exists = fn(path);
+foreign exists = fn(@str path);
 
 // isDir checks if path points to a directory
 // Parameters:
@@ -47,7 +47,7 @@ foreign exists = fn(path);
 // Returns:
 //   true if path is a directory, false otherwise
 @export
-foreign isDir = fn(path);
+foreign isDir = fn(@str path);
 
 // ls lists contents of a directory (non-recursively)
 // Parameters:
@@ -55,7 +55,7 @@ foreign isDir = fn(path);
 // Returns:
 //   list of filenames in the directory
 @export
-foreign ls = fn(path);
+foreign ls = fn(@str path);
 
 // rm removes a file or empty directory
 // Parameters:
@@ -63,7 +63,7 @@ foreign ls = fn(path);
 // Returns:
 //   nil on success, error if removal fails
 @export
-foreign rm = fn(path);
+foreign rm = fn(@str path);
 
 @export val READ_MODE = "r";
 @export val WRITE_MODE = "w";
@@ -76,7 +76,7 @@ foreign rm = fn(path);
 // Returns:
 //   file handle number on success, error if open fails
 @export
-foreign openFile = fn(path, mode);
+foreign openFile = fn(@str path, @str mode);
 
 // readLine reads the next line from an open file
 // Parameters:
@@ -84,7 +84,7 @@ foreign openFile = fn(path, mode);
 // Returns:
 //   string containing next line, or error if read fails
 @export
-foreign readLine = fn(handle);
+foreign readLine = fn(@num handle);
 
 // readBytes reads a fixed number of bytes from file
 // Parameters:
@@ -100,7 +100,7 @@ foreign readLine = fn(handle);
 // Returns:
 //   number of bytes written, or error if write fails
 @export
-foreign write = fn(handle, content);
+foreign write = fn(@num handle, @str content);
 
 // closeFile closes an open file handle
 // Parameters:
@@ -108,10 +108,10 @@ foreign write = fn(handle, content);
 // Returns:
 //   nil on success, error if close fails
 @export
-foreign closeFile = fn(handle)
+foreign closeFile = fn(@num handle)
 
 @export
-var readLines = fn(file, lines = []) {
+var readLines = fn(@num file, lines = []) {
 	match file.readLine() {
 		nil => lines
 		str => readLines(file, lines :+ str[:-1]) // -1 to trim the newline

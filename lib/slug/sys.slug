@@ -5,7 +5,7 @@
 // Returns:
 //   string value of the environment variable, or nil if variable is not set
 @export
-foreign env = fn(str);
+foreign env = fn(@str str);
 
 @export
-foreign setEnv = fn(str);
+foreign setEnv = fn(@str str);

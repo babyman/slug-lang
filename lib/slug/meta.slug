@@ -1,9 +1,9 @@
 
 @export
-foreign hasTag = fn(v, tag);
+foreign hasTag = fn(v, @str tag);
 
 @export
-foreign getTag = fn(v, tag);
+foreign getTag = fn(v, @str tag);
 
 @export
-foreign searchTags = fn(module, tag, includePrivate = false);
+foreign searchTags = fn(@str module, @str tag, @bool includePrivate = false);
