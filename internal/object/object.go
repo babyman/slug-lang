@@ -30,6 +30,11 @@ const (
 	RETURN_VALUE_OBJ = "RETURN_VALUE"
 )
 
+const (
+	IMPORT_TAG = "@import"
+	EXPORT_TAG = "@export"
+)
+
 var TypeTags = map[string]string{
 	"@num":  NUMBER_OBJ,
 	"@str":  STRING_OBJ,

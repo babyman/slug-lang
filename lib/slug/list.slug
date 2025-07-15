@@ -14,7 +14,7 @@ var {*} = import (
 @export
 var equals = fn(@list a, @list b, @num idx = 0) {
     if (a == nil || b == nil) {
-        a == b;
+        false;
     } else if(idx >= len(a) && len(a) == len(b)) {
         true;
     } else if(type(a[idx]) == LIST_TYPE && type(b[idx]) == LIST_TYPE ) {

@@ -1029,7 +1029,7 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 			return false, nil
 		}
 
-		isImport := mapObj.HasTag("@import")
+		isImport := mapObj.HasTag(object.IMPORT_TAG)
 
 		if p.SelectAll {
 			// Copy all key-value pairs into current scope
@@ -1480,7 +1480,7 @@ func (e *Evaluator) evalTags(tags []*ast.Tag) map[string]object.List {
 
 func hasExportTag(tags []*ast.Tag) bool {
 	for _, tag := range tags {
-		if tag.Name == "@export" {
+		if tag.Name == object.EXPORT_TAG {
 			return true
 		}
 	}

@@ -46,7 +46,7 @@ func fnBuiltinImport() *object.Foreign {
 
 			m := &object.Map{
 				Tags: map[string]object.List{
-					"@import": {},
+					object.IMPORT_TAG: {},
 				},
 			}
 			for k, v := range tempMap {
