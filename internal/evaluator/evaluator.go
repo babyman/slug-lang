@@ -197,6 +197,11 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			return left
 		}
 
+		// Short circuit for boolean operations
+		if node.Operator == "&&" || node.Operator == "||" {
+			return e.evalShortCircuitInfixExpression(left, node)
+		}
+
 		right := e.Eval(node.Right)
 		if e.isError(right) {
 			return right
@@ -492,6 +497,45 @@ func (e *Evaluator) evalComplementPrefixOperatorExpression(right object.Object) 
 
 	value := right.(*object.Number).Value
 	return &object.Number{Value: ^value}
+}
+
+func (e *Evaluator) evalShortCircuitInfixExpression(left object.Object, node *ast.InfixExpression) object.Object {
+
+	// Short circuit based on left value and operator
+	switch node.Operator {
+	case "&&":
+		// If left is false, return false without evaluating right
+		if !e.isTruthy(left) {
+			return FALSE
+		}
+		// Otherwise, evaluate and return right
+		right := e.Eval(node.Right)
+		if e.isError(right) {
+			return right
+		}
+		if e.isTruthy(right) {
+			return TRUE
+		}
+		return FALSE
+
+	case "||":
+		// If left is true, return true without evaluating right
+		if e.isTruthy(left) {
+			return TRUE
+		}
+		// Otherwise, evaluate and return right
+		right := e.Eval(node.Right)
+		if e.isError(right) {
+			return right
+		}
+		if e.isTruthy(right) {
+			return TRUE
+		}
+		return FALSE
+
+	default:
+		return newError("unknown operator for short-circuit evaluation: %s", node.Operator)
+	}
 }
 
 func (e *Evaluator) evalBooleanInfixExpression(
