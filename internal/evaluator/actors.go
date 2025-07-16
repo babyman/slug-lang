@@ -169,7 +169,7 @@ func (a *Actor) run() {
 
 func (a *Actor) start() {
 	log.Trace("ACT: %d (%d) started\n", a.PID, a.MailboxPID)
-	out := a.Evaluator.ApplyFunction(a.Function, a.Args)
+	out := a.Evaluator.ApplyFunction("", a.Function, a.Args)
 	reason := "return"
 	switch out.(type) {
 	case *object.Error:

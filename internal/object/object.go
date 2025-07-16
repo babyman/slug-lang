@@ -224,7 +224,7 @@ func (fg *FunctionGroup) GetTagParams(tag string) (List, bool) {
 	}
 	return List{}, false
 }
-func (fg *FunctionGroup) DispatchToFunction(args []Object) (Object, bool) {
+func (fg *FunctionGroup) DispatchToFunction(fnName string, args []Object) (Object, bool) {
 	log.Info("dispatching to function group size: %d, param count %d", len(fg.Functions), len(args))
 
 	n := len(args)
@@ -265,7 +265,18 @@ func (fg *FunctionGroup) DispatchToFunction(args []Object) (Object, bool) {
 		log.Debug("no match found for %v params", n)
 	}
 
-	return &Error{Message: "No suitable function found to dispatch"}, false
+	var a strings.Builder
+	for i, arg := range args {
+		a.WriteString(string(arg.Type()))
+		if i < len(args)-1 {
+			a.WriteString(", ")
+		}
+	}
+	if fnName == "" {
+		fnName = "<anonymous>"
+	}
+	err := fmt.Sprintf("No suitable function called %s(%s) found to dispatch", fnName, a.String())
+	return &Error{Message: err}, false
 }
 
 func evaluateFunctionMatch(params []*ast.FunctionParameter, args []Object) int {
@@ -443,6 +454,7 @@ func (s *Slice) Inspect() string {
 
 // TailCall is a special object used for tail call optimization
 type TailCall struct {
+	FnName    string
 	Function  Object
 	Arguments []Object
 }

@@ -258,6 +258,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			//log.Trace("function tail call")
 			log.Info("Tail calling %s with %d arguments", node.Token.Literal, len(args))
 			return &object.TailCall{
+				FnName:    node.Token.Literal,
 				Function:  function,
 				Arguments: args,
 			}
@@ -265,7 +266,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 
 		log.Info("Calling %s with %d arguments", node.Token.Literal, len(args))
 		// For non-tail calls, invoke the function directly
-		return e.ApplyFunction(function, args)
+		return e.ApplyFunction(node.Token.Literal, function, args)
 
 	case *ast.ListLiteral:
 		elements := e.evalExpressions(node.Elements)
@@ -314,7 +315,7 @@ func (e *Evaluator) evalProgram(program *ast.Program) object.Object {
 
 		for {
 			if returnVal, ok := result.(*object.TailCall); ok {
-				result = e.ApplyFunction(returnVal.Function, returnVal.Arguments)
+				result = e.ApplyFunction(returnVal.FnName, returnVal.Function, returnVal.Arguments)
 				//println("tail call", result.Type())
 			} else if returnVal, ok := result.(*object.ReturnValue); ok {
 				rv, ok := returnVal.Value.(*object.TailCall)
@@ -726,15 +727,15 @@ func (e *Evaluator) evalExpressions(
 	return result
 }
 
-func (e *Evaluator) ApplyFunction(fnObj object.Object, args []object.Object) object.Object {
+func (e *Evaluator) ApplyFunction(fnName string, fnObj object.Object, args []object.Object) object.Object {
 	switch fn := fnObj.(type) {
 	case *object.FunctionGroup:
 
-		f, ok := fn.DispatchToFunction(args)
+		f, ok := fn.DispatchToFunction(fnName, args)
 		if ok {
-			return e.ApplyFunction(f, args)
+			return e.ApplyFunction(fnName, f, args)
 		} else {
-			return newError("No function could be found to call")
+			return f
 		}
 
 	case *object.Function:
@@ -750,7 +751,7 @@ func (e *Evaluator) ApplyFunction(fnObj object.Object, args []object.Object) obj
 
 		for {
 			if returnVal, ok := result.(*object.TailCall); ok {
-				result = e.ApplyFunction(returnVal.Function, returnVal.Arguments)
+				result = e.ApplyFunction(fnName, returnVal.Function, returnVal.Arguments)
 			} else if returnVal, ok := result.(*object.ReturnValue); ok {
 				result = returnVal.Value
 			} else {

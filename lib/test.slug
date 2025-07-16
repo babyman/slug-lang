@@ -36,6 +36,8 @@ var runTests = fn(f, name, args, stats) {
 				match out.type() {
 					"LIST" if out.equals(e) => println("  [\033[32mPASS\033[0m] {{name}}({{a}}) == {{out}}");
 					"MAP" if out.equals(e) => println("  [\033[32mPASS\033[0m] {{name}}({{a}}) == {{out}}");
+					// t if t == LIST_TYPE && out.equals(e) => println("  [\033[32mPASS\033[0m] {{name}}({{a}}) == {{out}}");
+					// t if t == MAP_TYPE && out.equals(e) => println("  [\033[32mPASS\033[0m] {{name}}({{a}}) == {{out}}");
 					_ if out == e => println("  [\033[32mPASS\033[0m] {{name}}({{a}}) == {{out}}");
 					_ => {
 						stats = stats.compute("fail", fn(k, v) { v + 1});

@@ -3,6 +3,9 @@ var {*} = import(
 )
 
 @testWith(
+	[nil, nil], false,
+	[{}, nil], false,
+	[nil, {}], false,
 	[{}, {}], true,
 	[{k1:1}, {k1:1}], true,
 	[{k1:1}, {}], false,
@@ -10,6 +13,9 @@ var {*} = import(
 )
 @export
 var equals = fn(@map m1, @map m2) {
+	if (m1 == nil || m2 == nil) {
+		return false
+	}
 	var check = fn(ks) {
 		match ks {
 			[] => true;
