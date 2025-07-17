@@ -31,17 +31,18 @@ const (
 )
 
 const (
-	IMPORT_TAG = "@import"
-	EXPORT_TAG = "@export"
+	IMPORT_TAG   = "@import"
+	EXPORT_TAG   = "@export"
+	FUNCTION_TAG = "@fun"
 )
 
 var TypeTags = map[string]string{
-	"@num":  NUMBER_OBJ,
-	"@str":  STRING_OBJ,
-	"@map":  MAP_OBJ,
-	"@list": LIST_OBJ,
-	"@bool": BOOLEAN_OBJ,
-	"@fn":   FUNCTION_GROUP_OBJ,
+	"@num":       NUMBER_OBJ,
+	"@str":       STRING_OBJ,
+	"@map":       MAP_OBJ,
+	"@list":      LIST_OBJ,
+	"@bool":      BOOLEAN_OBJ,
+	FUNCTION_TAG: FUNCTION_OBJ,
 }
 
 // EvaluatorContext provides the bridge between native Go code and the interpreter,
@@ -289,8 +290,8 @@ func evaluateFunctionMatch(params []*ast.FunctionParameter, args []Object) int {
 		// Check for matching tags
 		for _, tag := range param.Tags {
 			if tagType, exists := TypeTags[tag.Name]; exists {
-				if string(arg.Type()) == tagType {
-					//println("match for tag: ", tag.Name, arg.Type())
+				// special case the function tag since it can match FUNCTION_OBJ and FUNCTION_GROUP_OBJ
+				if string(arg.Type()) == tagType || (tag.Name == FUNCTION_TAG && arg.Type() == FUNCTION_GROUP_OBJ) {
 					score++
 					break
 				} else if arg.Type() == NIL_OBJ {
