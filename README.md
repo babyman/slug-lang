@@ -246,8 +246,6 @@ println(1);  // Equivalent traditional function call println(1);
 By supporting function chaining, Slug simplifies code readability and enables a more fluid programming style, especially
 when writing pipelines or working with multiple transformations.
 
----
-
 ### Function Call Dispatch and Type Hints
 
 Slug's function call dispatch mechanism determines the correct function to call in cases where multiple function
@@ -284,7 +282,7 @@ objects with specific types.
 
 **Example: Function with Type Hints**
 
-Suppose we define a function group where each variation operates on different types:
+Suppose we define two functions where each variation operates on different types:
 
 ```slug
 fn add(@num a, @num b) { a + b }
