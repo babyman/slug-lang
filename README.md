@@ -248,6 +248,61 @@ when writing pipelines or working with multiple transformations.
 
 ---
 
+### Function Call Dispatch and Type Hints
+
+Slug's function call dispatch mechanism determines the correct function to call in cases where multiple function
+signatures might match incoming arguments. The dispatch process evaluates function signatures based on the provided
+arguments and their compatibility with type hints.
+
+#### Function Dispatch
+
+- In Slug, you can define multiple variations (overloads) of a function using the same name but with different
+  signatures.
+- During a function call:
+    1. Each candidate function within the group is inspected.
+    2. The number of arguments and their types are matched against the function's signature.
+    3. The **best match** is determined based on:
+        - Exact type matches.
+        - Compatibility with **type tags** (described below).
+        - Preference towards non-variadic functions if possible.
+
+If no suitable match is found, an error is returned mentioning that no valid function exists for the given arguments.
+
+#### Using Type Hints
+
+Type hints, represented by **tags** in Slug, help guide the dispatch process by associating function parameters or
+objects with specific types.
+
+**Supported Type Tags:**
+
+- `@num`: Matches objects of type `Number`.
+- `@str`: Matches objects of type `String`.
+- `@bool`: Matches objects of type `Boolean`.
+- `@list`: Matches objects of type `List`.
+- `@map`: Matches objects of type `Map`.
+- `@fun`: Matches objects of type `Function`.
+
+**Example: Function with Type Hints**
+
+Suppose we define a function group where each variation operates on different types:
+
+```slug
+fn add(@num a, @num b) { a + b }
+fn add(@str a, @str b) { a + b }
+```
+
+- Calling `add(3, 5)` would match the first function (`@num`), returning `8`.
+- Calling `add("Hello, ", "world!")` would match the second function (`@str`), returning `"Hello, world!"`.
+
+#### Tips for Writing Functions with Hints
+
+1. Use **type tags** (`@num`, `@str`, etc.) to clarify expected parameter types.
+2. Define fallback or general-purpose functions to handle unexpected cases.
+
+This function concatenates any number of strings passed as arguments.
+
+---
+
 ## 3. Functional Programming Constructs
 
 Slug excels at **functional programming**, empowering you with concise tools and expressive patterns.
@@ -422,13 +477,13 @@ println("Result:", result);  // Output: Result: 56
 
 ## 7. Writing and Running Tests in Slug
 
-Slug provides an integrated testing mechanism with the use of the annotations `@test` and `@testWith`. These annotations
+Slug provides an integrated testing mechanism with the use of the tags `@test` and `@testWith`. These tags
 simplify the process of writing unit tests for your Slug code and enable test-driven development by allowing you to
 define and execute tests directly within your modules.
 
 ### Using `@testWith`
 
-The `@testWith` annotation is used for parameterized tests, where a single function can be tested with multiple sets of
+The `@testWith` tag is used for parameterized tests, where a single function can be tested with multiple sets of
 inputs and expected outputs. This allows for concise and comprehensive test coverage.
 
 To create a test with `@testWith`:
@@ -444,7 +499,7 @@ var parameterizedTest = fn(a, b) {
 }
 ```
 
-- **Definition**: The `@testWith` annotation takes a series of arguments. Each pair consists of input parameters and the
+- **Definition**: The `@testWith` tag takes a series of arguments. Each pair consists of input parameters and the
   expected output.
 - **Execution**: The test runner executes the function for each input-output pair.
 - **Pass Criteria**: For each set of inputs, if the function's return matches the expected value, the test passes.
@@ -452,7 +507,7 @@ var parameterizedTest = fn(a, b) {
 
 ### Using `@test`
 
-The `@test` annotation marks a function as a test case. These functions are executed independently, and the results of
+The `@test` tag marks a function as a test case. These functions are executed independently, and the results of
 assertions or errors during their execution determine if the test passes or fails.
 
 To create a simple test using `@test`:
