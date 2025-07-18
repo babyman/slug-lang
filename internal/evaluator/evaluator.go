@@ -141,8 +141,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 		if _, err := e.patternMatches(node.Pattern, value, true, isExported, false); err != nil {
 			return newError(err.Error())
 		}
-		e.applyTagsIfPresent(node.Tags, value)
-		return value // Return the assigned value
+		return e.applyTagsIfPresent(node.Tags, value)
 
 	case *ast.ForeignFunctionDeclaration:
 		return e.evalForeignFunctionDeclaration(node)
@@ -1499,11 +1498,19 @@ func (e *Evaluator) evalDefer(deferStmt *ast.DeferStatement) object.Object {
 func (e *Evaluator) applyTagsIfPresent(tags []*ast.Tag, val object.Object) object.Object {
 	if tags != nil {
 		switch t := val.(type) {
+		case *object.Boolean:
+			t.Tags = e.evalTags(tags)
+		case *object.Number:
+			t.Tags = e.evalTags(tags)
+		case *object.String:
+			t.Tags = e.evalTags(tags)
 		case *object.Function:
 			t.Tags = e.evalTags(tags)
 		case *object.Foreign:
 			t.Tags = e.evalTags(tags)
 		case *object.Map:
+			t.Tags = e.evalTags(tags)
+		case *object.List:
 			t.Tags = e.evalTags(tags)
 		}
 	}

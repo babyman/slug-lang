@@ -60,8 +60,8 @@ var testRunner = fn(module, stats) {
 	}
 	module = module.replaceAll("/", ".")
 	println(module + ":")
-	var m = module.searchTags(TEST_TAG, true)
-				.union(module.searchTags("@test", true))
+	var m = module.searchModuleTags(TEST_TAG, true)
+				.union(module.searchModuleTags("@test", true))
 	m.keys().map(fn(k) {
 		var args = m[k].getTag(TEST_TAG);
 		if(args) {

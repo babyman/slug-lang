@@ -6,4 +6,7 @@ foreign hasTag = fn(v, @str tag);
 foreign getTag = fn(v, @str tag);
 
 @export
-foreign searchTags = fn(@str module, @str tag, @bool includePrivate = false);
+foreign searchModuleTags = fn(@str module, @str tag, @bool includePrivate = false);
+
+@export
+foreign searchScopeTags = fn(@str tag);

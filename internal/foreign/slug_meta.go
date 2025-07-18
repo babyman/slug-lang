@@ -51,12 +51,12 @@ func fnMetaGetTag() *object.Foreign {
 	}
 }
 
-func fnMetaSearchTags() *object.Foreign {
+func fnMetaSearchModuleTags() *object.Foreign {
 	return &object.Foreign{
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
 			if len(args) < 1 || len(args) > 3 {
-				return ctx.NewError("searchTags expects 1-3 arguments: module name, tag name, and optional includePrivate flag")
+				return ctx.NewError("searchModuleTags expects 1-3 arguments: module name, tag name, and optional includePrivate flag")
 			}
 
 			// Check module name
@@ -111,12 +111,41 @@ func fnMetaSearchTags() *object.Foreign {
 	}
 }
 
+func fnMetaSearchScopeTags() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return ctx.NewError("searchScopeTags expects 1 argument: tag name")
+			}
+
+			tagName, ok := args[0].(*object.String)
+			if !ok {
+				return ctx.NewError("argument must be a string tag name")
+			}
+
+			m := &object.Map{}
+			env := ctx.CurrentEnv()
+
+			for env != nil {
+				for name, binding := range env.Bindings {
+					if hasTag(binding, tagName.Value) {
+						m.Put(&object.String{Value: name}, binding.Value)
+					}
+				}
+				env = env.Outer
+			}
+
+			return m
+		},
+	}
+}
+
 func hasTag(binding *object.Binding, tagName string) bool {
 	if binding == nil {
 		return false
 	}
 
 	// Check if the binding contains a group of functions
-	fg, ok := binding.Value.(*object.FunctionGroup)
+	fg, ok := binding.Value.(object.Taggable)
 	return ok && fg.HasTag(tagName)
 }

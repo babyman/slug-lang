@@ -11,7 +11,7 @@ import (
 func NewEnclosedEnvironment(outer *Environment, stackFrame *StackFrame) *Environment {
 	log.Trace("------ new env ------\n")
 	env := NewEnvironment()
-	env.outer = outer
+	env.Outer = outer
 	env.Path = outer.Path
 	env.ModuleFqn = outer.ModuleFqn
 	env.Src = outer.Src
@@ -21,12 +21,12 @@ func NewEnclosedEnvironment(outer *Environment, stackFrame *StackFrame) *Environ
 
 func NewEnvironment() *Environment {
 	s := make(map[string]*Binding)
-	return &Environment{Bindings: s, outer: nil}
+	return &Environment{Bindings: s, Outer: nil}
 }
 
 type Environment struct {
 	Bindings   map[string]*Binding
-	outer      *Environment
+	Outer      *Environment
 	Src        string
 	Path       string
 	ModuleFqn  string
@@ -50,8 +50,8 @@ func (e *Environment) GetBinding(name string) (*Binding, bool) {
 	if binding, ok := e.Bindings[name]; ok {
 		return binding, true
 	}
-	if e.outer != nil {
-		return e.outer.GetBinding(name)
+	if e.Outer != nil {
+		return e.Outer.GetBinding(name)
 	}
 	return nil, false
 }
@@ -166,8 +166,8 @@ func (e *Environment) Assign(name string, val Object) (Object, error) {
 		}
 		return val, nil
 	}
-	if e.outer != nil {
-		return e.outer.Assign(name, val)
+	if e.Outer != nil {
+		return e.Outer.Assign(name, val)
 	}
 	return nil, fmt.Errorf("failed to assign to '%s': not defined in any accessible scope", name)
 }
@@ -178,7 +178,7 @@ func (e *Environment) GatherStackTrace(frame *StackFrame) []StackFrame {
 	frame.Line = line
 	frame.Col = col
 	trace = append([]StackFrame{*frame}, trace...)
-	for e := e; e != nil; e = e.outer {
+	for e := e; e != nil; e = e.Outer {
 		if e.StackInfo != nil {
 			line, col := parser.GetLineAndColumn(e.Src, e.StackInfo.Position)
 			e.StackInfo.Line = line

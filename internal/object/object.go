@@ -84,16 +84,24 @@ type Object interface {
 }
 
 type Number struct {
+	Tags  map[string]List
 	Value dec64.Dec64
 }
 
-func (i *Number) Type() ObjectType { return NUMBER_OBJ }
-func (i *Number) Inspect() string  { return i.Value.String() }
-func (i *Number) MapKey() MapKey {
-	return MapKey{Type: i.Type(), Value: uint64(i.Value.ToInt64())}
+func (n *Number) Type() ObjectType { return NUMBER_OBJ }
+func (n *Number) Inspect() string  { return n.Value.String() }
+func (n *Number) MapKey() MapKey {
+	return MapKey{Type: n.Type(), Value: uint64(n.Value.ToInt64())}
+}
+func (n *Number) HasTag(tag string) bool {
+	return hasTag(tag, n.Tags)
+}
+func (n *Number) GetTagParams(tag string) (List, bool) {
+	return getTagParams(tag, n.Tags)
 }
 
 type Boolean struct {
+	Tags  map[string]List
 	Value bool
 }
 
@@ -109,6 +117,31 @@ func (b *Boolean) MapKey() MapKey {
 	}
 
 	return MapKey{Type: b.Type(), Value: value}
+}
+func (b *Boolean) HasTag(tag string) bool {
+	return hasTag(tag, b.Tags)
+}
+func (b *Boolean) GetTagParams(tag string) (List, bool) {
+	return getTagParams(tag, b.Tags)
+}
+
+type String struct {
+	Tags  map[string]List
+	Value string
+}
+
+func (s *String) Type() ObjectType { return STRING_OBJ }
+func (s *String) Inspect() string  { return s.Value }
+func (s *String) MapKey() MapKey {
+	h := fnv.New64a()
+	h.Write([]byte(s.Value))
+	return MapKey{Type: s.Type(), Value: h.Sum64()}
+}
+func (s *String) HasTag(tag string) bool {
+	return hasTag(tag, s.Tags)
+}
+func (s *String) GetTagParams(tag string) (List, bool) {
+	return getTagParams(tag, s.Tags)
 }
 
 type Nil struct{}
@@ -309,18 +342,6 @@ func evaluateFunctionMatch(params []*ast.FunctionParameter, args []Object) int {
 	return score
 }
 
-type String struct {
-	Value string
-}
-
-func (s *String) Type() ObjectType { return STRING_OBJ }
-func (s *String) Inspect() string  { return s.Value }
-func (s *String) MapKey() MapKey {
-	h := fnv.New64a()
-	h.Write([]byte(s.Value))
-	return MapKey{Type: s.Type(), Value: h.Sum64()}
-}
-
 type Foreign struct {
 	Signature  ast.FSig
 	Tags       map[string]List
@@ -341,15 +362,16 @@ func (f *Foreign) GetTagParams(tag string) (List, bool) {
 }
 
 type List struct {
+	Tags     map[string]List
 	Elements []Object
 }
 
-func (ao *List) Type() ObjectType { return LIST_OBJ }
-func (ao *List) Inspect() string {
+func (l *List) Type() ObjectType { return LIST_OBJ }
+func (l *List) Inspect() string {
 	var out bytes.Buffer
 
 	elements := []string{}
-	for _, e := range ao.Elements {
+	for _, e := range l.Elements {
 		elements = append(elements, e.Inspect())
 	}
 
@@ -358,6 +380,12 @@ func (ao *List) Inspect() string {
 	out.WriteString("]")
 
 	return out.String()
+}
+func (l *List) HasTag(tag string) bool {
+	return hasTag(tag, l.Tags)
+}
+func (l *List) GetTagParams(tag string) (List, bool) {
+	return getTagParams(tag, l.Tags)
 }
 
 type MapPair struct {
