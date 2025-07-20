@@ -71,9 +71,9 @@ func (ls *VarExpression) String() string {
 
 	out.WriteString(ls.TokenLiteral() + " ")
 	out.WriteString(ls.Pattern.String())
-	out.WriteString(" = ")
 
 	if ls.Value != nil {
+		out.WriteString(" = ")
 		out.WriteString(ls.Value.String())
 	}
 

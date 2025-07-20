@@ -5,6 +5,25 @@ import (
 	"slug/internal/object"
 )
 
+func fnSysExit() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return ctx.NewError("wrong number of arguments. got=%d, want=1",
+					len(args))
+			}
+
+			code := args[0]
+			if code.Type() != object.NUMBER_OBJ {
+				return ctx.NewError("argument must be NUMBER, got=%s", code.Type())
+			}
+
+			os.Exit(int(code.(*object.Number).Value))
+			return ctx.Nil()
+		},
+	}
+}
+
 func fnSysEnv() *object.Foreign {
 	return &object.Foreign{
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {

@@ -410,7 +410,10 @@ func (e *Evaluator) evalBlockStatement(block *ast.BlockStatement) object.Object 
 		}
 	}
 
-	return result
+	if result != nil {
+		return result
+	}
+	return NIL
 }
 
 func (e *Evaluator) NativeBoolToBooleanObject(input bool) *object.Boolean {
@@ -784,7 +787,6 @@ func (e *Evaluator) ApplyFunction(fnName string, fnObj object.Object, args []obj
 	case *object.Function:
 
 		// Create a new call frame and push it
-		//println("call", fn.HasTailCall)
 		e.PushEnv(e.extendFunctionEnv(fn, args))
 
 		// Evaluate function body

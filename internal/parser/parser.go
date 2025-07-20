@@ -245,6 +245,9 @@ func (p *Parser) parseVarStatement() ast.Expression {
 
 	p.nextToken()
 
+	//if varExp.Tags != nil {
+	//	fmt.Printf("Var adding tags: %v %v\n", varExp, len(varExp.Tags))
+	//}
 	varExp.Value = p.parseExpression(LOWEST)
 
 	return varExp
@@ -277,6 +280,10 @@ func (p *Parser) parseValStatement() ast.Expression {
 	p.nextToken()
 
 	valExp.Value = p.parseExpression(LOWEST)
+
+	//if valExp.Tags != nil {
+	//	fmt.Printf("Val adding tags: %v %v\n", valExp, len(valExp.Tags))
+	//}
 
 	return valExp
 }

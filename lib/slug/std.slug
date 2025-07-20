@@ -1,3 +1,7 @@
+var {*} = import(
+	"slug.string"
+);
+
 //
 // the slug standard library
 // -------------------------
@@ -124,6 +128,23 @@ var reduce = fn(@list vs, v, f) {
 	}
 }
 
+@testWith(
+	[0, 0], [],
+	[0, 2], [0, 1],
+	[0, 6, 2], [0, 2, 4],
+	[0, 6, -2], [],
+	[6, 0, -2], [6, 4, 2]
+)
+@export
+var range = fn(@num start, @num end, @num step = 1, @list acc = []) {
+	if ((start < end && step > 0)
+		|| (start > end && step < 0)) {
+		range(start + step, end, step, acc :+ start)
+	} else {
+		acc
+	}
+}
+
 @export
 var counter = fn(@num start = 0) {
     var count = start - 1;
@@ -161,6 +182,75 @@ var zip = fn(@list lst1, @list lst2, acc = []) {
 		acc
 	} else {
 		zip(lst1[1:], lst2[1:], acc :+ [lst1[0], lst2[0]])
+	}
+}
+
+@testWith(
+	[nil], false,
+	[0], false,
+	[1], true,
+	[true], true,
+	[false], false,
+	["true"], true,
+	["yes"], true,
+	["1"], true,
+	["false"], false,
+	["no"], false,
+	["0"], false
+)
+@export
+var toBoolean = fn(v) {
+	match v.type() {
+		t if t == BOOLEAN_TYPE => v;
+		t if t == NUMBER_TYPE => v == 1;
+		t if t == NIL_TYPE => false;
+		t if t == STRING_TYPE => {
+			match v.toLower() {
+				"true", "yes", "1" => true;
+				"false", "no", "0" => false;
+				_ => UnsupportedTypeConversionError({msg: "Cannot convert '{{v}}' to boolean"})
+			}
+		}
+		t => throw UnsupportedTypeConversionError({msg: "Cannot convert type {{t}} to boolean"});
+	}
+}
+
+@testWith(
+	["1"], 1,
+	["1.1"], 1.1
+)
+@export
+foreign parseNumber = fn(@str value);
+
+@testWith(
+	[nil], nil,
+	[1], 1,
+	[1.1], 1.1,
+	["1"], 1,
+	["1.1"], 1.1
+)
+@export
+var toNumber = fn(v) {
+	match v.type() {
+		t if t == NIL_TYPE => nil;
+		t if t == NUMBER_TYPE => v;
+		t if t == STRING_TYPE => parseNumber(v);
+		t => throw UnsupportedTypeConversionError({msg: "Cannot convert type {{t}} to number"});
+	}
+}
+
+@testWith(
+	[nil], nil,
+	["str"], "str",
+	[1.1], "1.1",
+	[true], "true"
+)
+@export
+var toString = fn(v) {
+	match v.type() {
+		t if t == NIL_TYPE => nil;
+		t if t == STRING_TYPE => v;
+		t => v + "";
 	}
 }
 

@@ -68,3 +68,19 @@ var shuffle = var fisherYatesShuffle = fn(@list list) {
     };
     _shuffle(list, len(list) - 1);
 }
+
+@testWith (
+    [nil], [],
+    [""], [],
+    ["123"], ["1", "2", "3"]
+)
+@export
+var asList = fn(@str chars, @num i = 0, @list acc = []) {
+    if (chars == nil) {
+        []
+    } else if (len(chars) > i) {
+        asList(chars, i + 1, acc :+ chars[i])
+    } else {
+        acc
+    }
+}

@@ -51,6 +51,7 @@ var TypeTags = map[string]string{
 type EvaluatorContext interface {
 	CurrentEnv() *Environment
 	PID() int64
+	ApplyFunction(fnName string, fnObj Object, args []Object) Object
 	Receive(timeout int64) (Object, bool)
 	NewError(message string, a ...interface{}) *Error
 	Nil() *Nil
@@ -402,12 +403,19 @@ func (m *Map) Type() ObjectType { return MAP_OBJ }
 func (m *Map) Inspect() string {
 	var out bytes.Buffer
 
+	tags := []string{}
+	for k, tag := range m.Tags {
+		tags = append(tags, fmt.Sprintf("%v: %v",
+			k, tag.Inspect()))
+	}
+
 	pairs := []string{}
 	for _, pair := range m.Pairs {
 		pairs = append(pairs, fmt.Sprintf("%s: %s",
 			pair.Key.Inspect(), pair.Value.Inspect()))
 	}
 
+	out.WriteString(strings.Join(tags, " "))
 	out.WriteString("{")
 	out.WriteString(strings.Join(pairs, ", "))
 	out.WriteString("}")

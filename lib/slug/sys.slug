@@ -9,3 +9,6 @@ foreign env = fn(@str str);
 
 @export
 foreign setEnv = fn(@str str);
+
+@export
+foreign exit = fn(@num exitCode);

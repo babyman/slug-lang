@@ -32,17 +32,19 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.meta.getTag":           fnMetaGetTag(),
 		"slug.meta.searchModuleTags": fnMetaSearchModuleTags(),
 		"slug.meta.searchScopeTags":  fnMetaSearchScopeTags(),
+		"slug.meta.rebindScopeTags":  fnMetaRebindScopeTags(),
 
-		"slug.std.type":      fnStdType(),
-		"slug.std.isDefined": fnStdIsDefined(),
-		"slug.std.printf":    fnStdPrintf(),
-		"slug.std.sprintf":   fnStdSprintf(),
-		"slug.std.update":    fnStdUpdate(),
-		"slug.std.swap":      fnStdSwap(),
-		"slug.std.get":       fnStdGet(),
-		"slug.std.keys":      fnStdKeys(),
-		"slug.std.put":       fnStdPut(),
-		"slug.std.remove":    fnStdRemove(),
+		"slug.std.type":        fnStdType(),
+		"slug.std.isDefined":   fnStdIsDefined(),
+		"slug.std.printf":      fnStdPrintf(),
+		"slug.std.sprintf":     fnStdSprintf(),
+		"slug.std.update":      fnStdUpdate(),
+		"slug.std.swap":        fnStdSwap(),
+		"slug.std.parseNumber": fnStdParseNumber(),
+		"slug.std.get":         fnStdGet(),
+		"slug.std.keys":        fnStdKeys(),
+		"slug.std.put":         fnStdPut(),
+		"slug.std.remove":      fnStdRemove(),
 
 		// string functions
 		"slug.string.indexOf": fnStringIndexOf(),
@@ -52,6 +54,7 @@ func GetForeignFunctions() map[string]*object.Foreign {
 
 		"slug.sys.env":    fnSysEnv(),
 		"slug.sys.setEnv": fnSysSetEnv(),
+		"slug.sys.exit":   fnSysExit(),
 
 		"slug.time.clock":      fnTimeClock(),
 		"slug.time.fmtClock":   fnTimeFmtClock(),

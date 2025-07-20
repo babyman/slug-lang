@@ -1,12 +1,15 @@
 
 @export
-foreign hasTag = fn(v, @str tag);
+foreign hasTag = fn(value, @str tag);
 
 @export
-foreign getTag = fn(v, @str tag);
+foreign getTag = fn(value, @str tag);
 
 @export
 foreign searchModuleTags = fn(@str module, @str tag, @bool includePrivate = false);
 
 @export
 foreign searchScopeTags = fn(@str tag);
+
+@export
+foreign rebindScopeTags = fn(@str tag, @fun supplier = fn(name, value) { value });

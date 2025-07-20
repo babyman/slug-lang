@@ -2,6 +2,7 @@ package foreign
 
 import (
 	"fmt"
+	"slug/internal/dec64"
 	"slug/internal/object"
 )
 
@@ -263,6 +264,28 @@ func fnStdSwap() *object.Foreign {
 			newElements[i1], newElements[i2] = newElements[i2], newElements[i1]
 
 			return &object.List{Elements: newElements}
+		},
+	}
+}
+
+func fnStdParseNumber() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return ctx.NewError("wrong number of arguments. got=%d, want=1", len(args))
+			}
+
+			str, ok := args[0].(*object.String)
+			if !ok {
+				return ctx.NewError("argument to `parseNumber` must be STRING, got %s", args[0].Type())
+			}
+
+			n, err := dec64.FromString(str.Value)
+			if err != nil {
+				return ctx.NewError("could not convert string to number: %s", err)
+			}
+
+			return &object.Number{Value: n}
 		},
 	}
 }

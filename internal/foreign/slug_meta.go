@@ -140,6 +140,54 @@ func fnMetaSearchScopeTags() *object.Foreign {
 	}
 }
 
+func fnMetaRebindScopeTags() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) != 2 {
+				return ctx.NewError("rebindScopeTags expects 2 arguments: tag name and supplier function")
+			}
+
+			tagName, ok := args[0].(*object.String)
+			if !ok {
+				return ctx.NewError("first argument must be a string tag name")
+			}
+
+			supplier := func(name string, value object.Object) object.Object { return value }
+			if fn, ok := args[1].(*object.Function); !ok {
+				return ctx.NewError("second argument must be a supplier function")
+			} else {
+				supplier = func(name string, value object.Object) object.Object {
+					return ctx.ApplyFunction("<annon>", fn, []object.Object{
+						&object.String{Value: name},
+						value,
+					})
+				}
+			}
+
+			env := ctx.CurrentEnv()
+			for env != nil {
+				for name, binding := range env.Bindings {
+					if hasTag(binding, tagName.Value) {
+						if binding.IsMutable {
+							newValue := supplier(name, binding.Value)
+							if newValue.Type() == object.ERROR_OBJ {
+								return newValue
+							}
+							if _, err := env.Assign(name, newValue); err != nil {
+								return ctx.NewError(err.Error())
+							}
+						} else {
+							log.Debug("rebind not supported for %s, %s is not mutable", name, binding.Value.Inspect())
+						}
+					}
+				}
+				env = env.Outer
+			}
+			return ctx.Nil()
+		},
+	}
+}
+
 func hasTag(binding *object.Binding, tagName string) bool {
 	if binding == nil {
 		return false

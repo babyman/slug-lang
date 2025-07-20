@@ -164,6 +164,8 @@ func (e *Environment) Assign(name string, val Object) (Object, error) {
 		default:
 			binding.Value = val
 		}
+		//fmt.Printf("assigning: %v %v %v %v\n", binding.Value.Type(), name, binding.Value, binding.Meta)
+		log.Debug("assigning: %v %v %v\n", binding.Value.Type(), name, binding.Meta)
 		return val, nil
 	}
 	if e.Outer != nil {
