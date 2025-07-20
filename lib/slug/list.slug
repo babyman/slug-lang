@@ -4,29 +4,6 @@ var {*} = import (
 );
 
 @testWith(
-    [[], []], true,
-    [[1], []], false,
-    [[], [1]], false,
-    [[1], [2]], false,
-    [[[1], [1]], [[1], [2]]], false,
-    [[[1], [2]], [[1], [2]]], true
-)
-@export
-var equals = fn(@list a, @list b, @num idx = 0) {
-    if (a == nil || b == nil) {
-        false;
-    } else if(idx >= len(a) && len(a) == len(b)) {
-        true;
-    } else if(type(a[idx]) == LIST_TYPE && type(b[idx]) == LIST_TYPE ) {
-        equals(a[idx], b[idx]) && equals(a, b, idx + 1);
-    } else if(a[idx] == b[idx]) {
-        equals(a, b, idx + 1);
-    } else {
-        false;
-    }
-}
-
-@testWith(
     [[1, 2], 2], 1,
     [[1, 2], 1], 0,
     [[1, 2], 9], -1

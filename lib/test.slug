@@ -7,7 +7,8 @@ var {*} = import(
 	"slug.time"
 );
 
-var TEST_TAG = "@testWith";
+var TEST_WITH_TAG = "@testWith";
+var TEST_TAG = "@test";
 var timer = delta(clock);
 
 var runTestFn = fn(f, name, stats) {
@@ -60,10 +61,10 @@ var testRunner = fn(module, stats) {
 	}
 	module = module.replaceAll("/", ".")
 	println(module + ":")
-	var m = module.searchModuleTags(TEST_TAG, true)
-				.union(module.searchModuleTags("@test", true))
+	var m = module.searchModuleTags(TEST_WITH_TAG, true)
+				.union(module.searchModuleTags(TEST_TAG, true))
 	m.keys().map(fn(k) {
-		var args = m[k].getTag(TEST_TAG);
+		var args = m[k].getTag(TEST_WITH_TAG);
 		if(args) {
 			runTests(m[k], k, args, {run:0, fail:0, error:0});
 		} else {

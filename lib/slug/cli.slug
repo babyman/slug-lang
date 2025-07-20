@@ -5,6 +5,18 @@ var {*} = import(
 	"slug.meta"
 );
 
+@testWith(
+	[[]], [{}, []],
+	[["-a"]], [{a:true}, []],
+	[["-a", "1"]], [{a:"1"}, []],
+	[["-ab"]], [{a:true, b:true}, []],
+	[["--ab=1"]], [{ab:"1"}, []],
+	[["--ab", "1"]], [{ab:"1"}, []],
+	[["1"]], [{}, ["1"]],
+	[["-a", "true", "foo", "bar"]], [{a:"true"}, ["foo", "bar"]],
+	// -- reads remaining args as parameters
+	[["--", "-a", "1"]], [{}, ["-a", "1"]]
+)
 var parseArgs = fn(@list arguments, @num i = 0, @map opts = {}, @list params = []) {
 	if (len(arguments) > i) {
 		if (arguments[i] == "--") {
@@ -35,10 +47,18 @@ var parseArgs = fn(@list arguments, @num i = 0, @map opts = {}, @list params = [
 	}
 }
 
+@testWith(
+	["k", {}], nil,
+	["k", {k:1}], 1
+)
 var readValue = fn(@str arg, @map opts) {
 	opts[arg]
 }
 
+@testWith(
+	[["k"], {}], nil,
+	[["k"], {k:1}], 1
+)
 var readValue = fn(@list args, @map opts) {
 	match args {
 		nil, [] => nil;
@@ -53,6 +73,16 @@ var readValue = fn(@list args, @map opts) {
 	}
 }
 
+@testWith(
+	[nil, NIL_TYPE], nil,
+	[nil, BOOLEAN_TYPE], false,
+	[false, BOOLEAN_TYPE], false,
+	[true, BOOLEAN_TYPE], true,
+	[nil, NUMBER_TYPE], nil,
+	["123", NUMBER_TYPE], 123,
+	[nil, STRING_TYPE], nil,
+	["123", STRING_TYPE], "123"
+)
 var convertValue = fn(newValue, targetType) {
 	if (targetType == newValue.type() || targetType == NIL_TYPE) {
 		newValue;

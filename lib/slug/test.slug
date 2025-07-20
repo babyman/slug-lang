@@ -1,9 +1,6 @@
 var {*} = import(
     "slug.std"
 );
-var {equals} = import(
-    "slug.list"
-);
 
 @export
 var assert = fn(a, msg = nil) {
@@ -40,6 +37,16 @@ var assertEqual = fn(@list a, @list b, msg = nil) {
     if ( !(a == b || equals(a, b)) ) {
         if ( !msg ) {
             msg = "List '{{a}}' is not equal to '{{b}}'";
+        }
+        throw AssertionError({msg: msg});
+    }
+}
+
+@export
+var assertEqual = fn(@map a, @map b, msg = nil) {
+    if ( !(a == b || equals(a, b)) ) {
+        if ( !msg ) {
+            msg = "Map '{{a}}' is not equal to '{{b}}'";
         }
         throw AssertionError({msg: msg});
     }

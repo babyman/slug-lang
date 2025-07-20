@@ -3,36 +3,6 @@ var {*} = import(
 )
 
 @testWith(
-	[nil, nil], false,
-	[{}, nil], false,
-	[nil, {}], false,
-	[{}, {}], true,
-	[{k1:1}, {k1:1}], true,
-	[{k1:1}, {}], false,
-	[{k1:1}, {k2:2}], false
-)
-@export
-var equals = fn(@map m1, @map m2) {
-	if (m1 == nil || m2 == nil) {
-		return false
-	}
-	var check = fn(ks) {
-		match ks {
-			[] => true;
-			[k, ...t] if m1[k] == m2[k] => check(t);
-			_ => false
-		}
-	}
-	var k1 = m1.keys();
-	var k2 = m2.keys();
-	if(len(k1) != len(k2)) {
-		false
-	} else {
-		check(k1 + k2);
-	}
-}
-
-@testWith(
 	[{k1:1}, {k2:2}], {k1:1, k2:2},
 	[{k1:1}, {}], {k1:1},
 	[{}, {k2:2}], {k2:2},
