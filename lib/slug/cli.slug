@@ -1,0 +1,90 @@
+var {*} = import(
+	"slug.std",
+	"slug.string",
+	"slug.list",
+	"slug.meta"
+);
+
+var parseArgs = fn(@list arguments, @num i = 0, @map opts = {}, @list params = []) {
+	if (len(arguments) > i) {
+		if (arguments[i] == "--") {
+			[opts, params + arguments[i+1:]]
+		} else if (arguments[i].startsWith("--")) {
+			val k = arguments[i][2:].split("=", 2);
+			var v = true;
+			if (len(k) > 1) {
+				v = k[1];
+			} else if (i + 1 < len(arguments) && !arguments[i+1].startsWith("-")) {
+				v = arguments[i+1];
+				i = i + 1;
+			}
+			parseArgs(arguments, i + 1, opts.put(k[0], v), params)
+		} else if (arguments[i].startsWith("-")) {
+			val key = arguments[i][1:]
+			if(len(key) == 1 && i + 1 < len(arguments) && !arguments[i+1].startsWith("-")) {
+				parseArgs(arguments, i + 2, opts.put(key, arguments[i+1]), params)
+			} else {
+				val newOpts = key.asList().reduce(opts, fn(a,b) { a.put(b, true) });
+				parseArgs(arguments, i + 1, newOpts, params)
+			}
+		} else {
+			parseArgs(arguments, i + 1, opts, params :+ arguments[i])
+		}
+	} else {
+		[opts, params]
+	}
+}
+
+var readValue = fn(@str arg, @map opts) {
+	opts[arg]
+}
+
+var readValue = fn(@list args, @map opts) {
+	match args {
+		nil, [] => nil;
+		[h, ...t] => {
+			val r = readValue(h, opts);
+			if (r != nil) {
+				r
+			} else {
+				readValue(t, opts);
+			}
+		}
+	}
+}
+
+var convertValue = fn(newValue, targetType) {
+	if (targetType == newValue.type() || targetType == NIL_TYPE) {
+		newValue;
+	} else if( targetType == BOOLEAN_TYPE ) {
+		toBoolean(newValue)
+	} else if( targetType == NUMBER_TYPE ) {
+		toNumber(newValue)
+	} else if( targetType == STRING_TYPE ) {
+		toString(newValue)
+	} else {
+		throw UnsupportedTypeConversionError({msg:"Cannot convert '{{newValue}}' to type {{targetType}}"})
+	}
+}
+
+@export
+var applyOptions = fn(@list args) {
+	if(args && len(args) > 0) {
+		var [opts, params] = parseArgs(args);
+
+		if(len(params) > 0) {
+			rebindScopeTags("@parameters", fn(n, v) { params })
+		}
+
+		rebindScopeTags("@option", fn(name, value) {
+			val args = value.getTag("@option")[0]
+			var newVal = readValue(args.arg, opts)
+				.convertValue(value.type())
+			if (newVal != nil) {
+				newVal
+			} else {
+				value
+			}
+		})
+	}
+}
