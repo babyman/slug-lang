@@ -1,40 +1,11 @@
 package foreign
 
 import (
-	"math/rand"
+	"crypto/rand"
+	"encoding/binary"
 	"slug/internal/dec64"
 	"slug/internal/object"
 )
-
-var (
-	mathRnd *rand.Rand
-)
-
-// seed sets the seed for the pseudo-random number generator.
-func fnMathRndSeed() *object.Foreign {
-	return &object.Foreign{
-		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
-
-			if len(args) == 0 {
-
-				mathRnd = nil
-
-			} else {
-
-				// Validate the seed (must be an integer)
-				seedArg, ok := args[0].(*object.Number)
-				if !ok {
-					return ctx.NewError("argument to `seed` must be a NUMBER, got=%s", args[0].Type())
-				}
-
-				// Set the random seed
-				mathRnd = rand.New(rand.NewSource(seedArg.Value.ToInt64()))
-			}
-
-			return ctx.Nil()
-		},
-	}
-}
 
 // random_range generates a random integer between min and max (inclusive).
 func fnMathRndRange() *object.Foreign {
@@ -65,11 +36,13 @@ func fnMathRndRange() *object.Foreign {
 
 			rangeSize := maxArg.Value.ToInt64() - result
 
-			if mathRnd == nil {
-				result += rand.Int63n(rangeSize)
-			} else {
-				result += mathRnd.Int63n(rangeSize)
+			var b [8]byte
+			_, err := rand.Read(b[:])
+			if err != nil {
+				return ctx.NewError("failed to generate random number: %v", err)
 			}
+			randInt := binary.BigEndian.Uint64(b[:]) % uint64(rangeSize)
+			result += int64(randInt)
 
 			return &object.Number{Value: dec64.FromInt64(result)}
 		},
