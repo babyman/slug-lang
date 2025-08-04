@@ -9,6 +9,23 @@ Slug Command
 Setup
 ---
 
+Docker
+---
+Running `slug` in a container is the easiest way to get started, I'm using `podman` but the same commands will work with
+`docker`:
+
+```shell
+# build the image
+podman build -t slug .
+# running an example script
+podman run -v $(pwd):/data slug ./docs/examples/password-generator.slug
+```
+
+See `docs/scripts/slug-cli.sh` for a simple wrapper script to run the docker image.
+
+Local install
+---
+
 ```shell
 # slug home
 export SLUG_HOME=[[path to slug home directory]]
@@ -17,7 +34,7 @@ export PATH="$SLUG_HOME/bin:$PATH"
 
 Shell scripts
 ---
-The following shell script works.
+The following shell script structure should also with `slug` on your system path
 
 ```shell
 #!/usr/bin/env slug
