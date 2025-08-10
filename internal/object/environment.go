@@ -127,6 +127,7 @@ func (e *Environment) define(name string, val Object, isMutable bool, isExported
 		binding.Value = val
 	}
 	e.Bindings[name] = binding
+	//fmt.Printf("binding: %v %v %v %v\n", binding.Value.Type(), name, val.Inspect(), binding.Meta)
 	log.Debug("binding: %v %v %v\n", binding.Value.Type(), name, binding.Meta)
 	return val, nil
 }

@@ -309,6 +309,15 @@ var equals = fn(@map m1, @map m2) {
 	}
 }
 
+@export
+var ifNil = fn(v, default) {
+	if (v == nil) {
+		default
+	} else {
+		v
+	}
+}
+
 @testWith(
 	[1, 1], 0,
 	[1, 2], 1,

@@ -26,13 +26,13 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.io.tcp.close":   fnIoTcpClose(),
 
 		"slug.math.rndRange": fnMathRndRange(),
-		"slug.math.rndSeed":  fnMathRndSeed(),
 
 		"slug.meta.hasTag":           fnMetaHasTag(),
 		"slug.meta.getTag":           fnMetaGetTag(),
 		"slug.meta.searchModuleTags": fnMetaSearchModuleTags(),
 		"slug.meta.searchScopeTags":  fnMetaSearchScopeTags(),
 		"slug.meta.rebindScopeTags":  fnMetaRebindScopeTags(),
+		"slug.meta.withEnv":          fnMetaWithEnv(),
 
 		"slug.std.type":        fnStdType(),
 		"slug.std.isDefined":   fnStdIsDefined(),

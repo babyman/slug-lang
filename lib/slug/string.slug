@@ -87,3 +87,22 @@ var replaceAll = fn(@str str, @str replace, @str with) {
 		str.split(replace).join(with);
 	}
 }
+
+@export
+var padRight = fn(@str str, @str with, @num length) {
+	if (length <= len(str)) {
+		str
+	} else {
+		padRight(str + with, with, length)
+	}
+}
+
+@export
+var padLeft = fn(@str str, @str with, @num length) {
+	if (length <= len(str)) {
+		str
+	} else {
+		padLeft(with + str, with, length)
+	}
+}
+

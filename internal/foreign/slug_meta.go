@@ -1,6 +1,7 @@
 package foreign
 
 import (
+	"slug/internal/ast"
 	"slug/internal/log"
 	"slug/internal/object"
 	"strings"
@@ -123,19 +124,34 @@ func fnMetaSearchScopeTags() *object.Foreign {
 				return ctx.NewError("argument must be a string tag name")
 			}
 
-			m := &object.Map{}
+			var tuples []object.Object
+
 			env := ctx.CurrentEnv()
 
 			for env != nil {
 				for name, binding := range env.Bindings {
 					if hasTag(binding, tagName.Value) {
-						m.Put(&object.String{Value: name}, binding.Value)
+						taggable, ok := binding.Value.(object.Taggable)
+						if ok {
+							opts, _ := taggable.GetTagParams(tagName.Value)
+							var tuple = make([]object.Object, 3)
+							tuple[0] = &object.String{Value: name}
+							tuple[1] = binding.Value
+							tuple[2] = &opts
+							tuples = append(tuples, &object.List{
+								Elements: tuple,
+							})
+						} else {
+							log.Warn("should not happen")
+						}
 					}
 				}
 				env = env.Outer
 			}
 
-			return m
+			return &object.List{
+				Elements: tuples,
+			}
 		},
 	}
 }
@@ -152,14 +168,15 @@ func fnMetaRebindScopeTags() *object.Foreign {
 				return ctx.NewError("first argument must be a string tag name")
 			}
 
-			supplier := func(name string, value object.Object) object.Object { return value }
+			supplier := func(name string, value object.Object, args object.Object) object.Object { return value }
 			if fn, ok := args[1].(*object.Function); !ok {
 				return ctx.NewError("second argument must be a supplier function")
 			} else {
-				supplier = func(name string, value object.Object) object.Object {
+				supplier = func(name string, value object.Object, args object.Object) object.Object {
 					return ctx.ApplyFunction("<annon>", fn, []object.Object{
 						&object.String{Value: name},
 						value,
+						args,
 					})
 				}
 			}
@@ -167,9 +184,11 @@ func fnMetaRebindScopeTags() *object.Foreign {
 			env := ctx.CurrentEnv()
 			for env != nil {
 				for name, binding := range env.Bindings {
-					if hasTag(binding, tagName.Value) {
+					taggable, isTaggable := binding.Value.(object.Taggable)
+					if isTaggable && hasTag(binding, tagName.Value) {
 						if binding.IsMutable {
-							newValue := supplier(name, binding.Value)
+							tagParamList, _ := taggable.GetTagParams(tagName.Value)
+							newValue := supplier(name, binding.Value, &tagParamList)
 							if newValue.Type() == object.ERROR_OBJ {
 								return newValue
 							}
@@ -196,4 +215,69 @@ func hasTag(binding *object.Binding, tagName string) bool {
 	// Check if the binding contains a group of functions
 	fg, ok := binding.Value.(object.Taggable)
 	return ok && fg.HasTag(tagName)
+}
+
+func fnMetaWithEnv() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return ctx.NewError("withEnv expects exactly 1 argument: a FunctionGroup")
+			}
+
+			origFG, ok := args[0].(*object.FunctionGroup)
+			if !ok {
+				return ctx.NewError("withEnv expects a FunctionGroup, but got: %s", args[0].Type())
+			}
+
+			wrapped := &object.FunctionGroup{
+				Functions: make(map[ast.FSig]object.Object, len(origFG.Functions)),
+			}
+
+			for sig, fnObj := range origFG.Functions {
+				switch fn := fnObj.(type) {
+				case *object.Function:
+					// Wrap each user-defined function so that at call time we compose:
+					// inner = module function's env, outer = caller's env.
+					adapter := &object.Foreign{
+						Signature:  fn.Signature,
+						Parameters: fn.Parameters,
+						Name:       "withEnv",
+						Fn: func(callCtx object.EvaluatorContext, callArgs ...object.Object) object.Object {
+							callerEnv := callCtx.CurrentEnv()
+
+							// Compose an environment that uses the module's bindings as inner and
+							// the caller as outer. Reuse bindings map; preserve metadata for diagnostics.
+							composed := object.NewEnvironment()
+							composed.Bindings = fn.Env.Bindings
+							composed.Outer = callerEnv
+							composed.Path = fn.Env.Path
+							composed.ModuleFqn = fn.Env.ModuleFqn
+							composed.Src = fn.Env.Src
+
+							// Clone the function with the composed env and dispatch via ApplyFunction
+							cloned := &object.Function{
+								Signature:   fn.Signature,
+								Tags:        fn.Tags,
+								Parameters:  fn.Parameters,
+								Body:        fn.Body,
+								Env:         composed,
+								HasTailCall: fn.HasTailCall,
+							}
+							return callCtx.ApplyFunction("<withEnv>", cloned, callArgs)
+						},
+					}
+					wrapped.Functions[sig] = adapter
+
+				case *object.Foreign:
+					// Foreign functions have no module Env to extend. Leave as-is.
+					// Documented limitation: withEnv currently doesn’t extend env for foreign calls.
+					wrapped.Functions[sig] = fn
+
+				default:
+					return ctx.NewError("withEnv only supports wrapping FunctionGroup entries that are functions or foreign functions, got: %s", fnObj.Type())
+				}
+			}
+			return wrapped
+		},
+	}
 }
