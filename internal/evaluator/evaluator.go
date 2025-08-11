@@ -618,6 +618,14 @@ func (e *Evaluator) evalStringInfixExpression(
 		return e.NativeBoolToBooleanObject(leftVal == rightVal)
 	case "!=":
 		return e.NativeBoolToBooleanObject(leftVal != rightVal)
+	case "<":
+		return e.NativeBoolToBooleanObject(leftVal < rightVal)
+	case "<=":
+		return e.NativeBoolToBooleanObject(leftVal <= rightVal)
+	case ">":
+		return e.NativeBoolToBooleanObject(leftVal > rightVal)
+	case ">=":
+		return e.NativeBoolToBooleanObject(leftVal >= rightVal)
 	default:
 		return newError("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())

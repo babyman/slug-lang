@@ -310,13 +310,39 @@ var equals = fn(@map m1, @map m2) {
 }
 
 @export
-var ifNil = fn(v, default) {
+var ifNil = fn(v, @fun f) {
 	if (v == nil) {
-		default
+		f()
 	} else {
 		v
 	}
 }
+
+@export
+var ifNil = fn(v, default) {
+	v.ifNil(fn() {default})
+}
+
+@export
+var nonNil = fn(v, @fun f, default = nil) {
+	if (v != nil) {
+		f(v)
+	} else {
+		default
+	}
+}
+
+@export
+var compare = fn(a, b) { 
+    if (a < b) {
+        -1
+    } else if (a > b) {
+        1
+    } else {
+        0
+    }
+}
+
 
 @testWith(
 	[1, 1], 0,
