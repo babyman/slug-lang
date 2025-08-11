@@ -10,9 +10,6 @@ max(10, 2).assertEqual(10);
 min(1, 2).assertEqual(1);
 min(10, 2, 99).assertEqual(2);
 
-// set a random seed value
-42.rndSeed();
-
 // function that will generate a map of random numbers between 0 and 9
 var rnd = fn(values, counter = 0) {
     if( counter == 0 ) {
