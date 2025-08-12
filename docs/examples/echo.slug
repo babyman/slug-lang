@@ -1,5 +1,8 @@
-import slug.std.*;
-import slug.io.tcp.*;
+var {*} = import(
+	"slug.std",
+	"slug.io.tcp"
+);
+
 
 var listener = bind("127.0.0.1", 8080);
 defer {

@@ -1,5 +1,7 @@
-import slug.std.*;
-import slug.io.tcp.*;
+var {*} = import(
+	"slug.std",
+	"slug.io.tcp"
+);
 
 
 var msg = if(args != nil && len(args) > 0) {
