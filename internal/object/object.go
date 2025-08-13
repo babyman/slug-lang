@@ -285,6 +285,27 @@ func (fg *FunctionGroup) GetTagParams(tag string) (List, bool) {
 	}
 	return List{}, false
 }
+func (fg *FunctionGroup) GetTags() map[string]List {
+	result := make(map[string]List)
+	for _, function := range fg.Functions {
+		if taggableFn, ok := function.(Taggable); ok {
+			// Retrieve tags from each taggable function
+			for tag, params := range taggableFn.GetTags() {
+				// Merge/accumulate tags
+				result[tag] = params
+			}
+		}
+	}
+	return result
+
+}
+func (fg *FunctionGroup) SetTag(tag string, params List) {
+	for _, function := range fg.Functions {
+		if taggableFn, ok := function.(Taggable); ok {
+			taggableFn.SetTag(tag, params)
+		}
+	}
+}
 func (fg *FunctionGroup) DispatchToFunction(fnName string, args []Object) (Object, bool) {
 	log.Info("dispatching to function group size: %d, param count %d", len(fg.Functions), len(args))
 
