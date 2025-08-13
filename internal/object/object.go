@@ -77,6 +77,8 @@ type Taggable interface {
 	Object
 	HasTag(tag string) bool
 	GetTagParams(tag string) (List, bool)
+	GetTags() map[string]List
+	SetTag(tag string, params List)
 }
 
 type Object interface {
@@ -99,6 +101,12 @@ func (n *Number) HasTag(tag string) bool {
 }
 func (n *Number) GetTagParams(tag string) (List, bool) {
 	return getTagParams(tag, n.Tags)
+}
+func (n *Number) GetTags() map[string]List {
+	return getTags(&n.Tags)
+}
+func (n *Number) SetTag(tag string, params List) {
+	setTag(&n.Tags, tag, params)
 }
 
 type Boolean struct {
@@ -125,6 +133,12 @@ func (b *Boolean) HasTag(tag string) bool {
 func (b *Boolean) GetTagParams(tag string) (List, bool) {
 	return getTagParams(tag, b.Tags)
 }
+func (b *Boolean) GetTags() map[string]List {
+	return getTags(&b.Tags)
+}
+func (b *Boolean) SetTag(tag string, params List) {
+	setTag(&b.Tags, tag, params)
+}
 
 type String struct {
 	Tags  map[string]List
@@ -143,6 +157,12 @@ func (s *String) HasTag(tag string) bool {
 }
 func (s *String) GetTagParams(tag string) (List, bool) {
 	return getTagParams(tag, s.Tags)
+}
+func (s *String) GetTags() map[string]List {
+	return getTags(&s.Tags)
+}
+func (s *String) SetTag(tag string, params List) {
+	setTag(&s.Tags, tag, params)
 }
 
 type Nil struct{}
@@ -218,6 +238,12 @@ func (f *Function) HasTag(tag string) bool {
 }
 func (f *Function) GetTagParams(tag string) (List, bool) {
 	return getTagParams(tag, f.Tags)
+}
+func (f *Function) GetTags() map[string]List {
+	return getTags(&f.Tags)
+}
+func (f *Function) SetTag(tag string, params List) {
+	setTag(&f.Tags, tag, params)
 }
 
 type FunctionGroup struct {
@@ -361,6 +387,12 @@ func (f *Foreign) HasTag(tag string) bool {
 func (f *Foreign) GetTagParams(tag string) (List, bool) {
 	return getTagParams(tag, f.Tags)
 }
+func (f *Foreign) GetTags() map[string]List {
+	return getTags(&f.Tags)
+}
+func (f *Foreign) SetTag(tag string, params List) {
+	setTag(&f.Tags, tag, params)
+}
 
 type List struct {
 	Tags     map[string]List
@@ -387,6 +419,12 @@ func (l *List) HasTag(tag string) bool {
 }
 func (l *List) GetTagParams(tag string) (List, bool) {
 	return getTagParams(tag, l.Tags)
+}
+func (l *List) GetTags() map[string]List {
+	return getTags(&l.Tags)
+}
+func (l *List) SetTag(tag string, params List) {
+	setTag(&l.Tags, tag, params)
 }
 
 type MapPair struct {
@@ -439,6 +477,12 @@ func (m *Map) HasTag(tag string) bool {
 }
 func (m *Map) GetTagParams(tag string) (List, bool) {
 	return getTagParams(tag, m.Tags)
+}
+func (m *Map) GetTags() map[string]List {
+	return getTags(&m.Tags)
+}
+func (m *Map) SetTag(tag string, params List) {
+	setTag(&m.Tags, tag, params)
 }
 
 type RuntimeError struct {
@@ -527,4 +571,20 @@ func getTagParams(tag string, tags map[string]List) (List, bool) {
 	}
 	list, ok := tags[tag]
 	return list, ok
+}
+
+// Helper to retrieve all tags of a Taggable object
+func getTags(tags *map[string]List) map[string]List {
+	if *tags == nil {
+		*tags = make(map[string]List)
+	}
+	return *tags
+}
+
+// Helper to set (add/update) a tag for a Taggable object
+func setTag(tags *map[string]List, tag string, params List) {
+	if *tags == nil {
+		*tags = make(map[string]List)
+	}
+	(*tags)[tag] = params
 }

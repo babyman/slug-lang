@@ -189,8 +189,17 @@ func fnMetaRebindScopeTags() *object.Foreign {
 						if binding.IsMutable {
 							tagParamList, _ := taggable.GetTagParams(tagName.Value)
 							newValue := supplier(name, binding.Value, &tagParamList)
+							if taggable == newValue {
+								continue
+							}
 							if newValue.Type() == object.ERROR_OBJ {
 								return newValue
+							}
+							// Clone existing tags into the new value (if Taggable)
+							if newTaggable, ok := newValue.(object.Taggable); ok {
+								for tag, params := range taggable.GetTags() {
+									newTaggable.SetTag(tag, params)
+								}
 							}
 							if _, err := env.Assign(name, newValue); err != nil {
 								return ctx.NewError(err.Error())

@@ -20,7 +20,7 @@ var applyOptions = fn(@list args) {
 		var [opts, params] = parseArgs(args);
 
 		if(len(params) > 0) {
-			rebindScopeTags(PARAM_TAG, fn(n, v) { params })
+			rebindScopeTags(PARAM_TAG, fn(n, v, p) { params })
 		}
 		rebindScopeTags(OPTION_TAG, fn(name, value, tagParams) {
 			readValue(tagParams[0].arg, opts)
@@ -79,8 +79,8 @@ var parseArgs = fn(@list arguments, @num i = 0, @map opts = {}, @list params = [
 			var v = true;
 			if (len(k) > 1) {
 				v = k[1];
-			} else if (i + 1 < len(arguments) && !arguments[i+1].startsWith(SHORT_ARG)) {
-				v = arguments[i+1];
+			} else if (i + 1 < len(arguments) && !arguments[i + 1].startsWith(SHORT_ARG)) {
+				v = arguments[i + 1];
 				i = i + 1;
 			}
 			parseArgs(arguments, i + 1, opts.put(k[0], v), params)
