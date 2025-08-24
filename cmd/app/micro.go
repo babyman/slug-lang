@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"slug/internal/kernel"
+	kernel_service "slug/internal/kernel-service"
 	"slug/internal/service"
 )
 
@@ -10,6 +11,9 @@ func main() {
 
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	k := kernel.NewKernel()
+
+	controlPlane := &kernel_service.ControlPlane{}
+	k.RegisterKernelService(controlPlane)
 
 	// Register services
 	timeID := k.RegisterService("time", service.TsOperations, service.TimeServiceBehavior)

@@ -5,7 +5,7 @@ package kernel
 // What’s new vs v1.0:
 //  - REPL is now a first-class *service* (actor) exposed over HTTP.
 //  - Evaluator service (stub) executes source sent by REPL; easy drop-in for your real tree-walker.
-//  - Clean capability checks preserved: REPL talks to EVAL; EVAL talks to FS/TIME via granted caps.
+//  - Clean capability checks preserved: REPL talks to EVAL; EVAL talks to FS/TIME via granted Caps.
 //
 // Build & run
 //   go run main.go
@@ -16,7 +16,7 @@ package kernel
 //     -d '{"source":"print \"hi\""}' | jq
 //
 // Other control plane endpoints still work:
-//   curl -s localhost:8080/actors | jq
+//   curl -s localhost:8080/Actors | jq
 //   curl -s -X POST localhost:8080/send \
 //     -H 'content-type: application/json' \
 //     -d '{"from":"demo","to":"fs","op":"read","payload":{"path":"/tmp/hello.txt"}}' | jq
@@ -30,9 +30,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
-	"net/http"
 	"os"
 	"reflect"
 	"sort"
@@ -44,18 +42,18 @@ import (
 // ===== Core Types =====
 
 type Kernel struct {
-	mu          sync.RWMutex
-	nextActorID int64
-	nextCapID   int64
-	actors      map[ActorID]*Actor
-	nameIdx     map[string]ActorID // convenient lookup by name
-	opsBySvc    map[ActorID]OpRights
+	Mu          sync.RWMutex
+	NextActorID int64
+	NextCapID   int64
+	Actors      map[ActorID]*Actor
+	NameIdx     map[string]ActorID // convenient lookup by Name
+	OpsBySvc    map[ActorID]OpRights
 }
 
 // SendSync sends and waits for a single reply.
 func (c *ActCtx) SendSync(to ActorID, payload any) (Message, error) {
 	respCh := make(chan Message, 1)
-	err := c.K.sendInternal(c.Self.Id, to, payload, respCh)
+	err := c.K.SendInternal(c.Self, to, payload, respCh)
 	if err != nil {
 		return Message{}, err
 	}
@@ -69,7 +67,7 @@ func (c *ActCtx) SendSync(to ActorID, payload any) (Message, error) {
 
 // SendAsync fire-and-forgets.
 func (c *ActCtx) SendAsync(to ActorID, payload any) error {
-	return c.K.sendInternal(c.Self.Id, to, payload, nil)
+	return c.K.SendInternal(c.Self, to, payload, nil)
 }
 
 // ===== Kernel =====
@@ -77,61 +75,66 @@ func (c *ActCtx) SendAsync(to ActorID, payload any) error {
 func NewKernel() *Kernel {
 
 	return &Kernel{
-		actors:   make(map[ActorID]*Actor),
-		nameIdx:  make(map[string]ActorID),
-		opsBySvc: make(map[ActorID]OpRights),
+		Actors:   make(map[ActorID]*Actor),
+		NameIdx:  make(map[string]ActorID),
+		OpsBySvc: make(map[ActorID]OpRights),
 	}
 }
 
 // RegisterActor wires an actor into the kernel.
 func (k *Kernel) RegisterActor(name string, beh Behavior) ActorID {
-	k.mu.Lock()
-	defer k.mu.Unlock()
-	id := ActorID(k.nextActorID)
-	k.nextActorID++
+	k.Mu.Lock()
+	defer k.Mu.Unlock()
+	id := ActorID(k.NextActorID)
+	k.NextActorID++
 	act := &Actor{
 		Id:       id,
-		name:     name,
+		Name:     name,
 		inbox:    make(chan Message, 64),
 		behavior: beh,
-		caps:     make(map[int64]*Capability),
+		Caps:     make(map[int64]*Capability),
 	}
-	k.actors[id] = act
+	k.Actors[id] = act
 	if name != "" {
-		k.nameIdx[name] = id
+		k.NameIdx[name] = id
 	}
 	go k.runActor(act)
 	return id
 }
 
 func (k *Kernel) runActor(a *Actor) {
-	ctx := &ActCtx{K: k, Self: a}
+	ctx := &ActCtx{K: k, Self: a.Id}
 	for msg := range a.inbox {
-		atomic.AddUint64(&a.ipcIn, 1)
+		atomic.AddUint64(&a.IpcIn, 1)
 		start := time.Now()
 		a.behavior(ctx, msg)
-		atomic.AddUint64(&a.cpuOps, uint64(time.Since(start).Microseconds()))
+		atomic.AddUint64(&a.CpuOps, uint64(time.Since(start).Microseconds()))
 	}
+}
+
+// RegisterKernelService registers a service that needs kernel access
+func (k *Kernel) RegisterKernelService(svc KernelService) {
+	svc.Initialize(k)
 }
 
 // Declare a service (actor) with op→rights mapping, enabling cap checks.
 func (k *Kernel) RegisterService(name string, ops OpRights, beh Behavior) ActorID {
 	id := k.RegisterActor(name, beh)
-	k.mu.Lock()
-	k.opsBySvc[id] = ops
-	k.mu.Unlock()
+	k.Mu.Lock()
+	k.OpsBySvc[id] = ops
+	k.Mu.Unlock()
 	return id
 }
 
 // GrantCap issues a capability from kernel to a specific actor.
 func (k *Kernel) GrantCap(to ActorID, target ActorID, rights Rights, scope map[reflect.Type]any) *Capability {
-	k.mu.Lock()
-	defer k.mu.Unlock()
-	capID := k.nextCapID
-	k.nextCapID++
+	k.Mu.Lock()
+	defer k.Mu.Unlock()
+	capID := k.NextCapID
+	k.NextCapID++
 	cap := &Capability{ID: capID, Target: target, Rights: rights, Scope: scope}
-	if a, ok := k.actors[to]; ok {
-		a.caps[capID] = cap
+	if a, ok := k.Actors[to]; ok {
+		a.Caps[capID] = cap
 		return cap
 	}
 	return nil
@@ -139,9 +142,9 @@ func (k *Kernel) GrantCap(to ActorID, target ActorID, rights Rights, scope map[r
 
 // resolveRights returns required rights for an op against a target service.
 func (k *Kernel) resolveRights(target ActorID, op reflect.Type) (Rights, bool) {
-	k.mu.RLock()
-	ops, ok := k.opsBySvc[target]
-	k.mu.RUnlock()
+	k.Mu.RLock()
+	ops, ok := k.OpsBySvc[target]
+	k.Mu.RUnlock()
 	if !ok {
 		return 0, false
 	}
@@ -151,13 +154,13 @@ func (k *Kernel) resolveRights(target ActorID, op reflect.Type) (Rights, bool) {
 
 // hasCap checks if sender owns a non-revoked cap to target with required rights.
 func (k *Kernel) hasCap(sender ActorID, target ActorID, want Rights) bool {
-	k.mu.RLock()
-	a := k.actors[sender]
-	k.mu.RUnlock()
+	k.Mu.RLock()
+	a := k.Actors[sender]
+	k.Mu.RUnlock()
 	if a == nil {
 		return false
 	}
-	for _, c := range a.caps {
+	for _, c := range a.Caps {
 		if c.Target == target && !c.Revoked.Load() && (c.Rights&want) == want {
 			return true
 		}
@@ -166,7 +169,7 @@ func (k *Kernel) hasCap(sender ActorID, target ActorID, want Rights) bool {
 }
 
 // sendInternal enqueues a message, enforcing capability checks for service ops.
-func (k *Kernel) sendInternal(from ActorID, to ActorID, payload any, resp chan Message) error {
+func (k *Kernel) SendInternal(from ActorID, to ActorID, payload any, resp chan Message) error {
 	if payload != nil {
 		msgType := reflect.TypeOf(payload)
 		if rights, ok := k.resolveRights(to, msgType); ok {
@@ -176,9 +179,9 @@ func (k *Kernel) sendInternal(from ActorID, to ActorID, payload any, resp chan M
 		}
 	}
 
-	k.mu.RLock()
-	target := k.actors[to]
-	k.mu.RUnlock()
+	k.Mu.RLock()
+	target := k.Actors[to]
+	k.Mu.RUnlock()
 	if target == nil {
 		return errors.New("E_NO_SUCH: target actor")
 	}
@@ -186,7 +189,7 @@ func (k *Kernel) sendInternal(from ActorID, to ActorID, payload any, resp chan M
 	select {
 	case target.inbox <- msg:
 		if a := k.getActor(from); a != nil {
-			atomic.AddUint64(&a.ipcOut, 1)
+			atomic.AddUint64(&a.IpcOut, 1)
 		}
 		return nil
 	case <-time.After(2 * time.Second):
@@ -195,38 +198,31 @@ func (k *Kernel) sendInternal(from ActorID, to ActorID, payload any, resp chan M
 }
 
 func (k *Kernel) getActor(id ActorID) *Actor {
-	k.mu.RLock()
-	defer k.mu.RUnlock()
-	return k.actors[id]
+	k.Mu.RLock()
+	defer k.Mu.RUnlock()
+	return k.Actors[id]
 }
 
-// name→ActorID lookup helpers
+// Name→ActorID lookup helpers
 func (k *Kernel) ActorByName(name string) (ActorID, bool) {
-	k.mu.RLock()
-	defer k.mu.RUnlock()
-	id, ok := k.nameIdx[name]
+	k.Mu.RLock()
+	defer k.Mu.RUnlock()
+	id, ok := k.NameIdx[name]
 	return id, ok
 }
 
-// name→ActorID lookup helpers
+// Name→ActorID lookup helpers
 func (k *Kernel) Start() {
 
 	// if the CLI service is running send it a boot message
 	cliID, ok := k.ActorByName("cli")
 	if ok {
-		go func() { _ = k.sendInternal(cliID, cliID, DemoStart{}, nil) }()
+		go func() { _ = k.SendInternal(cliID, cliID, Boot{}, nil) }()
 	}
 
 	// Kick off demo once
 	demoID, _ := k.ActorByName("demo")
-	go func() { _ = k.sendInternal(demoID, demoID, DemoStart{}, nil) }()
-
-	// Control plane HTTP
-	h := &ControlPlane{k: k}
-	h.routes()
-	addr := ":8080"
-	log.Println("[kernel] control plane listening on", addr)
-	go func() { log.Fatal(http.ListenAndServe(addr, nil)) }()
+	go func() { _ = k.SendInternal(demoID, demoID, DemoStart{}, nil) }()
 
 	// Keep main alive; also show a periodic status line
 	ctx, cancel := context.WithCancel(context.Background())
@@ -245,17 +241,17 @@ func (k *Kernel) Start() {
 }
 
 func printStatus(k *Kernel) {
-	k.mu.RLock()
-	defer k.mu.RUnlock()
-	fmt.Printf("\n[kernel] actors=%d\n", len(k.actors))
+	k.Mu.RLock()
+	defer k.Mu.RUnlock()
+	fmt.Printf("\n[kernel] Actors=%d\n", len(k.Actors))
 	var ids []ActorID
-	for Id := range k.actors {
+	for Id := range k.Actors {
 		ids = append(ids, Id)
 	}
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 	for _, Id := range ids {
-		a := k.actors[Id]
-		fmt.Printf("  - Id=%2d name=%-6s cpu=%8d ops ipc(in=%3d out=%3d) caps=%d\n",
-			Id, a.name, a.cpuOps, a.ipcIn, a.ipcOut, len(a.caps))
+		a := k.Actors[Id]
+		fmt.Printf("  - Id=%2d Name=%-6s cpu=%8d ops ipc(in=%3d out=%3d) Caps=%d\n",
+			Id, a.Name, a.CpuOps, a.IpcIn, a.IpcOut, len(a.Caps))
 	}
 }

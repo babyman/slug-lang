@@ -1,47 +1,58 @@
-package kernel
+package kernel_service
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
+	"slug/internal/kernel"
+	"slug/internal/service"
 	"time"
 )
 
 // ===== Control Plane (HTTP) =====
 
-type ControlPlane struct{ k *Kernel }
+type ControlPlane struct{ kernel *kernel.Kernel }
 
-func (h *ControlPlane) routes() {
-	http.HandleFunc("/actors", h.handleActors)
-	http.HandleFunc("/send", h.handleSend)
-	http.HandleFunc("/repl/eval", h.handleReplEval)
+func (c *ControlPlane) Initialize(k *kernel.Kernel) {
+	c.kernel = k
+	c.routes()
+	addr := ":8080"
+	log.Println("[kernel] control plane listening on", addr)
+	go func() { log.Fatal(http.ListenAndServe(addr, nil)) }()
 }
 
-func (h *ControlPlane) handleActors(w http.ResponseWriter, r *http.Request) {
-	h.k.mu.RLock()
-	defer h.k.mu.RUnlock()
+func (c *ControlPlane) routes() {
+	http.HandleFunc("/actors", c.handleActors)
+	http.HandleFunc("/send", c.handleSend)
+	http.HandleFunc("/repl/eval", c.handleReplEval)
+}
+
+func (c *ControlPlane) handleActors(w http.ResponseWriter, r *http.Request) {
+	c.kernel.Mu.RLock()
+	defer c.kernel.Mu.RUnlock()
 	type A struct {
-		ID     ActorID          `json:"id"`
-		Name   string           `json:"name"`
-		CPUOps uint64           `json:"cpu_ops"`
-		IPCIn  uint64           `json:"ipc_in"`
-		IPCOut uint64           `json:"ipc_out"`
-		Ops    OpRights         `json:"ops,omitempty"`
-		Caps   []CapabilityView `json:"caps,omitempty"`
+		ID     kernel.ActorID          `json:"id"`
+		Name   string                  `json:"name"`
+		CPUOps uint64                  `json:"cpu_ops"`
+		IPCIn  uint64                  `json:"ipc_in"`
+		IPCOut uint64                  `json:"ipc_out"`
+		Ops    kernel.OpRights         `json:"ops,omitempty"`
+		Caps   []kernel.CapabilityView `json:"caps,omitempty"`
 	}
 	var out []A
-	for id, a := range h.k.actors {
-		ops := h.k.opsBySvc[id]
-		caps := make([]CapabilityView, 0, len(a.caps))
-		for _, c := range a.caps {
-			caps = append(caps, CapabilityView{ID: c.ID, Target: c.Target, Rights: c.Rights, Revoked: c.Revoked.Load()})
+	for id, a := range c.kernel.Actors {
+		ops := c.kernel.OpsBySvc[id]
+		caps := make([]kernel.CapabilityView, 0, len(a.Caps))
+		for _, c := range a.Caps {
+			caps = append(caps, kernel.CapabilityView{ID: c.ID, Target: c.Target, Rights: c.Rights, Revoked: c.Revoked.Load()})
 		}
-		out = append(out, A{ID: id, Name: a.name, CPUOps: a.cpuOps, IPCIn: a.ipcIn, IPCOut: a.ipcOut, Ops: ops, Caps: caps})
+		out = append(out, A{ID: id, Name: a.Name, CPUOps: a.CpuOps, IPCIn: a.IpcIn, IPCOut: a.IpcOut, Ops: ops, Caps: caps})
 	}
 	w.Header().Set("content-type", "application/json")
 	_ = json.NewEncoder(w).Encode(out)
 }
 
-func (h *ControlPlane) handleSend(w http.ResponseWriter, r *http.Request) {
+func (c *ControlPlane) handleSend(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(405)
 		return
@@ -52,21 +63,21 @@ func (h *ControlPlane) handleSend(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(sendResp{OK: false, Error: err.Error()})
 		return
 	}
-	fromID, ok := h.k.ActorByName(req.From)
+	fromID, ok := c.kernel.ActorByName(req.From)
 	if !ok {
 		w.WriteHeader(404)
 		_ = json.NewEncoder(w).Encode(sendResp{OK: false, Error: "unknown from"})
 		return
 	}
-	toID, ok := h.k.ActorByName(req.To)
+	toID, ok := c.kernel.ActorByName(req.To)
 	if !ok {
 		w.WriteHeader(404)
 		_ = json.NewEncoder(w).Encode(sendResp{OK: false, Error: "unknown to"})
 		return
 	}
 	// do a sync call through the kernel as if "from" sent it
-	respCh := make(chan Message, 1)
-	if err := h.k.sendInternal(fromID, toID, req.Payload, respCh); err != nil {
+	respCh := make(chan kernel.Message, 1)
+	if err := c.kernel.SendInternal(fromID, toID, req.Payload, respCh); err != nil {
 		w.WriteHeader(403)
 		_ = json.NewEncoder(w).Encode(sendResp{OK: false, Error: err.Error()})
 		return
@@ -81,7 +92,7 @@ func (h *ControlPlane) handleSend(w http.ResponseWriter, r *http.Request) {
 }
 
 // REPL HTTP endpoint — clients POST {source} and the REPL actor evaluates it.
-func (h *ControlPlane) handleReplEval(w http.ResponseWriter, r *http.Request) {
+func (c *ControlPlane) handleReplEval(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(405)
 		return
@@ -94,15 +105,17 @@ func (h *ControlPlane) handleReplEval(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(sendResp{OK: false, Error: err.Error()})
 		return
 	}
-	replID, ok := h.k.ActorByName("repl")
+	replID, ok := c.kernel.ActorByName("repl")
 	if !ok {
 		w.WriteHeader(500)
 		_ = json.NewEncoder(w).Encode(sendResp{OK: false, Error: "REPL service missing"})
 		return
 	}
+	// Create concrete RsEval message type for proper capability checking
+	evalMsg := service.RsEval{Source: body.Source}
 	// Kernel sends as if "repl-http" actor invoked REPL; for simplicity, reuse REPL as sender
-	respCh := make(chan Message, 1)
-	if err := h.k.sendInternal(replID, replID, map[string]any{"source": body.Source}, respCh); err != nil {
+	respCh := make(chan kernel.Message, 1)
+	if err := c.kernel.SendInternal(replID, replID, evalMsg, respCh); err != nil {
 		w.WriteHeader(403)
 		_ = json.NewEncoder(w).Encode(sendResp{OK: false, Error: err.Error()})
 		return
@@ -119,7 +132,6 @@ func (h *ControlPlane) handleReplEval(w http.ResponseWriter, r *http.Request) {
 type sendReq struct {
 	From    string `json:"from"` // actor name
 	To      string `json:"to"`   // target actor name
-	Op      string `json:"op"`
 	Payload any    `json:"payload"`
 }
 

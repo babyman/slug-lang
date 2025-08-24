@@ -39,19 +39,28 @@ type Behavior func(ctx *ActCtx, msg Message)
 
 type Actor struct {
 	Id       ActorID
-	name     string
+	Name     string
 	inbox    chan Message
 	behavior Behavior
-	caps     map[int64]*Capability // by cap ID
+	Caps     map[int64]*Capability // by cap ID
 	// simple accounting
-	cpuOps uint64
-	ipcIn  uint64
-	ipcOut uint64
+	CpuOps uint64
+	IpcIn  uint64
+	IpcOut uint64
 }
 
 type ActCtx struct {
-	K    *Kernel
-	Self *Actor
+	K    IKernel
+	Self ActorID
+}
+
+type IKernel interface {
+	ActorByName(name string) (ActorID, bool)
+	SendInternal(from ActorID, to ActorID, payload any, respCh chan Message) error
+}
+
+type KernelService interface {
+	Initialize(k *Kernel)
 }
 
 type CapabilityView struct {
