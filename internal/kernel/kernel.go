@@ -42,12 +42,13 @@ import (
 // ===== Core Types =====
 
 type Kernel struct {
-	Mu          sync.RWMutex
-	NextActorID int64
-	NextCapID   int64
-	Actors      map[ActorID]*Actor
-	NameIdx     map[string]ActorID // convenient lookup by Name
-	OpsBySvc    map[ActorID]OpRights
+	Mu             sync.RWMutex
+	NextActorID    int64
+	NextCapID      int64
+	Actors         map[ActorID]*Actor
+	NameIdx        map[string]ActorID // convenient lookup by Name
+	OpsBySvc       map[ActorID]OpRights
+	KernelServices map[string]KernelService
 }
 
 // SendSync sends and waits for a single reply.
@@ -113,7 +114,8 @@ func (k *Kernel) runActor(a *Actor) {
 }
 
 // RegisterKernelService registers a service that needs kernel access
-func (k *Kernel) RegisterKernelService(svc KernelService) {
+func (k *Kernel) RegisterKernelService(name string, svc KernelService) {
+	k.KernelServices[name] = svc
 	svc.Initialize(k)
 }
 

@@ -13,7 +13,7 @@ func main() {
 	k := kernel.NewKernel()
 
 	controlPlane := &kernel_service.ControlPlane{}
-	k.RegisterKernelService(controlPlane)
+	k.RegisterKernelService("control-plane", controlPlane)
 
 	// Register services
 	timeID := k.RegisterService("time", service.TsOperations, service.TimeServiceBehavior)
