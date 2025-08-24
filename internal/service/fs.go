@@ -1,7 +1,6 @@
 package service
 
 import (
-	"errors"
 	"os"
 	"slug/internal/kernel"
 )
@@ -34,29 +33,19 @@ func (fs *Fs) Behavior(ctx *kernel.ActCtx, msg kernel.Message) {
 		data := p.Data
 		err := os.WriteFile(path, data, 0644)
 		if err != nil {
-			if msg.Resp != nil {
-				msg.Resp <- kernel.Message{From: ctx.Self.Id, To: msg.From, Op: "err", Payload: FsWriteResp{Err: err}}
-			}
+			reply(ctx, msg, FsWriteResp{Err: err})
 			return
 		}
-		if msg.Resp != nil {
-			msg.Resp <- kernel.Message{From: ctx.Self.Id, To: msg.From, Op: "write.ok", Payload: FsWriteResp{Bytes: len(data)}}
-		}
+		reply(ctx, msg, FsWriteResp{Bytes: len(data)})
 	case FsRead:
 		path := p.Path
 		data, err := os.ReadFile(path)
 		if err != nil {
-			if msg.Resp != nil {
-				msg.Resp <- kernel.Message{From: ctx.Self.Id, To: msg.From, Op: "err", Payload: FsReadResp{Err: err}}
-			}
+			reply(ctx, msg, FsReadResp{Err: err})
 			return
 		}
-		if msg.Resp != nil {
-			msg.Resp <- kernel.Message{From: ctx.Self.Id, To: msg.From, Op: "read.ok", Payload: FsReadResp{Data: string(data)}}
-		}
+		reply(ctx, msg, FsReadResp{Data: string(data)})
 	default:
-		if msg.Resp != nil {
-			msg.Resp <- kernel.Message{From: ctx.Self.Id, To: msg.From, Op: "err", Payload: FsReadResp{Err: errors.New("unknown op")}}
-		}
+		reply(ctx, msg, kernel.UnknownOperation{})
 	}
 }

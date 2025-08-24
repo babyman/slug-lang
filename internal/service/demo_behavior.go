@@ -8,7 +8,8 @@ import (
 // ===== Demo actor (unchanged API-wise) =====
 
 func DemoBehavior(ctx *kernel.ActCtx, msg kernel.Message) {
-	if msg.Op != "start" {
+	_, ok := msg.Payload.(kernel.DemoStart)
+	if !ok {
 		return
 	}
 	log.Println("[demo] starting demo sequence…")

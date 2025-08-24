@@ -29,7 +29,6 @@ type Capability struct {
 type Message struct {
 	From    ActorID      `json:"from"`
 	To      ActorID      `json:"to"`
-	Op      string       `json:"op"`
 	Payload any          `json:"payload,omitempty"`
 	Resp    chan Message `json:"-"` // optional synchronous reply channel
 }
@@ -59,4 +58,12 @@ type CapabilityView struct {
 	Target  ActorID `json:"target"`
 	Rights  Rights  `json:"rights"`
 	Revoked bool    `json:"revoked"`
+}
+
+//Kernel message payload types
+
+type DemoStart struct {
+}
+
+type UnknownOperation struct {
 }

@@ -78,15 +78,3 @@ func (e *Evaluator) Behavior(ctx *kernel.ActCtx, msg kernel.Message) {
 		reply(ctx, msg, EvaluatorResult{Err: errors.New("unknown op")})
 	}
 }
-
-func reply(ctx *kernel.ActCtx, req kernel.Message, payload any) {
-	if req.Resp != nil {
-		req.Resp <- kernel.Message{From: ctx.Self.Id, To: req.From, Op: "ok", Payload: payload}
-	}
-}
-
-//func replyErr(ctx *kernel.ActCtx, req kernel.Message, err string) {
-//	if req.Resp != nil {
-//		req.Resp <- kernel.Message{From: ctx.Self.Id, To: req.From, Op: "err", Payload: EvaluatorResult{Err: errors.New(err)}}
-//	}
-//}

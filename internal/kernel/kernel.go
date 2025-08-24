@@ -178,7 +178,7 @@ func (k *Kernel) sendInternal(from ActorID, to ActorID, op string, payload any, 
 	if target == nil {
 		return errors.New("E_NO_SUCH: target actor")
 	}
-	msg := Message{From: from, To: to, Op: op, Payload: payload, Resp: resp}
+	msg := Message{From: from, To: to, Payload: payload, Resp: resp}
 	select {
 	case target.inbox <- msg:
 		if a := k.getActor(from); a != nil {
@@ -215,7 +215,7 @@ func (k *Kernel) Start() {
 
 	// Kick off demo once
 	demoID, _ := k.ActorByName("demo")
-	go func() { _ = k.sendInternal(demoID, demoID, "start", nil, nil) }()
+	go func() { _ = k.sendInternal(demoID, demoID, "start", DemoStart{}, nil) }()
 
 	// Control plane HTTP
 	h := &ControlPlane{k: k}
