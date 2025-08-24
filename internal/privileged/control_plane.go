@@ -1,4 +1,4 @@
-package kernel_service
+package privileged
 
 import (
 	"encoding/json"

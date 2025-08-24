@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 	"slug/internal/kernel"
-	kernel_service "slug/internal/kernel-service"
+	"slug/internal/privileged"
 	"slug/internal/service"
 )
 
@@ -12,7 +12,7 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	k := kernel.NewKernel()
 
-	controlPlane := &kernel_service.ControlPlane{}
+	controlPlane := &privileged.ControlPlane{}
 	k.RegisterKernelService("control-plane", controlPlane)
 
 	// Register services
