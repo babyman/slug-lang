@@ -1,6 +1,13 @@
 package service
 
-import "slug/internal/kernel"
+import (
+	"reflect"
+	"slug/internal/kernel"
+)
+
+var CliOperations = kernel.OpRights{
+	reflect.TypeOf(kernel.Boot{}): kernel.RightExec,
+}
 
 type Cli struct {
 }

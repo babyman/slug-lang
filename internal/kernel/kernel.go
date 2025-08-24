@@ -34,6 +34,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"reflect"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -52,9 +53,9 @@ type Kernel struct {
 }
 
 // SendSync sends and waits for a single reply.
-func (c *ActCtx) SendSync(to ActorID, op string, payload any) (Message, error) {
+func (c *ActCtx) SendSync(to ActorID, payload any) (Message, error) {
 	respCh := make(chan Message, 1)
-	err := c.K.sendInternal(c.Self.Id, to, op, payload, respCh)
+	err := c.K.sendInternal(c.Self.Id, to, payload, respCh)
 	if err != nil {
 		return Message{}, err
 	}
@@ -67,8 +68,8 @@ func (c *ActCtx) SendSync(to ActorID, op string, payload any) (Message, error) {
 }
 
 // SendAsync fire-and-forgets.
-func (c *ActCtx) SendAsync(to ActorID, op string, payload any) error {
-	return c.K.sendInternal(c.Self.Id, to, op, payload, nil)
+func (c *ActCtx) SendAsync(to ActorID, payload any) error {
+	return c.K.sendInternal(c.Self.Id, to, payload, nil)
 }
 
 // ===== Kernel =====
@@ -123,7 +124,7 @@ func (k *Kernel) RegisterService(name string, ops OpRights, beh Behavior) ActorI
 }
 
 // GrantCap issues a capability from kernel to a specific actor.
-func (k *Kernel) GrantCap(to ActorID, target ActorID, rights Rights, scope map[string]any) *Capability {
+func (k *Kernel) GrantCap(to ActorID, target ActorID, rights Rights, scope map[reflect.Type]any) *Capability {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	capID := k.nextCapID
@@ -137,7 +138,7 @@ func (k *Kernel) GrantCap(to ActorID, target ActorID, rights Rights, scope map[s
 }
 
 // resolveRights returns required rights for an op against a target service.
-func (k *Kernel) resolveRights(target ActorID, op string) (Rights, bool) {
+func (k *Kernel) resolveRights(target ActorID, op reflect.Type) (Rights, bool) {
 	k.mu.RLock()
 	ops, ok := k.opsBySvc[target]
 	k.mu.RUnlock()
@@ -165,13 +166,16 @@ func (k *Kernel) hasCap(sender ActorID, target ActorID, want Rights) bool {
 }
 
 // sendInternal enqueues a message, enforcing capability checks for service ops.
-func (k *Kernel) sendInternal(from ActorID, to ActorID, op string, payload any, resp chan Message) error {
-	// Resolve required rights for op (if target is a service with declared ops)
-	if rights, ok := k.resolveRights(to, op); ok {
-		if !k.hasCap(from, to, rights) {
-			return fmt.Errorf("E_POLICY: missing rights=%v for op %q to target %d", rights, op, to)
+func (k *Kernel) sendInternal(from ActorID, to ActorID, payload any, resp chan Message) error {
+	if payload != nil {
+		msgType := reflect.TypeOf(payload)
+		if rights, ok := k.resolveRights(to, msgType); ok {
+			if !k.hasCap(from, to, rights) {
+				return fmt.Errorf("E_POLICY: missing rights=%v for op %T to target %d", rights, payload, to)
+			}
 		}
 	}
+
 	k.mu.RLock()
 	target := k.actors[to]
 	k.mu.RUnlock()
@@ -210,12 +214,12 @@ func (k *Kernel) Start() {
 	// if the CLI service is running send it a boot message
 	cliID, ok := k.ActorByName("cli")
 	if ok {
-		go func() { _ = k.sendInternal(cliID, cliID, "boot", nil, nil) }()
+		go func() { _ = k.sendInternal(cliID, cliID, DemoStart{}, nil) }()
 	}
 
 	// Kick off demo once
 	demoID, _ := k.ActorByName("demo")
-	go func() { _ = k.sendInternal(demoID, demoID, "start", DemoStart{}, nil) }()
+	go func() { _ = k.sendInternal(demoID, demoID, DemoStart{}, nil) }()
 
 	// Control plane HTTP
 	h := &ControlPlane{k: k}

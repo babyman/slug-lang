@@ -2,8 +2,18 @@ package service
 
 import (
 	"os"
+	"reflect"
 	"slug/internal/kernel"
 )
+
+type FsRead struct {
+	Path string
+}
+
+type FsReadResp struct {
+	Data string
+	Err  error
+}
 
 type FsWrite struct {
 	Data []byte
@@ -15,16 +25,13 @@ type FsWriteResp struct {
 	Err   error
 }
 
-type FsRead struct {
-	Path string
+var FsOperations = kernel.OpRights{
+	reflect.TypeOf(FsRead{}):  kernel.RightRead,
+	reflect.TypeOf(FsWrite{}): kernel.RightWrite,
 }
 
-type FsReadResp struct {
-	Data string
-	Err  error
+type Fs struct {
 }
-
-type Fs struct{}
 
 func (fs *Fs) Behavior(ctx *kernel.ActCtx, msg kernel.Message) {
 	switch p := msg.Payload.(type) {

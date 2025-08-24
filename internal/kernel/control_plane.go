@@ -66,7 +66,7 @@ func (h *ControlPlane) handleSend(w http.ResponseWriter, r *http.Request) {
 	}
 	// do a sync call through the kernel as if "from" sent it
 	respCh := make(chan Message, 1)
-	if err := h.k.sendInternal(fromID, toID, req.Op, req.Payload, respCh); err != nil {
+	if err := h.k.sendInternal(fromID, toID, req.Payload, respCh); err != nil {
 		w.WriteHeader(403)
 		_ = json.NewEncoder(w).Encode(sendResp{OK: false, Error: err.Error()})
 		return
@@ -102,7 +102,7 @@ func (h *ControlPlane) handleReplEval(w http.ResponseWriter, r *http.Request) {
 	}
 	// Kernel sends as if "repl-http" actor invoked REPL; for simplicity, reuse REPL as sender
 	respCh := make(chan Message, 1)
-	if err := h.k.sendInternal(replID, replID, "eval", map[string]any{"source": body.Source}, respCh); err != nil {
+	if err := h.k.sendInternal(replID, replID, map[string]any{"source": body.Source}, respCh); err != nil {
 		w.WriteHeader(403)
 		_ = json.NewEncoder(w).Encode(sendResp{OK: false, Error: err.Error()})
 		return

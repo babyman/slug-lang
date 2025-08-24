@@ -1,6 +1,7 @@
 package kernel
 
 import (
+	"reflect"
 	"sync/atomic"
 )
 
@@ -15,15 +16,15 @@ const (
 )
 
 // OpRights declares what rights are required to invoke a given op on a service.
-type OpRights map[string]Rights
+type OpRights map[reflect.Type]Rights
 
 // Capability binds a sender to a target service actor with specific rights and optional scope.
 type Capability struct {
-	ID      int64          `json:"Id"`
-	Target  ActorID        `json:"target"`
-	Rights  Rights         `json:"rights"`
-	Scope   map[string]any `json:"scope,omitempty"`
-	Revoked atomic.Bool    `json:"-"`
+	ID      int64                `json:"Id"`
+	Target  ActorID              `json:"target"`
+	Rights  Rights               `json:"rights"`
+	Scope   map[reflect.Type]any `json:"scope,omitempty"`
+	Revoked atomic.Bool          `json:"-"`
 }
 
 type Message struct {
@@ -61,6 +62,9 @@ type CapabilityView struct {
 }
 
 //Kernel message payload types
+
+type Boot struct {
+}
 
 type DemoStart struct {
 }

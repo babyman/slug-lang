@@ -18,7 +18,7 @@ func DemoBehavior(ctx *kernel.ActCtx, msg kernel.Message) {
 	timeID, _ := ctx.K.ActorByName("time")
 
 	// Write a file
-	if _, err := ctx.SendSync(fsID, "write", FsWrite{
+	if _, err := ctx.SendSync(fsID, FsWrite{
 		Path: "/tmp/hello.txt",
 		Data: []byte("hello from demo"),
 	}); err != nil {
@@ -27,17 +27,17 @@ func DemoBehavior(ctx *kernel.ActCtx, msg kernel.Message) {
 		log.Println("[demo] fs.write ok")
 	}
 	// Read it back
-	if resp, err := ctx.SendSync(fsID, "read", FsRead{Path: "/tmp/hello.txt"}); err != nil {
+	if resp, err := ctx.SendSync(fsID, FsRead{Path: "/tmp/hello.txt"}); err != nil {
 		log.Println("[demo] fs.read error:", err)
 	} else {
 		log.Printf("[demo] fs.read -> %v\n", resp.Payload.(FsReadResp).Data)
 	}
 	// Time.now
-	if resp, err := ctx.SendSync(timeID, "now", TsNow{}); err == nil {
+	if resp, err := ctx.SendSync(timeID, TsNow{}); err == nil {
 		log.Printf("[demo] time.now -> nanos=%v\n", resp.Payload.(TsNowResp).Nanos)
 	}
 	// Sleep 100 ms
-	if _, err := ctx.SendSync(timeID, "sleep", TsSleep{Ms: 100}); err == nil {
+	if _, err := ctx.SendSync(timeID, TsSleep{Ms: 100}); err == nil {
 		log.Println("[demo] time.sleep 100ms ok")
 	}
 }

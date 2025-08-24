@@ -12,23 +12,23 @@ func main() {
 	k := kernel.NewKernel()
 
 	// Register services
-	timeID := k.RegisterService("time", kernel.OpRights{"now": kernel.RightRead, "sleep": kernel.RightExec}, service.TimeServiceBehavior)
+	timeID := k.RegisterService("time", service.TsOperations, service.TimeServiceBehavior)
 
 	// CLI Service
 	cli := &service.Cli{}
-	cliID := k.RegisterService("cli", kernel.OpRights{"boot": kernel.RightExec}, cli.Behavior)
+	cliID := k.RegisterService("cli", service.CliOperations, cli.Behavior)
 
 	// File system service
 	fs := &service.Fs{}
-	fsID := k.RegisterService("fs", kernel.OpRights{"read": kernel.RightRead, "write": kernel.RightWrite}, fs.Behavior)
+	fsID := k.RegisterService("fs", service.FsOperations, fs.Behavior)
 
 	// Evaluator service (stub)
 	eval := &service.Evaluator{}
-	evalID := k.RegisterService("eval", kernel.OpRights{"eval": kernel.RightExec}, eval.Behavior)
+	evalID := k.RegisterService("eval", service.EvaluatorOperations, eval.Behavior)
 
 	// REPL service
 	repl := &service.ReplService{EvalID: evalID}
-	replID := k.RegisterService("repl", kernel.OpRights{"eval": kernel.RightExec}, repl.Behavior)
+	replID := k.RegisterService("repl", service.RsOperations, repl.Behavior)
 
 	// Demo actor shows FS/TIME usage
 	demoID := k.RegisterActor("demo", service.DemoBehavior)

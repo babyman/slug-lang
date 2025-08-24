@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"reflect"
 	"slug/internal/kernel"
 )
 
@@ -20,6 +21,10 @@ type RsEvalResp struct {
 	Err    error
 }
 
+var RsOperations = kernel.OpRights{
+	reflect.TypeOf(RsEval{}): kernel.RightExec,
+}
+
 type ReplService struct{ EvalID kernel.ActorID }
 
 func (r *ReplService) Behavior(ctx *kernel.ActCtx, msg kernel.Message) {
@@ -30,7 +35,7 @@ func (r *ReplService) Behavior(ctx *kernel.ActCtx, msg kernel.Message) {
 			reply(ctx, msg, RsEvalResp{Err: errors.New("empty source")})
 			return
 		}
-		resp, err := ctx.SendSync(r.EvalID, "eval", EvaluatorEvaluate{
+		resp, err := ctx.SendSync(r.EvalID, EvaluatorEvaluate{
 			Source: src,
 		})
 		switch {

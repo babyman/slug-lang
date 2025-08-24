@@ -1,6 +1,7 @@
 package service
 
 import (
+	"reflect"
 	"slug/internal/kernel"
 	"time"
 )
@@ -16,6 +17,11 @@ type TsNowResp struct {
 
 type TsSleep struct {
 	Ms int
+}
+
+var TsOperations = kernel.OpRights{
+	reflect.TypeOf(TsNow{}):   kernel.RightRead,
+	reflect.TypeOf(TsSleep{}): kernel.RightExec,
 }
 
 func TimeServiceBehavior(ctx *kernel.ActCtx, msg kernel.Message) {

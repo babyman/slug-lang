@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"reflect"
 	"regexp"
 	"slug/internal/kernel"
 	"strings"
@@ -25,6 +26,10 @@ type EvaluatorResult struct {
 	SourceLen int
 	Result    any
 	Err       error
+}
+
+var EvaluatorOperations = kernel.OpRights{
+	reflect.TypeOf(EvaluatorEvaluate{}): kernel.RightExec,
 }
 
 type Evaluator struct{}
@@ -53,7 +58,7 @@ func (e *Evaluator) Behavior(ctx *kernel.ActCtx, msg kernel.Message) {
 		}
 		if m := cmdRead.FindStringSubmatch(src); len(m) == 2 {
 
-			fsResp, err := ctx.SendSync(fsID, "read", FsRead{Path: m[1]})
+			fsResp, err := ctx.SendSync(fsID, FsRead{Path: m[1]})
 			switch {
 			case err != nil:
 				reply(ctx, msg, EvaluatorResult{Err: err})
@@ -67,7 +72,7 @@ func (e *Evaluator) Behavior(ctx *kernel.ActCtx, msg kernel.Message) {
 			}
 		}
 		if strings.TrimSpace(src) == "now" {
-			if resp, err := ctx.SendSync(timeID, "now", TsNow{}); err == nil {
+			if resp, err := ctx.SendSync(timeID, TsNow{}); err == nil {
 				reply(ctx, msg, EvaluatorResult{Result: resp.Payload.(TsNowResp).Nanos})
 				return
 			}
