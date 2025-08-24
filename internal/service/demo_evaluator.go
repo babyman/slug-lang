@@ -1,0 +1,92 @@
+package service
+
+import (
+	"errors"
+	"regexp"
+	"slug/internal/kernel"
+	"strings"
+)
+
+// ===== Evaluator Service (stub) =====
+// Ops: { eval: EXEC }
+// Behavior:
+//   - Very small demo parser with three commands to prove wiring:
+//     1) print "text"           -> returns stdout
+//     2) read "path"            -> reads from FS service (needs caps)
+//     3) now                     -> reads time.now
+//   - Anything else: echoes back length of source.
+
+type EvaluatorEvaluate struct {
+	Source string
+}
+
+type EvaluatorResult struct {
+	Stdout    string
+	SourceLen int
+	Result    any
+	Err       error
+}
+
+type Evaluator struct{}
+
+var (
+	cmdPrint = regexp.MustCompile(`^\s*print\s+\"(.*)\"\s*$`)
+	cmdRead  = regexp.MustCompile(`^\s*read\s+\"(.*)\"\s*$`)
+)
+
+func (e *Evaluator) Behavior(ctx *kernel.ActCtx, msg kernel.Message) {
+	switch payload := msg.Payload.(type) {
+	case EvaluatorEvaluate:
+		src := payload.Source
+		if src == "" {
+			reply(ctx, msg, EvaluatorResult{Err: errors.New("empty source")})
+			return
+		}
+		// Discover services by name; in a real runtime this would be passed as caps
+		fsID, _ := ctx.K.ActorByName("fs")
+		timeID, _ := ctx.K.ActorByName("time")
+
+		// Simple commands
+		if m := cmdPrint.FindStringSubmatch(src); len(m) == 2 {
+			reply(ctx, msg, EvaluatorResult{Stdout: m[1]})
+			return
+		}
+		if m := cmdRead.FindStringSubmatch(src); len(m) == 2 {
+
+			fsResp, err := ctx.SendSync(fsID, "read", FsRead{Path: m[1]})
+			switch {
+			case err != nil:
+				reply(ctx, msg, EvaluatorResult{Err: err})
+				return
+			case fsResp.Payload.(FsReadResp).Err != nil:
+				reply(ctx, msg, EvaluatorResult{Err: fsResp.Payload.(FsReadResp).Err})
+				return
+			default:
+				reply(ctx, msg, EvaluatorResult{Stdout: fsResp.Payload.(FsReadResp).Data})
+				return
+			}
+		}
+		if strings.TrimSpace(src) == "now" {
+			if resp, err := ctx.SendSync(timeID, "now", TsNow{}); err == nil {
+				reply(ctx, msg, EvaluatorResult{Result: resp.Payload.(TsNowResp).Nanos})
+				return
+			}
+		}
+
+		reply(ctx, msg, EvaluatorResult{SourceLen: len(src)})
+	default:
+		reply(ctx, msg, EvaluatorResult{Err: errors.New("unknown op")})
+	}
+}
+
+func reply(ctx *kernel.ActCtx, req kernel.Message, payload any) {
+	if req.Resp != nil {
+		req.Resp <- kernel.Message{From: ctx.Self.Id, To: req.From, Op: "ok", Payload: payload}
+	}
+}
+
+//func replyErr(ctx *kernel.ActCtx, req kernel.Message, err string) {
+//	if req.Resp != nil {
+//		req.Resp <- kernel.Message{From: ctx.Self.Id, To: req.From, Op: "err", Payload: EvaluatorResult{Err: errors.New(err)}}
+//	}
+//}

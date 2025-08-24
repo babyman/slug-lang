@@ -109,7 +109,7 @@ func executeFile(filename, rootPath string, args []string) error {
 		return fmt.Errorf("failed to load main module '%s':\n%v", filename, err)
 	}
 
-	// Initialize the environment
+	// Start the environment
 	env := setupEnvironment(args)
 	env.Path = module.Path
 	env.ModuleFqn = module.Name
