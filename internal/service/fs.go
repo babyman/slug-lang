@@ -34,10 +34,10 @@ type Fs struct {
 }
 
 func (fs *Fs) Behavior(ctx *kernel.ActCtx, msg kernel.Message) {
-	switch p := msg.Payload.(type) {
+	switch payload := msg.Payload.(type) {
 	case FsWrite:
-		path := p.Path
-		data := p.Data
+		path := payload.Path
+		data := payload.Data
 		err := os.WriteFile(path, data, 0644)
 		if err != nil {
 			reply(ctx, msg, FsWriteResp{Err: err})
@@ -45,7 +45,7 @@ func (fs *Fs) Behavior(ctx *kernel.ActCtx, msg kernel.Message) {
 		}
 		reply(ctx, msg, FsWriteResp{Bytes: len(data)})
 	case FsRead:
-		path := p.Path
+		path := payload.Path
 		data, err := os.ReadFile(path)
 		if err != nil {
 			reply(ctx, msg, FsReadResp{Err: err})

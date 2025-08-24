@@ -41,16 +41,6 @@ import (
 
 // ===== Core Types =====
 
-type Kernel struct {
-	Mu             sync.RWMutex
-	NextActorID    int64
-	NextCapID      int64
-	Actors         map[ActorID]*Actor
-	NameIdx        map[string]ActorID // convenient lookup by Name
-	OpsBySvc       map[ActorID]OpRights
-	KernelServices map[string]KernelService
-}
-
 // SendSync sends and waits for a single reply.
 func (c *ActCtx) SendSync(to ActorID, payload any) (Message, error) {
 	respCh := make(chan Message, 1)
@@ -73,12 +63,23 @@ func (c *ActCtx) SendAsync(to ActorID, payload any) error {
 
 // ===== Kernel =====
 
+type Kernel struct {
+	Mu             sync.RWMutex
+	NextActorID    int64
+	NextCapID      int64
+	Actors         map[ActorID]*Actor
+	NameIdx        map[string]ActorID // convenient lookup by Name
+	OpsBySvc       map[ActorID]OpRights
+	KernelServices map[string]KernelService
+}
+
 func NewKernel() *Kernel {
 
 	return &Kernel{
-		Actors:   make(map[ActorID]*Actor),
-		NameIdx:  make(map[string]ActorID),
-		OpsBySvc: make(map[ActorID]OpRights),
+		Actors:         make(map[ActorID]*Actor),
+		NameIdx:        make(map[string]ActorID),
+		OpsBySvc:       make(map[ActorID]OpRights),
+		KernelServices: make(map[string]KernelService),
 	}
 }
 

@@ -7,9 +7,17 @@ import (
 	"slug/internal/service"
 )
 
+const (
+	r  = kernel.RightRead
+	rw = kernel.RightRead | kernel.RightWrite
+	rx = kernel.RightRead | kernel.RightExec
+	x  = kernel.RightExec
+)
+
 func main() {
 
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+
 	k := kernel.NewKernel()
 
 	controlPlane := &privileged.ControlPlane{}
@@ -38,13 +46,14 @@ func main() {
 	demoID := k.RegisterActor("demo", service.DemoBehavior)
 
 	// Cap grants
-	_ = k.GrantCap(cliID, fsID, kernel.RightRead|kernel.RightWrite, nil)
-	_ = k.GrantCap(demoID, fsID, kernel.RightRead|kernel.RightWrite, nil)
-	_ = k.GrantCap(demoID, timeID, kernel.RightRead|kernel.RightExec, nil)
-	_ = k.GrantCap(replID, evalID, kernel.RightExec, nil)                  // REPL can call EVAL
-	_ = k.GrantCap(replID, replID, kernel.RightExec, nil)                  // REPL can call EVAL
-	_ = k.GrantCap(evalID, fsID, kernel.RightRead|kernel.RightWrite, nil)  // EVAL can touch FS
-	_ = k.GrantCap(evalID, timeID, kernel.RightRead|kernel.RightExec, nil) // EVAL can call TIME
+	_ = k.GrantCap(cliID, cliID, x, nil) // call self required for boot message
+	_ = k.GrantCap(cliID, fsID, r, nil)
+	_ = k.GrantCap(demoID, fsID, rw, nil)
+	_ = k.GrantCap(demoID, timeID, rx, nil)
+	_ = k.GrantCap(replID, evalID, x, nil)  // REPL can call EVAL
+	_ = k.GrantCap(replID, replID, x, nil)  // REPL can call itself
+	_ = k.GrantCap(evalID, fsID, rw, nil)   // EVAL can touch FS
+	_ = k.GrantCap(evalID, timeID, rx, nil) // EVAL can call TIME
 
 	k.Start()
 }
