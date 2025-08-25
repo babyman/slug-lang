@@ -3,7 +3,6 @@ package service
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"reflect"
 	"slug/internal/kernel"
@@ -27,14 +26,17 @@ var (
 
 func init() {
 	flag.BoolVar(&help, "help", false, "Display help information and exit")
+	// evaluator config
 	flag.StringVar(&rootPath, "root", ".", "Set the root context for the program (used for imports)")
+	// parser config
 	flag.BoolVar(&debugAST, "debug-ast", false, "Render the AST as a JSON file")
+	// log config
 	flag.StringVar(&logLevel, "log-level", "NONE", "Log level: trace, debug, info, warn, error, none")
 	flag.StringVar(&logFile, "log-file", "", "Log file path (if not set, logs to stderr)")
 	flag.BoolVar(&color, "log-color", true, "Enable color output in terminal")
 }
 
-func (cli *Cli) Behavior(ctx *kernel.ActCtx, msg kernel.Message) {
+func (cli *Cli) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	switch msg.Payload.(type) {
 	case kernel.Boot:
 
@@ -50,7 +52,7 @@ func (cli *Cli) Behavior(ctx *kernel.ActCtx, msg kernel.Message) {
 			args := flag.Args()[1:]
 
 			// todo - execute file
-			log.Printf("Executing %s with args %v", filename, args)
+			sendStdOut(ctx, filename, args)
 		}
 	}
 }

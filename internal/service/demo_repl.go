@@ -8,7 +8,7 @@ import (
 
 // ===== REPL Service =====
 // Ops: { eval: EXEC }
-// Behavior:
+// Handler:
 //   - Accepts {source} and forwards to Evaluator
 //   - Returns evaluator reply
 
@@ -27,7 +27,7 @@ var RsOperations = kernel.OpRights{
 
 type ReplService struct{ EvalID kernel.ActorID }
 
-func (r *ReplService) Behavior(ctx *kernel.ActCtx, msg kernel.Message) {
+func (r *ReplService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	switch payload := msg.Payload.(type) {
 	case RsEval:
 		src := payload.Source

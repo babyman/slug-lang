@@ -24,7 +24,7 @@ var TsOperations = kernel.OpRights{
 	reflect.TypeOf(TsSleep{}): kernel.RightExec,
 }
 
-func TimeServiceBehavior(ctx *kernel.ActCtx, msg kernel.Message) {
+func TimeServiceHandler(ctx *kernel.ActCtx, msg kernel.Message) {
 	switch payload := msg.Payload.(type) {
 	case TsNow:
 		ns := time.Now().UnixNano()

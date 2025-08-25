@@ -10,7 +10,7 @@ import (
 
 // ===== Evaluator Service (stub) =====
 // Ops: { eval: EXEC }
-// Behavior:
+// Handler:
 //   - Very small demo parser with three commands to prove wiring:
 //     1) print "text"           -> returns stdout
 //     2) read "path"            -> reads from FS service (needs caps)
@@ -39,7 +39,7 @@ var (
 	cmdRead  = regexp.MustCompile(`^\s*read\s+\"(.*)\"\s*$`)
 )
 
-func (e *Evaluator) Behavior(ctx *kernel.ActCtx, msg kernel.Message) {
+func (e *Evaluator) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	switch payload := msg.Payload.(type) {
 	case EvaluatorEvaluate:
 		src := payload.Source

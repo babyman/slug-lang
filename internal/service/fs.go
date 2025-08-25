@@ -33,7 +33,7 @@ var FsOperations = kernel.OpRights{
 type Fs struct {
 }
 
-func (fs *Fs) Behavior(ctx *kernel.ActCtx, msg kernel.Message) {
+func (fs *Fs) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	switch payload := msg.Payload.(type) {
 	case FsWrite:
 		path := payload.Path

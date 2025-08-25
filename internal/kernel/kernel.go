@@ -64,37 +64,37 @@ func (c *ActCtx) SendAsync(to ActorID, payload any) error {
 // ===== Kernel =====
 
 type Kernel struct {
-	Mu             sync.RWMutex
-	NextActorID    int64
-	NextCapID      int64
-	Actors         map[ActorID]*Actor
-	NameIdx        map[string]ActorID // convenient lookup by Name
-	OpsBySvc       map[ActorID]OpRights
-	KernelServices map[string]KernelService
+	Mu                 sync.RWMutex
+	NextActorID        int64
+	NextCapID          int64
+	Actors             map[ActorID]*Actor
+	NameIdx            map[string]ActorID // convenient lookup by Name
+	OpsBySvc           map[ActorID]OpRights
+	PrivilegedServices map[string]PrivilegedService
 }
 
 func NewKernel() *Kernel {
 
 	return &Kernel{
-		Actors:         make(map[ActorID]*Actor),
-		NameIdx:        make(map[string]ActorID),
-		OpsBySvc:       make(map[ActorID]OpRights),
-		KernelServices: make(map[string]KernelService),
+		Actors:             make(map[ActorID]*Actor),
+		NameIdx:            make(map[string]ActorID),
+		OpsBySvc:           make(map[ActorID]OpRights),
+		PrivilegedServices: make(map[string]PrivilegedService),
 	}
 }
 
 // RegisterActor wires an actor into the kernel.
-func (k *Kernel) RegisterActor(name string, beh Behavior) ActorID {
+func (k *Kernel) RegisterActor(name string, handler Handler) ActorID {
 	k.Mu.Lock()
 	defer k.Mu.Unlock()
 	id := ActorID(k.NextActorID)
 	k.NextActorID++
 	act := &Actor{
-		Id:       id,
-		Name:     name,
-		inbox:    make(chan Message, 64),
-		behavior: beh,
-		Caps:     make(map[int64]*Capability),
+		Id:      id,
+		Name:    name,
+		inbox:   make(chan Message, 64),
+		handler: handler,
+		Caps:    make(map[int64]*Capability),
 	}
 	k.Actors[id] = act
 	if name != "" {
@@ -109,20 +109,20 @@ func (k *Kernel) runActor(a *Actor) {
 	for msg := range a.inbox {
 		atomic.AddUint64(&a.IpcIn, 1)
 		start := time.Now()
-		a.behavior(ctx, msg)
+		a.handler(ctx, msg)
 		atomic.AddUint64(&a.CpuOps, uint64(time.Since(start).Microseconds()))
 	}
 }
 
-// RegisterKernelService registers a service that needs kernel access
-func (k *Kernel) RegisterKernelService(name string, svc KernelService) {
-	k.KernelServices[name] = svc
+// RegisterPrivilegedService registers a service that needs kernel access
+func (k *Kernel) RegisterPrivilegedService(name string, svc PrivilegedService) {
+	k.PrivilegedServices[name] = svc
 	svc.Initialize(k)
 }
 
 // Declare a service (actor) with op→rights mapping, enabling cap checks.
-func (k *Kernel) RegisterService(name string, ops OpRights, beh Behavior) ActorID {
-	id := k.RegisterActor(name, beh)
+func (k *Kernel) RegisterService(name string, ops OpRights, handler Handler) ActorID {
+	id := k.RegisterActor(name, handler)
 	k.Mu.Lock()
 	k.OpsBySvc[id] = ops
 	k.Mu.Unlock()
@@ -135,10 +135,10 @@ func (k *Kernel) GrantCap(to ActorID, target ActorID, rights Rights, scope map[r
 	defer k.Mu.Unlock()
 	capID := k.NextCapID
 	k.NextCapID++
-	cap := &Capability{ID: capID, Target: target, Rights: rights, Scope: scope}
+	capability := &Capability{ID: capID, Target: target, Rights: rights, Scope: scope}
 	if a, ok := k.Actors[to]; ok {
-		a.Caps[capID] = cap
-		return cap
+		a.Caps[capID] = capability
+		return capability
 	}
 	return nil
 }

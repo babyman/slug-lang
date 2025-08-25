@@ -34,15 +34,15 @@ type Message struct {
 	Resp    chan Message `json:"-"` // optional synchronous reply channel
 }
 
-// Actor behavior is a function invoked for each incoming message.
-type Behavior func(ctx *ActCtx, msg Message)
+// Actor handler is a function invoked for each incoming message.
+type Handler func(ctx *ActCtx, msg Message)
 
 type Actor struct {
-	Id       ActorID
-	Name     string
-	inbox    chan Message
-	behavior Behavior
-	Caps     map[int64]*Capability // by cap ID
+	Id      ActorID
+	Name    string
+	inbox   chan Message
+	handler Handler
+	Caps    map[int64]*Capability // by cap ID
 	// simple accounting
 	CpuOps uint64
 	IpcIn  uint64
@@ -59,7 +59,7 @@ type IKernel interface {
 	SendInternal(from ActorID, to ActorID, payload any, respCh chan Message) error
 }
 
-type KernelService interface {
+type PrivilegedService interface {
 	Initialize(k *Kernel)
 }
 
