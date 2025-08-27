@@ -32,6 +32,10 @@ func main() {
 	soutID := k.RegisterService("sout", service.SOutOperations, sout.Handler)
 
 	// system out Service
+	logSvc := &service.Log{}
+	logID := k.RegisterService("log", service.LogOperations, logSvc.Handler)
+
+	// system out Service
 	mods := &service.Modules{}
 	modsID := k.RegisterService("mods", service.ModulesOperations, mods.Handler)
 
@@ -58,19 +62,24 @@ func main() {
 	_ = k.GrantCap(cliID, cliID, x, nil) // call self required for boot message
 	_ = k.GrantCap(cliID, soutID, w, nil)
 	_ = k.GrantCap(cliID, modsID, x, nil)
+	_ = k.GrantCap(cliID, logID, rx, nil)
 
 	_ = k.GrantCap(modsID, cliID, w, nil)
 	_ = k.GrantCap(modsID, fsID, r, nil)
 	_ = k.GrantCap(modsID, soutID, w, nil)
+	_ = k.GrantCap(modsID, logID, w, nil)
 
 	_ = k.GrantCap(demoID, fsID, rw, nil)
 	_ = k.GrantCap(demoID, timeID, rx, nil)
+	_ = k.GrantCap(demoID, logID, w, nil)
 
-	_ = k.GrantCap(replID, evalID, x, nil) // REPL can call EVAL
 	_ = k.GrantCap(replID, replID, x, nil) // REPL can call itself
+	_ = k.GrantCap(replID, evalID, x, nil) // REPL can call EVAL
+	_ = k.GrantCap(replID, logID, w, nil)
 
 	_ = k.GrantCap(evalID, fsID, rw, nil)   // EVAL can touch FS
 	_ = k.GrantCap(evalID, timeID, rx, nil) // EVAL can call TIME
+	_ = k.GrantCap(evalID, logID, w, nil)
 
 	k.Start()
 }

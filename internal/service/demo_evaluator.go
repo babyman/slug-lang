@@ -44,7 +44,7 @@ func (e *Evaluator) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	case EvaluatorEvaluate:
 		src := payload.Source
 		if src == "" {
-			reply(ctx, msg, EvaluatorResult{Err: errors.New("empty source")})
+			Reply(ctx, msg, EvaluatorResult{Err: errors.New("empty source")})
 			return
 		}
 		// Discover services by name; in a real runtime this would be passed as caps
@@ -53,7 +53,7 @@ func (e *Evaluator) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 
 		// Simple commands
 		if m := cmdPrint.FindStringSubmatch(src); len(m) == 2 {
-			reply(ctx, msg, EvaluatorResult{Stdout: m[1]})
+			Reply(ctx, msg, EvaluatorResult{Stdout: m[1]})
 			return
 		}
 		if m := cmdRead.FindStringSubmatch(src); len(m) == 2 {
@@ -61,25 +61,25 @@ func (e *Evaluator) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 			fsResp, err := ctx.SendSync(fsID, FsRead{Path: m[1]})
 			switch {
 			case err != nil:
-				reply(ctx, msg, EvaluatorResult{Err: err})
+				Reply(ctx, msg, EvaluatorResult{Err: err})
 				return
 			case fsResp.Payload.(FsReadResp).Err != nil:
-				reply(ctx, msg, EvaluatorResult{Err: fsResp.Payload.(FsReadResp).Err})
+				Reply(ctx, msg, EvaluatorResult{Err: fsResp.Payload.(FsReadResp).Err})
 				return
 			default:
-				reply(ctx, msg, EvaluatorResult{Stdout: fsResp.Payload.(FsReadResp).Data})
+				Reply(ctx, msg, EvaluatorResult{Stdout: fsResp.Payload.(FsReadResp).Data})
 				return
 			}
 		}
 		if strings.TrimSpace(src) == "now" {
 			if resp, err := ctx.SendSync(timeID, TsNow{}); err == nil {
-				reply(ctx, msg, EvaluatorResult{Result: resp.Payload.(TsNowResp).Nanos})
+				Reply(ctx, msg, EvaluatorResult{Result: resp.Payload.(TsNowResp).Nanos})
 				return
 			}
 		}
 
-		reply(ctx, msg, EvaluatorResult{SourceLen: len(src)})
+		Reply(ctx, msg, EvaluatorResult{SourceLen: len(src)})
 	default:
-		reply(ctx, msg, EvaluatorResult{Err: errors.New("unknown op")})
+		Reply(ctx, msg, EvaluatorResult{Err: errors.New("unknown op")})
 	}
 }

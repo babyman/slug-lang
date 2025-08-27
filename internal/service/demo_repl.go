@@ -10,7 +10,7 @@ import (
 // Ops: { eval: EXEC }
 // Handler:
 //   - Accepts {source} and forwards to Evaluator
-//   - Returns evaluator reply
+//   - Returns evaluator Reply
 
 type RsEval struct {
 	Source string
@@ -32,7 +32,7 @@ func (r *ReplService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	case RsEval:
 		src := payload.Source
 		if src == "" {
-			reply(ctx, msg, RsEvalResp{Err: errors.New("empty source")})
+			Reply(ctx, msg, RsEvalResp{Err: errors.New("empty source")})
 			return
 		}
 		resp, err := ctx.SendSync(r.EvalID, EvaluatorEvaluate{
@@ -41,19 +41,19 @@ func (r *ReplService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		switch {
 		case err != nil:
 			{
-				reply(ctx, msg, RsEvalResp{Err: err})
+				Reply(ctx, msg, RsEvalResp{Err: err})
 				return
 			}
 		case resp.Payload == nil:
 			{
-				reply(ctx, msg, RsEvalResp{Err: errors.New("no reply")})
+				Reply(ctx, msg, RsEvalResp{Err: errors.New("no Reply")})
 				return
 			}
 		}
-		reply(ctx, msg, RsEvalResp{
+		Reply(ctx, msg, RsEvalResp{
 			Result: resp.Payload.(EvaluatorResult).Result,
 		})
 	default:
-		reply(ctx, msg, RsEvalResp{Err: errors.New("unknown op")})
+		Reply(ctx, msg, RsEvalResp{Err: errors.New("unknown op")})
 	}
 }

@@ -2,14 +2,15 @@ package privileged
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"slug/internal/kernel"
+	"slug/internal/logger"
 	"slug/internal/service"
 	"time"
 )
 
 // ===== Control Plane (HTTP) =====
+var log = logger.NewLogger("control plane", logger.INFO)
 
 type ControlPlane struct{ kernel *kernel.Kernel }
 
@@ -17,7 +18,7 @@ func (c *ControlPlane) Initialize(k *kernel.Kernel) {
 	c.kernel = k
 	c.routes()
 	addr := ":8080"
-	log.Println("[kernel] control plane listening on", addr)
+	log.Infof("listening on %s", addr)
 	go func() { log.Fatal(http.ListenAndServe(addr, nil)) }()
 }
 

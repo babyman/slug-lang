@@ -1,7 +1,6 @@
 package service
 
 import (
-	"log"
 	"slug/internal/kernel"
 )
 
@@ -12,7 +11,7 @@ func DemoHandler(ctx *kernel.ActCtx, msg kernel.Message) {
 	if !ok {
 		return
 	}
-	log.Println("[demo] starting demo sequence…")
+	SendInfo(ctx, "[demo] starting demo sequence…")
 
 	fsID, _ := ctx.K.ActorByName("fs")
 	timeID, _ := ctx.K.ActorByName("time")
@@ -22,22 +21,22 @@ func DemoHandler(ctx *kernel.ActCtx, msg kernel.Message) {
 		Path: "/tmp/hello.txt",
 		Data: []byte("hello from demo"),
 	}); err != nil {
-		log.Println("[demo] fs.write error:", err)
+		SendInfof(ctx, "[demo] fs.write error: %v", err)
 	} else {
-		log.Println("[demo] fs.write ok")
+		SendInfo(ctx, "[demo] fs.write ok")
 	}
 	// Read it back
 	if resp, err := ctx.SendSync(fsID, FsRead{Path: "/tmp/hello.txt"}); err != nil {
-		log.Println("[demo] fs.read error:", err)
+		SendInfof(ctx, "[demo] fs.read error: %s", err)
 	} else {
-		log.Printf("[demo] fs.read -> %v\n", resp.Payload.(FsReadResp).Data)
+		SendInfof(ctx, "[demo] fs.read -> %v\n", resp.Payload.(FsReadResp).Data)
 	}
 	// Time.now
 	if resp, err := ctx.SendSync(timeID, TsNow{}); err == nil {
-		log.Printf("[demo] time.now -> nanos=%v\n", resp.Payload.(TsNowResp).Nanos)
+		SendInfof(ctx, "[demo] time.now -> nanos=%v\n", resp.Payload.(TsNowResp).Nanos)
 	}
 	// Sleep 100 ms
 	if _, err := ctx.SendSync(timeID, TsSleep{Ms: 100}); err == nil {
-		log.Println("[demo] time.sleep 100ms ok")
+		SendInfo(ctx, "[demo] time.sleep 100ms ok")
 	}
 }

@@ -49,6 +49,7 @@ func (c *ActCtx) SendSync(to ActorID, payload any) (Message, error) {
 	respCh := make(chan Message, 1)
 	err := c.K.SendInternal(c.Self, to, payload, respCh)
 	if err != nil {
+		log.Warnf("Error sending message to %d: %v", to, err)
 		return Message{}, err
 	}
 	select {
@@ -253,7 +254,7 @@ func (k *Kernel) Start() {
 func printStatus(k *Kernel) {
 	k.Mu.RLock()
 	defer k.Mu.RUnlock()
-	fmt.Printf("\n[kernel] Actors=%d\n", len(k.Actors))
+	log.Infof("Actors=%d\n", len(k.Actors))
 	var ids []ActorID
 	for Id := range k.Actors {
 		ids = append(ids, Id)
@@ -261,7 +262,7 @@ func printStatus(k *Kernel) {
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 	for _, Id := range ids {
 		a := k.Actors[Id]
-		fmt.Printf("  - Id=%2d Name=%-6s cpu=%8d ops ipc(in=%3d out=%3d) Caps=%d\n",
+		log.Infof("  - Id=%2d Name=%-6s cpu=%8d ops ipc(in=%3d out=%3d) Caps=%d\n",
 			Id, a.Name, a.CpuOps, a.IpcIn, a.IpcOut, len(a.Caps))
 	}
 }

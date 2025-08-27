@@ -1,19 +1,81 @@
 package service
 
-import "slug/internal/kernel"
+import (
+	"slug/internal/kernel"
+	"slug/internal/logger"
+)
 
-func reply(ctx *kernel.ActCtx, req kernel.Message, payload any) {
+func Reply(ctx *kernel.ActCtx, req kernel.Message, payload any) {
 	if req.Resp != nil {
 		req.Resp <- kernel.Message{From: ctx.Self, To: req.From, Payload: payload}
 	}
 }
 
-func sendStdOut(ctx *kernel.ActCtx, str string, args ...any) {
-	stdioID, ok := ctx.K.ActorByName("sout")
+func Send(ctx *kernel.ActCtx, actorName string, message any) {
+	id, ok := ctx.K.ActorByName(actorName)
 	if ok {
-		ctx.SendAsync(stdioID, SOutPrintln{
-			Str:  str,
-			Args: args,
-		})
+		ctx.SendAsync(id, message)
 	}
+}
+
+func SendStdOut(ctx *kernel.ActCtx, str string, args ...any) {
+	Send(ctx, "sout", SOutPrintln{
+		Str:  str,
+		Args: args,
+	})
+}
+
+func sendLogf(ctx *kernel.ActCtx, level logger.Level, str string, args ...any) {
+	Send(ctx, "log", LogfMessage{
+		level:   level,
+		Message: str,
+		Args:    args,
+	})
+}
+
+func sendLog(ctx *kernel.ActCtx, level logger.Level, str string) {
+	Send(ctx, "log", LogMessage{
+		level:   level,
+		Message: str,
+	})
+}
+
+func SendDebugf(ctx *kernel.ActCtx, str string, args ...any) {
+	sendLogf(ctx, logger.DEBUG, str, args...)
+}
+
+func SendInfof(ctx *kernel.ActCtx, str string, args ...any) {
+	sendLogf(ctx, logger.INFO, str, args...)
+}
+
+func SendWarnf(ctx *kernel.ActCtx, str string, args ...any) {
+	sendLogf(ctx, logger.WARN, str, args...)
+}
+
+func SendErrorf(ctx *kernel.ActCtx, str string, args ...any) {
+	sendLogf(ctx, logger.ERROR, str, args...)
+}
+
+func SendFatalf(ctx *kernel.ActCtx, str string, args ...any) {
+	sendLogf(ctx, logger.FATAL, str, args...)
+}
+
+func SendDebug(ctx *kernel.ActCtx, str string) {
+	sendLog(ctx, logger.DEBUG, str)
+}
+
+func SendInfo(ctx *kernel.ActCtx, str string) {
+	sendLog(ctx, logger.INFO, str)
+}
+
+func SendWarn(ctx *kernel.ActCtx, str string) {
+	sendLog(ctx, logger.WARN, str)
+}
+
+func SendError(ctx *kernel.ActCtx, str string) {
+	sendLog(ctx, logger.ERROR, str)
+}
+
+func SendFatal(ctx *kernel.ActCtx, str string) {
+	sendLog(ctx, logger.FATAL, str)
 }

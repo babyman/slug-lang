@@ -40,19 +40,19 @@ func (fs *Fs) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		data := payload.Data
 		err := os.WriteFile(path, data, 0644)
 		if err != nil {
-			reply(ctx, msg, FsWriteResp{Err: err})
+			Reply(ctx, msg, FsWriteResp{Err: err})
 			return
 		}
-		reply(ctx, msg, FsWriteResp{Bytes: len(data)})
+		Reply(ctx, msg, FsWriteResp{Bytes: len(data)})
 	case FsRead:
 		path := payload.Path
 		data, err := os.ReadFile(path)
 		if err != nil {
-			reply(ctx, msg, FsReadResp{Err: err})
+			Reply(ctx, msg, FsReadResp{Err: err})
 			return
 		}
-		reply(ctx, msg, FsReadResp{Data: string(data)})
+		Reply(ctx, msg, FsReadResp{Data: string(data)})
 	default:
-		reply(ctx, msg, kernel.UnknownOperation{})
+		Reply(ctx, msg, kernel.UnknownOperation{})
 	}
 }
