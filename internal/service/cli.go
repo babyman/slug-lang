@@ -2,7 +2,6 @@ package service
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"reflect"
 	"slug/internal/kernel"
@@ -43,7 +42,7 @@ func (cli *Cli) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		flag.Parse()
 
 		if help {
-			printHelp()
+			printHelp(ctx)
 			os.Exit(0)
 		}
 
@@ -65,8 +64,8 @@ func (cli *Cli) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	}
 }
 
-func printHelp() {
-	fmt.Println(`Usage: slug [options] [filename [args...]]
+func printHelp(ctx *kernel.ActCtx) {
+	SendStdOut(ctx, `Usage: slug [options] [filename [args...]]
 
 Options:
   -root <path>       Set the root context for the program (used for imports). Default is '.'

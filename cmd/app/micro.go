@@ -12,6 +12,7 @@ const (
 	w  = kernel.RightWrite
 	rw = kernel.RightRead | kernel.RightWrite
 	rx = kernel.RightRead | kernel.RightExec
+	wx = kernel.RightWrite | kernel.RightExec
 	x  = kernel.RightExec
 )
 
@@ -62,11 +63,10 @@ func main() {
 	_ = k.GrantCap(cliID, cliID, x, nil) // call self required for boot message
 	_ = k.GrantCap(cliID, soutID, w, nil)
 	_ = k.GrantCap(cliID, modsID, x, nil)
-	_ = k.GrantCap(cliID, logID, rx, nil)
+	_ = k.GrantCap(cliID, logID, wx, nil)
 
 	_ = k.GrantCap(modsID, cliID, w, nil)
 	_ = k.GrantCap(modsID, fsID, r, nil)
-	_ = k.GrantCap(modsID, soutID, w, nil)
 	_ = k.GrantCap(modsID, logID, w, nil)
 
 	_ = k.GrantCap(demoID, fsID, rw, nil)
