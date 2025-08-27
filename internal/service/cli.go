@@ -52,7 +52,15 @@ func (cli *Cli) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 			args := flag.Args()[1:]
 
 			// todo - execute file
-			sendStdOut(ctx, filename, args)
+			sendStdOut(ctx, "Executing %s with args %v", filename, args)
+
+			modsID, _ := ctx.K.ActorByName("mods")
+			println("modsID: ", modsID)
+			err := ctx.SendAsync(modsID, ModuleEvaluateFile{
+				Path: filename,
+				Args: args,
+			})
+			fmt.Sprintf("err: %v", err)
 		}
 	}
 }

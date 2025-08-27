@@ -8,11 +8,11 @@ func reply(ctx *kernel.ActCtx, req kernel.Message, payload any) {
 	}
 }
 
-func sendStdOut(ctx *kernel.ActCtx, args ...any) {
+func sendStdOut(ctx *kernel.ActCtx, str string, args ...any) {
 	stdioID, ok := ctx.K.ActorByName("sout")
 	if ok {
-		ctx.SendSync(stdioID, SOutPrintln{
-			Str:  "Executing %s with args %v",
+		ctx.SendAsync(stdioID, SOutPrintln{
+			Str:  str,
 			Args: args,
 		})
 	}

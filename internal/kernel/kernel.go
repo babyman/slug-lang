@@ -33,11 +33,14 @@ import (
 	"math/rand"
 	"os"
 	"reflect"
+	"slug/internal/logger"
 	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
 )
+
+var log = logger.NewLogger("kernel", logger.INFO)
 
 // ===== Core Types =====
 
@@ -52,6 +55,7 @@ func (c *ActCtx) SendSync(to ActorID, payload any) (Message, error) {
 	case resp := <-respCh:
 		return resp, nil
 	case <-time.After(5 * time.Second):
+		log.Warnf("E_DEADLINE: reply timeout, from %d to %d", c.Self, to)
 		return Message{}, errors.New("E_DEADLINE: reply timeout")
 	}
 }
@@ -177,6 +181,7 @@ func (k *Kernel) SendInternal(from ActorID, to ActorID, payload any, resp chan M
 		msgType := reflect.TypeOf(payload)
 		if rights, ok := k.resolveRights(to, msgType); ok {
 			if !k.hasCap(from, to, rights) {
+				log.Warnf("E_POLICY: missing rights=%v for op %T from %d to target %d", rights, payload, from, to)
 				return fmt.Errorf("E_POLICY: missing rights=%v for op %T to target %d", rights, payload, to)
 			}
 		}
@@ -186,6 +191,7 @@ func (k *Kernel) SendInternal(from ActorID, to ActorID, payload any, resp chan M
 	target := k.Actors[to]
 	k.Mu.RUnlock()
 	if target == nil {
+		log.Warnf("E_NO_SUCH: target actor, from %d to %d", from, to)
 		return errors.New("E_NO_SUCH: target actor")
 	}
 	msg := Message{From: from, To: to, Payload: payload, Resp: resp}
@@ -196,6 +202,7 @@ func (k *Kernel) SendInternal(from ActorID, to ActorID, payload any, resp chan M
 		}
 		return nil
 	case <-time.After(2 * time.Second):
+		log.Warnf("E_BUSY: target inbox full, from %d to %d", from, to)
 		return errors.New("E_BUSY: target inbox full")
 	}
 }
