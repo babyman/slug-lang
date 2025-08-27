@@ -52,7 +52,7 @@ func (cli *Cli) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 			args := flag.Args()[1:]
 
 			// todo - execute file
-			SendStdOut(ctx, "Executing %s with args %v", filename, args)
+			SendInfof(ctx, "Executing %s with args %v", filename, args)
 
 			modsID, _ := ctx.K.ActorByName("mods")
 			SendInfof(ctx, "modsID: %d", modsID)

@@ -30,7 +30,7 @@ var LogOperations = kernel.OpRights{
 	reflect.TypeOf(LogMessage{}):   kernel.RightWrite,
 }
 
-var logSvc = logger.NewLogger("slug", logger.INFO)
+var logSvc = logger.NewLogger("service", logger.INFO)
 
 type Log struct {
 }
