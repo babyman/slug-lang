@@ -2,6 +2,7 @@ package service
 
 import (
 	"reflect"
+	"slug/internal/ast"
 	"slug/internal/kernel"
 	"slug/internal/parser"
 	"slug/internal/token"
@@ -10,6 +11,10 @@ import (
 type ParseTokens struct {
 	Sourcecode string
 	Tokens     []token.Token
+}
+
+type ParsedAst struct {
+	Program *ast.Program
 }
 
 var ParserOperations = kernel.OpRights{
@@ -46,6 +51,6 @@ func (m *ParserService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		p := parser.New(NewTokenSliceProvider(payload.Tokens), payload.Sourcecode)
 		program := p.ParseProgram()
 		SendInfof(ctx, "Parsed program: %v", program)
-		Reply(ctx, msg, nil)
+		Reply(ctx, msg, ParsedAst{Program: program})
 	}
 }

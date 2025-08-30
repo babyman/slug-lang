@@ -1,26 +1,71 @@
 package service
 
-//
-//import (
-//	"reflect"
-//	"slug/internal/kernel"
-//	"slug/internal/token"
-//)
-//
-//type EvaluateTokens struct {
-//	Tokens []token.Token
-//}
-//
-//var EvaluatorOperations = kernel.OpRights{
-//	reflect.TypeOf(EvaluateTokens{}): kernel.RightExec,
-//}
-//
-//type EvaluatorService struct {
-//}
-//
-//func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
-//	switch payload := msg.Payload.(type) {
-//	case EvaluateTokens:
-//		println(payload.Tokens)
-//	}
-//}
+import (
+	"fmt"
+	"reflect"
+	"slug/internal/ast"
+	"slug/internal/evaluator"
+	"slug/internal/kernel"
+	"slug/internal/object"
+)
+
+type EvaluateProgram struct {
+	Source  string
+	Args    []string
+	Program *ast.Program
+}
+
+var EvaluatorOperations = kernel.OpRights{
+	reflect.TypeOf(EvaluateProgram{}): kernel.RightExec,
+}
+
+type EvaluatorService struct {
+}
+
+func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
+	switch payload := msg.Payload.(type) {
+	case EvaluateProgram:
+
+		module := &object.Module{Name: "main.slug", Env: nil}
+		module.Path = "main.slug"
+		module.Src = payload.Source
+		module.Program = payload.Program
+
+		// Start the environment
+		env := object.NewEnvironment()
+
+		// Prepare args list
+		objects := make([]object.Object, len(payload.Args))
+		for i, arg := range payload.Args {
+			objects[i] = &object.String{Value: arg}
+		}
+		env.Define("args", &object.List{Elements: objects}, false, false)
+
+		env.Path = module.Path
+		env.ModuleFqn = module.Name
+		env.Src = module.Src
+		module.Env = env
+
+		e := evaluator.Evaluator{
+			Actor: evaluator.CreateMainThreadMailbox(),
+		}
+		e.PushEnv(env)
+		defer e.PopEnv()
+
+		SendInfo(ctx, " ---- begin ----")
+		defer SendInfo(ctx, " ---- done ----")
+
+		// Evaluate the program within the provided environment
+		evaluated := e.Eval(module.Program)
+		if evaluated != nil && evaluated.Type() != object.NIL_OBJ {
+			if evaluated.Type() == object.ERROR_OBJ {
+				//return fmt.Errorf(evaluated.Inspect())
+				Reply(ctx, msg, fmt.Sprint(evaluated.Inspect()))
+			} else {
+				Reply(ctx, msg, fmt.Sprint(evaluated.Inspect()))
+				//fmt.Println(evaluated.Inspect())
+			}
+		}
+
+	}
+}

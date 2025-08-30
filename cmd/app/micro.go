@@ -57,12 +57,12 @@ func main() {
 	parserID := k.RegisterService("parser", service.ParserOperations, parser.Handler)
 
 	// Evaluator service
-	//eval := &service.EvaluatorService{}
-	//evalID := k.RegisterService("eval", service.EvaluatorServiceOperations, eval.Handler)
+	eval := &service.EvaluatorService{}
+	evalID := k.RegisterService("eval", service.EvaluatorOperations, eval.Handler)
 
 	//Evaluator service (stub)
-	eval := &service.Evaluator{}
-	evalID := k.RegisterService("eval", service.EvaluatorOperations, eval.Handler)
+	//eval := &service.Evaluator{}
+	//evalID := k.RegisterService("eval", service.EvaluatorOperations, eval.Handler)
 
 	// REPL service
 	repl := &service.ReplService{EvalID: evalID}
@@ -81,6 +81,7 @@ func main() {
 	_ = k.GrantCap(modsID, fsID, r, nil)
 	_ = k.GrantCap(modsID, lexerID, x, nil)
 	_ = k.GrantCap(modsID, parserID, x, nil)
+	_ = k.GrantCap(modsID, evalID, x, nil)
 	_ = k.GrantCap(modsID, logID, w, nil)
 
 	_ = k.GrantCap(fsID, logID, w, nil)
@@ -89,6 +90,10 @@ func main() {
 
 	_ = k.GrantCap(parserID, logID, w, nil)
 
+	//_ = k.GrantCap(evalID, fsID, rw, nil)   // EVAL can touch FS
+	//_ = k.GrantCap(evalID, timeID, rx, nil) // EVAL can call TIME
+	_ = k.GrantCap(evalID, logID, w, nil)
+
 	_ = k.GrantCap(demoID, fsID, rw, nil)
 	_ = k.GrantCap(demoID, timeID, rx, nil)
 	_ = k.GrantCap(demoID, logID, w, nil)
@@ -96,10 +101,6 @@ func main() {
 	_ = k.GrantCap(replID, replID, x, nil) // REPL can call itself
 	_ = k.GrantCap(replID, evalID, x, nil) // REPL can call EVAL
 	_ = k.GrantCap(replID, logID, w, nil)
-
-	_ = k.GrantCap(evalID, fsID, rw, nil)   // EVAL can touch FS
-	_ = k.GrantCap(evalID, timeID, rx, nil) // EVAL can call TIME
-	_ = k.GrantCap(evalID, logID, w, nil)
 
 	k.Start()
 }
