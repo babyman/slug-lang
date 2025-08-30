@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"slug/internal/kernel"
 	"slug/internal/logger"
 )
@@ -8,6 +9,15 @@ import (
 func Reply(ctx *kernel.ActCtx, req kernel.Message, payload any) {
 	if req.Resp != nil {
 		req.Resp <- kernel.Message{From: ctx.Self, To: req.From, Payload: payload}
+	}
+}
+
+func BlockingSend(ctx *kernel.ActCtx, actorName string, message any) (kernel.Message, error) {
+	id, ok := ctx.K.ActorByName(actorName)
+	if ok {
+		return ctx.SendSync(id, message)
+	} else {
+		return kernel.Message{}, errors.New("Actor not found: " + actorName + "")
 	}
 }
 
@@ -19,7 +29,7 @@ func Send(ctx *kernel.ActCtx, actorName string, message any) {
 }
 
 func SendStdOut(ctx *kernel.ActCtx, str string, args ...any) {
-	Send(ctx, "sout", SOutPrintln{
+	BlockingSend(ctx, "sout", SOutPrintln{
 		Str:  str,
 		Args: args,
 	})

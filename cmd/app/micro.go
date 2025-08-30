@@ -50,9 +50,17 @@ func main() {
 
 	// Lexer service
 	lexer := &service.LexingService{}
-	lexerID := k.RegisterService("lexer", service.RsOperations, lexer.Handler)
+	lexerID := k.RegisterService("lexer", service.LexerOperations, lexer.Handler)
 
-	// Evaluator service (stub)
+	// Parser service
+	parser := &service.ParserService{}
+	parserID := k.RegisterService("parser", service.ParserOperations, parser.Handler)
+
+	// Evaluator service
+	//eval := &service.EvaluatorService{}
+	//evalID := k.RegisterService("eval", service.EvaluatorServiceOperations, eval.Handler)
+
+	//Evaluator service (stub)
 	eval := &service.Evaluator{}
 	evalID := k.RegisterService("eval", service.EvaluatorOperations, eval.Handler)
 
@@ -72,7 +80,14 @@ func main() {
 	_ = k.GrantCap(modsID, cliID, w, nil)
 	_ = k.GrantCap(modsID, fsID, r, nil)
 	_ = k.GrantCap(modsID, lexerID, x, nil)
+	_ = k.GrantCap(modsID, parserID, x, nil)
 	_ = k.GrantCap(modsID, logID, w, nil)
+
+	_ = k.GrantCap(fsID, logID, w, nil)
+
+	_ = k.GrantCap(lexerID, logID, w, nil)
+
+	_ = k.GrantCap(parserID, logID, w, nil)
 
 	_ = k.GrantCap(demoID, fsID, rw, nil)
 	_ = k.GrantCap(demoID, timeID, rx, nil)

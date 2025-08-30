@@ -25,6 +25,7 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 
 		fsId, _ := ctx.K.ActorByName("fs")
 		lexId, _ := ctx.K.ActorByName("lexer")
+		parseId, _ := ctx.K.ActorByName("parser")
 
 		src, err := ctx.SendSync(fsId, FsRead{Path: payload.Path})
 		if err != nil {
@@ -33,10 +34,24 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		}
 
 		file := src.Payload.(FsReadResp).Data
-		SendInfof(ctx, "Evaluating %s, got %s", payload.Path, file)
+		//SendInfof(ctx, "Evaluating %s, got %s", payload.Path, file)
 
 		lex, err := ctx.SendSync(lexId, LexString{Sourcecode: file})
-		SendInfof(ctx, "Lexed %s, got %v", payload.Path, lex)
+		if err != nil {
+			SendInfof(ctx, "Failed to lex file: %s", err)
+			return
+		}
+
+		tokens := lex.Payload.(LexedTokens).Tokens
+		SendInfof(ctx, "Lexed %s, got %v", payload.Path, tokens)
+
+		parse, err := ctx.SendSync(parseId, ParseTokens{Sourcecode: file, Tokens: tokens})
+		if err != nil {
+			SendInfof(ctx, "Failed to lex file: %s", err)
+			return
+		}
+
+		SendInfof(ctx, "Lexed %s, got %v", payload.Path, parse)
 
 	}
 }
