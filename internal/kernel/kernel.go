@@ -231,10 +231,6 @@ func (k *Kernel) Start() {
 		go func() { _ = k.SendInternal(cliID, cliID, Boot{}, nil) }()
 	}
 
-	// Kick off demo once
-	demoID, _ := k.ActorByName("demo")
-	go func() { _ = k.SendInternal(demoID, demoID, DemoStart{}, nil) }()
-
 	// Keep main alive; also show a periodic status line
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

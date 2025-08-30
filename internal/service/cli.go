@@ -50,16 +50,19 @@ func (cli *Cli) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 			filename := flag.Args()[0]
 			args := flag.Args()[1:]
 
-			// todo - execute file
 			SendInfof(ctx, "Executing %s with args %v", filename, args)
 
 			modsID, _ := ctx.K.ActorByName("mods")
 			SendInfof(ctx, "modsID: %d", modsID)
+
 			err := ctx.SendAsync(modsID, ModuleEvaluateFile{
 				Path: filename,
 				Args: args,
 			})
-			SendInfof(ctx, "err: %v", err)
+			if err != nil {
+				SendErrorf(ctx, "err: %v", err)
+			}
+
 		}
 	}
 }
