@@ -24,9 +24,19 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		SendInfof(ctx, "Evaluating file %s", payload.Path)
 
 		fsId, _ := ctx.K.ActorByName("fs")
+		lexId, _ := ctx.K.ActorByName("lexer")
 
-		src, _ := ctx.SendSync(fsId, FsRead{Path: payload.Path})
+		src, err := ctx.SendSync(fsId, FsRead{Path: payload.Path})
+		if err != nil {
+			SendInfof(ctx, "Failed to read file: %s", err)
+			return
+		}
 
-		SendInfof(ctx, "Evaluating %s, got %s", payload.Path, src.Payload.(FsReadResp).Data)
+		file := src.Payload.(FsReadResp).Data
+		SendInfof(ctx, "Evaluating %s, got %s", payload.Path, file)
+
+		lex, err := ctx.SendSync(lexId, LexString{Sourcecode: file})
+		SendInfof(ctx, "Lexed %s, got %v", payload.Path, lex)
+
 	}
 }

@@ -48,6 +48,10 @@ func main() {
 	fs := &service.Fs{}
 	fsID := k.RegisterService("fs", service.FsOperations, fs.Handler)
 
+	// Lexer service
+	lexer := &service.LexingService{}
+	lexerID := k.RegisterService("lexer", service.RsOperations, lexer.Handler)
+
 	// Evaluator service (stub)
 	eval := &service.Evaluator{}
 	evalID := k.RegisterService("eval", service.EvaluatorOperations, eval.Handler)
@@ -67,6 +71,7 @@ func main() {
 
 	_ = k.GrantCap(modsID, cliID, w, nil)
 	_ = k.GrantCap(modsID, fsID, r, nil)
+	_ = k.GrantCap(modsID, lexerID, x, nil)
 	_ = k.GrantCap(modsID, logID, w, nil)
 
 	_ = k.GrantCap(demoID, fsID, rw, nil)
