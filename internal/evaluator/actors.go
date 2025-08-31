@@ -94,7 +94,7 @@ type ActorExited struct {
 
 func (ActorExited) isMessage() {}
 func (m ActorExited) String() string {
-	return fmt.Sprintf("ActorExited{Actor: %v, mailbox: %d, Reason: %v, LastMessage: %v, QueuedMessages: %d}",
+	return fmt.Sprintf("ActorExited{Actor: %v, mailbox: %d, ExitCode: %v, LastMessage: %v, QueuedMessages: %d}",
 		m.ActorPID, m.MailboxPID, m.Reason, m.LastMessage, len(m.QueuedMessages))
 }
 

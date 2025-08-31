@@ -65,6 +65,8 @@ func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 				Reply(ctx, msg, fmt.Sprint(evaluated.Inspect()))
 				//fmt.Println(evaluated.Inspect())
 			}
+		} else {
+			Reply(ctx, msg, nil)
 		}
 
 	}

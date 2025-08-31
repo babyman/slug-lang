@@ -69,6 +69,7 @@ func (c *ActCtx) SendAsync(to ActorID, payload any) error {
 // ===== Kernel =====
 
 type Kernel struct {
+	inbox              chan Message
 	Mu                 sync.RWMutex
 	NextActorID        int64
 	NextCapID          int64
@@ -80,12 +81,25 @@ type Kernel struct {
 
 func NewKernel() *Kernel {
 
-	return &Kernel{
+	kernel := &Kernel{
 		Actors:             make(map[ActorID]*Actor),
 		NameIdx:            make(map[string]ActorID),
 		OpsBySvc:           make(map[ActorID]OpRights),
 		PrivilegedServices: make(map[string]PrivilegedService),
+		NextActorID:        1,
+		inbox:              make(chan Message, 64),
 	}
+
+	kernel.OpsBySvc[KernelID] = OpRights{
+		reflect.TypeOf(Shutdown{}): RightExec,
+	}
+
+	go func() {
+		for msg := range kernel.inbox {
+			kernel.handler(msg)
+		}
+	}()
+	return kernel
 }
 
 // RegisterActor wires an actor into the kernel.
@@ -187,17 +201,23 @@ func (k *Kernel) SendInternal(from ActorID, to ActorID, payload any, resp chan M
 			}
 		}
 	}
-
-	k.Mu.RLock()
-	target := k.Actors[to]
-	k.Mu.RUnlock()
-	if target == nil {
-		log.Warnf("E_NO_SUCH: target actor, from %d to %d", from, to)
-		return errors.New("E_NO_SUCH: target actor")
+	var inbox chan Message = nil
+	if to == KernelID {
+		inbox = k.inbox
+	} else {
+		k.Mu.RLock()
+		target := k.Actors[to]
+		k.Mu.RUnlock()
+		if target == nil {
+			log.Warnf("E_NO_SUCH: target actor, from %d to %d", from, to)
+			return errors.New("E_NO_SUCH: target actor")
+		} else {
+			inbox = target.inbox
+		}
 	}
 	msg := Message{From: from, To: to, Payload: payload, Resp: resp}
 	select {
-	case target.inbox <- msg:
+	case inbox <- msg:
 		if a := k.getActor(from); a != nil {
 			atomic.AddUint64(&a.IpcOut, 1)
 		}
@@ -260,5 +280,20 @@ func printStatus(k *Kernel) {
 		a := k.Actors[Id]
 		log.Infof("  - Id=%2d Name=%-6s cpu=%8d ops ipc(in=%3d out=%3d) Caps=%d\n",
 			Id, a.Name, a.CpuOps, a.IpcIn, a.IpcOut, len(a.Caps))
+	}
+}
+func (k *Kernel) handler(msg Message) {
+	switch payload := msg.Payload.(type) {
+	case Shutdown:
+		log.Infof("Shutdown: %d", payload.ExitCode)
+		if msg.Resp != nil {
+			msg.Resp <- Message{From: KernelID, To: msg.From, Payload: nil}
+		}
+		os.Exit(payload.ExitCode)
+	default:
+		log.Warnf("Unhandled message: %v", msg)
+		if msg.Resp != nil {
+			msg.Resp <- Message{From: KernelID, To: msg.From, Payload: nil}
+		}
 	}
 }

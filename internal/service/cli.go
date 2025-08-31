@@ -2,7 +2,6 @@ package service
 
 import (
 	"flag"
-	"os"
 	"reflect"
 	"slug/internal/kernel"
 )
@@ -43,7 +42,8 @@ func (cli *Cli) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 
 		if help {
 			printHelp(ctx)
-			os.Exit(0)
+			ctx.SendSync(kernel.KernelID, kernel.Shutdown{ExitCode: 0})
+			return
 		}
 
 		if len(flag.Args()) > 0 {
@@ -55,7 +55,7 @@ func (cli *Cli) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 			modsID, _ := ctx.K.ActorByName("mods")
 			SendInfof(ctx, "modsID: %d", modsID)
 
-			err := ctx.SendAsync(modsID, ModuleEvaluateFile{
+			_, err := ctx.SendSync(modsID, ModuleEvaluateFile{
 				Path: filename,
 				Args: args,
 			})
@@ -63,6 +63,7 @@ func (cli *Cli) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 				SendErrorf(ctx, "err: %v", err)
 			}
 
+			ctx.SendSync(kernel.KernelID, kernel.Shutdown{ExitCode: 0})
 		}
 	}
 }

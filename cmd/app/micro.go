@@ -9,9 +9,9 @@ import (
 
 const (
 	r  = kernel.RightRead
-	w  = kernel.RightWrite
 	rw = kernel.RightRead | kernel.RightWrite
 	rx = kernel.RightRead | kernel.RightExec
+	w  = kernel.RightWrite
 	wx = kernel.RightWrite | kernel.RightExec
 	x  = kernel.RightExec
 )
@@ -66,6 +66,7 @@ func main() {
 	_ = k.GrantCap(cliID, soutID, w, nil)
 	_ = k.GrantCap(cliID, modsID, x, nil)
 	_ = k.GrantCap(cliID, logID, wx, nil)
+	_ = k.GrantCap(cliID, kernel.KernelID, x, nil)
 
 	_ = k.GrantCap(modsID, cliID, w, nil)
 	_ = k.GrantCap(modsID, fsID, r, nil)

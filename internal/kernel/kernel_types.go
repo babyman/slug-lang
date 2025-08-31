@@ -7,6 +7,10 @@ import (
 
 type ActorID int64
 
+const (
+	KernelID ActorID = 0
+)
+
 type Rights uint64
 
 const (
@@ -73,6 +77,10 @@ type CapabilityView struct {
 //Kernel message payload types
 
 type Boot struct {
+}
+
+type Shutdown struct {
+	ExitCode int `json:"exitcode,omitempty"`
 }
 
 type DemoStart struct {
