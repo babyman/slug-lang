@@ -292,6 +292,7 @@ func (k *Kernel) handler(msg Message) {
 		os.Exit(payload.ExitCode)
 	default:
 		log.Warnf("Unhandled message: %v", msg)
+		printStatus(k)
 		if msg.Resp != nil {
 			msg.Resp <- Message{From: KernelID, To: msg.From, Payload: nil}
 		}

@@ -1,9 +1,10 @@
-package service
+package lexer
 
 import (
 	"reflect"
 	"slug/internal/kernel"
 	"slug/internal/lexer"
+	"slug/internal/svc"
 	"slug/internal/token"
 )
 
@@ -30,8 +31,8 @@ func (m *LexingService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		for tok := l.NextToken(); tok.Type != token.EOF; tok = l.NextToken() {
 			tokens = append(tokens, tok)
 		}
-		Reply(ctx, msg, LexedTokens{Tokens: tokens})
+		svc.Reply(ctx, msg, LexedTokens{Tokens: tokens})
 	default:
-		Reply(ctx, msg, kernel.UnknownOperation{})
+		svc.Reply(ctx, msg, kernel.UnknownOperation{})
 	}
 }

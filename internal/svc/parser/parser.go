@@ -1,10 +1,11 @@
-package service
+package parser
 
 import (
 	"reflect"
 	"slug/internal/ast"
 	"slug/internal/kernel"
 	"slug/internal/parser"
+	"slug/internal/svc"
 	"slug/internal/token"
 )
 
@@ -50,9 +51,9 @@ func (m *ParserService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	case ParseTokens:
 		p := parser.New(NewTokenSliceProvider(payload.Tokens), payload.Sourcecode)
 		program := p.ParseProgram()
-		SendInfof(ctx, "Parsed program: %v", program)
-		Reply(ctx, msg, ParsedAst{Program: program})
+		svc.SendInfof(ctx, "Parsed program: %v", program)
+		svc.Reply(ctx, msg, ParsedAst{Program: program})
 	default:
-		Reply(ctx, msg, kernel.UnknownOperation{})
+		svc.Reply(ctx, msg, kernel.UnknownOperation{})
 	}
 }

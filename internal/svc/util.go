@@ -1,4 +1,4 @@
-package service
+package svc
 
 import (
 	"errors"
@@ -37,7 +37,7 @@ func SendStdOut(ctx *kernel.ActCtx, str string, args ...any) {
 
 func sendLogf(ctx *kernel.ActCtx, level logger.Level, str string, args ...any) {
 	Send(ctx, "log", LogfMessage{
-		level:   level,
+		Level:   level,
 		Message: str,
 		Args:    args,
 	})
@@ -45,7 +45,7 @@ func sendLogf(ctx *kernel.ActCtx, level logger.Level, str string, args ...any) {
 
 func sendLog(ctx *kernel.ActCtx, level logger.Level, str string) {
 	Send(ctx, "log", LogMessage{
-		level:   level,
+		Level:   level,
 		Message: str,
 	})
 }

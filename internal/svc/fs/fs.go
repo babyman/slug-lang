@@ -1,9 +1,10 @@
-package service
+package fs
 
 import (
 	"os"
 	"reflect"
 	"slug/internal/kernel"
+	"slug/internal/svc"
 )
 
 type FsRead struct {
@@ -40,19 +41,19 @@ func (fs *Fs) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		data := payload.Data
 		err := os.WriteFile(path, data, 0644)
 		if err != nil {
-			Reply(ctx, msg, FsWriteResp{Err: err})
+			svc.Reply(ctx, msg, FsWriteResp{Err: err})
 			return
 		}
-		Reply(ctx, msg, FsWriteResp{Bytes: len(data)})
+		svc.Reply(ctx, msg, FsWriteResp{Bytes: len(data)})
 	case FsRead:
 		path := payload.Path
 		data, err := os.ReadFile(path)
 		if err != nil {
-			Reply(ctx, msg, FsReadResp{Err: err})
+			svc.Reply(ctx, msg, FsReadResp{Err: err})
 			return
 		}
-		Reply(ctx, msg, FsReadResp{Data: string(data)})
+		svc.Reply(ctx, msg, FsReadResp{Data: string(data)})
 	default:
-		Reply(ctx, msg, kernel.UnknownOperation{})
+		svc.Reply(ctx, msg, kernel.UnknownOperation{})
 	}
 }

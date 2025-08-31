@@ -1,10 +1,17 @@
 package main
 
 import (
-	"log"
 	"slug/internal/kernel"
 	"slug/internal/privileged"
-	"slug/internal/service"
+	"slug/internal/svc"
+	"slug/internal/svc/cli"
+	"slug/internal/svc/eval"
+	"slug/internal/svc/fs"
+	"slug/internal/svc/lexer"
+	"slug/internal/svc/log"
+	"slug/internal/svc/modules"
+	"slug/internal/svc/parser"
+	"slug/internal/svc/sout"
 )
 
 const (
@@ -18,48 +25,46 @@ const (
 
 func main() {
 
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
-
 	k := kernel.NewKernel()
 
 	controlPlane := &privileged.ControlPlane{}
 	k.RegisterPrivilegedService("control-plane", controlPlane)
 
 	// system out Service
-	sout := &service.SOut{}
-	soutID := k.RegisterService("sout", service.SOutOperations, sout.Handler)
+	out := &sout.SOut{}
+	soutID := k.RegisterService("sout", sout.SOutOperations, out.Handler)
 
 	// system out Service
-	logSvc := &service.Log{}
-	logID := k.RegisterService("log", service.LogOperations, logSvc.Handler)
+	logSvc := &log.Log{}
+	logID := k.RegisterService("log", log.LogOperations, logSvc.Handler)
 
 	// system out Service
-	mods := &service.Modules{}
-	modsID := k.RegisterService("mods", service.ModulesOperations, mods.Handler)
+	mods := &modules.Modules{}
+	modsID := k.RegisterService("mods", modules.ModulesOperations, mods.Handler)
 
 	// CLI Service
-	cli := &service.Cli{}
-	cliID := k.RegisterService("cli", service.CliOperations, cli.Handler)
+	cliSvc := &cli.Cli{}
+	cliID := k.RegisterService("cli", cli.CliOperations, cliSvc.Handler)
 
 	// File system service
-	fs := &service.Fs{}
-	fsID := k.RegisterService("fs", service.FsOperations, fs.Handler)
+	fsSvc := &fs.Fs{}
+	fsID := k.RegisterService("fs", fs.FsOperations, fsSvc.Handler)
 
 	// Lexer service
-	lexer := &service.LexingService{}
-	lexerID := k.RegisterService("lexer", service.LexerOperations, lexer.Handler)
+	lexerSvc := &lexer.LexingService{}
+	lexerID := k.RegisterService("lexer", lexer.LexerOperations, lexerSvc.Handler)
 
 	// Parser service
-	parser := &service.ParserService{}
-	parserID := k.RegisterService("parser", service.ParserOperations, parser.Handler)
+	parserSvc := &parser.ParserService{}
+	parserID := k.RegisterService("parser", parser.ParserOperations, parserSvc.Handler)
 
 	// Evaluator service
-	eval := &service.EvaluatorService{}
-	evalID := k.RegisterService("eval", service.EvaluatorOperations, eval.Handler)
+	evalSvc := &eval.EvaluatorService{}
+	evalID := k.RegisterService("eval", eval.EvaluatorOperations, evalSvc.Handler)
 
 	// REPL service
-	repl := &service.ReplService{EvalID: evalID}
-	replID := k.RegisterService("repl", service.RsOperations, repl.Handler)
+	replSvc := &svc.ReplService{EvalID: evalID}
+	replID := k.RegisterService("repl", svc.RsOperations, replSvc.Handler)
 
 	// Cap grants
 	_ = k.GrantCap(cliID, cliID, x, nil) // call self required for boot message

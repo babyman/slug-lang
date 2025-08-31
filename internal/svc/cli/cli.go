@@ -1,9 +1,11 @@
-package service
+package cli
 
 import (
 	"flag"
 	"reflect"
 	"slug/internal/kernel"
+	"slug/internal/svc"
+	"slug/internal/svc/modules"
 )
 
 var CliOperations = kernel.OpRights{
@@ -50,29 +52,29 @@ func (cli *Cli) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 			filename := flag.Args()[0]
 			args := flag.Args()[1:]
 
-			SendInfof(ctx, "Executing %s with args %v", filename, args)
+			svc.SendInfof(ctx, "Executing %s with args %v", filename, args)
 
 			modsID, _ := ctx.K.ActorByName("mods")
-			SendInfof(ctx, "modsID: %d", modsID)
+			svc.SendInfof(ctx, "modsID: %d", modsID)
 
-			_, err := ctx.SendSync(modsID, ModuleEvaluateFile{
+			_, err := ctx.SendSync(modsID, modules.ModuleEvaluateFile{
 				Path: filename,
 				Args: args,
 			})
 			if err != nil {
-				SendErrorf(ctx, "err: %v", err)
+				svc.SendErrorf(ctx, "err: %v", err)
 			}
 
 			r, _ := ctx.SendSync(kernel.KernelID, kernel.Shutdown{ExitCode: 0})
-			Reply(ctx, msg, r.Payload)
+			svc.Reply(ctx, msg, r.Payload)
 		}
 	default:
-		Reply(ctx, msg, kernel.UnknownOperation{})
+		svc.Reply(ctx, msg, kernel.UnknownOperation{})
 	}
 }
 
 func printHelp(ctx *kernel.ActCtx) {
-	SendStdOut(ctx, `Usage: slug [options] [filename [args...]]
+	svc.SendStdOut(ctx, `Usage: slug [options] [filename [args...]]
 
 Options:
   -root <path>       Set the root context for the program (used for imports). Default is '.'

@@ -1,4 +1,4 @@
-package service
+package svc
 
 import (
 	"errors"
@@ -9,7 +9,7 @@ import (
 // ===== REPL Service =====
 // Ops: { eval: EXEC }
 // Handler:
-//   - Accepts {source} and forwards to Evaluator
+//   - Accepts {Source} and forwards to Evaluator
 //   - Returns evaluator Reply
 
 type RsEval struct {
@@ -32,7 +32,7 @@ func (r *ReplService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	case RsEval:
 		src := payload.Source
 		if src == "" {
-			Reply(ctx, msg, RsEvalResp{Err: errors.New("empty source")})
+			Reply(ctx, msg, RsEvalResp{Err: errors.New("empty Source")})
 			return
 		}
 		//resp, err := ctx.SendSync(r.EvalID, EvaluatorEvaluate{

@@ -1,15 +1,11 @@
-package service
+package sout
 
 import (
 	"fmt"
 	"reflect"
 	"slug/internal/kernel"
+	"slug/internal/svc"
 )
-
-type SOutPrintln struct {
-	Str  string
-	Args []any
-}
 
 type SOutResp struct {
 	BytesWritten int
@@ -17,7 +13,7 @@ type SOutResp struct {
 }
 
 var SOutOperations = kernel.OpRights{
-	reflect.TypeOf(SOutPrintln{}): kernel.RightWrite,
+	reflect.TypeOf(svc.SOutPrintln{}): kernel.RightWrite,
 }
 
 type SOut struct {
@@ -25,11 +21,11 @@ type SOut struct {
 
 func (s *SOut) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	switch payload := msg.Payload.(type) {
-	case SOutPrintln:
+	case svc.SOutPrintln:
 		str := payload.Str + "\n"
 		bytesWritten, err := fmt.Printf(str, payload.Args...)
-		Reply(ctx, msg, SOutResp{BytesWritten: bytesWritten, Err: err})
+		svc.Reply(ctx, msg, SOutResp{BytesWritten: bytesWritten, Err: err})
 	default:
-		Reply(ctx, msg, kernel.UnknownOperation{})
+		svc.Reply(ctx, msg, kernel.UnknownOperation{})
 	}
 }

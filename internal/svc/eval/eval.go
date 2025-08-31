@@ -1,4 +1,4 @@
-package service
+package eval
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"slug/internal/evaluator"
 	"slug/internal/kernel"
 	"slug/internal/object"
+	"slug/internal/svc"
 )
 
 type EvaluateProgram struct {
@@ -52,23 +53,23 @@ func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		e.PushEnv(env)
 		defer e.PopEnv()
 
-		SendInfo(ctx, " ---- begin ----")
-		defer SendInfo(ctx, " ---- done ----")
+		svc.SendInfo(ctx, " ---- begin ----")
+		defer svc.SendInfo(ctx, " ---- done ----")
 
 		// Evaluate the program within the provided environment
 		evaluated := e.Eval(module.Program)
 		if evaluated != nil && evaluated.Type() != object.NIL_OBJ {
 			if evaluated.Type() == object.ERROR_OBJ {
 				//return fmt.Errorf(evaluated.Inspect())
-				Reply(ctx, msg, fmt.Sprint(evaluated.Inspect()))
+				svc.Reply(ctx, msg, fmt.Sprint(evaluated.Inspect()))
 			} else {
-				Reply(ctx, msg, fmt.Sprint(evaluated.Inspect()))
+				svc.Reply(ctx, msg, fmt.Sprint(evaluated.Inspect()))
 				//fmt.Println(evaluated.Inspect())
 			}
 		} else {
-			Reply(ctx, msg, nil)
+			svc.Reply(ctx, msg, nil)
 		}
 	default:
-		Reply(ctx, msg, kernel.UnknownOperation{})
+		svc.Reply(ctx, msg, kernel.UnknownOperation{})
 	}
 }

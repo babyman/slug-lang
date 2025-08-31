@@ -47,6 +47,9 @@ type Logger struct {
 
 // NewLogger creates a new logger instance
 func NewLogger(prefix string, level Level) *Logger {
+
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+
 	return &Logger{
 		level:  level,
 		prefix: prefix,
