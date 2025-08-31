@@ -31,5 +31,7 @@ func (m *LexingService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 			tokens = append(tokens, tok)
 		}
 		Reply(ctx, msg, LexedTokens{Tokens: tokens})
+	default:
+		Reply(ctx, msg, kernel.UnknownOperation{})
 	}
 }

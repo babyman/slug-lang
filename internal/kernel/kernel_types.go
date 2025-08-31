@@ -83,8 +83,5 @@ type Shutdown struct {
 	ExitCode int `json:"exitcode,omitempty"`
 }
 
-type DemoStart struct {
-}
-
 type UnknownOperation struct {
 }

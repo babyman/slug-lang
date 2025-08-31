@@ -29,5 +29,7 @@ func (s *SOut) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		str := payload.Str + "\n"
 		bytesWritten, err := fmt.Printf(str, payload.Args...)
 		Reply(ctx, msg, SOutResp{BytesWritten: bytesWritten, Err: err})
+	default:
+		Reply(ctx, msg, kernel.UnknownOperation{})
 	}
 }

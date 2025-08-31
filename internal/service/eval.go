@@ -68,6 +68,7 @@ func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		} else {
 			Reply(ctx, msg, nil)
 		}
-
+	default:
+		Reply(ctx, msg, kernel.UnknownOperation{})
 	}
 }

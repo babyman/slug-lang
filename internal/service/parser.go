@@ -52,5 +52,7 @@ func (m *ParserService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		program := p.ParseProgram()
 		SendInfof(ctx, "Parsed program: %v", program)
 		Reply(ctx, msg, ParsedAst{Program: program})
+	default:
+		Reply(ctx, msg, kernel.UnknownOperation{})
 	}
 }

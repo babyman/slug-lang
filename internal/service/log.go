@@ -39,6 +39,7 @@ func (l *Log) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	switch payload := msg.Payload.(type) {
 	case LogConfigure:
 		logSvc.SetLevel(payload.level)
+		Reply(ctx, msg, nil)
 	case LogfMessage:
 		switch payload.level {
 		case logger.DEBUG:
@@ -52,6 +53,7 @@ func (l *Log) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		case logger.FATAL:
 			logSvc.Fatalf("%d:"+payload.Message, append([]any{payload.source}, payload.Args...)...)
 		}
+		Reply(ctx, msg, nil)
 	case LogMessage:
 		switch payload.level {
 		case logger.DEBUG:
@@ -65,5 +67,8 @@ func (l *Log) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		case logger.FATAL:
 			logSvc.Fatal(fmt.Sprintf("%d:%s", payload.source, payload.Message))
 		}
+		Reply(ctx, msg, nil)
+	default:
+		Reply(ctx, msg, kernel.UnknownOperation{})
 	}
 }

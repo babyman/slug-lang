@@ -65,9 +65,11 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 			return
 		}
 
-		SendInfof(ctx, "Compiled %s, got %v", payload.Path, result)
+		SendInfof(ctx, "Compiled %s, got %v", payload.Path, result.Payload)
 
 		Reply(ctx, msg, result)
 
+	default:
+		Reply(ctx, msg, kernel.UnknownOperation{})
 	}
 }

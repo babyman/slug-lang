@@ -63,8 +63,11 @@ func (cli *Cli) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 				SendErrorf(ctx, "err: %v", err)
 			}
 
-			ctx.SendSync(kernel.KernelID, kernel.Shutdown{ExitCode: 0})
+			r, _ := ctx.SendSync(kernel.KernelID, kernel.Shutdown{ExitCode: 0})
+			Reply(ctx, msg, r.Payload)
 		}
+	default:
+		Reply(ctx, msg, kernel.UnknownOperation{})
 	}
 }
 
