@@ -231,9 +231,10 @@ func (k *Kernel) ActorByName(name string) (ActorID, bool) {
 func (k *Kernel) Start() {
 
 	// if the CLI service is running send it a boot message
+	kernelID, _ := k.ActorByName("kernel")
 	cliID, ok := k.ActorByName("cli")
 	if ok {
-		go func() { _ = k.SendInternal(cliID, cliID, Boot{}, nil) }()
+		go func() { _ = k.SendInternal(kernelID, cliID, Boot{}, nil) }()
 	}
 
 	// Keep main alive; also show a periodic status line
@@ -263,7 +264,7 @@ func printStatus(k *Kernel) {
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 	for _, Id := range ids {
 		a := k.Actors[Id]
-		log.Infof("  - Id=%2d Name=%-6s cpu=%8d ops ipc(in=%3d out=%3d) Caps=%d\n",
+		log.Infof("  - Id=%2d Name=%-6s cpu(μs) %8d ops ipc(in=%3d out=%3d) Caps=%d\n",
 			Id, a.Name, a.CpuOps, a.IpcIn, a.IpcOut, len(a.Caps))
 	}
 }
@@ -275,6 +276,7 @@ func (k *Kernel) handler(ctx *ActCtx, msg Message) {
 		if msg.Resp != nil {
 			msg.Resp <- Message{From: ctx.Self, To: msg.From, Payload: nil}
 		}
+		printStatus(k)
 		os.Exit(payload.ExitCode)
 	default:
 		log.Warnf("Unhandled message: %v", msg)

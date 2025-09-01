@@ -69,7 +69,10 @@ func main() {
 	replID := k.RegisterService("repl", svc.RsOperations, replSvc.Handler)
 
 	// Cap grants
+	_ = k.GrantCap(kernelID, cliID, x, nil)
+
 	_ = k.GrantCap(cliID, cliID, x, nil) // call self required for boot message
+
 	_ = k.GrantCap(cliID, soutID, w, nil)
 	_ = k.GrantCap(cliID, modsID, x, nil)
 	_ = k.GrantCap(cliID, logID, wx, nil)
