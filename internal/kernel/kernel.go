@@ -44,8 +44,18 @@ var log = logger.NewLogger("kernel", logger.INFO)
 
 // ===== Core Types =====
 
+// SendAsync fire-and-forgets.
+func (c *ActCtx) SendAsync(to ActorID, payload any) error {
+	return c.K.SendInternal(c.Self, to, payload, nil)
+}
+
 // SendSync sends and waits for a single reply.
 func (c *ActCtx) SendSync(to ActorID, payload any) (Message, error) {
+	return c.SendSyncWithTimeout(to, payload, 5*time.Second)
+}
+
+// SendSync sends and waits for a single reply.
+func (c *ActCtx) SendSyncWithTimeout(to ActorID, payload any, timeout time.Duration) (Message, error) {
 	respCh := make(chan Message, 1)
 	err := c.K.SendInternal(c.Self, to, payload, respCh)
 	if err != nil {
@@ -55,15 +65,10 @@ func (c *ActCtx) SendSync(to ActorID, payload any) (Message, error) {
 	select {
 	case resp := <-respCh:
 		return resp, nil
-	case <-time.After(5 * time.Second):
-		log.Warnf("E_DEADLINE: reply timeout, from %d to %d", c.Self, to)
-		return Message{}, errors.New("E_DEADLINE: reply timeout")
+	case <-time.After(timeout):
+		log.Warnf("E_DEADLINE: reply timeout %v, from %d to %d", timeout, c.Self, to)
+		return Message{}, errors.New("E_DEADLINE: reply timeout %v")
 	}
-}
-
-// SendAsync fire-and-forgets.
-func (c *ActCtx) SendAsync(to ActorID, payload any) error {
-	return c.K.SendInternal(c.Self, to, payload, nil)
 }
 
 // ===== Kernel =====
@@ -88,7 +93,7 @@ func NewKernel() *Kernel {
 	}
 
 	kernel.RegisterService(KernelService, OpRights{
-		reflect.TypeOf(Shutdown{}): RightExec,
+		reflect.TypeOf(RequestShutdown{}): RightExec,
 	}, kernel.handler)
 
 	return kernel
@@ -191,8 +196,8 @@ func (k *Kernel) isPermitted(from ActorID, to ActorID, payload any) error {
 				return fmt.Errorf("E_POLICY: cap not granted for rights=%v for op %T to target %d", rights, payload, to)
 			}
 		} else {
-			log.Warnf("E_POLICY: missing rights=%v for op %T from %d to target %d", rights, payload, from, to)
-			return fmt.Errorf("E_POLICY: missing rights=%v for op %T to target %d", rights, payload, to)
+			log.Warnf("E_POLICY: no defined rights for op %T from %d to target %d", payload, from, to)
+			return fmt.Errorf("E_POLICY: no defined rights for op %T to target %d", payload, to)
 		}
 	} else {
 		log.Warnf("E_POLICY: nil payload from %d to target %d", from, to)
@@ -299,8 +304,8 @@ func printStatus(k *Kernel) {
 
 func (k *Kernel) handler(ctx *ActCtx, msg Message) {
 	switch payload := msg.Payload.(type) {
-	case Shutdown:
-		log.Infof("Shutdown: %d", payload.ExitCode)
+	case RequestShutdown:
+		log.Infof("RequestShutdown: %d", payload.ExitCode)
 		if msg.Resp != nil {
 			msg.Resp <- Message{From: ctx.Self, To: msg.From, Payload: nil}
 		}

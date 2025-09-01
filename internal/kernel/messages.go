@@ -7,7 +7,7 @@ const KernelService = "kernel"
 type Boot struct {
 }
 
-type Shutdown struct {
+type RequestShutdown struct {
 	ExitCode int `json:"exitcode,omitempty"`
 }
 

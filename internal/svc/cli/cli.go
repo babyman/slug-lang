@@ -2,18 +2,10 @@ package cli
 
 import (
 	"flag"
-	"reflect"
 	"slug/internal/kernel"
 	"slug/internal/svc"
 	"slug/internal/svc/modules"
 )
-
-var Operations = kernel.OpRights{
-	reflect.TypeOf(kernel.Boot{}): kernel.RightExec,
-}
-
-type Cli struct {
-}
 
 var (
 	rootPath string
@@ -36,46 +28,54 @@ func init() {
 	flag.BoolVar(&color, "log-color", true, "Enable color output in terminal")
 }
 
-func (cli *Cli) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
-	switch msg.Payload.(type) {
-	case kernel.Boot:
+func (cli *Cli) onBoot(ctx *kernel.ActCtx) any {
 
-		kernelID, _ := ctx.K.ActorByName(kernel.KernelService)
-		flag.Parse()
+	flag.Parse()
 
-		if help {
-			printHelp(ctx)
-			ctx.SendSync(kernelID, kernel.Shutdown{ExitCode: 0})
-			return
-		}
+	kernelID, _ := ctx.K.ActorByName(kernel.KernelService)
 
-		if len(flag.Args()) > 0 {
-			filename := flag.Args()[0]
-			args := flag.Args()[1:]
-
-			svc.SendInfof(ctx, "Executing %s with args %v", filename, args)
-
-			modsID, _ := ctx.K.ActorByName(svc.ModuleService)
-			svc.SendInfof(ctx, "modsID: %d", modsID)
-
-			_, err := ctx.SendSync(modsID, modules.ModuleEvaluateFile{
-				Path: filename,
-				Args: args,
-			})
-			if err != nil {
-				svc.SendErrorf(ctx, "err: %v", err)
-			}
-
-			r, _ := ctx.SendSync(kernelID, kernel.Shutdown{ExitCode: 0})
-			svc.Reply(ctx, msg, r.Payload)
-		}
-	default:
-		svc.Reply(ctx, msg, kernel.UnknownOperation{})
+	if help {
+		cli.handleHelpRequest(ctx, kernelID)
+		return nil
 	}
+
+	if len(flag.Args()) > 0 {
+		return cli.handleCommandlineArguments(ctx, kernelID)
+	}
+
+	return nil
 }
 
-func printHelp(ctx *kernel.ActCtx) {
-	svc.SendStdOut(ctx, `Usage: slug [options] [filename [args...]]
+func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.ActorID) any {
+
+	filename := flag.Args()[0]
+	args := flag.Args()[1:]
+
+	svc.SendInfof(ctx, "Executing %s with args %v", filename, args)
+
+	modsID, _ := ctx.K.ActorByName(svc.ModuleService)
+	svc.SendInfof(ctx, "modsID: %d", modsID)
+
+	_, err := ctx.SendSync(modsID, modules.ModuleEvaluateFile{
+		Path: filename,
+		Args: args,
+	})
+	if err != nil {
+		svc.SendErrorf(ctx, "err: %v", err)
+	}
+
+	r, _ := ctx.SendSync(kernelID, kernel.RequestShutdown{ExitCode: 0})
+	return r.Payload
+}
+
+func (cli *Cli) handleHelpRequest(ctx *kernel.ActCtx, kernelID kernel.ActorID) {
+
+	svc.SendStdOut(ctx, cli.helpMessage())
+	ctx.SendSync(kernelID, kernel.RequestShutdown{ExitCode: 0})
+}
+
+func (cli *Cli) helpMessage() string {
+	return `Usage: slug [options] [filename [args...]]
 
 Options:
   -root <path>       Set the root context for the program (used for imports). Default is '.'
@@ -94,5 +94,5 @@ Examples:
   slug -root=/path/to/root      Start the REPL with a specific root path
   slug -log-level=debug         Start with debug logging enabled
   slug myfile.slug              Execute the provided Slug file
-  slug myfile.slug arg1 arg2    Execute the file with command-line arguments`)
+  slug myfile.slug arg1 arg2    Execute the file with command-line arguments`
 }
