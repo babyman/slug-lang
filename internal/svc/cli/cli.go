@@ -40,11 +40,12 @@ func (cli *Cli) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	switch msg.Payload.(type) {
 	case kernel.Boot:
 
+		kernelID, _ := ctx.K.ActorByName("kernel")
 		flag.Parse()
 
 		if help {
 			printHelp(ctx)
-			ctx.SendSync(kernel.KernelID, kernel.Shutdown{ExitCode: 0})
+			ctx.SendSync(kernelID, kernel.Shutdown{ExitCode: 0})
 			return
 		}
 
@@ -65,7 +66,7 @@ func (cli *Cli) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 				svc.SendErrorf(ctx, "err: %v", err)
 			}
 
-			r, _ := ctx.SendSync(kernel.KernelID, kernel.Shutdown{ExitCode: 0})
+			r, _ := ctx.SendSync(kernelID, kernel.Shutdown{ExitCode: 0})
 			svc.Reply(ctx, msg, r.Payload)
 		}
 	default:

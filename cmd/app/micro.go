@@ -27,6 +27,8 @@ func main() {
 
 	k := kernel.NewKernel()
 
+	kernelID, _ := k.ActorByName("kernel")
+
 	controlPlane := &privileged.ControlPlane{}
 	k.RegisterPrivilegedService("control-plane", controlPlane)
 
@@ -71,7 +73,7 @@ func main() {
 	_ = k.GrantCap(cliID, soutID, w, nil)
 	_ = k.GrantCap(cliID, modsID, x, nil)
 	_ = k.GrantCap(cliID, logID, wx, nil)
-	_ = k.GrantCap(cliID, kernel.KernelID, x, nil)
+	_ = k.GrantCap(cliID, kernelID, x, nil)
 
 	_ = k.GrantCap(modsID, cliID, w, nil)
 	_ = k.GrantCap(modsID, fsID, r, nil)
