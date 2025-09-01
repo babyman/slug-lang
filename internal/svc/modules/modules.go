@@ -28,10 +28,10 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 
 		svc.SendInfof(ctx, "Evaluating file %s", payload.Path)
 
-		fsId, _ := ctx.K.ActorByName("fs")
-		lexId, _ := ctx.K.ActorByName("lexer")
-		parseId, _ := ctx.K.ActorByName("parser")
-		evalId, _ := ctx.K.ActorByName("eval")
+		fsId, _ := ctx.K.ActorByName(svc.FsService)
+		lexId, _ := ctx.K.ActorByName(svc.LexerService)
+		parseId, _ := ctx.K.ActorByName(svc.ParserService)
+		evalId, _ := ctx.K.ActorByName(svc.EvalService)
 
 		src, err := ctx.SendSync(fsId, fs.FsRead{Path: payload.Path})
 		if err != nil {

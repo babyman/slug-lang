@@ -29,14 +29,14 @@ func Send(ctx *kernel.ActCtx, actorName string, message any) {
 }
 
 func SendStdOut(ctx *kernel.ActCtx, str string, args ...any) {
-	BlockingSend(ctx, "sout", SOutPrintln{
+	BlockingSend(ctx, SOutService, SOutPrintln{
 		Str:  str,
 		Args: args,
 	})
 }
 
 func sendLogf(ctx *kernel.ActCtx, level logger.Level, str string, args ...any) {
-	Send(ctx, "log", LogfMessage{
+	Send(ctx, LogService, LogfMessage{
 		Level:   level,
 		Message: str,
 		Args:    args,
@@ -44,7 +44,7 @@ func sendLogf(ctx *kernel.ActCtx, level logger.Level, str string, args ...any) {
 }
 
 func sendLog(ctx *kernel.ActCtx, level logger.Level, str string) {
-	Send(ctx, "log", LogMessage{
+	Send(ctx, LogService, LogMessage{
 		Level:   level,
 		Message: str,
 	})

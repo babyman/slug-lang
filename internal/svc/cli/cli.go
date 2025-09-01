@@ -40,7 +40,7 @@ func (cli *Cli) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	switch msg.Payload.(type) {
 	case kernel.Boot:
 
-		kernelID, _ := ctx.K.ActorByName("kernel")
+		kernelID, _ := ctx.K.ActorByName(kernel.KernelService)
 		flag.Parse()
 
 		if help {
@@ -55,7 +55,7 @@ func (cli *Cli) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 
 			svc.SendInfof(ctx, "Executing %s with args %v", filename, args)
 
-			modsID, _ := ctx.K.ActorByName("mods")
+			modsID, _ := ctx.K.ActorByName(svc.ModuleService)
 			svc.SendInfof(ctx, "modsID: %d", modsID)
 
 			_, err := ctx.SendSync(modsID, modules.ModuleEvaluateFile{

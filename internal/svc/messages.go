@@ -5,6 +5,16 @@ import (
 	"slug/internal/logger"
 )
 
+const SOutService = "sout"
+const LogService = "log"
+const ModuleService = "mods"
+const CliService = "cli"
+const FsService = "fs"
+const LexerService = "lexer"
+const ParserService = "parser"
+const EvalService = "eval"
+const ReplService = "repl"
+
 // Log service messages
 // ====================
 

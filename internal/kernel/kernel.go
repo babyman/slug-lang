@@ -87,7 +87,7 @@ func NewKernel() *Kernel {
 		PrivilegedServices: make(map[string]PrivilegedService),
 	}
 
-	kernel.RegisterService("kernel", OpRights{
+	kernel.RegisterService(KernelService, OpRights{
 		reflect.TypeOf(Shutdown{}): RightExec,
 	}, kernel.handler)
 
@@ -182,16 +182,30 @@ func (k *Kernel) hasCap(sender ActorID, target ActorID, want Rights) bool {
 	return false
 }
 
-// sendInternal enqueues a message, enforcing capability checks for service ops.
-func (k *Kernel) SendInternal(from ActorID, to ActorID, payload any, resp chan Message) error {
+func (k *Kernel) isPermitted(from ActorID, to ActorID, payload any) error {
 	if payload != nil {
 		msgType := reflect.TypeOf(payload)
 		if rights, ok := k.resolveRights(to, msgType); ok {
 			if !k.hasCap(from, to, rights) {
-				log.Warnf("E_POLICY: missing rights=%v for op %T from %d to target %d", rights, payload, from, to)
-				return fmt.Errorf("E_POLICY: missing rights=%v for op %T to target %d", rights, payload, to)
+				log.Warnf("E_POLICY: cap not granted for rights=%v for op %T from %d to target %d", rights, payload, from, to)
+				return fmt.Errorf("E_POLICY: cap not granted for rights=%v for op %T to target %d", rights, payload, to)
 			}
+		} else {
+			log.Warnf("E_POLICY: missing rights=%v for op %T from %d to target %d", rights, payload, from, to)
+			return fmt.Errorf("E_POLICY: missing rights=%v for op %T to target %d", rights, payload, to)
 		}
+	} else {
+		log.Warnf("E_POLICY: nil payload from %d to target %d", from, to)
+		return fmt.Errorf("E_POLICY: nil payload to target %d", to)
+	}
+	return nil
+}
+
+// sendInternal enqueues a message, enforcing capability checks for service ops.
+func (k *Kernel) SendInternal(from ActorID, to ActorID, payload any, resp chan Message) error {
+	err := k.isPermitted(from, to, payload)
+	if err != nil {
+		return err
 	}
 	k.Mu.RLock()
 	target := k.Actors[to]
@@ -231,11 +245,11 @@ func (k *Kernel) ActorByName(name string) (ActorID, bool) {
 func (k *Kernel) Start() {
 
 	// if the CLI service is running send it a boot message
-	kernelID, _ := k.ActorByName("kernel")
-	cliID, ok := k.ActorByName("cli")
-	if ok {
-		go func() { _ = k.SendInternal(kernelID, cliID, Boot{}, nil) }()
-	}
+	kernelID, _ := k.ActorByName(KernelService)
+
+	// Broadcast Boot message to all registered actors
+	bootMessage := Boot{}
+	k.broadcastMessage(kernelID, bootMessage)
 
 	// Keep main alive; also show a periodic status line
 	ctx, cancel := context.WithCancel(context.Background())
@@ -250,6 +264,20 @@ func (k *Kernel) Start() {
 	select {
 	case <-ctx.Done():
 		os.Exit(0)
+	}
+}
+
+func (k *Kernel) broadcastMessage(kernelID ActorID, message Boot) {
+	k.Mu.RLock()
+	defer k.Mu.RUnlock()
+	for actorID := range k.Actors {
+		if actorID != kernelID && k.isPermitted(kernelID, actorID, message) == nil {
+			go func(id ActorID) {
+				if err := k.SendInternal(kernelID, id, message, nil); err != nil {
+					log.Warnf("Failed to send %T to actor %d: %v", message, id, err)
+				}
+			}(actorID)
+		}
 	}
 }
 

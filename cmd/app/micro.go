@@ -3,6 +3,7 @@ package main
 import (
 	"slug/internal/kernel"
 	"slug/internal/privileged"
+	"slug/internal/svc"
 	"slug/internal/svc/cli"
 	"slug/internal/svc/eval"
 	"slug/internal/svc/fs"
@@ -27,46 +28,46 @@ func main() {
 
 	k := kernel.NewKernel()
 
-	kernelID, _ := k.ActorByName("kernel")
+	kernelID, _ := k.ActorByName(kernel.KernelService)
 
 	controlPlane := &privileged.ControlPlane{}
-	k.RegisterPrivilegedService("control-plane", controlPlane)
+	k.RegisterPrivilegedService(privileged.ControlPlaneService, controlPlane)
 
 	// system out Service
 	out := &sout.SOut{}
-	soutID := k.RegisterService("sout", sout.Operations, out.Handler)
+	soutID := k.RegisterService(svc.SOutService, sout.Operations, out.Handler)
 
 	// system out Service
 	logSvc := &log.Log{}
-	logID := k.RegisterService("log", log.Operations, logSvc.Handler)
+	logID := k.RegisterService(svc.LogService, log.Operations, logSvc.Handler)
 
 	// system out Service
 	mods := &modules.Modules{}
-	modsID := k.RegisterService("mods", modules.Operations, mods.Handler)
+	modsID := k.RegisterService(svc.ModuleService, modules.Operations, mods.Handler)
 
 	// CLI Service
 	cliSvc := &cli.Cli{}
-	cliID := k.RegisterService("cli", cli.Operations, cliSvc.Handler)
+	cliID := k.RegisterService(svc.CliService, cli.Operations, cliSvc.Handler)
 
 	// File system service
 	fsSvc := &fs.Fs{}
-	fsID := k.RegisterService("fs", fs.Operations, fsSvc.Handler)
+	fsID := k.RegisterService(svc.FsService, fs.Operations, fsSvc.Handler)
 
 	// Lexer service
 	lexerSvc := &lexer.LexingService{}
-	lexerID := k.RegisterService("lexer", lexer.Operations, lexerSvc.Handler)
+	lexerID := k.RegisterService(svc.LexerService, lexer.Operations, lexerSvc.Handler)
 
 	// Parser service
 	parserSvc := &parser.ParserService{}
-	parserID := k.RegisterService("parser", parser.Operations, parserSvc.Handler)
+	parserID := k.RegisterService(svc.ParserService, parser.Operations, parserSvc.Handler)
 
 	// Evaluator service
 	evalSvc := &eval.EvaluatorService{}
-	evalID := k.RegisterService("eval", eval.Operations, evalSvc.Handler)
+	evalID := k.RegisterService(svc.EvalService, eval.Operations, evalSvc.Handler)
 
 	// REPL service
 	replSvc := &repl.ReplService{EvalID: evalID}
-	replID := k.RegisterService("repl", repl.Operations, replSvc.Handler)
+	replID := k.RegisterService(svc.ReplService, repl.Operations, replSvc.Handler)
 
 	// Cap grants
 	_ = k.GrantCap(kernelID, cliID, x, nil)
