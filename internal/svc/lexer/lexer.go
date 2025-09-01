@@ -16,7 +16,7 @@ type LexedTokens struct {
 	Tokens []token.Token
 }
 
-var LexerOperations = kernel.OpRights{
+var Operations = kernel.OpRights{
 	reflect.TypeOf(LexString{}): kernel.RightExec,
 }
 

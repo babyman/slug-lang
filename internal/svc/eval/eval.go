@@ -16,7 +16,7 @@ type EvaluateProgram struct {
 	Program *ast.Program
 }
 
-var EvaluatorOperations = kernel.OpRights{
+var Operations = kernel.OpRights{
 	reflect.TypeOf(EvaluateProgram{}): kernel.RightExec,
 }
 

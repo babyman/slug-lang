@@ -12,7 +12,7 @@ type SOutResp struct {
 	Err          error
 }
 
-var SOutOperations = kernel.OpRights{
+var Operations = kernel.OpRights{
 	reflect.TypeOf(svc.SOutPrintln{}): kernel.RightWrite,
 }
 

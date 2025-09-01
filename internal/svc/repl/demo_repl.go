@@ -1,9 +1,10 @@
-package svc
+package repl
 
 import (
 	"errors"
 	"reflect"
 	"slug/internal/kernel"
+	"slug/internal/svc"
 )
 
 // ===== REPL Service =====
@@ -21,7 +22,7 @@ type RsEvalResp struct {
 	Err    error
 }
 
-var RsOperations = kernel.OpRights{
+var Operations = kernel.OpRights{
 	reflect.TypeOf(RsEval{}): kernel.RightExec,
 }
 
@@ -32,7 +33,7 @@ func (r *ReplService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	case RsEval:
 		src := payload.Source
 		if src == "" {
-			Reply(ctx, msg, RsEvalResp{Err: errors.New("empty Source")})
+			svc.Reply(ctx, msg, RsEvalResp{Err: errors.New("empty Source")})
 			return
 		}
 		//resp, err := ctx.SendSync(r.EvalID, EvaluatorEvaluate{
@@ -54,6 +55,6 @@ func (r *ReplService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		//	Result: resp.Payload.(EvaluatorResult).Result,
 		//})
 	default:
-		Reply(ctx, msg, RsEvalResp{Err: errors.New("unknown op")})
+		svc.Reply(ctx, msg, RsEvalResp{Err: errors.New("unknown op")})
 	}
 }

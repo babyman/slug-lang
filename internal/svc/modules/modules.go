@@ -15,7 +15,7 @@ type ModuleEvaluateFile struct {
 	Args []string
 }
 
-var ModulesOperations = kernel.OpRights{
+var Operations = kernel.OpRights{
 	reflect.TypeOf(ModuleEvaluateFile{}): kernel.RightExec,
 }
 

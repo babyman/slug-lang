@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"slug/internal/kernel"
 	"slug/internal/logger"
-	"slug/internal/svc"
+	"slug/internal/svc/repl"
 	"time"
 )
 
@@ -113,7 +113,7 @@ func (c *ControlPlane) handleReplEval(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Create concrete RsEval message type for proper capability checking
-	evalMsg := svc.RsEval{Source: body.Source}
+	evalMsg := repl.RsEval{Source: body.Source}
 	// Kernel sends as if "repl-http" actor invoked REPL; for simplicity, reuse REPL as sender
 	respCh := make(chan kernel.Message, 1)
 	if err := c.kernel.SendInternal(replID, replID, evalMsg, respCh); err != nil {

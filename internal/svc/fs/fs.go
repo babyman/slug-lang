@@ -26,7 +26,7 @@ type FsWriteResp struct {
 	Err   error
 }
 
-var FsOperations = kernel.OpRights{
+var Operations = kernel.OpRights{
 	reflect.TypeOf(FsRead{}):  kernel.RightRead,
 	reflect.TypeOf(FsWrite{}): kernel.RightWrite,
 }

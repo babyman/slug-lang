@@ -8,7 +8,7 @@ import (
 	"slug/internal/svc/modules"
 )
 
-var CliOperations = kernel.OpRights{
+var Operations = kernel.OpRights{
 	reflect.TypeOf(kernel.Boot{}): kernel.RightExec,
 }
 

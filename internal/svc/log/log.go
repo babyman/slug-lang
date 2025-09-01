@@ -8,7 +8,7 @@ import (
 	"slug/internal/svc"
 )
 
-var LogOperations = kernel.OpRights{
+var Operations = kernel.OpRights{
 	reflect.TypeOf(svc.LogConfigure{}): kernel.RightExec,
 	reflect.TypeOf(svc.LogfMessage{}):  kernel.RightWrite,
 	reflect.TypeOf(svc.LogMessage{}):   kernel.RightWrite,

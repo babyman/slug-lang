@@ -18,7 +18,7 @@ type ParsedAst struct {
 	Program *ast.Program
 }
 
-var ParserOperations = kernel.OpRights{
+var Operations = kernel.OpRights{
 	reflect.TypeOf(ParseTokens{}): kernel.RightExec,
 }
 
