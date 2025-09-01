@@ -9,20 +9,20 @@ import (
 )
 
 var Operations = kernel.OpRights{
-	reflect.TypeOf(svc.LogConfigure{}): kernel.RightExec,
-	reflect.TypeOf(svc.LogfMessage{}):  kernel.RightWrite,
-	reflect.TypeOf(svc.LogMessage{}):   kernel.RightWrite,
+	reflect.TypeOf(kernel.ConfigureSystem{}): kernel.RightExec,
+	reflect.TypeOf(svc.LogfMessage{}):        kernel.RightWrite,
+	reflect.TypeOf(svc.LogMessage{}):         kernel.RightWrite,
 }
 
-var logSvc = logger.NewLogger("service", logger.INFO)
+var logSvc = logger.NewLogger("service", logger.FATAL)
 
 type LogService struct {
 }
 
 func (l *LogService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	switch payload := msg.Payload.(type) {
-	case svc.LogConfigure:
-		logSvc.SetLevel(payload.Level)
+	case kernel.ConfigureSystem:
+		logSvc.SetLevel(payload.LogLevel)
 		svc.Reply(ctx, msg, nil)
 	case svc.LogfMessage:
 		switch payload.Level {

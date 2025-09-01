@@ -40,7 +40,7 @@ import (
 	"time"
 )
 
-var log = logger.NewLogger("kernel", logger.INFO)
+var log = logger.NewLogger("kernel", SystemLogLevel())
 
 // ===== Core Types =====
 
@@ -92,9 +92,7 @@ func NewKernel() *Kernel {
 		PrivilegedServices: make(map[string]PrivilegedService),
 	}
 
-	kernel.RegisterService(KernelService, OpRights{
-		reflect.TypeOf(RequestShutdown{}): RightExec,
-	}, kernel.handler)
+	kernel.RegisterService(KernelService, Operations, kernel.handler)
 
 	return kernel
 }
@@ -136,7 +134,7 @@ func (k *Kernel) RegisterPrivilegedService(name string, svc PrivilegedService) {
 	svc.Initialize(k)
 }
 
-// Declare a service (actor) with op→rights mapping, enabling cap checks.
+// Declare a service (actor) with op→Operations mapping, enabling cap checks.
 func (k *Kernel) RegisterService(name string, ops OpRights, handler Handler) ActorID {
 	id := k.RegisterActor(name, handler)
 	k.Mu.Lock()
@@ -159,7 +157,7 @@ func (k *Kernel) GrantCap(to ActorID, target ActorID, rights Rights, scope map[r
 	return nil
 }
 
-// resolveRights returns required rights for an op against a target service.
+// resolveRights returns required Operations for an op against a target service.
 func (k *Kernel) resolveRights(target ActorID, op reflect.Type) (Rights, bool) {
 	k.Mu.RLock()
 	ops, ok := k.OpsBySvc[target]
@@ -171,7 +169,7 @@ func (k *Kernel) resolveRights(target ActorID, op reflect.Type) (Rights, bool) {
 	return r, ok
 }
 
-// hasCap checks if sender owns a non-revoked cap to target with required rights.
+// hasCap checks if sender owns a non-revoked cap to target with required Operations.
 func (k *Kernel) hasCap(sender ActorID, target ActorID, want Rights) bool {
 	k.Mu.RLock()
 	a := k.Actors[sender]
@@ -192,12 +190,12 @@ func (k *Kernel) isPermitted(from ActorID, to ActorID, payload any) error {
 		msgType := reflect.TypeOf(payload)
 		if rights, ok := k.resolveRights(to, msgType); ok {
 			if !k.hasCap(from, to, rights) {
-				log.Warnf("E_POLICY: cap not granted for rights=%v for op %T from %d to target %d", rights, payload, from, to)
-				return fmt.Errorf("E_POLICY: cap not granted for rights=%v for op %T to target %d", rights, payload, to)
+				log.Warnf("E_POLICY: cap not granted for Operations=%v for op %T from %d to target %d", rights, payload, from, to)
+				return fmt.Errorf("E_POLICY: cap not granted for Operations=%v for op %T to target %d", rights, payload, to)
 			}
 		} else {
-			log.Warnf("E_POLICY: no defined rights for op %T from %d to target %d", payload, from, to)
-			return fmt.Errorf("E_POLICY: no defined rights for op %T to target %d", payload, to)
+			log.Warnf("E_POLICY: no defined Operations for op %T from %d to target %d", payload, from, to)
+			return fmt.Errorf("E_POLICY: no defined Operations for op %T to target %d", payload, to)
 		}
 	} else {
 		log.Warnf("E_POLICY: nil payload from %d to target %d", from, to)
@@ -272,7 +270,7 @@ func (k *Kernel) Start() {
 	}
 }
 
-func (k *Kernel) broadcastMessage(kernelID ActorID, message Boot) {
+func (k *Kernel) broadcastMessage(kernelID ActorID, message any) {
 	k.Mu.RLock()
 	defer k.Mu.RUnlock()
 	for actorID := range k.Actors {
@@ -304,18 +302,23 @@ func printStatus(k *Kernel) {
 
 func (k *Kernel) handler(ctx *ActCtx, msg Message) {
 	switch payload := msg.Payload.(type) {
+	case Broadcast:
+		k.broadcastMessage(msg.From, payload.Payload)
+		k.reply(ctx, msg, nil)
 	case RequestShutdown:
 		log.Infof("RequestShutdown: %d", payload.ExitCode)
-		if msg.Resp != nil {
-			msg.Resp <- Message{From: ctx.Self, To: msg.From, Payload: nil}
-		}
+		k.reply(ctx, msg, nil)
 		printStatus(k)
 		os.Exit(payload.ExitCode)
 	default:
 		log.Warnf("Unhandled message: %v", msg)
 		printStatus(k)
-		if msg.Resp != nil {
-			msg.Resp <- Message{From: ctx.Self, To: msg.From, Payload: nil}
-		}
+		k.reply(ctx, msg, nil)
+	}
+}
+
+func (k *Kernel) reply(ctx *ActCtx, msg Message, payload any) {
+	if msg.Resp != nil {
+		msg.Resp <- Message{From: ctx.Self, To: msg.From, Payload: payload}
 	}
 }

@@ -19,22 +19,20 @@ const (
 	FATAL
 )
 
-var ErrInvalidLevel = fmt.Errorf("invalid log level")
-
-func ParseLevel(level string) (Level, error) {
+func ParseLevel(level string) Level {
 	switch strings.ToUpper(level) {
 	case "DEBUG":
-		return DEBUG, nil
+		return DEBUG
 	case "INFO":
-		return INFO, nil
+		return INFO
 	case "WARN":
-		return WARN, nil
+		return WARN
 	case "ERROR":
-		return ERROR, nil
+		return ERROR
 	case "FATAL":
-		return FATAL, nil
+		return FATAL
 	default:
-		return INFO, ErrInvalidLevel
+		return FATAL
 	}
 }
 

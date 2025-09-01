@@ -1,10 +1,24 @@
 package kernel
 
+import (
+	"reflect"
+	"slug/internal/logger"
+)
+
 const KernelService = "kernel"
+
+var Operations = OpRights{
+	reflect.TypeOf(Broadcast{}):       RightExec,
+	reflect.TypeOf(RequestShutdown{}): RightExec,
+}
 
 //Kernel message payload types
 
 type Boot struct {
+}
+
+type ConfigureSystem struct {
+	LogLevel logger.Level
 }
 
 type RequestShutdown struct {
@@ -12,4 +26,8 @@ type RequestShutdown struct {
 }
 
 type UnknownOperation struct {
+}
+
+type Broadcast struct {
+	Payload any
 }

@@ -10,7 +10,7 @@ import (
 )
 
 // ===== Control Plane (HTTP) =====
-var log = logger.NewLogger("control plane", logger.INFO)
+var log = logger.NewLogger("control plane", kernel.SystemLogLevel())
 
 type ControlPlane struct{ kernel *kernel.Kernel }
 

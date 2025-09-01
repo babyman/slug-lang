@@ -15,14 +15,14 @@ const (
 	RightExec                     // e.g., time.sleep / eval.run
 )
 
-// OpRights declares what rights are required to invoke a given op on a service.
+// OpRights declares what Operations are required to invoke a given op on a service.
 type OpRights map[reflect.Type]Rights
 
-// Capability binds a sender to a target service actor with specific rights and optional scope.
+// Capability binds a sender to a target service actor with specific Operations and optional scope.
 type Capability struct {
 	ID      int64                `json:"Id"`
 	Target  ActorID              `json:"target"`
-	Rights  Rights               `json:"rights"`
+	Rights  Rights               `json:"Operations"`
 	Scope   map[reflect.Type]any `json:"scope,omitempty"`
 	Revoked atomic.Bool          `json:"-"`
 }
@@ -66,6 +66,6 @@ type PrivilegedService interface {
 type CapabilityView struct {
 	ID      int64   `json:"Id"`
 	Target  ActorID `json:"target"`
-	Rights  Rights  `json:"rights"`
+	Rights  Rights  `json:"Operations"`
 	Revoked bool    `json:"revoked"`
 }

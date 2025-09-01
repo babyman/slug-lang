@@ -18,10 +18,6 @@ const ReplService = "repl"
 // Log service messages
 // ====================
 
-type LogConfigure struct {
-	Level logger.Level
-}
-
 type LogfMessage struct {
 	Source  kernel.ActorID
 	Level   logger.Level

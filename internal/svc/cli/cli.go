@@ -41,20 +41,21 @@ func (cli *Cli) onBoot(ctx *kernel.ActCtx) any {
 	}
 
 	if len(flag.Args()) > 0 {
-		cli.configureLogging(ctx)
+		cli.configureSystem(ctx)
 		return cli.handleCommandlineArguments(ctx, kernelID)
 	}
 
 	return nil
 }
 
-func (cli *Cli) configureLogging(ctx *kernel.ActCtx) (kernel.Message, error) {
+func (cli *Cli) configureSystem(ctx *kernel.ActCtx) (kernel.Message, error) {
 
-	logID, _ := ctx.K.ActorByName(svc.LogService)
-	level, _ := logger.ParseLevel(logLevel)
-	return ctx.SendSync(logID, svc.LogConfigure{
-		Level: level,
-	})
+	kernelID, _ := ctx.K.ActorByName(kernel.KernelService)
+	level := logger.ParseLevel(logLevel)
+	return ctx.SendSync(kernelID, kernel.Broadcast{
+		Payload: kernel.ConfigureSystem{
+			LogLevel: level,
+		}})
 }
 
 func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.ActorID) any {
@@ -62,16 +63,21 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 	filename := flag.Args()[0]
 	args := flag.Args()[1:]
 
-	svc.SendInfof(ctx, "Executing %s with args %v", filename, args)
+	//svc.SendInfof(ctx, "Executing %s with args %v", filename, args)
 
 	modsID, _ := ctx.K.ActorByName(svc.ModuleService)
 
-	_, err := ctx.SendSync(modsID, modules.ModuleEvaluateFile{
+	output, err := ctx.SendSync(modsID, modules.ModuleEvaluateFile{
 		Path: filename,
 		Args: args,
 	})
 	if err != nil {
 		svc.SendErrorf(ctx, "err: %v", err)
+	} else {
+		r, ok := output.Payload.(string)
+		if ok {
+			println(r)
+		}
 	}
 
 	r, _ := ctx.SendSync(kernelID, kernel.RequestShutdown{ExitCode: 0})
