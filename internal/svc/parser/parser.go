@@ -51,7 +51,7 @@ func (m *ParserService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	case ParseTokens:
 		p := parser.New(NewTokenSliceProvider(payload.Tokens), payload.Sourcecode)
 		program := p.ParseProgram()
-		svc.SendInfof(ctx, "Parsed program: %v", program)
+		svc.SendDebugf(ctx, "Parsed program: %v", program)
 		svc.Reply(ctx, msg, ParsedAst{Program: program})
 	default:
 		svc.Reply(ctx, msg, kernel.UnknownOperation{})

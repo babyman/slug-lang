@@ -16,10 +16,10 @@ var Operations = kernel.OpRights{
 
 var logSvc = logger.NewLogger("service", logger.INFO)
 
-type Log struct {
+type LogService struct {
 }
 
-func (l *Log) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
+func (l *LogService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	switch payload := msg.Payload.(type) {
 	case svc.LogConfigure:
 		logSvc.SetLevel(payload.Level)

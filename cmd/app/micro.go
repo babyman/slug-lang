@@ -38,7 +38,7 @@ func main() {
 	soutID := k.RegisterService(svc.SOutService, sout.Operations, out.Handler)
 
 	// system out Service
-	logSvc := &log.Log{}
+	logSvc := &log.LogService{}
 	logID := k.RegisterService(svc.LogService, log.Operations, logSvc.Handler)
 
 	// system out Service

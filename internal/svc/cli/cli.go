@@ -3,6 +3,7 @@ package cli
 import (
 	"flag"
 	"slug/internal/kernel"
+	"slug/internal/logger"
 	"slug/internal/svc"
 	"slug/internal/svc/modules"
 )
@@ -40,10 +41,20 @@ func (cli *Cli) onBoot(ctx *kernel.ActCtx) any {
 	}
 
 	if len(flag.Args()) > 0 {
+		cli.configureLogging(ctx)
 		return cli.handleCommandlineArguments(ctx, kernelID)
 	}
 
 	return nil
+}
+
+func (cli *Cli) configureLogging(ctx *kernel.ActCtx) (kernel.Message, error) {
+
+	logID, _ := ctx.K.ActorByName(svc.LogService)
+	level, _ := logger.ParseLevel(logLevel)
+	return ctx.SendSync(logID, svc.LogConfigure{
+		Level: level,
+	})
 }
 
 func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.ActorID) any {
@@ -54,7 +65,6 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 	svc.SendInfof(ctx, "Executing %s with args %v", filename, args)
 
 	modsID, _ := ctx.K.ActorByName(svc.ModuleService)
-	svc.SendInfof(ctx, "modsID: %d", modsID)
 
 	_, err := ctx.SendSync(modsID, modules.ModuleEvaluateFile{
 		Path: filename,

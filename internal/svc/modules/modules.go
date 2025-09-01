@@ -26,7 +26,7 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	switch payload := msg.Payload.(type) {
 	case ModuleEvaluateFile:
 
-		svc.SendInfof(ctx, "Evaluating file %s", payload.Path)
+		svc.SendDebugf(ctx, "Evaluating file %s", payload.Path)
 
 		fsId, _ := ctx.K.ActorByName(svc.FsService)
 		lexId, _ := ctx.K.ActorByName(svc.LexerService)
@@ -35,7 +35,7 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 
 		src, err := ctx.SendSync(fsId, fs.FsRead{Path: payload.Path})
 		if err != nil {
-			svc.SendInfof(ctx, "Failed to read file: %s", err)
+			svc.SendWarnf(ctx, "Failed to read file: %s", err)
 			return
 		}
 
@@ -49,16 +49,16 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		}
 
 		tokens := lex.Payload.(lexer.LexedTokens).Tokens
-		svc.SendInfof(ctx, "Lexed %s, got %v", payload.Path, tokens)
+		svc.SendDebugf(ctx, "Lexed %s, got %v", payload.Path, tokens)
 
 		parse, err := ctx.SendSync(parseId, parser.ParseTokens{Sourcecode: file, Tokens: tokens})
 		if err != nil {
-			svc.SendInfof(ctx, "Failed to parse file: %s", err)
+			svc.SendWarnf(ctx, "Failed to parse file: %s", err)
 			return
 		}
 
 		ast := parse.Payload.(parser.ParsedAst).Program
-		svc.SendInfof(ctx, "Compiled %s, got %v", payload.Path, ast)
+		svc.SendDebugf(ctx, "Compiled %s, got %v", payload.Path, ast)
 
 		result, err := ctx.SendSync(evalId, eval.EvaluateProgram{
 			Source:  file,
@@ -66,7 +66,7 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 			Args:    payload.Args,
 		})
 		if err != nil {
-			svc.SendInfof(ctx, "Failed to execute file: %s", err)
+			svc.SendWarnf(ctx, "Failed to execute file: %s", err)
 			return
 		}
 

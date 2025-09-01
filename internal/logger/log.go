@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 	"sync"
 )
 
@@ -17,6 +18,25 @@ const (
 	ERROR
 	FATAL
 )
+
+var ErrInvalidLevel = fmt.Errorf("invalid log level")
+
+func ParseLevel(level string) (Level, error) {
+	switch strings.ToUpper(level) {
+	case "DEBUG":
+		return DEBUG, nil
+	case "INFO":
+		return INFO, nil
+	case "WARN":
+		return WARN, nil
+	case "ERROR":
+		return ERROR, nil
+	case "FATAL":
+		return FATAL, nil
+	default:
+		return INFO, ErrInvalidLevel
+	}
+}
 
 func (l Level) String() string {
 	switch l {
