@@ -21,11 +21,21 @@ var Operations = kernel.OpRights{
 }
 
 type EvaluatorService struct {
+	DebugAST       bool
+	SystemRootPath string
 }
 
 func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	switch payload := msg.Payload.(type) {
+	case kernel.ConfigureSystem:
+		m.DebugAST = payload.DebugAST
+		m.SystemRootPath = payload.SystemRootPath
+		svc.Reply(ctx, msg, nil)
+
 	case EvaluateProgram:
+
+		evaluator.DebugAST = m.DebugAST
+		evaluator.RootPath = m.SystemRootPath
 
 		module := &object.Module{Name: "main.slug", Env: nil}
 		module.Path = "main.slug"
@@ -55,7 +65,6 @@ func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 
 		svc.SendInfo(ctx, " ---- begin ----")
 		defer svc.SendInfo(ctx, " ---- done ----")
-
 		// Evaluate the program within the provided environment
 		evaluated := e.Eval(module.Program)
 		if evaluated != nil && evaluated.Type() != object.NIL_OBJ {

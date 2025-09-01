@@ -18,7 +18,9 @@ type Boot struct {
 }
 
 type ConfigureSystem struct {
-	LogLevel logger.Level
+	LogLevel       logger.Level
+	DebugAST       bool
+	SystemRootPath string
 }
 
 type RequestShutdown struct {

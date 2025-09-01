@@ -76,7 +76,7 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 	} else {
 		r, ok := output.Payload.(string)
 		if ok {
-			println(r)
+			svc.SendStdOut(ctx, r)
 		}
 	}
 
