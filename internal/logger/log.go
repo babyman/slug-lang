@@ -2,7 +2,6 @@ package logger
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"strings"
@@ -12,15 +11,28 @@ import (
 type Level int
 
 const (
-	DEBUG Level = iota
+	TRACE Level = iota
+	DEBUG
 	INFO
 	WARN
 	ERROR
 	FATAL
 )
 
+const (
+	colorReset  = "\033[0m"
+	colorRed    = "\033[31m"
+	colorYellow = "\033[33m"
+	colorGreen  = "\033[32m"
+	colorCyan   = "\033[36m"
+	colorGray   = "\033[90m"
+	colorBold   = "\033[1m"
+)
+
 func ParseLevel(level string) Level {
 	switch strings.ToUpper(level) {
+	case "TRACE":
+		return TRACE
 	case "DEBUG":
 		return DEBUG
 	case "INFO":
@@ -38,6 +50,8 @@ func ParseLevel(level string) Level {
 
 func (l Level) String() string {
 	switch l {
+	case TRACE:
+		return "TRACE"
 	case DEBUG:
 		return "DEBUG"
 	case INFO:
@@ -53,9 +67,28 @@ func (l Level) String() string {
 	}
 }
 
+// ColoredString returns the level string with appropriate color codes
+func (l Level) ColoredString() string {
+	switch l {
+	case TRACE:
+		return colorGray + "TRACE" + colorReset
+	case DEBUG:
+		return colorCyan + "DEBUG" + colorReset
+	case INFO:
+		return colorGreen + "INFO" + colorReset
+	case WARN:
+		return colorYellow + "WARN" + colorReset
+	case ERROR:
+		return colorRed + "ERROR" + colorReset
+	case FATAL:
+		return colorBold + colorRed + "FATAL" + colorReset
+	default:
+		return "UNKNOWN"
+	}
+}
+
 type Logger struct {
 	level      Level
-	color      bool
 	toFile     bool
 	fileHandle *os.File
 	logger     *log.Logger
@@ -65,13 +98,10 @@ type Logger struct {
 
 // NewLogger creates a new logger instance
 func NewLogger(prefix string, level Level) *Logger {
-
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
-
 	return &Logger{
 		level:  level,
 		prefix: prefix,
-		logger: log.New(os.Stdout, fmt.Sprintf("[%s] ", prefix), log.LstdFlags|log.Lshortfile),
+		logger: log.New(os.Stdout, fmt.Sprintf("[%s] ", prefix), log.LstdFlags|log.Lshortfile|log.Lmicroseconds),
 	}
 }
 
@@ -82,11 +112,58 @@ func (l *Logger) SetLevel(level Level) {
 	l.level = level
 }
 
-// SetOutput sets the output destination
-func (l *Logger) SetOutput(w io.Writer) {
+// isOutputToTerminal checks if the current output is a terminal (stdout)
+func (l *Logger) isOutputToTerminal() bool {
+	return !l.toFile
+}
+
+// SetLogFile switches logging to a file
+func (l *Logger) SetLogFile(filepath string) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.logger.SetOutput(w)
+
+	// Close existing file handle if any
+	if l.fileHandle != nil {
+		l.fileHandle.Close()
+	}
+
+	file, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		return fmt.Errorf("failed to open log file: %w", err)
+	}
+
+	l.fileHandle = file
+	l.toFile = true
+	l.logger.SetOutput(file)
+	return nil
+}
+
+// SetConsoleOutput switches logging back to console
+func (l *Logger) SetConsoleOutput() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	// Close file handle if any
+	if l.fileHandle != nil {
+		l.fileHandle.Close()
+		l.fileHandle = nil
+	}
+
+	l.toFile = false
+	l.logger.SetOutput(os.Stdout)
+}
+
+// Close properly closes the logger and any open file handles
+func (l *Logger) Close() error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	if l.fileHandle != nil {
+		err := l.fileHandle.Close()
+		l.fileHandle = nil
+		return err
+	}
+	return nil
 }
 
 func (l *Logger) log(level Level, v ...interface{}) {
@@ -97,7 +174,14 @@ func (l *Logger) log(level Level, v ...interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	msg := fmt.Sprintf("[%s] %s", level.String(), fmt.Sprint(v...))
+	var levelStr string
+	if l.isOutputToTerminal() {
+		levelStr = level.ColoredString()
+	} else {
+		levelStr = level.String()
+	}
+
+	msg := fmt.Sprintf("[%s] %s", levelStr, fmt.Sprint(v...))
 	l.logger.Output(3, msg)
 }
 
@@ -109,10 +193,18 @@ func (l *Logger) logf(level Level, format string, v ...interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	msg := fmt.Sprintf("[%s] %s", level.String(), fmt.Sprintf(format, v...))
+	var levelStr string
+	if l.isOutputToTerminal() {
+		levelStr = level.ColoredString()
+	} else {
+		levelStr = level.String()
+	}
+
+	msg := fmt.Sprintf("[%s] %s", levelStr, fmt.Sprintf(format, v...))
 	l.logger.Output(3, msg)
 }
 
+func (l *Logger) Trace(v ...interface{}) { l.log(TRACE, v...) }
 func (l *Logger) Debug(v ...interface{}) { l.log(DEBUG, v...) }
 func (l *Logger) Info(v ...interface{})  { l.log(INFO, v...) }
 func (l *Logger) Warn(v ...interface{})  { l.log(WARN, v...) }
@@ -122,6 +214,7 @@ func (l *Logger) Fatal(v ...interface{}) {
 	os.Exit(1)
 }
 
+func (l *Logger) Tracef(format string, v ...interface{}) { l.logf(TRACE, format, v...) }
 func (l *Logger) Debugf(format string, v ...interface{}) { l.logf(DEBUG, format, v...) }
 func (l *Logger) Infof(format string, v ...interface{})  { l.logf(INFO, format, v...) }
 func (l *Logger) Warnf(format string, v ...interface{})  { l.logf(WARN, format, v...) }
@@ -130,20 +223,3 @@ func (l *Logger) Fatalf(format string, v ...interface{}) {
 	l.logf(FATAL, format, v...)
 	os.Exit(1)
 }
-
-// Global logger instance
-var defaultLogger = NewLogger("APP", INFO)
-
-// Package-level convenience functions
-func SetLevel(level Level)                   { defaultLogger.SetLevel(level) }
-func SetOutput(w io.Writer)                  { defaultLogger.SetOutput(w) }
-func Debug(v ...interface{})                 { defaultLogger.Debug(v...) }
-func Info(v ...interface{})                  { defaultLogger.Info(v...) }
-func Warn(v ...interface{})                  { defaultLogger.Warn(v...) }
-func Error(v ...interface{})                 { defaultLogger.Error(v...) }
-func Fatal(v ...interface{})                 { defaultLogger.Fatal(v...) }
-func Debugf(format string, v ...interface{}) { defaultLogger.Debugf(format, v...) }
-func Infof(format string, v ...interface{})  { defaultLogger.Infof(format, v...) }
-func Warnf(format string, v ...interface{})  { defaultLogger.Warnf(format, v...) }
-func Errorf(format string, v ...interface{}) { defaultLogger.Errorf(format, v...) }
-func Fatalf(format string, v ...interface{}) { defaultLogger.Fatalf(format, v...) }

@@ -19,6 +19,7 @@ type Boot struct {
 
 type ConfigureSystem struct {
 	LogLevel       logger.Level
+	LogPath        string
 	DebugAST       bool
 	SystemRootPath string
 }

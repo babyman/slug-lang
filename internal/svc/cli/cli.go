@@ -26,7 +26,6 @@ func init() {
 	// log config
 	flag.StringVar(&logLevel, "log-level", "NONE", "Log level: trace, debug, info, warn, error, none")
 	flag.StringVar(&logFile, "log-file", "", "Log file path (if not set, logs to stderr)")
-	flag.BoolVar(&color, "log-color", true, "Enable color output in terminal")
 }
 
 func (cli *Cli) onBoot(ctx *kernel.ActCtx) any {
@@ -54,7 +53,10 @@ func (cli *Cli) configureSystem(ctx *kernel.ActCtx) (kernel.Message, error) {
 	level := logger.ParseLevel(logLevel)
 	return ctx.SendSync(kernelID, kernel.Broadcast{
 		Payload: kernel.ConfigureSystem{
-			LogLevel: level,
+			LogLevel:       level,
+			LogPath:        logFile,
+			SystemRootPath: rootPath,
+			DebugAST:       debugAST,
 		}})
 }
 
@@ -63,7 +65,7 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 	filename := flag.Args()[0]
 	args := flag.Args()[1:]
 
-	//svc.SendInfof(ctx, "Executing %s with args %v", filename, args)
+	svc.SendInfof(ctx, "Executing %s with args %v", filename, args)
 
 	modsID, _ := ctx.K.ActorByName(svc.ModuleService)
 

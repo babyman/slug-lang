@@ -23,6 +23,9 @@ func (l *LogService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	switch payload := msg.Payload.(type) {
 	case kernel.ConfigureSystem:
 		logSvc.SetLevel(payload.LogLevel)
+		if payload.LogPath != "" {
+			logSvc.SetLogFile(payload.LogPath)
+		}
 		svc.Reply(ctx, msg, nil)
 	case svc.LogfMessage:
 		switch payload.Level {
