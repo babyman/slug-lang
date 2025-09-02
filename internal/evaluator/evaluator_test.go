@@ -2,9 +2,9 @@ package evaluator
 
 import (
 	"slug/internal/dec64"
-	"slug/internal/lexer"
 	"slug/internal/object"
 	"slug/internal/parser"
+	"slug/internal/svc/lexer"
 	"testing"
 )
 

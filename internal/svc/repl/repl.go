@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 	"slug/internal/evaluator"
-	"slug/internal/lexer"
 	"slug/internal/object"
-	"slug/internal/parser"
+	"slug/internal/svc/lexer"
+	"slug/internal/svc/parser"
 )
 
 const PROMPT = ">> "

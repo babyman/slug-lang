@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"slug/internal/lexer"
 	"slug/internal/object"
-	"slug/internal/parser"
+	"slug/internal/svc/lexer"
+	"slug/internal/svc/parser"
 	"strings"
 )
 

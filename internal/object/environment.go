@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slug/internal/ast"
 	"slug/internal/log"
-	"slug/internal/parser"
+	"slug/internal/svc/parser"
 )
 
 // NewEnclosedEnvironment initializes an environment with a parent and optional stack frame.
