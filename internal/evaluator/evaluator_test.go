@@ -3,8 +3,8 @@ package evaluator
 import (
 	"slug/internal/dec64"
 	"slug/internal/object"
-	"slug/internal/parser"
 	"slug/internal/svc/lexer"
+	"slug/internal/svc/parser"
 	"testing"
 )
 
