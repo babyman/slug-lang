@@ -28,13 +28,13 @@ var Operations = kernel.OpRights{
 
 type ReplService struct{ EvalID kernel.ActorID }
 
-func (r *ReplService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
+func (r *ReplService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	switch payload := msg.Payload.(type) {
 	case RsEval:
 		src := payload.Source
 		if src == "" {
 			svc.Reply(ctx, msg, RsEvalResp{Err: errors.New("empty Source")})
-			return
+			return kernel.Continue{}
 		}
 		//resp, err := ctx.SendSync(r.EvalID, EvaluatorEvaluate{
 		//	Source: src,
@@ -57,4 +57,5 @@ func (r *ReplService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	default:
 		svc.Reply(ctx, msg, RsEvalResp{Err: errors.New("unknown op")})
 	}
+	return kernel.Continue{}
 }

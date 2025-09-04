@@ -121,11 +121,88 @@ func (k *Kernel) RegisterActor(name string, handler Handler) ActorID {
 func (k *Kernel) runActor(a *Actor) {
 	ctx := &ActCtx{K: k, Self: a.Id}
 	for msg := range a.inbox {
+		if exit, ok := msg.Payload.(Exit); ok {
+			k.cleanupActor(a, exit.Reason)
+			println("Exiting actor", a.Name, "with reason", exit.Reason)
+			return
+		}
+
 		atomic.AddUint64(&a.IpcIn, 1)
 		start := time.Now()
-		a.handler(ctx, msg)
+		sig := a.handler(ctx, msg)
 		atomic.AddUint64(&a.CpuOps, uint64(time.Since(start).Microseconds()))
+
+		switch signal := sig.(type) {
+		case nil, Continue:
+			continue
+		case Terminate:
+			k.cleanupActor(a, signal.Reason)
+			return
+		case Restart:
+			k.cleanupActor(a, signal.Reason)
+			k.restartActor(a, signal)
+			return
+		case Error:
+			k.handleActorError(a, signal)
+			// could escalate, log, terminate, or ignore depending on policy
+		}
 	}
+}
+
+// cleanupActor removes the actor from kernel tracking and closes resources
+func (k *Kernel) cleanupActor(a *Actor, reason string) {
+	k.Mu.Lock()
+	defer k.Mu.Unlock()
+
+	log.Infof("Cleaning up actor %d (%s): %s", a.Id, a.Name, reason)
+
+	// Remove from actors map
+	delete(k.Actors, a.Id)
+
+	// Remove from name index if named
+	if a.Name != "" {
+		delete(k.NameIdx, a.Name)
+	}
+
+	// Remove from operations map if it's a service
+	delete(k.OpsBySvc, a.Id)
+
+	// Revoke all capabilities granted to this actor
+	for _, cap := range a.Caps {
+		cap.Revoked.Store(true)
+	}
+
+	// Close the inbox channel to prevent further messages
+	close(a.inbox)
+}
+
+// restartActor recreates an actor with the same configuration
+func (k *Kernel) restartActor(a *Actor, restart Restart) {
+	log.Infof("Restarting actor %d (%s)", a.Id, a.Name)
+
+	// todo this will require new capabilities or nothing can call it!
+
+	// Store original configuration
+	name := a.Name
+	handler := a.handler
+
+	// Register a new actor with the same name and handler
+	newID := k.RegisterActor(name, handler)
+
+	log.Infof("Actor %s restarted with new ID %d (was %d)", name, newID, a.Id)
+}
+
+// handleActorError processes actor errors based on policy
+func (k *Kernel) handleActorError(a *Actor, err Error) {
+	log.Errorf("Actor %d (%s) reported error: %v", a.Id, a.Name, err.Err)
+
+	// Error handling policy - can be configured based on requirements
+	// For now, we'll log the error and continue
+	// In a production system, this might:
+	// - Escalate to supervisor
+	// - Restart the actor
+	// - Terminate the actor
+	// - Increment error counters and take action on threshold
 }
 
 // RegisterPrivilegedService registers a service that needs kernel access
@@ -300,7 +377,7 @@ func printStatus(k *Kernel) {
 	}
 }
 
-func (k *Kernel) handler(ctx *ActCtx, msg Message) {
+func (k *Kernel) handler(ctx *ActCtx, msg Message) HandlerSignal {
 	switch payload := msg.Payload.(type) {
 	case Broadcast:
 		k.broadcastMessage(msg.From, payload.Payload)
@@ -315,6 +392,7 @@ func (k *Kernel) handler(ctx *ActCtx, msg Message) {
 		printStatus(k)
 		k.reply(ctx, msg, nil)
 	}
+	return Continue{}
 }
 
 func (k *Kernel) reply(ctx *ActCtx, msg Message, payload any) {

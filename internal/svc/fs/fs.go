@@ -34,7 +34,7 @@ var Operations = kernel.OpRights{
 type Fs struct {
 }
 
-func (fs *Fs) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
+func (fs *Fs) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	switch payload := msg.Payload.(type) {
 	case FsWrite:
 		path := payload.Path
@@ -42,7 +42,7 @@ func (fs *Fs) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		err := os.WriteFile(path, data, 0644)
 		if err != nil {
 			svc.Reply(ctx, msg, FsWriteResp{Err: err})
-			return
+			return kernel.Continue{}
 		}
 		svc.Reply(ctx, msg, FsWriteResp{Bytes: len(data)})
 	case FsRead:
@@ -50,10 +50,11 @@ func (fs *Fs) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		data, err := os.ReadFile(path)
 		if err != nil {
 			svc.Reply(ctx, msg, FsReadResp{Err: err})
-			return
+			return kernel.Continue{}
 		}
 		svc.Reply(ctx, msg, FsReadResp{Data: string(data)})
 	default:
 		svc.Reply(ctx, msg, kernel.UnknownOperation{})
 	}
+	return kernel.Continue{}
 }

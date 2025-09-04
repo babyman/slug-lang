@@ -22,7 +22,7 @@ var Operations = kernel.OpRights{
 type LexingService struct {
 }
 
-func (m *LexingService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
+func (m *LexingService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	switch payload := msg.Payload.(type) {
 	case LexString:
 		l := New(payload.Sourcecode)
@@ -34,4 +34,5 @@ func (m *LexingService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	default:
 		svc.Reply(ctx, msg, kernel.UnknownOperation{})
 	}
+	return kernel.Continue{}
 }

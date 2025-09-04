@@ -19,7 +19,7 @@ var logSvc = logger.NewLogger("service", logger.FATAL)
 type LogService struct {
 }
 
-func (l *LogService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
+func (l *LogService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	switch payload := msg.Payload.(type) {
 	case kernel.ConfigureSystem:
 		logSvc.SetLevel(payload.LogLevel)
@@ -29,6 +29,8 @@ func (l *LogService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		svc.Reply(ctx, msg, nil)
 	case svc.LogfMessage:
 		switch payload.Level {
+		case logger.TRACE:
+			logSvc.Tracef("%d:"+payload.Message, append([]any{payload.Source}, payload.Args...)...)
 		case logger.DEBUG:
 			logSvc.Debugf("%d:"+payload.Message, append([]any{payload.Source}, payload.Args...)...)
 		case logger.INFO:
@@ -43,6 +45,8 @@ func (l *LogService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		svc.Reply(ctx, msg, nil)
 	case svc.LogMessage:
 		switch payload.Level {
+		case logger.TRACE:
+			logSvc.Trace(fmt.Sprintf("%d:%s", payload.Source, payload.Message))
 		case logger.DEBUG:
 			logSvc.Debug(fmt.Sprintf("%d:%s", payload.Source, payload.Message))
 		case logger.INFO:
@@ -58,4 +62,5 @@ func (l *LogService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	default:
 		svc.Reply(ctx, msg, kernel.UnknownOperation{})
 	}
+	return kernel.Continue{}
 }

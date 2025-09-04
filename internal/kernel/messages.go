@@ -34,3 +34,17 @@ type UnknownOperation struct {
 type Broadcast struct {
 	Payload any
 }
+
+type Exit struct {
+	Reason string
+}
+
+type Kill struct {
+	Target ActorID
+	Reason string
+}
+
+type RegisterCleanup struct {
+	Target ActorID
+	Msg    Message
+}

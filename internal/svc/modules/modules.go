@@ -22,7 +22,7 @@ var Operations = kernel.OpRights{
 type Modules struct {
 }
 
-func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
+func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	switch payload := msg.Payload.(type) {
 	case ModuleEvaluateFile:
 
@@ -36,7 +36,7 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		src, err := ctx.SendSync(fsId, fs.FsRead{Path: payload.Path})
 		if err != nil {
 			svc.SendWarnf(ctx, "Failed to read file: %s", err)
-			return
+			return kernel.Continue{}
 		}
 
 		file := src.Payload.(fs.FsReadResp).Data
@@ -45,7 +45,7 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		lex, err := ctx.SendSync(lexId, lexer.LexString{Sourcecode: file})
 		if err != nil {
 			svc.SendInfof(ctx, "Failed to lex file: %s", err)
-			return
+			return kernel.Continue{}
 		}
 
 		tokens := lex.Payload.(lexer.LexedTokens).Tokens
@@ -54,7 +54,7 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		parse, err := ctx.SendSync(parseId, parser.ParseTokens{Sourcecode: file, Tokens: tokens})
 		if err != nil {
 			svc.SendWarnf(ctx, "Failed to parse file: %s", err)
-			return
+			return kernel.Continue{}
 		}
 
 		ast := parse.Payload.(parser.ParsedAst).Program
@@ -67,7 +67,7 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 		})
 		if err != nil {
 			svc.SendWarnf(ctx, "Failed to execute file: %s", err)
-			return
+			return kernel.Continue{}
 		}
 
 		p := result.Payload
@@ -78,4 +78,5 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	default:
 		svc.Reply(ctx, msg, kernel.UnknownOperation{})
 	}
+	return kernel.Continue{}
 }

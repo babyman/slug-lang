@@ -19,7 +19,7 @@ var Operations = kernel.OpRights{
 type SOut struct {
 }
 
-func (s *SOut) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
+func (s *SOut) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	switch payload := msg.Payload.(type) {
 	case svc.SOutPrintln:
 		str := payload.Str + "\n"
@@ -28,4 +28,5 @@ func (s *SOut) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	default:
 		svc.Reply(ctx, msg, kernel.UnknownOperation{})
 	}
+	return kernel.Continue{}
 }

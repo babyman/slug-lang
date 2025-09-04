@@ -34,9 +34,6 @@ type Message struct {
 	Resp    chan Message `json:"-"` // optional synchronous reply channel
 }
 
-// Actor handler is a function invoked for each incoming message.
-type Handler func(ctx *ActCtx, msg Message)
-
 type Actor struct {
 	Id      ActorID
 	Name    string
@@ -69,3 +66,34 @@ type CapabilityView struct {
 	Rights  Rights  `json:"Operations"`
 	Revoked bool    `json:"revoked"`
 }
+
+// Actor handler is a function invoked for each incoming message.
+// ==============================================================
+
+type Handler func(ctx *ActCtx, msg Message) HandlerSignal
+
+type HandlerSignal interface {
+	Signal()
+}
+
+type Continue struct{}
+
+func (c Continue) Signal() {}
+
+type Terminate struct {
+	Reason string
+}
+
+func (t Terminate) Signal() {}
+
+type Restart struct {
+	Reason string
+}
+
+func (r Restart) Signal() {}
+
+type Error struct {
+	Err error
+}
+
+func (e Error) Signal() {}

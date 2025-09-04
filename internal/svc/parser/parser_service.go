@@ -45,7 +45,7 @@ func (tsp *TokenSliceProvider) NextToken() token.Token {
 type ParserService struct {
 }
 
-func (m *ParserService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
+func (m *ParserService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	switch payload := msg.Payload.(type) {
 	case ParseTokens:
 		p := New(NewTokenSliceProvider(payload.Tokens), payload.Sourcecode)
@@ -55,4 +55,5 @@ func (m *ParserService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	default:
 		svc.Reply(ctx, msg, kernel.UnknownOperation{})
 	}
+	return kernel.Continue{}
 }

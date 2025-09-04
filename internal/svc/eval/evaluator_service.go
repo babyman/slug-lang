@@ -25,7 +25,7 @@ type EvaluatorService struct {
 	SystemRootPath string
 }
 
-func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
+func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	switch payload := msg.Payload.(type) {
 	case kernel.ConfigureSystem:
 		m.DebugAST = payload.DebugAST
@@ -81,4 +81,5 @@ func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) {
 	default:
 		svc.Reply(ctx, msg, kernel.UnknownOperation{})
 	}
+	return kernel.Continue{}
 }
