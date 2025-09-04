@@ -40,6 +40,7 @@ type Actor struct {
 	inbox   chan Message
 	handler Handler
 	Caps    map[int64]*Capability // by cap ID
+	Cleanup []Message             // LIFO stack
 	// simple accounting
 	CpuOps uint64
 	IpcIn  uint64
@@ -54,6 +55,7 @@ type ActCtx struct {
 type IKernel interface {
 	ActorByName(name string) (ActorID, bool)
 	SendInternal(from ActorID, to ActorID, payload any, respCh chan Message) error
+	RegisterCleanup(id ActorID, msg Message)
 }
 
 type PrivilegedService interface {

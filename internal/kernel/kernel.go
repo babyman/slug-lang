@@ -44,6 +44,10 @@ var log = logger.NewLogger("kernel", SystemLogLevel())
 
 // ===== Core Types =====
 
+func (c *ActCtx) RegisterCleanup(msg Message) {
+	c.K.RegisterCleanup(c.Self, msg)
+}
+
 // SendAsync fire-and-forgets.
 func (c *ActCtx) SendAsync(to ActorID, payload any) error {
 	return c.K.SendInternal(c.Self, to, payload, nil)
@@ -97,6 +101,15 @@ func NewKernel() *Kernel {
 	return kernel
 }
 
+func (k *Kernel) RegisterCleanup(id ActorID, msg Message) {
+	k.Mu.Lock()
+	defer k.Mu.Unlock()
+	a, ok := k.Actors[id]
+	if ok {
+		a.Cleanup = append(a.Cleanup, msg)
+	}
+}
+
 // RegisterActor wires an actor into the kernel.
 func (k *Kernel) RegisterActor(name string, handler Handler) ActorID {
 	k.Mu.Lock()
@@ -109,6 +122,7 @@ func (k *Kernel) RegisterActor(name string, handler Handler) ActorID {
 		inbox:   make(chan Message, 64),
 		handler: handler,
 		Caps:    make(map[int64]*Capability),
+		Cleanup: []Message{},
 	}
 	k.Actors[id] = act
 	if name != "" {
@@ -155,6 +169,24 @@ func (k *Kernel) cleanupActor(a *Actor, reason string) {
 	defer k.Mu.Unlock()
 
 	log.Infof("Cleaning up actor %d (%s): %s", a.Id, a.Name, reason)
+
+	// Send cleanup messages in reverse order (LIFO)
+	for i := len(a.Cleanup) - 1; i >= 0; i-- {
+		cleanupMsg := a.Cleanup[i]
+		log.Infof("Sending cleanup message from %d to %d", cleanupMsg.From, cleanupMsg.To)
+		// Send cleanup message without capability checks since this is part of shutdown
+		if target := k.Actors[cleanupMsg.To]; target != nil {
+			select {
+			case target.inbox <- cleanupMsg:
+				// Message sent successfully
+			default:
+				// Target inbox full or closed, log and continue
+				log.Warnf("Failed to send cleanup message to actor %d: inbox full or closed", cleanupMsg.To)
+			}
+		} else {
+			log.Warnf("Cleanup target actor %d not found", cleanupMsg.To)
+		}
+	}
 
 	// Remove from actors map
 	delete(k.Actors, a.Id)
