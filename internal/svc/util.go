@@ -50,6 +50,10 @@ func sendLog(ctx *kernel.ActCtx, level logger.Level, str string) {
 	})
 }
 
+func SendTracef(ctx *kernel.ActCtx, str string, args ...any) {
+	sendLogf(ctx, logger.TRACE, str, args...)
+}
+
 func SendDebugf(ctx *kernel.ActCtx, str string, args ...any) {
 	sendLogf(ctx, logger.DEBUG, str, args...)
 }
@@ -68,6 +72,10 @@ func SendErrorf(ctx *kernel.ActCtx, str string, args ...any) {
 
 func SendFatalf(ctx *kernel.ActCtx, str string, args ...any) {
 	sendLogf(ctx, logger.FATAL, str, args...)
+}
+
+func SendTrace(ctx *kernel.ActCtx, str string) {
+	sendLog(ctx, logger.TRACE, str)
 }
 
 func SendDebug(ctx *kernel.ActCtx, str string) {

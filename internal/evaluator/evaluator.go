@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"slug/internal/ast"
 	"slug/internal/dec64"
-	"slug/internal/log"
+	"slug/internal/kernel"
 	"slug/internal/object"
+	"slug/internal/svc"
 	"slug/internal/token"
 	"strings"
 )
@@ -19,6 +20,7 @@ var (
 type Evaluator struct {
 	envStack []*object.Environment // Environment stack encapsulated in an evaluator struct
 	Actor    *Actor                // can be null
+	Ctx      *kernel.ActCtx
 }
 
 func (e *Evaluator) PID() int64 {
@@ -36,7 +38,7 @@ func (e *Evaluator) Receive(timeout int64) (object.Object, bool) {
 	if !b {
 		return nil, false
 	}
-	log.Debug("ACT: %d (%d) message received: %s\n", e.Actor.PID, e.Actor.MailboxPID, message.String())
+	svc.SendDebugf(e.Ctx, "ACT: %d (%d) message received: %s\n", e.Actor.PID, e.Actor.MailboxPID, message.String())
 	switch m := message.(type) {
 	case UserMessage:
 		return m.Payload.(object.Object), true
@@ -62,7 +64,7 @@ func (e *Evaluator) Receive(timeout int64) (object.Object, bool) {
 		notification.Put(&object.String{Value: "mailbox"}, messages)
 		return notification, true
 	default:
-		log.Warn("ACT: %d (%d) Unknown message type: %T", e.Actor.PID, e.Actor.MailboxPID, m)
+		svc.SendWarnf(e.Ctx, "ACT: %d (%d) Unknown message type: %T", e.Actor.PID, e.Actor.MailboxPID, m)
 		notification := &object.Map{}
 		notification.Put(&object.String{Value: "tag"}, &object.String{Value: "__unknown_message__"})
 		notification.Put(&object.String{Value: "type"}, &object.String{Value: fmt.Sprintf("%T", m)})
@@ -76,7 +78,7 @@ func (e *Evaluator) Nil() *object.Nil {
 
 func (e *Evaluator) PushEnv(env *object.Environment) {
 	e.envStack = append(e.envStack, env)
-	//log.Trace(">%s", strings.Repeat("-", len(e.envStack)))
+	svc.SendTracef(e.Ctx, ">%s", strings.Repeat("-", len(e.envStack)))
 }
 
 func (e *Evaluator) CurrentEnv() *object.Environment {
@@ -95,7 +97,7 @@ func (e *Evaluator) PopEnv() {
 		e.Eval(stmt)
 	})
 	e.envStack = e.envStack[:len(e.envStack)-1]
-	//log.Trace("<%s", strings.Repeat("-", len(e.envStack)))
+	//svc.SendTracef(e.Ctx, "<%s", strings.Repeat("-", len(e.envStack)))
 }
 
 func (e *Evaluator) Eval(node ast.Node) object.Object {
@@ -259,8 +261,8 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 
 		// If this is a tail call, wrap it in a TailCall object instead of evaluating
 		if node.IsTailCall {
-			//log.Trace("function tail call")
-			log.Info("Tail calling %s with %d arguments", node.Token.Literal, len(args))
+			//svc.SendTracef(e.Ctx, ("function tail call")
+			svc.SendInfof(e.Ctx, "Tail calling %s with %d arguments", node.Token.Literal, len(args))
 			return &object.TailCall{
 				FnName:    node.Token.Literal,
 				Function:  function,
@@ -268,7 +270,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			}
 		}
 
-		log.Info("Calling %s with %d arguments", node.Token.Literal, len(args))
+		svc.SendInfof(e.Ctx, "Calling %s with %d arguments", node.Token.Literal, len(args))
 		// For non-tail calls, invoke the function directly
 		return e.ApplyFunction(node.Token.Literal, function, args)
 
@@ -352,7 +354,7 @@ func (e *Evaluator) LoadModule(pathParts []string) (*object.Module, error) {
 		return nil, err
 	}
 	if module.Env != nil {
-		log.Debug("return loaded module: %v", module.Name)
+		svc.SendDebugf(e.Ctx, "return loaded module: %v", module.Name)
 		return module, nil
 	}
 
@@ -365,11 +367,11 @@ func (e *Evaluator) LoadModule(pathParts []string) (*object.Module, error) {
 	// Evaluate the module
 	module.Env = moduleEnv
 
-	log.Debug("load module: %v\n", module.Name)
+	svc.SendDebugf(e.Ctx, "load module: %v\n", module.Name)
 	e.PushEnv(moduleEnv)
 	e.Eval(module.Program)
 	e.PopEnv()
-	log.Info("Module %s env len %d\n", module.Name, len(module.Env.Bindings))
+	svc.SendInfof(e.Ctx, "Module %s env len %d\n", module.Name, len(module.Env.Bindings))
 
 	// Import the module into the current environment
 	return module, nil

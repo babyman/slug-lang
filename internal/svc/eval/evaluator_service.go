@@ -59,6 +59,7 @@ func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kerne
 
 		e := evaluator.Evaluator{
 			Actor: evaluator.CreateMainThreadMailbox(),
+			Ctx:   ctx,
 		}
 		e.PushEnv(env)
 		defer e.PopEnv()
