@@ -46,15 +46,28 @@ func (fs *Fs) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSign
 		}
 		svc.Reply(ctx, msg, FsWriteResp{Bytes: len(data)})
 	case FsRead:
-		path := payload.Path
-		data, err := os.ReadFile(path)
+		workedId, _ := ctx.SpawnChild("file-reader", fs.ReadHandler)
+		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			svc.Reply(ctx, msg, FsReadResp{Err: err})
-			return kernel.Continue{}
 		}
-		svc.Reply(ctx, msg, FsReadResp{Data: string(data)})
 	default:
 		svc.Reply(ctx, msg, kernel.UnknownOperation{})
 	}
 	return kernel.Continue{}
+}
+
+func (fs *Fs) ReadHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
+	fwdMsg := msg.Payload.(kernel.Message)
+	switch payload := fwdMsg.Payload.(type) {
+	case FsRead:
+		path := payload.Path
+		data, err := os.ReadFile(path)
+		if err != nil {
+			svc.Reply(ctx, fwdMsg, FsReadResp{Err: err})
+		} else {
+			svc.Reply(ctx, fwdMsg, FsReadResp{Data: string(data)})
+		}
+	}
+	return kernel.Terminate{}
 }
