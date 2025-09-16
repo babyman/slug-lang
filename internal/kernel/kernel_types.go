@@ -35,27 +35,18 @@ type Message struct {
 }
 
 type Actor struct {
-	Id      ActorID
-	Name    string
-	inbox   chan Message
-	handler Handler
-	Caps    map[int64]*Capability // by cap ID
-	Cleanup []Message             // LIFO stack
+	Id       ActorID
+	Name     string
+	Parent   ActorID // 0 if top-level
+	inbox    chan Message
+	handler  Handler
+	children map[ActorID]bool      // track children
+	Caps     map[int64]*Capability // by cap ID
+	Cleanup  []Message             // LIFO stack
 	// simple accounting
 	CpuOps uint64
 	IpcIn  uint64
 	IpcOut uint64
-}
-
-type ActCtx struct {
-	K    IKernel
-	Self ActorID
-}
-
-type IKernel interface {
-	ActorByName(name string) (ActorID, bool)
-	SendInternal(from ActorID, to ActorID, payload any, respCh chan Message) error
-	RegisterCleanup(id ActorID, msg Message)
 }
 
 type PrivilegedService interface {

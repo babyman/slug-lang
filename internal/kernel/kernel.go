@@ -34,7 +34,6 @@ import (
 	"os"
 	"reflect"
 	"slug/internal/logger"
-	"slug/internal/util/future"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -42,53 +41,6 @@ import (
 )
 
 var log = logger.NewLogger("kernel", SystemLogLevel())
-
-// ===== Core Types =====
-
-func (c *ActCtx) RegisterCleanup(msg Message) {
-	c.K.RegisterCleanup(c.Self, msg)
-}
-
-// SendAsync fire-and-forgets.
-func (c *ActCtx) SendAsync(to ActorID, payload any) error {
-	return c.K.SendInternal(c.Self, to, payload, nil)
-}
-
-func (c *ActCtx) SendFuture(to ActorID, payload any) (*future.Future[Message], error) {
-	f := future.New[Message](func() (Message, error) {
-		respCh := make(chan Message, 1)
-		err := c.K.SendInternal(c.Self, to, payload, respCh)
-		if err != nil {
-			log.Warnf("Error sending message to %d from %d: %v", to, c.Self, err)
-			return Message{}, err
-		}
-		select {
-		case resp := <-respCh:
-			return resp, nil
-		}
-	})
-	return f, nil
-}
-
-// SendSync sends and waits for a single reply.
-func (c *ActCtx) SendSync(to ActorID, payload any) (Message, error) {
-	return c.SendSyncWithTimeout(to, payload, 5*time.Second)
-}
-
-// SendSync sends and waits for a single reply.
-func (c *ActCtx) SendSyncWithTimeout(to ActorID, payload any, timeout time.Duration) (Message, error) {
-	f, err := c.SendFuture(to, payload)
-	if err != nil {
-		return Message{}, err
-	}
-
-	resp, err, ok := f.AwaitTimeout(timeout)
-	if !ok {
-		log.Warnf("E_DEADLINE: reply timeout %v, from %d to %d, %T", timeout, c.Self, to, payload)
-		return Message{}, fmt.Errorf("E_DEADLINE: reply timeout %v", timeout)
-	}
-	return resp, err
-}
 
 // ===== Kernel =====
 
@@ -132,12 +84,13 @@ func (k *Kernel) RegisterActor(name string, handler Handler) ActorID {
 	id := ActorID(k.NextActorID)
 	k.NextActorID++
 	act := &Actor{
-		Id:      id,
-		Name:    name,
-		inbox:   make(chan Message, 64),
-		handler: handler,
-		Caps:    make(map[int64]*Capability),
-		Cleanup: []Message{},
+		Id:       id,
+		Name:     name,
+		inbox:    make(chan Message, 64),
+		handler:  handler,
+		children: make(map[ActorID]bool),
+		Caps:     make(map[int64]*Capability),
+		Cleanup:  []Message{},
 	}
 	k.Actors[id] = act
 	if name != "" {
@@ -145,6 +98,35 @@ func (k *Kernel) RegisterActor(name string, handler Handler) ActorID {
 	}
 	go k.runActor(act)
 	return id
+}
+
+func (k *Kernel) SpawnChild(parent ActorID, name string, handler Handler) (ActorID, error) {
+
+	k.Mu.Lock()
+	defer k.Mu.Unlock()
+
+	id := ActorID(k.NextActorID)
+
+	child := &Actor{
+		Id:       id,
+		Name:     name,
+		Parent:   parent,
+		inbox:    make(chan Message, 64), // or configurable
+		handler:  handler,
+		children: make(map[ActorID]bool),
+		Caps:     make(map[int64]*Capability),
+		Cleanup:  []Message{},
+	}
+
+	k.Actors[child.Id] = child
+
+	// register as child of parent
+	if parent, ok := k.Actors[parent]; ok {
+		parent.children[child.Id] = true
+	}
+
+	go k.runActor(child)
+	return id, nil
 }
 
 func (k *Kernel) runActor(a *Actor) {
@@ -184,6 +166,20 @@ func (k *Kernel) cleanupActor(a *Actor, reason string) {
 	defer k.Mu.Unlock()
 
 	log.Infof("Cleaning up actor %d (%s): %s", a.Id, a.Name, reason)
+
+	// Kill children first
+	for childID := range a.children {
+		if child, ok := k.Actors[childID]; ok {
+			child.inbox <- Message{Payload: Exit{Reason: "parent terminated"}}
+		}
+	}
+
+	// Remove self from parent's children
+	if a.Parent != 0 {
+		if parent, ok := k.Actors[a.Parent]; ok {
+			delete(parent.children, a.Id)
+		}
+	}
 
 	// Send cleanup messages in reverse order (LIFO)
 	for i := len(a.Cleanup) - 1; i >= 0; i-- {
@@ -318,6 +314,10 @@ func (k *Kernel) isPermitted(from ActorID, to ActorID, payload any) error {
 				return fmt.Errorf("E_POLICY: cap not granted for Operations=%v for op %T to target %d", rights, payload, to)
 			}
 		} else {
+			if child, ok := k.Actors[to]; ok && child.Parent == from {
+				// parent has full rwx on child
+				return nil
+			}
 			log.Warnf("E_POLICY: no defined Operations for op %T from %d to target %d", payload, from, to)
 			return fmt.Errorf("E_POLICY: no defined Operations for op %T to target %d", payload, to)
 		}
