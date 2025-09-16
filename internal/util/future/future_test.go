@@ -63,6 +63,7 @@ func TestFirst(t *testing.T) {
 			futures: []*Future[int]{
 				New(func() (int, error) {
 					time.Sleep(10 * time.Millisecond)
+					return 0, errors.New("first failure")
 				}),
 				New(func() (int, error) {
 					time.Sleep(5 * time.Millisecond)
