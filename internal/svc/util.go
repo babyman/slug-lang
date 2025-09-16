@@ -37,6 +37,7 @@ func SendStdOut(ctx *kernel.ActCtx, str string, args ...any) {
 
 func sendLogf(ctx *kernel.ActCtx, level logger.Level, str string, args ...any) {
 	Send(ctx, LogService, LogfMessage{
+		Source:  ctx.Self,
 		Level:   level,
 		Message: str,
 		Args:    args,
@@ -45,6 +46,7 @@ func sendLogf(ctx *kernel.ActCtx, level logger.Level, str string, args ...any) {
 
 func sendLog(ctx *kernel.ActCtx, level logger.Level, str string) {
 	Send(ctx, LogService, LogMessage{
+		Source:  ctx.Self,
 		Level:   level,
 		Message: str,
 	})

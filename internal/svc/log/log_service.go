@@ -30,33 +30,33 @@ func (l *LogService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Hand
 	case svc.LogfMessage:
 		switch payload.Level {
 		case logger.TRACE:
-			logSvc.Tracef("%d:"+payload.Message, append([]any{payload.Source}, payload.Args...)...)
+			logSvc.Tracef("ActorID %d: "+payload.Message, append([]any{payload.Source}, payload.Args...)...)
 		case logger.DEBUG:
-			logSvc.Debugf("%d:"+payload.Message, append([]any{payload.Source}, payload.Args...)...)
+			logSvc.Debugf("ActorID %d: "+payload.Message, append([]any{payload.Source}, payload.Args...)...)
 		case logger.INFO:
-			logSvc.Infof("%d:"+payload.Message, append([]any{payload.Source}, payload.Args...)...)
+			logSvc.Infof("ActorID %d: "+payload.Message, append([]any{payload.Source}, payload.Args...)...)
 		case logger.WARN:
-			logSvc.Warnf("%d:"+payload.Message, append([]any{payload.Source}, payload.Args...)...)
+			logSvc.Warnf("ActorID %d: "+payload.Message, append([]any{payload.Source}, payload.Args...)...)
 		case logger.ERROR:
-			logSvc.Errorf("%d:"+payload.Message, append([]any{payload.Source}, payload.Args...)...)
+			logSvc.Errorf("ActorID %d: "+payload.Message, append([]any{payload.Source}, payload.Args...)...)
 		case logger.FATAL:
-			logSvc.Fatalf("%d:"+payload.Message, append([]any{payload.Source}, payload.Args...)...)
+			logSvc.Fatalf("ActorID %d: "+payload.Message, append([]any{payload.Source}, payload.Args...)...)
 		}
 		svc.Reply(ctx, msg, nil)
 	case svc.LogMessage:
 		switch payload.Level {
 		case logger.TRACE:
-			logSvc.Trace(fmt.Sprintf("%d:%s", payload.Source, payload.Message))
+			logSvc.Trace(fmt.Sprintf("ActorID %d: %s", payload.Source, payload.Message))
 		case logger.DEBUG:
-			logSvc.Debug(fmt.Sprintf("%d:%s", payload.Source, payload.Message))
+			logSvc.Debug(fmt.Sprintf("ActorID %d: %s", payload.Source, payload.Message))
 		case logger.INFO:
-			logSvc.Info(fmt.Sprintf("%d:%s", payload.Source, payload.Message))
+			logSvc.Info(fmt.Sprintf("ActorID %d: %s", payload.Source, payload.Message))
 		case logger.WARN:
-			logSvc.Warn(fmt.Sprintf("%d:%s", payload.Source, payload.Message))
+			logSvc.Warn(fmt.Sprintf("ActorID %d: %s", payload.Source, payload.Message))
 		case logger.ERROR:
-			logSvc.Error(fmt.Sprintf("%d:%s", payload.Source, payload.Message))
+			logSvc.Error(fmt.Sprintf("ActorID %d: %s", payload.Source, payload.Message))
 		case logger.FATAL:
-			logSvc.Fatal(fmt.Sprintf("%d:%s", payload.Source, payload.Message))
+			logSvc.Fatal(fmt.Sprintf("ActorID %d: %s", payload.Source, payload.Message))
 		}
 		svc.Reply(ctx, msg, nil)
 	default:

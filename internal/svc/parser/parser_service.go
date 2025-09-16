@@ -15,6 +15,7 @@ type ParseTokens struct {
 
 type ParsedAst struct {
 	Program *ast.Program
+	Errors  []string
 }
 
 var Operations = kernel.OpRights{
@@ -50,8 +51,12 @@ func (m *ParserService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.H
 	case ParseTokens:
 		p := New(NewTokenSliceProvider(payload.Tokens), payload.Sourcecode)
 		program := p.ParseProgram()
+
 		svc.SendDebugf(ctx, "Parsed program: %v", program)
-		svc.Reply(ctx, msg, ParsedAst{Program: program})
+		svc.Reply(ctx, msg, ParsedAst{
+			Program: program,
+			Errors:  p.errors,
+		})
 	default:
 		svc.Reply(ctx, msg, kernel.UnknownOperation{})
 	}

@@ -16,12 +16,13 @@ import (
 )
 
 const (
-	r  = kernel.RightRead
-	rw = kernel.RightRead | kernel.RightWrite
-	rx = kernel.RightRead | kernel.RightExec
-	w  = kernel.RightWrite
-	wx = kernel.RightWrite | kernel.RightExec
-	x  = kernel.RightExec
+	r   = kernel.RightRead
+	rw  = kernel.RightRead | kernel.RightWrite
+	rwx = kernel.RightRead | kernel.RightWrite | kernel.RightExec
+	rx  = kernel.RightRead | kernel.RightExec
+	w   = kernel.RightWrite
+	wx  = kernel.RightWrite | kernel.RightExec
+	x   = kernel.RightExec
 )
 
 func main() {
@@ -42,7 +43,7 @@ func main() {
 	logID := k.RegisterService(svc.LogService, log.Operations, logSvc.Handler)
 
 	// system out Service
-	mods := &modules.Modules{}
+	mods := modules.NewModules()
 	modsID := k.RegisterService(svc.ModuleService, modules.Operations, mods.Handler)
 
 	// CLI Service
@@ -73,7 +74,6 @@ func main() {
 	_ = k.GrantCap(kernelID, cliID, x, nil)
 
 	_ = k.GrantCap(cliID, cliID, x, nil) // call self required for boot message
-
 	_ = k.GrantCap(cliID, soutID, w, nil)
 	_ = k.GrantCap(cliID, modsID, x, nil)
 	_ = k.GrantCap(cliID, logID, wx, nil)
@@ -92,6 +92,7 @@ func main() {
 
 	_ = k.GrantCap(parserID, logID, w, nil)
 
+	_ = k.GrantCap(evalID, modsID, r, nil)
 	_ = k.GrantCap(evalID, logID, w, nil)
 
 	_ = k.GrantCap(replID, replID, x, nil) // REPL can call itself

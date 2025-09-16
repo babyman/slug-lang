@@ -3,21 +3,14 @@ package eval
 import (
 	"fmt"
 	"reflect"
-	"slug/internal/ast"
 	"slug/internal/evaluator"
 	"slug/internal/kernel"
 	"slug/internal/object"
 	"slug/internal/svc"
 )
 
-type EvaluateProgram struct {
-	Source  string
-	Args    []string
-	Program *ast.Program
-}
-
 var Operations = kernel.OpRights{
-	reflect.TypeOf(EvaluateProgram{}): kernel.RightExec,
+	reflect.TypeOf(svc.EvaluateProgram{}): kernel.RightExec,
 }
 
 type EvaluatorService struct {
@@ -32,7 +25,7 @@ func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kerne
 		m.SystemRootPath = payload.SystemRootPath
 		svc.Reply(ctx, msg, nil)
 
-	case EvaluateProgram:
+	case svc.EvaluateProgram:
 
 		evaluator.DebugAST = m.DebugAST
 		evaluator.RootPath = m.SystemRootPath

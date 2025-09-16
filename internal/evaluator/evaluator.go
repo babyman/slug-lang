@@ -17,6 +17,10 @@ var (
 	FALSE = &object.Boolean{Value: false}
 )
 
+var DebugAST = false
+
+var RootPath = "."
+
 type Evaluator struct {
 	envStack []*object.Environment // Environment stack encapsulated in an evaluator struct
 	Actor    *Actor                // can be null
@@ -261,8 +265,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 
 		// If this is a tail call, wrap it in a TailCall object instead of evaluating
 		if node.IsTailCall {
-			//svc.SendTracef(e.Ctx, ("function tail call")
-			svc.SendInfof(e.Ctx, "Tail calling %s with %d arguments", node.Token.Literal, len(args))
+			//svc.SendInfof(e.Ctx, "Tail calling %s with %d arguments", node.Token.Literal, len(args))
 			return &object.TailCall{
 				FnName:    node.Token.Literal,
 				Function:  function,
@@ -270,7 +273,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			}
 		}
 
-		svc.SendInfof(e.Ctx, "Calling %s with %d arguments", node.Token.Literal, len(args))
+		//svc.SendInfof(e.Ctx, "Calling %s with %d arguments", node.Token.Literal, len(args))
 		// For non-tail calls, invoke the function directly
 		return e.ApplyFunction(node.Token.Literal, function, args)
 
@@ -349,6 +352,21 @@ func (e *Evaluator) evalProgram(program *ast.Program) object.Object {
 }
 
 func (e *Evaluator) LoadModule(pathParts []string) (*object.Module, error) {
+
+	//modsId, ok := e.Ctx.K.ActorByName(svc.ModuleService)
+	//if !ok {
+	//	return nil, errors.New("module service not found")
+	//}
+	//reply, err := e.Ctx.SendSync(modsId, modules.LoadModule{
+	//	DebugAST:  DebugAST,
+	//	RootPath:  RootPath,
+	//	PathParts: pathParts,
+	//})
+	//if err != nil {
+	//	return nil, err
+	//}
+	//module := reply.Payload.(modules.LoadModuleResult).Module
+
 	module, err := LoadModule(pathParts)
 	if err != nil {
 		return nil, err

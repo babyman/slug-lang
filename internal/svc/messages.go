@@ -1,6 +1,7 @@
 package svc
 
 import (
+	"slug/internal/ast"
 	"slug/internal/kernel"
 	"slug/internal/logger"
 )
@@ -37,4 +38,13 @@ type LogMessage struct {
 type SOutPrintln struct {
 	Str  string
 	Args []any
+}
+
+// Evaluator service messages
+// ==========================
+
+type EvaluateProgram struct {
+	Source  string
+	Args    []string
+	Program *ast.Program
 }

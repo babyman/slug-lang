@@ -69,7 +69,7 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 
 	modsID, _ := ctx.K.ActorByName(svc.ModuleService)
 
-	output, err := ctx.SendSync(modsID, modules.ModuleEvaluateFile{
+	output, err := ctx.SendSync(modsID, modules.EvaluateFile{
 		Path: filename,
 		Args: args,
 	})

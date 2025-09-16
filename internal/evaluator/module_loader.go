@@ -14,10 +14,6 @@ import (
 // moduleRegistry is a global cache for loaded modules
 var moduleRegistry = make(map[string]*object.Module)
 
-var DebugAST = false
-
-var RootPath = "."
-
 // LoadModule loads a module by its path parts into the module registry and evaluates it.
 func LoadModule(pathParts []string) (*object.Module, error) {
 	// Generate the module moduleName from path parts
@@ -34,7 +30,7 @@ func LoadModule(pathParts []string) (*object.Module, error) {
 	module := &object.Module{Name: moduleName, Env: nil}
 	moduleRegistry[moduleName] = module // Cache the module
 
-	// Resolve the module path
+	// Complete the module path
 	moduleRelativePath := strings.Join(pathParts, "/")
 	modulePath := fmt.Sprintf("%s/%s.slug", RootPath, moduleRelativePath)
 
