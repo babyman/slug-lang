@@ -43,22 +43,35 @@ func (tsp *TokenSliceProvider) NextToken() token.Token {
 	return tok
 }
 
-type ParserService struct {
+type Service struct {
 }
 
-func (m *ParserService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
-	switch payload := msg.Payload.(type) {
+func (s *Service) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
+	switch msg.Payload.(type) {
+	case ParseTokens:
+		workedId, _ := ctx.SpawnChild("parse-wrk", s.parseHandler)
+		err := ctx.SendAsync(workedId, msg)
+		if err != nil {
+			svc.SendError(ctx, err.Error())
+		}
+	default:
+		svc.Reply(ctx, msg, kernel.UnknownOperation{})
+	}
+	return kernel.Continue{}
+}
+
+func (s *Service) parseHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
+	fwdMsg := svc.UnpackFwd(msg)
+	switch payload := fwdMsg.Payload.(type) {
 	case ParseTokens:
 		p := New(NewTokenSliceProvider(payload.Tokens), payload.Sourcecode)
 		program := p.ParseProgram()
 
 		svc.SendDebugf(ctx, "Parsed program: %v", program)
-		svc.Reply(ctx, msg, ParsedAst{
+		svc.Reply(ctx, fwdMsg, ParsedAst{
 			Program: program,
 			Errors:  p.errors,
 		})
-	default:
-		svc.Reply(ctx, msg, kernel.UnknownOperation{})
 	}
-	return kernel.Continue{}
+	return kernel.Terminate{}
 }

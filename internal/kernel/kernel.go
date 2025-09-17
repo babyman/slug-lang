@@ -106,6 +106,7 @@ func (k *Kernel) SpawnChild(parent ActorID, name string, handler Handler) (Actor
 	defer k.Mu.Unlock()
 
 	id := ActorID(k.NextActorID)
+	k.NextActorID++
 
 	child := &Actor{
 		Id:       id,
@@ -123,6 +124,11 @@ func (k *Kernel) SpawnChild(parent ActorID, name string, handler Handler) (Actor
 	// register as child of parent
 	if parent, ok := k.Actors[parent]; ok {
 		parent.children[child.Id] = true
+
+		// Copy capabilities from parent to child
+		for _, c := range parent.Caps {
+			k.createCapWithMuLock(id, c.Target, c.Rights, c.Scope)
+		}
 	}
 
 	go k.runActor(child)
@@ -165,7 +171,8 @@ func (k *Kernel) cleanupActor(a *Actor, reason string) {
 	k.Mu.Lock()
 	defer k.Mu.Unlock()
 
-	log.Infof("Cleaning up actor %d (%s): %s", a.Id, a.Name, reason)
+	log.Infof("Cleaning up actor %d (%s) cpu(μs) %d ops ipc(in=%d out=%d) Caps=%d: %s\n",
+		a.Id, a.Name, a.CpuOps, a.IpcIn, a.IpcOut, len(a.Caps), reason)
 
 	// Kill children first
 	for childID := range a.children {
@@ -267,6 +274,10 @@ func (k *Kernel) RegisterService(name string, ops OpRights, handler Handler) Act
 func (k *Kernel) GrantCap(to ActorID, target ActorID, rights Rights, scope map[reflect.Type]any) *Capability {
 	k.Mu.Lock()
 	defer k.Mu.Unlock()
+	return k.createCapWithMuLock(to, target, rights, scope)
+}
+
+func (k *Kernel) createCapWithMuLock(to ActorID, target ActorID, rights Rights, scope map[reflect.Type]any) *Capability {
 	capID := k.NextCapID
 	k.NextCapID++
 	capability := &Capability{ID: capID, Target: target, Rights: rights, Scope: scope}

@@ -59,7 +59,7 @@ func main() {
 	lexerID := k.RegisterService(svc.LexerService, lexer.Operations, lexerSvc.Handler)
 
 	// Parser service
-	parserSvc := &parser.ParserService{}
+	parserSvc := &parser.Service{}
 	parserID := k.RegisterService(svc.ParserService, parser.Operations, parserSvc.Handler)
 
 	// Evaluator service
