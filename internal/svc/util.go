@@ -99,3 +99,12 @@ func SendError(ctx *kernel.ActCtx, str string) {
 func SendFatal(ctx *kernel.ActCtx, str string) {
 	sendLog(ctx, logger.FATAL, str)
 }
+
+func UnpackFwd(msg kernel.Message) kernel.Message {
+	fwdMsg, ok := msg.Payload.(kernel.Message)
+	if ok {
+		return UnpackFwd(fwdMsg)
+	} else {
+		return msg
+	}
+}

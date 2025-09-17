@@ -22,13 +22,13 @@ func (m *Modules) onEvaluateFile(ctx *kernel.ActCtx, msg kernel.Message, payload
 	parseId, _ := ctx.K.ActorByName(svc.ParserService)
 	evalId, _ := ctx.K.ActorByName(svc.EvalService)
 
-	src, err := ctx.SendSync(fsId, fs.FsRead{Path: payload.Path})
+	src, err := ctx.SendSync(fsId, fs.Read{Path: payload.Path})
 	if err != nil {
 		svc.SendWarnf(ctx, "Failed to read file: %s", err)
 		return kernel.Continue{}
 	}
 
-	file := src.Payload.(fs.FsReadResp).Data
+	file := src.Payload.(fs.ReadResp).Data
 	//service.SendInfof(ctx, "Evaluating %s, got %s", payload.Path, file)
 
 	lex, err := ctx.SendSync(lexId, lexer.LexString{Sourcecode: file})
@@ -94,7 +94,7 @@ func (m *Modules) onLoadModule(ctx *kernel.ActCtx, msg kernel.Message, payload L
 	// todo use file service
 	fsId, _ := ctx.K.ActorByName(svc.FsService)
 	//moduleSrc, err := ioutil.ReadFile(modulePath)
-	moduleSrc, err := ctx.SendSync(fsId, fs.FsRead{Path: modulePath})
+	moduleSrc, err := ctx.SendSync(fsId, fs.Read{Path: modulePath})
 	if err != nil {
 		// Fallback to SLUG_HOME if the file doesn't exist
 		slugHome := os.Getenv("SLUG_HOME")
@@ -107,7 +107,7 @@ func (m *Modules) onLoadModule(ctx *kernel.ActCtx, msg kernel.Message, payload L
 		libPath := fmt.Sprintf("%s/lib/%s.slug", slugHome, moduleRelativePath)
 		// todo use file service
 		//moduleSrc, err = ioutil.ReadFile(libPath)
-		moduleSrc, err = ctx.SendSync(fsId, fs.FsRead{Path: libPath})
+		moduleSrc, err = ctx.SendSync(fsId, fs.Read{Path: libPath})
 		if err != nil {
 			svc.Reply(ctx, msg, LoadModuleResult{
 				Error: fmt.Errorf("error reading module (%s / %s) '%s': %s", modulePath, libPath, moduleName, err),
@@ -119,7 +119,7 @@ func (m *Modules) onLoadModule(ctx *kernel.ActCtx, msg kernel.Message, payload L
 	}
 
 	// Parse the source into an AST
-	src := moduleSrc.Payload.(fs.FsReadResp).Data
+	src := moduleSrc.Payload.(fs.ReadResp).Data
 	module.Src = src
 	module.Path = modulePath
 
@@ -130,13 +130,13 @@ func (m *Modules) onLoadModule(ctx *kernel.ActCtx, msg kernel.Message, payload L
 	parseId, _ := ctx.K.ActorByName(svc.ParserService)
 	//evalId, _ := ctx.K.ActorByName(svc.EvalService)
 
-	//src, err := ctx.SendSync(fsId, fs.FsRead{Path: modulePath})
+	//src, err := ctx.SendSync(fsId, fs.Read{Path: modulePath})
 	//if err != nil {
 	//	svc.SendWarnf(ctx, "Failed to read file: %s", err)
 	//	return kernel.Continue{}
 	//}
 
-	//file := src.Payload.(fs.FsReadResp).Data
+	//file := src.Payload.(fs.ReadResp).Data
 	//service.SendInfof(ctx, "Evaluating %s, got %s", payload.Path, file)
 
 	lex, err := ctx.SendSync(lexId, lexer.LexString{Sourcecode: module.Src})
