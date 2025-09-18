@@ -49,7 +49,7 @@ type Service struct {
 func (s *Service) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	switch msg.Payload.(type) {
 	case ParseTokens:
-		workedId, _ := ctx.SpawnChild("parse-wrk", s.parseHandler)
+		workedId, _ := ctx.SpawnChild("parse-wrk", parseHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			svc.SendError(ctx, err.Error())
@@ -60,7 +60,7 @@ func (s *Service) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 	return kernel.Continue{}
 }
 
-func (s *Service) parseHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
+func parseHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	fwdMsg := svc.UnpackFwd(msg)
 	switch payload := fwdMsg.Payload.(type) {
 	case ParseTokens:

@@ -23,16 +23,30 @@ type LexingService struct {
 }
 
 func (m *LexingService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
-	switch payload := msg.Payload.(type) {
+	switch msg.Payload.(type) {
+	case LexString:
+		workedId, _ := ctx.SpawnChild("lex-wrk", lexHandler)
+		err := ctx.SendAsync(workedId, msg)
+		if err != nil {
+			svc.SendError(ctx, err.Error())
+		}
+
+	default:
+		svc.Reply(ctx, msg, kernel.UnknownOperation{})
+	}
+	return kernel.Continue{}
+}
+
+func lexHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
+	fwdMsg := svc.UnpackFwd(msg)
+	switch payload := fwdMsg.Payload.(type) {
 	case LexString:
 		l := New(payload.Sourcecode)
 		tokens := make([]token.Token, 0)
 		for tok := l.NextToken(); tok.Type != token.EOF; tok = l.NextToken() {
 			tokens = append(tokens, tok)
 		}
-		svc.Reply(ctx, msg, LexedTokens{Tokens: tokens})
-	default:
-		svc.Reply(ctx, msg, kernel.UnknownOperation{})
+		svc.Reply(ctx, fwdMsg, LexedTokens{Tokens: tokens})
 	}
-	return kernel.Continue{}
+	return kernel.Terminate{}
 }

@@ -44,7 +44,9 @@ type SOutPrintln struct {
 // ==========================
 
 type EvaluateProgram struct {
+	Name    string
+	Path    string
 	Source  string
-	Args    []string
 	Program *ast.Program
+	Args    []string
 }

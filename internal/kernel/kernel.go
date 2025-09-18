@@ -271,17 +271,17 @@ func (k *Kernel) RegisterService(name string, ops OpRights, handler Handler) Act
 }
 
 // GrantCap issues a capability from kernel to a specific actor.
-func (k *Kernel) GrantCap(to ActorID, target ActorID, rights Rights, scope map[reflect.Type]any) *Capability {
+func (k *Kernel) GrantCap(from ActorID, target ActorID, rights Rights, scope map[reflect.Type]any) *Capability {
 	k.Mu.Lock()
 	defer k.Mu.Unlock()
-	return k.createCapWithMuLock(to, target, rights, scope)
+	return k.createCapWithMuLock(from, target, rights, scope)
 }
 
-func (k *Kernel) createCapWithMuLock(to ActorID, target ActorID, rights Rights, scope map[reflect.Type]any) *Capability {
+func (k *Kernel) createCapWithMuLock(from ActorID, target ActorID, rights Rights, scope map[reflect.Type]any) *Capability {
 	capID := k.NextCapID
 	k.NextCapID++
 	capability := &Capability{ID: capID, Target: target, Rights: rights, Scope: scope}
-	if a, ok := k.Actors[to]; ok {
+	if a, ok := k.Actors[from]; ok {
 		a.Caps[capID] = capability
 		return capability
 	}

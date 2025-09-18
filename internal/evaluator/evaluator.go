@@ -7,6 +7,7 @@ import (
 	"slug/internal/kernel"
 	"slug/internal/object"
 	"slug/internal/svc"
+	"slug/internal/svc/modules"
 	"slug/internal/token"
 	"strings"
 )
@@ -353,24 +354,17 @@ func (e *Evaluator) evalProgram(program *ast.Program) object.Object {
 
 func (e *Evaluator) LoadModule(pathParts []string) (*object.Module, error) {
 
-	//modsId, ok := e.Ctx.K.ActorByName(svc.ModuleService)
-	//if !ok {
-	//	return nil, errors.New("module service not found")
-	//}
-	//reply, err := e.Ctx.SendSync(modsId, modules.LoadModule{
-	//	DebugAST:  DebugAST,
-	//	RootPath:  RootPath,
-	//	PathParts: pathParts,
-	//})
-	//if err != nil {
-	//	return nil, err
-	//}
-	//module := reply.Payload.(modules.LoadModuleResult).Module
-
-	module, err := LoadModule(pathParts)
+	modsId, _ := e.Ctx.K.ActorByName(svc.ModuleService)
+	reply, err := e.Ctx.SendSync(modsId, modules.LoadModule{
+		DebugAST:  DebugAST,
+		RootPath:  RootPath,
+		PathParts: pathParts,
+	})
 	if err != nil {
 		return nil, err
 	}
+	module := reply.Payload.(modules.LoadModuleResult).Module
+
 	if module.Env != nil {
 		svc.SendDebugf(e.Ctx, "return loaded module: %v", module.Name)
 		return module, nil

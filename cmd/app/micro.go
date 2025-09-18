@@ -79,6 +79,7 @@ func main() {
 	_ = k.GrantCap(cliID, logID, wx, nil)
 	_ = k.GrantCap(cliID, kernelID, x, nil)
 
+	_ = k.GrantCap(modsID, modsID, r, nil)
 	_ = k.GrantCap(modsID, cliID, w, nil)
 	_ = k.GrantCap(modsID, fsID, r, nil)
 	_ = k.GrantCap(modsID, lexerID, x, nil)

@@ -30,11 +30,6 @@ func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kerne
 		evaluator.DebugAST = m.DebugAST
 		evaluator.RootPath = m.SystemRootPath
 
-		module := &object.Module{Name: "main.slug", Env: nil}
-		module.Path = "main.slug"
-		module.Src = payload.Source
-		module.Program = payload.Program
-
 		// Start the environment
 		env := object.NewEnvironment()
 
@@ -45,10 +40,17 @@ func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kerne
 		}
 		env.Define("args", &object.List{Elements: objects}, false, false)
 
-		env.Path = module.Path
-		env.ModuleFqn = module.Name
-		env.Src = module.Src
-		module.Env = env
+		env.Path = payload.Path
+		env.ModuleFqn = payload.Name
+		env.Src = payload.Source
+
+		module := &object.Module{
+			Name:    payload.Name,
+			Path:    payload.Path,
+			Src:     payload.Source,
+			Program: payload.Program,
+			Env:     env,
+		}
 
 		e := evaluator.Evaluator{
 			Actor: evaluator.CreateMainThreadMailbox(),
@@ -59,6 +61,7 @@ func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kerne
 
 		svc.SendInfo(ctx, " ---- begin ----")
 		defer svc.SendInfo(ctx, " ---- done ----")
+
 		// Evaluate the program within the provided environment
 		evaluated := e.Eval(module.Program)
 		if evaluated != nil && evaluated.Type() != object.NIL_OBJ {
