@@ -18,10 +18,6 @@ var (
 	FALSE = &object.Boolean{Value: false}
 )
 
-var DebugAST = false
-
-var RootPath = "."
-
 type Evaluator struct {
 	envStack []*object.Environment // Environment stack encapsulated in an evaluator struct
 	Actor    *Actor                // can be null
@@ -356,8 +352,6 @@ func (e *Evaluator) LoadModule(pathParts []string) (*object.Module, error) {
 
 	modsId, _ := e.Ctx.K.ActorByName(svc.ModuleService)
 	reply, err := e.Ctx.SendSync(modsId, modules.LoadModule{
-		DebugAST:  DebugAST,
-		RootPath:  RootPath,
 		PathParts: pathParts,
 	})
 	if err != nil {

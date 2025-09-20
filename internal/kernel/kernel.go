@@ -430,7 +430,7 @@ func printStatus(k *Kernel) {
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 	for _, Id := range ids {
 		a := k.Actors[Id]
-		log.Infof("  - Id=%2d Name=%-6s cpu(μs) %8d ops ipc(in=%3d out=%3d) Caps=%d\n",
+		log.Infof("  - Id=%2d Name=%-12s cpu(μs) %8d ops ipc(in=%3d out=%3d) Caps=%d\n",
 			Id, a.Name, a.CpuOps, a.IpcIn, a.IpcOut, len(a.Caps))
 	}
 }

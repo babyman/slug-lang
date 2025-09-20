@@ -14,21 +14,11 @@ var Operations = kernel.OpRights{
 }
 
 type EvaluatorService struct {
-	DebugAST       bool
-	SystemRootPath string
 }
 
 func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	switch payload := msg.Payload.(type) {
-	case kernel.ConfigureSystem:
-		m.DebugAST = payload.DebugAST
-		m.SystemRootPath = payload.SystemRootPath
-		svc.Reply(ctx, msg, nil)
-
 	case svc.EvaluateProgram:
-
-		evaluator.DebugAST = m.DebugAST
-		evaluator.RootPath = m.SystemRootPath
 
 		// Start the environment
 		env := object.NewEnvironment()

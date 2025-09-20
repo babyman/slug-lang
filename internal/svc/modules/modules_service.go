@@ -25,28 +25,39 @@ type LoadModuleResult struct {
 }
 
 var Operations = kernel.OpRights{
-	reflect.TypeOf(EvaluateFile{}): kernel.RightExec,
-	reflect.TypeOf(LoadModule{}):   kernel.RightRead,
+	reflect.TypeOf(kernel.ConfigureSystem{}): kernel.RightExec,
+	reflect.TypeOf(EvaluateFile{}):           kernel.RightExec,
+	reflect.TypeOf(LoadModule{}):             kernel.RightRead,
 }
 
 type Modules struct {
+	debugAST       bool
 	moduleRegistry map[string]kernel.ActorID
 }
 
 func NewModules() *Modules {
 	return &Modules{
+		debugAST:       false,
 		moduleRegistry: make(map[string]kernel.ActorID),
 	}
 }
 
 func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	switch payload := msg.Payload.(type) {
+	case kernel.ConfigureSystem:
+		m.debugAST = payload.DebugAST
+		svc.Reply(ctx, msg, nil)
+
 	case EvaluateFile:
-		workedId, _ := ctx.SpawnChild("mods-eval-wrk", m.evaluateFileHandler)
+		eval := FileEvaluator{
+			DebugAST: m.debugAST,
+		}
+		workedId, _ := ctx.SpawnChild("mods-eval-wrk", eval.evaluateFileHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			svc.SendError(ctx, err.Error())
 		}
+
 	case LoadModule:
 		moduleName := strings.Join(payload.PathParts, ".")
 		if id, ok := m.moduleRegistry[moduleName]; ok {
@@ -55,7 +66,9 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 				svc.SendError(ctx, err.Error())
 			}
 		} else {
-			loader := ModuleLoader{}
+			loader := ModuleLoader{
+				DebugAST: m.debugAST,
+			}
 			workedId, _ := ctx.SpawnChild("mods-load-wrk:"+moduleName, loader.loadModuleHandler)
 			m.moduleRegistry[moduleName] = workedId
 			err := ctx.SendAsync(workedId, msg)
@@ -67,11 +80,4 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 		svc.Reply(ctx, msg, kernel.UnknownOperation{})
 	}
 	return kernel.Continue{}
-}
-
-func (m *Modules) evaluateFileHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
-	fwdMsg := svc.UnpackFwd(msg)
-	payload, _ := fwdMsg.Payload.(EvaluateFile)
-	onEvaluateFile(ctx, fwdMsg, payload)
-	return kernel.Terminate{}
 }

@@ -9,6 +9,7 @@ import (
 const SOutService = "sout"
 const LogService = "log"
 const ModuleService = "mods"
+const ResolverService = "resolver"
 const CliService = "cli"
 const FsService = "fs"
 const LexerService = "lexer"

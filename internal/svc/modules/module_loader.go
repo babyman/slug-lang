@@ -3,19 +3,18 @@ package modules
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"slug/internal/kernel"
 	"slug/internal/object"
 	"slug/internal/svc"
-	"slug/internal/svc/fs"
 	"slug/internal/svc/lexer"
 	"slug/internal/svc/parser"
-	"strings"
+	"slug/internal/svc/resolver"
 )
 
 type ModuleLoader struct {
-	Module *object.Module
-	Error  error
+	DebugAST bool
+	Module   *object.Module
+	Error    error
 }
 
 func (ml *ModuleLoader) loadModuleHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
@@ -39,53 +38,23 @@ func (ml *ModuleLoader) loadModuleHandler(ctx *kernel.ActCtx, msg kernel.Message
 }
 
 func (ml *ModuleLoader) loadModule(ctx *kernel.ActCtx, payload LoadModule) (*object.Module, error) {
-	// Generate the module moduleName from path parts
-	moduleName := strings.Join(payload.PathParts, ".")
 
-	svc.SendInfof(ctx, "Loading module '%s' from path parts: %v  Root path: %s\n",
-		moduleName, payload.PathParts, payload.RootPath)
+	resId, _ := ctx.K.ActorByName(svc.ResolverService)
+
+	resResult, err := ctx.SendSync(resId, resolver.ResolveModule{
+		PathParts: payload.PathParts,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	modData, _ := resResult.Payload.(resolver.ResolvedResult)
 
 	// Create a new environment and module object
-	module := &object.Module{Name: moduleName, Env: nil}
+	module := &object.Module{Name: modData.ModuleName, Env: nil}
 
-	// Complete the module path
-	moduleRelativePath := strings.Join(payload.PathParts, "/")
-	modulePath := fmt.Sprintf("%s/%s.slug", payload.RootPath, moduleRelativePath)
-
-	// Attempt to load the module's source
-	// todo use file service
-	fsId, _ := ctx.K.ActorByName(svc.FsService)
-	//moduleSrc, err := ioutil.ReadFile(modulePath)
-	moduleSrc, err := ctx.SendSync(fsId, fs.Read{Path: modulePath})
-	if err != nil {
-		svc.SendInfof(ctx, "Failed to read file: %s", err)
-	}
-
-	// Parse the source into an AST
-	readResp := moduleSrc.Payload.(fs.ReadResp)
-
-	if readResp.Err != nil {
-		// Fallback to SLUG_HOME if the file doesn't exist
-		slugHome := os.Getenv("SLUG_HOME")
-		if slugHome == "" {
-			return nil, fmt.Errorf("error reading module '%s': SLUG_HOME environment variable is not set", moduleName)
-		}
-		libPath := fmt.Sprintf("%s/lib/%s.slug", slugHome, moduleRelativePath)
-		// todo use file service
-		//moduleSrc, err = ioutil.ReadFile(libPath)
-		moduleSrc, err = ctx.SendSync(fsId, fs.Read{Path: libPath})
-		if err != nil {
-			return nil, fmt.Errorf("error reading module (%s / %s) '%s': %s", modulePath, libPath, moduleName, err)
-		} else {
-			modulePath = libPath
-			readResp = moduleSrc.Payload.(fs.ReadResp)
-		}
-	}
-
-	src := readResp.Data
-	//println("module_loader", "source", len(src))
-	module.Src = src
-	module.Path = modulePath
+	module.Src = modData.Data
+	module.Path = modData.ModulePath
 
 	// ==============================
 
@@ -116,7 +85,7 @@ func (ml *ModuleLoader) loadModule(ctx *kernel.ActCtx, payload LoadModule) (*obj
 
 	// ==============================
 
-	if payload.DebugAST {
+	if ml.DebugAST {
 		// todo use file service to write these
 		if err := parser.WriteASTToJSON(module.Program, module.Path+".ast.json"); err != nil {
 			return nil, fmt.Errorf("failed to write AST to JSON: %v", err)

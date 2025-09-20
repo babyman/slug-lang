@@ -12,6 +12,7 @@ import (
 	"slug/internal/svc/modules"
 	"slug/internal/svc/parser"
 	"slug/internal/svc/repl"
+	"slug/internal/svc/resolver"
 	"slug/internal/svc/sout"
 )
 
@@ -46,6 +47,10 @@ func main() {
 	mods := modules.NewModules()
 	modsID := k.RegisterService(svc.ModuleService, modules.Operations, mods.Handler)
 
+	// system out Service
+	res := &resolver.Resolver{}
+	resID := k.RegisterService(svc.ResolverService, resolver.Operations, res.Handler)
+
 	// CLI Service
 	cliSvc := &cli.Cli{}
 	cliID := k.RegisterService(svc.CliService, cli.Operations, cliSvc.Handler)
@@ -76,16 +81,21 @@ func main() {
 	_ = k.GrantCap(cliID, cliID, x, nil) // call self required for boot message
 	_ = k.GrantCap(cliID, soutID, w, nil)
 	_ = k.GrantCap(cliID, modsID, x, nil)
+	_ = k.GrantCap(cliID, resID, x, nil)
 	_ = k.GrantCap(cliID, logID, wx, nil)
 	_ = k.GrantCap(cliID, kernelID, x, nil)
 
 	_ = k.GrantCap(modsID, modsID, r, nil)
 	_ = k.GrantCap(modsID, cliID, w, nil)
 	_ = k.GrantCap(modsID, fsID, r, nil)
+	_ = k.GrantCap(modsID, resID, r, nil)
 	_ = k.GrantCap(modsID, lexerID, x, nil)
 	_ = k.GrantCap(modsID, parserID, x, nil)
 	_ = k.GrantCap(modsID, evalID, x, nil)
 	_ = k.GrantCap(modsID, logID, w, nil)
+
+	_ = k.GrantCap(resID, fsID, r, nil)
+	_ = k.GrantCap(resID, logID, w, nil)
 
 	_ = k.GrantCap(fsID, logID, w, nil)
 

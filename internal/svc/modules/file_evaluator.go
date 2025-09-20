@@ -7,19 +7,33 @@ import (
 	"strings"
 )
 
-func onEvaluateFile(ctx *kernel.ActCtx, msg kernel.Message, payload EvaluateFile) kernel.HandlerSignal {
+type FileEvaluator struct {
+	DebugAST bool
+	RootPath string
+}
+
+func (m *FileEvaluator) evaluateFileHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
+	fwdMsg := svc.UnpackFwd(msg)
+	payload, _ := fwdMsg.Payload.(EvaluateFile)
+	m.onEvaluateFile(ctx, fwdMsg, payload)
+	return kernel.Terminate{}
+}
+
+func (m *FileEvaluator) onEvaluateFile(ctx *kernel.ActCtx, msg kernel.Message, payload EvaluateFile) {
 
 	svc.SendDebugf(ctx, "Evaluating file %s", payload.Path)
 
 	evalId, _ := ctx.K.ActorByName(svc.EvalService)
+	modsId, _ := ctx.K.ActorByName(svc.ModuleService)
 
 	// todo fix me hard coded path with .slug removed
 	modulePathParts := strings.Split("docs/examples/password-generator", string(filepath.Separator))
+	//_, modulePathParts, _ := resolver.calculateModulePath(payload.Path, string(filepath.Separator))
 
-	modsId, _ := ctx.K.ActorByName(svc.ModuleService)
+	//modsId, _ := ctx.K.ActorByName(svc.ModuleService)
 	reply, _ := ctx.SendSync(modsId, LoadModule{
-		DebugAST:  false, // todo fix me
-		RootPath:  ".",   // todo fix me
+		DebugAST:  m.DebugAST,
+		RootPath:  m.RootPath,
 		PathParts: modulePathParts,
 	})
 
@@ -35,13 +49,11 @@ func onEvaluateFile(ctx *kernel.ActCtx, msg kernel.Message, payload EvaluateFile
 	})
 	if err != nil {
 		svc.SendWarnf(ctx, "Failed to execute file: %s", err)
-		return kernel.Continue{}
+		return
 	}
 
 	p := result.Payload
 	svc.SendInfof(ctx, "Compiled %s, got %v", payload.Path, p)
 
 	svc.Reply(ctx, msg, p)
-
-	return kernel.Continue{}
 }

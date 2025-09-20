@@ -60,7 +60,7 @@ package main
 //			panic(err)
 //		}
 //
-//		evaluator.RootPath = rootPath
+//		evaluator.rootPath = rootPath
 //
 //		fmt.Printf("Hello %s! This is the Slug programming language!\n", usr.Username)
 //		fmt.Printf("Feel free to type in commands\n")
@@ -103,8 +103,8 @@ package main
 //		return err2
 //	}
 //
-//	evaluator.DebugAST = debugAST
-//	evaluator.RootPath = systemRootPath
+//	evaluator.debugAST = debugAST
+//	evaluator.rootPath = systemRootPath
 //	module, err := evaluator.LoadModule(modulePath)
 //	if err != nil {
 //		return fmt.Errorf("failed to load main module '%s':\n%v", filename, err)
