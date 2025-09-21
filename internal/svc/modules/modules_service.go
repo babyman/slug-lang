@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-type EvaluateFile struct {
+type LoadFile struct {
 	Path string
 	Args []string
 }
@@ -26,7 +26,7 @@ type LoadModuleResult struct {
 
 var Operations = kernel.OpRights{
 	reflect.TypeOf(kernel.ConfigureSystem{}): kernel.RightExec,
-	reflect.TypeOf(EvaluateFile{}):           kernel.RightExec,
+	reflect.TypeOf(LoadFile{}):               kernel.RightRead,
 	reflect.TypeOf(LoadModule{}):             kernel.RightRead,
 }
 
@@ -48,11 +48,11 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 		m.debugAST = payload.DebugAST
 		svc.Reply(ctx, msg, nil)
 
-	case EvaluateFile:
-		eval := FileEvaluator{
+	case LoadFile:
+		eval := FileLoader{
 			DebugAST: m.debugAST,
 		}
-		workedId, _ := ctx.SpawnChild("mods-eval-wrk", eval.evaluateFileHandler)
+		workedId, _ := ctx.SpawnChild("mods-fl-wrk", eval.loadFileHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			svc.SendError(ctx, err.Error())

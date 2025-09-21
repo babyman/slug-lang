@@ -26,7 +26,7 @@ func (ml *ModuleLoader) loadModuleHandler(ctx *kernel.ActCtx, msg kernel.Message
 		})
 	} else {
 		payload, _ := fwdMsg.Payload.(LoadModule)
-		mod, err := ml.loadModule(ctx, payload)
+		mod, err := ml.loadModule(ctx, payload.PathParts)
 		ml.Module = mod
 		ml.Error = err
 		svc.Reply(ctx, fwdMsg, LoadModuleResult{
@@ -37,18 +37,27 @@ func (ml *ModuleLoader) loadModuleHandler(ctx *kernel.ActCtx, msg kernel.Message
 	return kernel.Continue{}
 }
 
-func (ml *ModuleLoader) loadModule(ctx *kernel.ActCtx, payload LoadModule) (*object.Module, error) {
+func (ml *ModuleLoader) loadModule(ctx *kernel.ActCtx, pathParts []string) (*object.Module, error) {
 
 	resId, _ := ctx.K.ActorByName(svc.ResolverService)
 
 	resResult, err := ctx.SendSync(resId, resolver.ResolveModule{
-		PathParts: payload.PathParts,
+		PathParts: pathParts,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	modData, _ := resResult.Payload.(resolver.ResolvedResult)
+
+	return lexAndParseModule(ctx, modData, ml.DebugAST)
+}
+
+func lexAndParseModule(
+	ctx *kernel.ActCtx,
+	modData resolver.ResolvedResult,
+	debugAst bool,
+) (*object.Module, error) {
 
 	// Create a new environment and module object
 	module := &object.Module{Name: modData.ModuleName, Env: nil}
@@ -85,7 +94,7 @@ func (ml *ModuleLoader) loadModule(ctx *kernel.ActCtx, payload LoadModule) (*obj
 
 	// ==============================
 
-	if ml.DebugAST {
+	if debugAst {
 		// todo use file service to write these
 		if err := parser.WriteASTToJSON(module.Program, module.Path+".ast.json"); err != nil {
 			return nil, fmt.Errorf("failed to write AST to JSON: %v", err)

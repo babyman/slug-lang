@@ -48,7 +48,7 @@ func main() {
 	modsID := k.RegisterService(svc.ModuleService, modules.Operations, mods.Handler)
 
 	// system out Service
-	res := &resolver.Resolver{}
+	res := resolver.NewResolver()
 	resID := k.RegisterService(svc.ResolverService, resolver.Operations, res.Handler)
 
 	// CLI Service
@@ -78,20 +78,16 @@ func main() {
 	// Cap grants
 	_ = k.GrantCap(kernelID, cliID, x, nil)
 
-	_ = k.GrantCap(cliID, cliID, x, nil) // call self required for boot message
+	_ = k.GrantCap(cliID, resID, x, nil)   // x for kernel.ConfigureSystem
+	_ = k.GrantCap(cliID, modsID, rx, nil) // x for kernel.ConfigureSystem
+	_ = k.GrantCap(cliID, logID, wx, nil)  // x for kernel.ConfigureSystem
 	_ = k.GrantCap(cliID, soutID, w, nil)
-	_ = k.GrantCap(cliID, modsID, x, nil)
-	_ = k.GrantCap(cliID, resID, x, nil)
-	_ = k.GrantCap(cliID, logID, wx, nil)
+	_ = k.GrantCap(cliID, evalID, x, nil)
 	_ = k.GrantCap(cliID, kernelID, x, nil)
 
-	_ = k.GrantCap(modsID, modsID, r, nil)
-	_ = k.GrantCap(modsID, cliID, w, nil)
-	_ = k.GrantCap(modsID, fsID, r, nil)
 	_ = k.GrantCap(modsID, resID, r, nil)
 	_ = k.GrantCap(modsID, lexerID, x, nil)
 	_ = k.GrantCap(modsID, parserID, x, nil)
-	_ = k.GrantCap(modsID, evalID, x, nil)
 	_ = k.GrantCap(modsID, logID, w, nil)
 
 	_ = k.GrantCap(resID, fsID, r, nil)
@@ -106,7 +102,6 @@ func main() {
 	_ = k.GrantCap(evalID, modsID, r, nil)
 	_ = k.GrantCap(evalID, logID, w, nil)
 
-	_ = k.GrantCap(replID, replID, x, nil) // REPL can call itself
 	_ = k.GrantCap(replID, evalID, x, nil) // REPL can call EVAL
 	_ = k.GrantCap(replID, logID, w, nil)
 

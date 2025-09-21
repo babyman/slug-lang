@@ -11,6 +11,8 @@ import (
 	"strings"
 )
 
+const DefaultRootPath = "."
+
 type ResolveFile struct {
 	Path string
 }
@@ -34,6 +36,14 @@ var Operations = kernel.OpRights{
 
 type Resolver struct {
 	RootPath string
+	SlugHome string
+}
+
+func NewResolver() *Resolver {
+	return &Resolver{
+		RootPath: DefaultRootPath,
+		SlugHome: os.Getenv("SLUG_HOME"),
+	}
 }
 
 func (r *Resolver) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
@@ -66,7 +76,7 @@ func (r *Resolver) resolveModuleHandler(ctx *kernel.ActCtx, msg kernel.Message) 
 	fwdMsg := svc.UnpackFwd(msg)
 	payload, _ := fwdMsg.Payload.(ResolveModule)
 
-	name, path, data, err := r.doWork(ctx, payload)
+	name, path, data, err := r.resolveModule(ctx, r.RootPath, payload.PathParts)
 
 	svc.Reply(ctx, fwdMsg, ResolvedResult{
 		ModuleName: name,
@@ -78,18 +88,39 @@ func (r *Resolver) resolveModuleHandler(ctx *kernel.ActCtx, msg kernel.Message) 
 	return kernel.Terminate{}
 }
 
-func (r *Resolver) doWork(ctx *kernel.ActCtx, payload ResolveModule) (string, string, string, error) {
+func (r *Resolver) resolveFileHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
+	fwdMsg := svc.UnpackFwd(msg)
+	payload, _ := fwdMsg.Payload.(ResolveFile)
+
+	newRootPath, modulePathParts, err := calculateModulePath(payload.Path, r.RootPath)
+	name, path, data, err := r.resolveModule(ctx, newRootPath, modulePathParts)
+
+	if err != nil && r.RootPath != DefaultRootPath {
+		r.RootPath = newRootPath
+	}
+
+	svc.Reply(ctx, fwdMsg, ResolvedResult{
+		ModuleName: name,
+		ModulePath: path,
+		Data:       data,
+		Error:      err,
+	})
+
+	return kernel.Terminate{}
+}
+
+func (r *Resolver) resolveModule(ctx *kernel.ActCtx, rootPath string, pathParts []string) (string, string, string, error) {
 
 	fsId, _ := ctx.K.ActorByName(svc.FsService)
 
-	moduleName := strings.Join(payload.PathParts, ".")
+	moduleName := strings.Join(pathParts, ".")
 
 	svc.SendInfof(ctx, "Loading module '%s' from path parts: %v  Root path: %s\n",
-		moduleName, payload.PathParts, r.RootPath)
+		moduleName, pathParts, rootPath)
 
 	// Complete the module path
-	moduleRelativePath := strings.Join(payload.PathParts, "/")
-	modulePath := fmt.Sprintf("%s/%s.slug", r.RootPath, moduleRelativePath)
+	moduleRelativePath := strings.Join(pathParts, "/")
+	modulePath := fmt.Sprintf("%s/%s.slug", rootPath, moduleRelativePath)
 
 	// Attempt to load the module's source
 	fsResponse, err := ctx.SendSync(fsId, fs.Read{Path: modulePath})
@@ -120,22 +151,11 @@ func (r *Resolver) doWork(ctx *kernel.ActCtx, payload ResolveModule) (string, st
 }
 
 func (r *Resolver) slugLibPath(moduleName string, moduleRelativePath string) (string, error) {
-	// Fallback to SLUG_HOME if the file doesn't exist
-	slugHome := os.Getenv("SLUG_HOME")
-	if slugHome == "" {
+	if r.SlugHome == "" {
 		return "", fmt.Errorf("error reading module '%s': SLUG_HOME environment variable is not set", moduleName)
 	}
-	libPath := fmt.Sprintf("%s/lib/%s.slug", slugHome, moduleRelativePath)
+	libPath := fmt.Sprintf("%s/lib/%s.slug", r.SlugHome, moduleRelativePath)
 	return libPath, nil
-}
-
-func (r *Resolver) resolveFileHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
-	fwdMsg := svc.UnpackFwd(msg)
-	//payload, _ := fwdMsg.Payload.(modules.ResolveFile)
-
-	println("Resolving file", fwdMsg.Payload.(ResolveFile).Path)
-
-	return kernel.Terminate{}
 }
 
 func calculateModulePath(filename string, rootPath string) (string, []string, error) {

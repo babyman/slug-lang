@@ -6,6 +6,7 @@ import (
 	"slug/internal/logger"
 	"slug/internal/svc"
 	"slug/internal/svc/modules"
+	"slug/internal/svc/resolver"
 )
 
 var (
@@ -20,7 +21,7 @@ var (
 func init() {
 	flag.BoolVar(&help, "help", false, "Display help information and exit")
 	// evaluator config
-	flag.StringVar(&rootPath, "root", ".", "Set the root context for the program (used for imports)")
+	flag.StringVar(&rootPath, "root", resolver.DefaultRootPath, "Set the root context for the program (used for imports)")
 	// parser config
 	flag.BoolVar(&debugAST, "debug-ast", false, "Render the AST as a JSON file")
 	// log config
@@ -68,22 +69,41 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 	svc.SendInfof(ctx, "Executing %s with args %v", filename, args)
 
 	modsID, _ := ctx.K.ActorByName(svc.ModuleService)
+	evalId, _ := ctx.K.ActorByName(svc.EvalService)
 
-	output, err := ctx.SendSync(modsID, modules.EvaluateFile{
+	modReply, err := ctx.SendSync(modsID, modules.LoadFile{ // todo
 		Path: filename,
 		Args: args,
 	})
 	if err != nil {
 		svc.SendErrorf(ctx, "err: %v", err)
-	} else {
-		r, ok := output.Payload.(string)
-		if ok {
-			svc.SendStdOut(ctx, r)
-		}
+		return nil
+	}
+	loadResult, ok := modReply.Payload.(modules.LoadModuleResult)
+	module := loadResult.Module
+	if !ok {
+		return nil
 	}
 
-	r, _ := ctx.SendSync(kernelID, kernel.RequestShutdown{ExitCode: 0})
-	return r.Payload
+	result, err := ctx.SendSync(evalId, svc.EvaluateProgram{
+		Name:    module.Name,
+		Path:    filename,
+		Source:  module.Src,
+		Program: module.Program,
+		Args:    args,
+	})
+	if err != nil {
+		svc.SendWarnf(ctx, "Failed to execute file: %s", err)
+		return nil
+	}
+
+	p := result.Payload.(string)
+	svc.SendInfof(ctx, "Compiled %s, got %v", module.Path, p)
+	svc.SendStdOut(ctx, p)
+
+	ctx.SendSync(kernelID, kernel.RequestShutdown{ExitCode: 0})
+
+	return nil
 }
 
 func (cli *Cli) handleHelpRequest(ctx *kernel.ActCtx, kernelID kernel.ActorID) {
