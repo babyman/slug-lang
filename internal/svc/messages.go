@@ -51,3 +51,8 @@ type EvaluateProgram struct {
 	Program *ast.Program
 	Args    []string
 }
+
+type EvaluateResult struct {
+	Result string
+	Error  error
+}

@@ -97,9 +97,13 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 		return nil
 	}
 
-	p := result.Payload.(string)
-	svc.SendInfof(ctx, "Compiled %s, got %v", module.Path, p)
-	svc.SendStdOut(ctx, p)
+	p := result.Payload.(svc.EvaluateResult)
+
+	if p.Error != nil {
+		svc.SendStdOut(ctx, p.Error.Error())
+	} else {
+		svc.SendStdOut(ctx, p.Result)
+	}
 
 	ctx.SendSync(kernelID, kernel.RequestShutdown{ExitCode: 0})
 
