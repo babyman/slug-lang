@@ -175,7 +175,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			// Ensure left side is an identifier
 			ident, ok := node.Left.(*ast.Identifier)
 			if !ok {
-				return newError("left side of assignment must be an identifier")
+				return newErrorf("left side of assignment must be an identifier")
 			}
 
 			// Evaluate right side
@@ -246,7 +246,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 				// Ensure the spread value is a list
 				list, ok := spreadValue.(*object.List)
 				if !ok {
-					return newError("spread operator can only be used on lists, got %s", spreadValue.Type())
+					return newErrorf("spread operator can only be used on lists, got %s", spreadValue.Type())
 				}
 
 				// Append all elements of the list to args
@@ -440,7 +440,7 @@ func (e *Evaluator) evalPrefixExpression(operator string, right object.Object) o
 	case "~":
 		return e.evalComplementPrefixOperatorExpression(right)
 	default:
-		return newError("unknown operator: %s%s", operator, right.Type())
+		return newErrorf("unknown operator: %s%s", operator, right.Type())
 	}
 }
 
@@ -470,10 +470,10 @@ func (e *Evaluator) evalInfixExpression(
 	case left.Type() == object.STRING_OBJ || right.Type() == object.STRING_OBJ:
 		return e.evalStringPlusOtherInfixExpression(operator, left, right)
 	case left.Type() != right.Type():
-		return newError("type mismatch: %s %s %s",
+		return newErrorf("type mismatch: %s %s %s",
 			left.Type(), operator, right.Type())
 	default:
-		return newError("unknown operator: %s %s %s",
+		return newErrorf("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
 	}
 }
@@ -493,7 +493,7 @@ func (e *Evaluator) evalBangOperatorExpression(right object.Object) object.Objec
 
 func (e *Evaluator) evalMinusPrefixOperatorExpression(right object.Object) object.Object {
 	if right.Type() != object.NUMBER_OBJ {
-		return newError("unknown operator: -%s", right.Type())
+		return newErrorf("unknown operator: -%s", right.Type())
 	}
 
 	value := right.(*object.Number).Value
@@ -502,7 +502,7 @@ func (e *Evaluator) evalMinusPrefixOperatorExpression(right object.Object) objec
 
 func (e *Evaluator) evalComplementPrefixOperatorExpression(right object.Object) object.Object {
 	if right.Type() != object.NUMBER_OBJ {
-		return newError("unknown operator: -%s", right.Type())
+		return newErrorf("unknown operator: -%s", right.Type())
 	}
 
 	value := right.(*object.Number).Value
@@ -544,7 +544,7 @@ func (e *Evaluator) evalShortCircuitInfixExpression(left object.Object, node *as
 		return FALSE
 
 	default:
-		return newError("unknown operator for short-circuit evaluation: %s", node.Operator)
+		return newErrorf("unknown operator for short-circuit evaluation: %s", node.Operator)
 	}
 }
 
@@ -561,7 +561,7 @@ func (e *Evaluator) evalBooleanInfixExpression(
 	case "||":
 		return e.NativeBoolToBooleanObject(leftVal || rightVal)
 	default:
-		return newError("unknown operator: %s %s %s",
+		return newErrorf("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
 	}
 }
@@ -607,7 +607,7 @@ func (e *Evaluator) evalIntegerInfixExpression(
 	case "!=":
 		return e.NativeBoolToBooleanObject(!leftVal.Eq(rightVal))
 	default:
-		return newError("unknown operator: %s %s %s",
+		return newErrorf("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
 	}
 }
@@ -635,7 +635,7 @@ func (e *Evaluator) evalStringInfixExpression(
 	case ">=":
 		return e.NativeBoolToBooleanObject(leftVal >= rightVal)
 	default:
-		return newError("unknown operator: %s %s %s",
+		return newErrorf("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
 	}
 
@@ -652,7 +652,7 @@ func (e *Evaluator) evalStringPlusOtherInfixExpression(
 	case "+":
 		return &object.String{Value: leftVal + rightVal}
 	default:
-		return newError("unknown operator: %s %s %s",
+		return newErrorf("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
 	}
 }
@@ -664,7 +664,7 @@ func (e *Evaluator) evalStringMultiplication(
 	rightVal := right.(*object.Number).Value.ToInt64()
 
 	if rightVal < 0 {
-		return newError("repetition count must be a non-negative NUMBER, got %d", rightVal)
+		return newErrorf("repetition count must be a non-negative NUMBER, got %d", rightVal)
 	}
 
 	// Repeat the string
@@ -704,7 +704,7 @@ func (e *Evaluator) evalListInfixExpression(
 		}
 		return &object.List{Elements: []object.Object{}}
 	default:
-		return newError("unknown operator: %s %s %s",
+		return newErrorf("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
 	}
 }
@@ -759,11 +759,15 @@ func (e *Evaluator) isTruthy(obj object.Object) bool {
 }
 
 func (e *Evaluator) NewError(format string, a ...interface{}) *object.Error {
-	return newError(format, a...)
+	return newErrorf(format, a...)
 }
 
-func newError(format string, a ...interface{}) *object.Error {
+func newErrorf(format string, a ...interface{}) *object.Error {
 	return &object.Error{Message: fmt.Sprintf(format, a...)}
+}
+
+func newError(msg string) *object.Error {
+	return &object.Error{Message: msg}
 }
 
 func (e *Evaluator) isError(obj object.Object) bool {
@@ -827,7 +831,7 @@ func (e *Evaluator) ApplyFunction(fnName string, fnObj object.Object, args []obj
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					result = newError("error calling foreign function %s", fn.Name)
+					result = newErrorf("error calling foreign function %s", fn.Name)
 				}
 			}()
 			result = fn.Fn(e, args...)
@@ -836,9 +840,9 @@ func (e *Evaluator) ApplyFunction(fnName string, fnObj object.Object, args []obj
 
 	default:
 		if fn == nil {
-			return newError("no function found!")
+			return newErrorf("no function found!")
 		}
-		return newError("not a function: %s", fn.Type())
+		return newErrorf("not a function: %s", fn.Type())
 	}
 }
 
@@ -900,7 +904,7 @@ func (e *Evaluator) evalMapLiteral(
 
 		mapKey, ok := key.(object.Hashable)
 		if !ok {
-			return newError("unusable as map key: %s", key.Type())
+			return newErrorf("unusable as map key: %s", key.Type())
 		}
 
 		value := e.Eval(valueNode)
@@ -950,7 +954,7 @@ func (e *Evaluator) evalMatchCase(matchValue object.Object, matchCase *ast.Match
 		// Match the case's pattern against the matchValue
 		matched, err = e.patternMatches(matchCase.Pattern, matchValue, false, false, false)
 		if err != nil {
-			return newError("pattern match error: %s", err.Error()), true
+			return newErrorf("pattern match error: %s", err.Error()), true
 		}
 	} else {
 		// Valueless match condition
@@ -1299,7 +1303,7 @@ func (e *Evaluator) evalMapIndexExpression(obj, index object.Object) object.Obje
 
 	key, ok := index.(object.Hashable)
 	if !ok {
-		return newError("unusable as map key: %s", index.Type())
+		return newErrorf("unusable as map key: %s", index.Type())
 	}
 
 	pair, ok := mapObj.Pairs[key.MapKey()]
@@ -1316,7 +1320,7 @@ func (e *Evaluator) evalThrowStatement(node *ast.ThrowStatement) object.Object {
 		return val
 	}
 	if val.Type() != object.MAP_OBJ {
-		return newError("throw argument must be a Map, got %s", val.Type())
+		return newErrorf("throw argument must be a Map, got %s", val.Type())
 	}
 	env := e.CurrentEnv()
 	return &object.RuntimeError{
@@ -1380,7 +1384,7 @@ func (e *Evaluator) evalIndexExpression(left, index object.Object) object.Object
 	case left.Type() == object.MAP_OBJ:
 		return e.evalMapIndexExpression(left, index)
 	default:
-		return newError("index operator not supported: %s", left.Type())
+		return newErrorf("index operator not supported: %s", left.Type())
 	}
 }
 
@@ -1504,7 +1508,7 @@ func (e *Evaluator) evalForeignFunctionDeclaration(ff *ast.ForeignFunctionDeclar
 		}
 		return NIL
 	}
-	return newError("unknown foreign function %s", fqn)
+	return newErrorf("unknown foreign function %s", fqn)
 }
 
 func (e *Evaluator) evalDefer(deferStmt *ast.DeferStatement) object.Object {

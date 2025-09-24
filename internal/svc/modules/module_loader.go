@@ -109,7 +109,7 @@ func lexAndParseModule(
 		for _, msg := range errors {
 			out.WriteString(fmt.Sprintf("\t%s\n", msg))
 		}
-		return nil, fmt.Errorf(out.String())
+		return nil, fmt.Errorf("%s\n", out.String())
 	}
 
 	return module, nil
