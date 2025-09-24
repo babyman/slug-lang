@@ -19,7 +19,7 @@ func (c *ControlPlane) Initialize(k *kernel.Kernel) {
 	c.routes()
 	addr := ":8080"
 	log.Infof("listening on %s", addr)
-	go func() { log.Fatal(http.ListenAndServe(addr, nil)) }()
+	go func() { log.Error(http.ListenAndServe(addr, nil)) }()
 }
 
 func (c *ControlPlane) routes() {

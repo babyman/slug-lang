@@ -7,6 +7,7 @@ import (
 	"slug/internal/svc"
 	"slug/internal/svc/modules"
 	"slug/internal/svc/resolver"
+	"time"
 )
 
 var (
@@ -17,6 +18,8 @@ var (
 	color    bool
 	help     bool
 )
+
+const TenYears = time.Hour * 24 * 365 * 10
 
 func init() {
 	flag.BoolVar(&help, "help", false, "Display help information and exit")
@@ -85,7 +88,7 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 		return nil
 	}
 
-	result, err := ctx.SendSync(evalId, svc.EvaluateProgram{
+	future, err := ctx.SendFuture(evalId, svc.EvaluateProgram{
 		Name:    module.Name,
 		Path:    filename,
 		Source:  module.Src,
@@ -97,6 +100,7 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 		return nil
 	}
 
+	result, err, ok := future.AwaitTimeout(TenYears) // 10 years
 	p := result.Payload.(svc.EvaluateResult)
 
 	if p.Error != nil {
