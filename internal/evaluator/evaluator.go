@@ -24,6 +24,10 @@ type Evaluator struct {
 	Ctx      *kernel.ActCtx
 }
 
+func (e *Evaluator) ActCtx() *kernel.ActCtx {
+	return e.Ctx
+}
+
 func (e *Evaluator) PID() int64 {
 	if e.Actor == nil {
 		return 0

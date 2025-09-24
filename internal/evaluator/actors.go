@@ -3,6 +3,7 @@ package evaluator
 import (
 	"fmt"
 	"math/rand"
+	"slug/internal/kernel"
 	"slug/internal/log"
 	"slug/internal/object"
 	"sync"
@@ -392,6 +393,7 @@ func (a *ActorSystem) NewMailbox(
 
 func (a *ActorSystem) BindNewActor(
 	pid int64,
+	ctx *kernel.ActCtx,
 	function *object.Function,
 	args ...object.Object,
 ) (int64, bool) {
@@ -402,6 +404,7 @@ func (a *ActorSystem) BindNewActor(
 	if exists {
 		evaluator := &Evaluator{
 			envStack: []*object.Environment{function.Env},
+			Ctx:      ctx,
 		}
 
 		actor := NewActor(evaluator, function, args)
