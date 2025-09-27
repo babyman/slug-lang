@@ -6,7 +6,7 @@ import (
 	"math"
 	"slug/internal/ast"
 	"slug/internal/dec64"
-	"slug/internal/lexer"
+	"slug/internal/svc/lexer"
 	"slug/internal/token"
 )
 
@@ -62,7 +62,7 @@ type (
 )
 
 type Parser struct {
-	l           *lexer.Lexer
+	tokenizer   lexer.Tokenizer
 	src         string // source code here
 	errors      []string
 	pendingTags []*ast.Tag
@@ -74,11 +74,11 @@ type Parser struct {
 	infixParseFns  map[token.TokenType]infixParseFn
 }
 
-func New(l *lexer.Lexer, source string) *Parser {
+func New(l lexer.Tokenizer, source string) *Parser {
 	p := &Parser{
-		l:      l,
-		src:    source,
-		errors: []string{},
+		tokenizer: l,
+		src:       source,
+		errors:    []string{},
 	}
 
 	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
@@ -136,7 +136,7 @@ func New(l *lexer.Lexer, source string) *Parser {
 
 func (p *Parser) nextToken() {
 	p.curToken = p.peekToken
-	p.peekToken = p.l.NextToken()
+	p.peekToken = p.tokenizer.NextToken()
 }
 
 func (p *Parser) curTokenIs(t token.TokenType) bool {

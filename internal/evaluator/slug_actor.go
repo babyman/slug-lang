@@ -49,7 +49,7 @@ func fnActorBindActor() *object.Foreign {
 			function, ok := fn.DispatchToFunction("", processArgs)
 			f, ok := function.(*object.Function)
 
-			_, ok = System.BindNewActor(pid.Value.ToInt64(), f, processArgs...)
+			_, ok = System.BindNewActor(pid.Value.ToInt64(), ctx.ActCtx(), f, processArgs...)
 
 			if ok {
 				return pid

@@ -1,0 +1,61 @@
+package repl
+
+import (
+	"errors"
+	"reflect"
+	"slug/internal/kernel"
+	"slug/internal/svc"
+)
+
+// ===== REPL Service =====
+// Ops: { eval: EXEC }
+// Handler:
+//   - Accepts {Source} and forwards to Evaluator
+//   - Returns evaluator Reply
+
+type RsEval struct {
+	Source string
+}
+
+type RsEvalResp struct {
+	Result any
+	Err    error
+}
+
+var Operations = kernel.OpRights{
+	reflect.TypeOf(RsEval{}): kernel.RightExec,
+}
+
+type ReplService struct{ EvalID kernel.ActorID }
+
+func (r *ReplService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
+	switch payload := msg.Payload.(type) {
+	case RsEval:
+		src := payload.Source
+		if src == "" {
+			svc.Reply(ctx, msg, RsEvalResp{Err: errors.New("empty Source")})
+			return kernel.Continue{}
+		}
+		//resp, err := ctx.SendSync(r.EvalID, EvaluatorEvaluate{
+		//	Source: src,
+		//})
+		//switch {
+		//case err != nil:
+		//	{
+		//		Reply(ctx, msg, RsEvalResp{Err: err})
+		//		return
+		//	}
+		//case resp.Payload == nil:
+		//	{
+		//		Reply(ctx, msg, RsEvalResp{Err: errors.New("no Reply")})
+		//		return
+		//	}
+		//}
+		//Reply(ctx, msg, RsEvalResp{
+		//	Result: resp.Payload.(EvaluatorResult).Result,
+		//})
+	default:
+		svc.Reply(ctx, msg, RsEvalResp{Err: errors.New("unknown op")})
+	}
+	return kernel.Continue{}
+}

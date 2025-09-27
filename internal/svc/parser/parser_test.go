@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slug/internal/ast"
 	"slug/internal/dec64"
-	"slug/internal/lexer"
+	"slug/internal/svc/lexer"
 	"testing"
 )
 

@@ -3,6 +3,7 @@ package evaluator
 import (
 	"fmt"
 	"math/rand"
+	"slug/internal/kernel"
 	"slug/internal/log"
 	"slug/internal/object"
 	"sync"
@@ -94,7 +95,7 @@ type ActorExited struct {
 
 func (ActorExited) isMessage() {}
 func (m ActorExited) String() string {
-	return fmt.Sprintf("ActorExited{Actor: %v, mailbox: %d, Reason: %v, LastMessage: %v, QueuedMessages: %d}",
+	return fmt.Sprintf("ActorExited{Actor: %v, mailbox: %d, ExitCode: %v, LastMessage: %v, QueuedMessages: %d}",
 		m.ActorPID, m.MailboxPID, m.Reason, m.LastMessage, len(m.QueuedMessages))
 }
 
@@ -392,6 +393,7 @@ func (a *ActorSystem) NewMailbox(
 
 func (a *ActorSystem) BindNewActor(
 	pid int64,
+	ctx *kernel.ActCtx,
 	function *object.Function,
 	args ...object.Object,
 ) (int64, bool) {
@@ -402,6 +404,7 @@ func (a *ActorSystem) BindNewActor(
 	if exists {
 		evaluator := &Evaluator{
 			envStack: []*object.Environment{function.Env},
+			Ctx:      ctx,
 		}
 
 		actor := NewActor(evaluator, function, args)

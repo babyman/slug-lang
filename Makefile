@@ -3,7 +3,11 @@ OS := $(shell uname)
 
 run:
 	# e.g. make run ARGS='--root ./tests --debug-ast ./tests/nil.slug'
-	time go run ./cmd/app/ $(ARGS)
+	time go run ./cmd/app/main.go $(ARGS)
+
+micro:
+	# Run the microkernel version - e.g. make micro
+	time go run ./cmd/app/micro.go $(ARGS)
 
 live:
 	# requires `entr` see https://eradman.com/entrproject/

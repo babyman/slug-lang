@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"slug/internal/ast"
 	"slug/internal/dec64"
-	"slug/internal/log"
+	"slug/internal/kernel"
 	"slug/internal/object"
+	"slug/internal/svc"
+	"slug/internal/svc/modules"
 	"slug/internal/token"
 	"strings"
 )
@@ -19,6 +21,11 @@ var (
 type Evaluator struct {
 	envStack []*object.Environment // Environment stack encapsulated in an evaluator struct
 	Actor    *Actor                // can be null
+	Ctx      *kernel.ActCtx
+}
+
+func (e *Evaluator) ActCtx() *kernel.ActCtx {
+	return e.Ctx
 }
 
 func (e *Evaluator) PID() int64 {
@@ -36,7 +43,7 @@ func (e *Evaluator) Receive(timeout int64) (object.Object, bool) {
 	if !b {
 		return nil, false
 	}
-	log.Debug("ACT: %d (%d) message received: %s\n", e.Actor.PID, e.Actor.MailboxPID, message.String())
+	svc.SendDebugf(e.Ctx, "ACT: %d (%d) message received: %s\n", e.Actor.PID, e.Actor.MailboxPID, message.String())
 	switch m := message.(type) {
 	case UserMessage:
 		return m.Payload.(object.Object), true
@@ -62,7 +69,7 @@ func (e *Evaluator) Receive(timeout int64) (object.Object, bool) {
 		notification.Put(&object.String{Value: "mailbox"}, messages)
 		return notification, true
 	default:
-		log.Warn("ACT: %d (%d) Unknown message type: %T", e.Actor.PID, e.Actor.MailboxPID, m)
+		svc.SendWarnf(e.Ctx, "ACT: %d (%d) Unknown message type: %T", e.Actor.PID, e.Actor.MailboxPID, m)
 		notification := &object.Map{}
 		notification.Put(&object.String{Value: "tag"}, &object.String{Value: "__unknown_message__"})
 		notification.Put(&object.String{Value: "type"}, &object.String{Value: fmt.Sprintf("%T", m)})
@@ -76,7 +83,7 @@ func (e *Evaluator) Nil() *object.Nil {
 
 func (e *Evaluator) PushEnv(env *object.Environment) {
 	e.envStack = append(e.envStack, env)
-	//log.Trace(">%s", strings.Repeat("-", len(e.envStack)))
+	svc.SendTracef(e.Ctx, ">%s", strings.Repeat("-", len(e.envStack)))
 }
 
 func (e *Evaluator) CurrentEnv() *object.Environment {
@@ -95,7 +102,7 @@ func (e *Evaluator) PopEnv() {
 		e.Eval(stmt)
 	})
 	e.envStack = e.envStack[:len(e.envStack)-1]
-	//log.Trace("<%s", strings.Repeat("-", len(e.envStack)))
+	//svc.SendTracef(e.Ctx, "<%s", strings.Repeat("-", len(e.envStack)))
 }
 
 func (e *Evaluator) Eval(node ast.Node) object.Object {
@@ -172,7 +179,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			// Ensure left side is an identifier
 			ident, ok := node.Left.(*ast.Identifier)
 			if !ok {
-				return newError("left side of assignment must be an identifier")
+				return newErrorf("left side of assignment must be an identifier")
 			}
 
 			// Evaluate right side
@@ -243,7 +250,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 				// Ensure the spread value is a list
 				list, ok := spreadValue.(*object.List)
 				if !ok {
-					return newError("spread operator can only be used on lists, got %s", spreadValue.Type())
+					return newErrorf("spread operator can only be used on lists, got %s", spreadValue.Type())
 				}
 
 				// Append all elements of the list to args
@@ -259,8 +266,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 
 		// If this is a tail call, wrap it in a TailCall object instead of evaluating
 		if node.IsTailCall {
-			//log.Trace("function tail call")
-			log.Info("Tail calling %s with %d arguments", node.Token.Literal, len(args))
+			//svc.SendInfof(e.Ctx, "Tail calling %s with %d arguments", node.Token.Literal, len(args))
 			return &object.TailCall{
 				FnName:    node.Token.Literal,
 				Function:  function,
@@ -268,7 +274,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			}
 		}
 
-		log.Info("Calling %s with %d arguments", node.Token.Literal, len(args))
+		//svc.SendInfof(e.Ctx, "Calling %s with %d arguments", node.Token.Literal, len(args))
 		// For non-tail calls, invoke the function directly
 		return e.ApplyFunction(node.Token.Literal, function, args)
 
@@ -347,12 +353,18 @@ func (e *Evaluator) evalProgram(program *ast.Program) object.Object {
 }
 
 func (e *Evaluator) LoadModule(pathParts []string) (*object.Module, error) {
-	module, err := LoadModule(pathParts)
+
+	modsId, _ := e.Ctx.K.ActorByName(svc.ModuleService)
+	reply, err := e.Ctx.SendSync(modsId, modules.LoadModule{
+		PathParts: pathParts,
+	})
 	if err != nil {
 		return nil, err
 	}
+	module := reply.Payload.(modules.LoadModuleResult).Module
+
 	if module.Env != nil {
-		log.Debug("return loaded module: %v", module.Name)
+		svc.SendDebugf(e.Ctx, "return loaded module: %v", module.Name)
 		return module, nil
 	}
 
@@ -365,11 +377,11 @@ func (e *Evaluator) LoadModule(pathParts []string) (*object.Module, error) {
 	// Evaluate the module
 	module.Env = moduleEnv
 
-	log.Debug("load module: %v\n", module.Name)
+	svc.SendDebugf(e.Ctx, "load module: %v\n", module.Name)
 	e.PushEnv(moduleEnv)
 	e.Eval(module.Program)
 	e.PopEnv()
-	log.Info("Module %s env len %d\n", module.Name, len(module.Env.Bindings))
+	svc.SendInfof(e.Ctx, "Module %s env len %d\n", module.Name, len(module.Env.Bindings))
 
 	// Import the module into the current environment
 	return module, nil
@@ -432,7 +444,7 @@ func (e *Evaluator) evalPrefixExpression(operator string, right object.Object) o
 	case "~":
 		return e.evalComplementPrefixOperatorExpression(right)
 	default:
-		return newError("unknown operator: %s%s", operator, right.Type())
+		return newErrorf("unknown operator: %s%s", operator, right.Type())
 	}
 }
 
@@ -462,10 +474,10 @@ func (e *Evaluator) evalInfixExpression(
 	case left.Type() == object.STRING_OBJ || right.Type() == object.STRING_OBJ:
 		return e.evalStringPlusOtherInfixExpression(operator, left, right)
 	case left.Type() != right.Type():
-		return newError("type mismatch: %s %s %s",
+		return newErrorf("type mismatch: %s %s %s",
 			left.Type(), operator, right.Type())
 	default:
-		return newError("unknown operator: %s %s %s",
+		return newErrorf("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
 	}
 }
@@ -485,7 +497,7 @@ func (e *Evaluator) evalBangOperatorExpression(right object.Object) object.Objec
 
 func (e *Evaluator) evalMinusPrefixOperatorExpression(right object.Object) object.Object {
 	if right.Type() != object.NUMBER_OBJ {
-		return newError("unknown operator: -%s", right.Type())
+		return newErrorf("unknown operator: -%s", right.Type())
 	}
 
 	value := right.(*object.Number).Value
@@ -494,7 +506,7 @@ func (e *Evaluator) evalMinusPrefixOperatorExpression(right object.Object) objec
 
 func (e *Evaluator) evalComplementPrefixOperatorExpression(right object.Object) object.Object {
 	if right.Type() != object.NUMBER_OBJ {
-		return newError("unknown operator: -%s", right.Type())
+		return newErrorf("unknown operator: -%s", right.Type())
 	}
 
 	value := right.(*object.Number).Value
@@ -536,7 +548,7 @@ func (e *Evaluator) evalShortCircuitInfixExpression(left object.Object, node *as
 		return FALSE
 
 	default:
-		return newError("unknown operator for short-circuit evaluation: %s", node.Operator)
+		return newErrorf("unknown operator for short-circuit evaluation: %s", node.Operator)
 	}
 }
 
@@ -553,7 +565,7 @@ func (e *Evaluator) evalBooleanInfixExpression(
 	case "||":
 		return e.NativeBoolToBooleanObject(leftVal || rightVal)
 	default:
-		return newError("unknown operator: %s %s %s",
+		return newErrorf("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
 	}
 }
@@ -599,7 +611,7 @@ func (e *Evaluator) evalIntegerInfixExpression(
 	case "!=":
 		return e.NativeBoolToBooleanObject(!leftVal.Eq(rightVal))
 	default:
-		return newError("unknown operator: %s %s %s",
+		return newErrorf("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
 	}
 }
@@ -627,7 +639,7 @@ func (e *Evaluator) evalStringInfixExpression(
 	case ">=":
 		return e.NativeBoolToBooleanObject(leftVal >= rightVal)
 	default:
-		return newError("unknown operator: %s %s %s",
+		return newErrorf("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
 	}
 
@@ -644,7 +656,7 @@ func (e *Evaluator) evalStringPlusOtherInfixExpression(
 	case "+":
 		return &object.String{Value: leftVal + rightVal}
 	default:
-		return newError("unknown operator: %s %s %s",
+		return newErrorf("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
 	}
 }
@@ -656,7 +668,7 @@ func (e *Evaluator) evalStringMultiplication(
 	rightVal := right.(*object.Number).Value.ToInt64()
 
 	if rightVal < 0 {
-		return newError("repetition count must be a non-negative NUMBER, got %d", rightVal)
+		return newErrorf("repetition count must be a non-negative NUMBER, got %d", rightVal)
 	}
 
 	// Repeat the string
@@ -696,7 +708,7 @@ func (e *Evaluator) evalListInfixExpression(
 		}
 		return &object.List{Elements: []object.Object{}}
 	default:
-		return newError("unknown operator: %s %s %s",
+		return newErrorf("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
 	}
 }
@@ -751,11 +763,15 @@ func (e *Evaluator) isTruthy(obj object.Object) bool {
 }
 
 func (e *Evaluator) NewError(format string, a ...interface{}) *object.Error {
-	return newError(format, a...)
+	return newErrorf(format, a...)
 }
 
-func newError(format string, a ...interface{}) *object.Error {
+func newErrorf(format string, a ...interface{}) *object.Error {
 	return &object.Error{Message: fmt.Sprintf(format, a...)}
+}
+
+func newError(msg string) *object.Error {
+	return &object.Error{Message: msg}
 }
 
 func (e *Evaluator) isError(obj object.Object) bool {
@@ -819,7 +835,7 @@ func (e *Evaluator) ApplyFunction(fnName string, fnObj object.Object, args []obj
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					result = newError("error calling foreign function %s", fn.Name)
+					result = newErrorf("error calling foreign function %s", fn.Name)
 				}
 			}()
 			result = fn.Fn(e, args...)
@@ -828,9 +844,9 @@ func (e *Evaluator) ApplyFunction(fnName string, fnObj object.Object, args []obj
 
 	default:
 		if fn == nil {
-			return newError("no function found!")
+			return newErrorf("no function found!")
 		}
-		return newError("not a function: %s", fn.Type())
+		return newErrorf("not a function: %s", fn.Type())
 	}
 }
 
@@ -892,7 +908,7 @@ func (e *Evaluator) evalMapLiteral(
 
 		mapKey, ok := key.(object.Hashable)
 		if !ok {
-			return newError("unusable as map key: %s", key.Type())
+			return newErrorf("unusable as map key: %s", key.Type())
 		}
 
 		value := e.Eval(valueNode)
@@ -942,7 +958,7 @@ func (e *Evaluator) evalMatchCase(matchValue object.Object, matchCase *ast.Match
 		// Match the case's pattern against the matchValue
 		matched, err = e.patternMatches(matchCase.Pattern, matchValue, false, false, false)
 		if err != nil {
-			return newError("pattern match error: %s", err.Error()), true
+			return newErrorf("pattern match error: %s", err.Error()), true
 		}
 	} else {
 		// Valueless match condition
@@ -1291,7 +1307,7 @@ func (e *Evaluator) evalMapIndexExpression(obj, index object.Object) object.Obje
 
 	key, ok := index.(object.Hashable)
 	if !ok {
-		return newError("unusable as map key: %s", index.Type())
+		return newErrorf("unusable as map key: %s", index.Type())
 	}
 
 	pair, ok := mapObj.Pairs[key.MapKey()]
@@ -1308,7 +1324,7 @@ func (e *Evaluator) evalThrowStatement(node *ast.ThrowStatement) object.Object {
 		return val
 	}
 	if val.Type() != object.MAP_OBJ {
-		return newError("throw argument must be a Map, got %s", val.Type())
+		return newErrorf("throw argument must be a Map, got %s", val.Type())
 	}
 	env := e.CurrentEnv()
 	return &object.RuntimeError{
@@ -1372,7 +1388,7 @@ func (e *Evaluator) evalIndexExpression(left, index object.Object) object.Object
 	case left.Type() == object.MAP_OBJ:
 		return e.evalMapIndexExpression(left, index)
 	default:
-		return newError("index operator not supported: %s", left.Type())
+		return newErrorf("index operator not supported: %s", left.Type())
 	}
 }
 
@@ -1496,7 +1512,7 @@ func (e *Evaluator) evalForeignFunctionDeclaration(ff *ast.ForeignFunctionDeclar
 		}
 		return NIL
 	}
-	return newError("unknown foreign function %s", fqn)
+	return newErrorf("unknown foreign function %s", fqn)
 }
 
 func (e *Evaluator) evalDefer(deferStmt *ast.DeferStatement) object.Object {

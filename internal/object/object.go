@@ -7,6 +7,7 @@ import (
 	"math"
 	"slug/internal/ast"
 	"slug/internal/dec64"
+	"slug/internal/kernel"
 	"slug/internal/log"
 	"strings"
 )
@@ -57,6 +58,7 @@ type EvaluatorContext interface {
 	Nil() *Nil
 	NativeBoolToBooleanObject(input bool) *Boolean
 	LoadModule(pathParts []string) (*Module, error)
+	ActCtx() *kernel.ActCtx
 }
 
 type ForeignFunction func(ctx EvaluatorContext, args ...Object) Object
