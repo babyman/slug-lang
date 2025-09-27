@@ -6,6 +6,7 @@ import (
 	"slug/internal/kernel"
 	"slug/internal/object"
 	"slug/internal/svc"
+	"slug/internal/svc/fs"
 	"slug/internal/svc/lexer"
 	"slug/internal/svc/parser"
 	"slug/internal/svc/resolver"
@@ -95,9 +96,17 @@ func lexAndParseModule(
 	// ==============================
 
 	if debugAst {
-		// todo use file service to write these
-		if err := parser.WriteASTToJSON(module.Program, module.Path+".ast.json"); err != nil {
-			return nil, fmt.Errorf("failed to write AST to JSON: %v", err)
+		json, err := parser.RenderASTAsJSON(module.Program)
+		if err != nil {
+			svc.SendErrorf(ctx, "Failed to render AST as JSON: %s", err)
+		} else {
+			fsID, ok := ctx.K.ActorByName(svc.FsService)
+			if ok {
+				ctx.SendAsync(fsID, fs.WriteBytes{
+					Data: []byte(json),
+					Path: module.Path + ".ast.json",
+				})
+			}
 		}
 	}
 

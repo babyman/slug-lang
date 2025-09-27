@@ -16,7 +16,7 @@ type ReadResp struct {
 	Err  error
 }
 
-type Write struct {
+type WriteBytes struct {
 	Data []byte
 	Path string
 }
@@ -27,8 +27,8 @@ type WriteResp struct {
 }
 
 var Operations = kernel.OpRights{
-	reflect.TypeOf(Read{}):  kernel.RightRead,
-	reflect.TypeOf(Write{}): kernel.RightWrite,
+	reflect.TypeOf(Read{}):       kernel.RightRead,
+	reflect.TypeOf(WriteBytes{}): kernel.RightWrite,
 }
 
 type Fs struct {
@@ -42,8 +42,8 @@ func (fs *Fs) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSign
 		if err != nil {
 			svc.Reply(ctx, msg, ReadResp{Err: err})
 		}
-	case Write:
-		workedId, _ := ctx.SpawnChild("file-writer", fs.writeHandler)
+	case WriteBytes:
+		workedId, _ := ctx.SpawnChild("file-write-bytes", fs.writeHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			svc.Reply(ctx, msg, WriteResp{Err: err})
@@ -72,7 +72,7 @@ func (fs *Fs) readHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 func (fs *Fs) writeHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	fwdMsg := svc.UnpackFwd(msg)
 	switch payload := fwdMsg.Payload.(type) {
-	case Write:
+	case WriteBytes:
 		path := payload.Path
 		data := payload.Data
 		err := os.WriteFile(path, data, 0644)

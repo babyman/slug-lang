@@ -12,10 +12,9 @@ import (
 
 var (
 	rootPath string
-	debugAST bool // New debug-ast flag
+	debugAST bool
 	logLevel string
 	logFile  string
-	color    bool
 	help     bool
 )
 
@@ -129,7 +128,6 @@ Options:
   -help              Display this help information and exit.
   -log-level <level> Set the log level: trace, debug, info, warn, error, none. Default is 'none'.
   -log-file <path>   Specify a log file to write logs. Default is stderr.
-  -log-color         Enable (default) or disable colored log output in the terminal.
 
 Details:
 This is the Slug programming language. 

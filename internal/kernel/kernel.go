@@ -218,6 +218,7 @@ func (k *Kernel) cleanupActor(a *Actor, reason string) {
 	delete(k.OpsBySvc, a.Id)
 
 	// Revoke all capabilities granted to this actor
+	// todo memory leak?
 	for _, cap := range a.Caps {
 		cap.Revoked.Store(true)
 	}
@@ -258,7 +259,6 @@ func (k *Kernel) handleActorError(a *Actor, err Error) {
 // RegisterPrivilegedService registers a service that needs kernel access
 func (k *Kernel) RegisterPrivilegedService(name string, svc PrivilegedService) {
 	k.PrivilegedServices[name] = svc
-	svc.Initialize(k)
 }
 
 // Declare a service (actor) with op→Operations mapping, enabling cap checks.
@@ -381,6 +381,10 @@ func (k *Kernel) ActorByName(name string) (ActorID, bool) {
 
 // Name→ActorID lookup helpers
 func (k *Kernel) Start() {
+
+	for _, svc := range k.PrivilegedServices {
+		svc.Initialize(k)
+	}
 
 	// if the CLI service is running send it a boot message
 	kernelID, _ := k.ActorByName(KernelService)

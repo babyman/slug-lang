@@ -1,9 +1,9 @@
 package parser
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
 	"slug/internal/ast"
 )
 
@@ -337,22 +337,16 @@ func WalkAST(node ast.Node) interface{} {
 	}
 }
 
-// WriteASTToJSON takes a root AST node and writes it to a JSON file.
-func WriteASTToJSON(node ast.Node, filename string) error {
+func RenderASTAsJSON(node ast.Node) (string, error) {
 	astMap := WalkAST(node)
 
-	file, err := os.Create(filename)
-	if err != nil {
-		return fmt.Errorf("failed to create JSON file: %v", err)
-	}
-	defer file.Close()
-
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")  // Pretty-print the JSON
-	encoder.SetEscapeHTML(false) // Disable escaping of characters like <, >, &
+	buf := new(bytes.Buffer)
+	encoder := json.NewEncoder(buf)
+	encoder.SetIndent("", "  ")
+	encoder.SetEscapeHTML(false)
 
 	if err := encoder.Encode(astMap); err != nil {
-		return fmt.Errorf("failed to write JSON: %v", err)
+		return "", fmt.Errorf("failed to encode JSON: %v", err)
 	}
-	return nil
+	return buf.String(), nil
 }
