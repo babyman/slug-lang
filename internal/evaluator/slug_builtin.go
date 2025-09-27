@@ -2,9 +2,9 @@ package evaluator
 
 import (
 	"bytes"
-	"fmt"
 	"slug/internal/dec64"
 	"slug/internal/object"
+	"slug/internal/svc"
 	"strings"
 )
 
@@ -88,7 +88,7 @@ func fnBuiltinPrint() *object.Foreign {
 					out.WriteString(" ")
 				}
 			}
-			fmt.Print(out.String())
+			svc.SendStdOut(ctx.ActCtx(), out.String())
 			return ctx.Nil()
 		},
 	}
@@ -106,7 +106,7 @@ func fnBuiltinPrintLn() *object.Foreign {
 					out.WriteString("\n")
 				}
 			}
-			fmt.Print(out.String())
+			svc.SendStdOut(ctx.ActCtx(), out.String())
 			return ctx.Nil()
 		},
 	}

@@ -100,6 +100,7 @@ func main() {
 	_ = k.GrantCap(parserID, logID, w, nil)
 
 	_ = k.GrantCap(evalID, modsID, r, nil)
+	_ = k.GrantCap(evalID, soutID, w, nil)
 	_ = k.GrantCap(evalID, logID, w, nil)
 
 	_ = k.GrantCap(replID, evalID, x, nil) // REPL can call EVAL

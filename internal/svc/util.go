@@ -29,7 +29,7 @@ func Send(ctx *kernel.ActCtx, actorName string, message any) {
 }
 
 func SendStdOut(ctx *kernel.ActCtx, str string, args ...any) {
-	BlockingSend(ctx, SOutService, SOutPrintln{
+	BlockingSend(ctx, SOutService, SOutPrintf{
 		Str:  str,
 		Args: args,
 	})

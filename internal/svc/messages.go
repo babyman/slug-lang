@@ -36,7 +36,7 @@ type LogMessage struct {
 // SOut service messages
 // ====================
 
-type SOutPrintln struct {
+type SOutPrintf struct {
 	Str  string
 	Args []any
 }
