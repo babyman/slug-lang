@@ -1431,7 +1431,8 @@ func (e *Evaluator) evalListIndexExpression(list, index object.Object) object.Ob
 func (e *Evaluator) evalStringIndexExpression(str, index object.Object) object.Object {
 	stringObject := str.(*object.String)
 	idx := index.(*object.Number).Value.ToInt64()
-	max := int64(len(stringObject.Value) - 1)
+	runes := []rune(stringObject.Value)
+	max := int64(len(runes) - 1)
 
 	if idx < 0 {
 		idx = max + idx + 1
@@ -1441,7 +1442,7 @@ func (e *Evaluator) evalStringIndexExpression(str, index object.Object) object.O
 		return NIL
 	}
 
-	return &object.String{Value: string(stringObject.Value[idx])}
+	return &object.String{Value: string(runes[idx])}
 }
 
 func (e *Evaluator) evalListSlice(elements []object.Object, slice *object.Slice) object.Object {
@@ -1454,12 +1455,13 @@ func (e *Evaluator) evalListSlice(elements []object.Object, slice *object.Slice)
 }
 
 func (e *Evaluator) evalStringSlice(value string, slice *object.Slice) object.Object {
-	start, end, step := e.computeSliceIndices(len(value), slice)
-	var result string
+	runes := []rune(value)
+	start, end, step := e.computeSliceIndices(len(runes), slice)
+	var b strings.Builder
 	for i := start; i < end; i += step {
-		result += string(value[i])
+		b.WriteRune(runes[i])
 	}
-	return &object.String{Value: result}
+	return &object.String{Value: b.String()}
 }
 
 func (e *Evaluator) computeSliceIndices(length int, slice *object.Slice) (int, int, int) {
@@ -1488,6 +1490,10 @@ func (e *Evaluator) computeSliceIndices(length int, slice *object.Slice) (int, i
 	}
 	if end > length {
 		end = length
+	}
+	if step <= 0 {
+		// todo error on 0, consider negative step
+		step = 1
 	}
 
 	return start, end, step

@@ -3,6 +3,7 @@ package lexer
 import (
 	"slug/internal/token"
 	"strings"
+	"unicode/utf8"
 )
 
 type MultiLineStringTokenizer struct {
@@ -32,10 +33,16 @@ func (m *MultiLineStringTokenizer) NextToken() token.Token {
 			for i := 0; i < 3; i++ {
 				m.lexer.readChar()
 			}
-			original := result.String()          // Get the current string
-			trimmed := original[:result.Len()-1] // Trim the last character
-			result.Reset()                       // Reset the builder
-			result.WriteString(trimmed)
+			original := result.String()
+			// Trim the last rune (the newline before closing """)
+			if original != "" {
+				_, size := utf8.DecodeLastRuneInString(original)
+				if size > 0 {
+					trimmed := original[:len(original)-size]
+					result.Reset()
+					result.WriteString(trimmed)
+				}
+			}
 			m.lexer.setMode(NewGeneralTokenizer(m.lexer))
 			break
 		}
@@ -62,10 +69,10 @@ func (m *MultiLineStringTokenizer) NextToken() token.Token {
 				result.WriteRune(rune(octalValue))
 			default:
 				result.WriteRune('\\')
-				result.WriteByte(m.lexer.ch)
+				result.WriteRune(m.lexer.ch)
 			}
 		} else {
-			result.WriteByte(m.lexer.ch)
+			result.WriteRune(m.lexer.ch)
 		}
 
 		m.lexer.readChar()
@@ -79,7 +86,7 @@ func (m *MultiLineStringTokenizer) NextToken() token.Token {
 }
 
 // consumeOctal interprets up to three octal digits to return their numeric value.
-func (m *MultiLineStringTokenizer) consumeOctal(firstChar byte) int {
+func (m *MultiLineStringTokenizer) consumeOctal(firstChar rune) int {
 	value := int(firstChar - '0') // Convert the first octal digit
 	for i := 0; i < 2; i++ {      // Consume up to two more octal digits
 		next := m.lexer.peekChar()

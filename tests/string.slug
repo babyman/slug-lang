@@ -29,11 +29,14 @@ ms.assertEqual("Hello\nSlug!");
 
 "  ".trim().assertEqual("");
 
-" a ".trim().assertEqual("a");
-
+" é ".trim().assertEqual("é");
 
 // length
 // -----------------------
+
+// utf-8 string length
+len("éééé").assertEqual(4);
+
 assertEqual(s.len(), 11);
 
 

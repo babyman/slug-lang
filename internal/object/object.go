@@ -10,6 +10,7 @@ import (
 	"slug/internal/kernel"
 	"slug/internal/log"
 	"strings"
+	"unicode/utf8"
 )
 
 const (
@@ -151,7 +152,11 @@ func (s *String) Type() ObjectType { return STRING_OBJ }
 func (s *String) Inspect() string  { return s.Value }
 func (s *String) MapKey() MapKey {
 	h := fnv.New64a()
-	h.Write([]byte(s.Value))
+	for _, r := range s.Value {
+		var buf [4]byte
+		n := utf8.EncodeRune(buf[:], r)
+		h.Write(buf[:n])
+	}
 	return MapKey{Type: s.Type(), Value: h.Sum64()}
 }
 func (s *String) HasTag(tag string) bool {

@@ -2,13 +2,15 @@ package lexer
 
 import (
 	"slug/internal/token"
+	"unicode"
+	"unicode/utf8"
 )
 
 type Lexer struct {
 	input        string
-	position     int       // current position in input (points to current char)
-	readPosition int       // current reading position in input (after current char)
-	ch           byte      // current char under examination
+	position     int       // current byte position in input (points to start of current rune)
+	readPosition int       // next byte position in input (start of next rune)
+	ch           rune      // current rune under examination; 0 means EOF
 	prevMode     Tokenizer // Prev tokenizer strategy if we are in interpolation mode
 	currentMode  Tokenizer // Current tokenizer strategy
 }
@@ -42,14 +44,14 @@ func (l *Lexer) NextToken() token.Token {
 
 func (l *Lexer) handleCompoundToken(
 	t token.TokenType,
-	ch1 byte,
+	ch1 rune,
 	t1 token.TokenType,
 ) token.Token {
 	startPosition := l.position
 	if l.peekChar() == ch1 {
-		ch := l.ch
+		first := l.ch
 		l.readChar()
-		literal := string(ch) + string(l.ch)
+		literal := string(first) + string(l.ch)
 		return token.Token{Type: t1, Literal: literal, Position: startPosition}
 	} else {
 		return newToken(t, l.ch, startPosition)
@@ -58,21 +60,22 @@ func (l *Lexer) handleCompoundToken(
 
 func (l *Lexer) handleCompoundToken2(
 	t token.TokenType,
-	ch1 byte,
+	ch1 rune,
 	t1 token.TokenType,
-	ch2 byte,
+	ch2 rune,
 	t2 token.TokenType,
 ) token.Token {
 	startPosition := l.position
-	if l.peekChar() == ch1 {
-		ch := l.ch
+	peek := l.peekChar()
+	if peek == ch1 {
+		first := l.ch
 		l.readChar()
-		literal := string(ch) + string(l.ch)
+		literal := string(first) + string(l.ch)
 		return token.Token{Type: t1, Literal: literal, Position: startPosition}
-	} else if l.peekChar() == ch2 {
-		ch := l.ch
+	} else if peek == ch2 {
+		first := l.ch
 		l.readChar()
-		literal := string(ch) + string(l.ch)
+		literal := string(first) + string(l.ch)
 		return token.Token{Type: t2, Literal: literal, Position: startPosition}
 	} else {
 		return newToken(t, l.ch, startPosition)
@@ -104,41 +107,54 @@ func (l *Lexer) skipToLineEnd() {
 	}
 }
 
+// readChar advances by one UTF-8 rune, updating byte positions
 func (l *Lexer) readChar() {
 	if l.readPosition >= len(l.input) {
 		l.ch = 0
-	} else {
-		l.ch = l.input[l.readPosition]
+		l.position = l.readPosition
+		return
 	}
+	r, size := utf8.DecodeRuneInString(l.input[l.readPosition:])
+	l.ch = r
 	l.position = l.readPosition
-	l.readPosition += 1
+	l.readPosition += size
 }
 
-func (l *Lexer) peekChar() byte {
+// peekChar returns the next rune without advancing; returns 0 at EOF
+func (l *Lexer) peekChar() rune {
 	if l.readPosition >= len(l.input) {
 		return 0
-	} else {
-		return l.input[l.readPosition]
 	}
+	r, _ := utf8.DecodeRuneInString(l.input[l.readPosition:])
+	return r
 }
 
-func (l *Lexer) peekTwoChars() byte {
-	if l.readPosition+1 >= len(l.input) {
+// peekTwoChars returns the rune after next without advancing; returns 0 if unavailable
+func (l *Lexer) peekTwoChars() rune {
+	if l.readPosition >= len(l.input) {
 		return 0
 	}
-	return l.input[l.readPosition+1]
+	_, size := utf8.DecodeRuneInString(l.input[l.readPosition:])
+	idx := l.readPosition + size
+	if idx >= len(l.input) {
+		return 0
+	}
+	r2, _ := utf8.DecodeRuneInString(l.input[idx:])
+	return r2
 }
 
+// readIdentifier returns the substring (bytes) covering the identifier runes
 func (l *Lexer) readIdentifier() string {
-	position := l.position
+	start := l.position
 	for isLetter(l.ch) || isDigit(l.ch) {
 		l.readChar()
 	}
-	return l.input[position:l.position]
+	return l.input[start:l.position]
 }
 
+// readNumber keeps previous ASCII-based number rules; extends to Unicode digits for integer part
 func (l *Lexer) readNumber() string {
-	position := l.position
+	start := l.position
 	for isDigit(l.ch) {
 		l.readChar()
 	}
@@ -157,17 +173,20 @@ func (l *Lexer) readNumber() string {
 			l.readChar()
 		}
 	}
-	return l.input[position:l.position]
+	return l.input[start:l.position]
 }
 
-func isLetter(ch byte) bool {
-	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_'
+// Unicode-aware helpers
+func isLetter(ch rune) bool {
+	// Letters, underscore, and categories like Letter and Mark to support identifiers like café,变量
+	return ch == '_' || unicode.IsLetter(ch) || unicode.Is(unicode.Mn, ch) || unicode.Is(unicode.Mc, ch)
 }
 
-func isDigit(ch byte) bool {
-	return '0' <= ch && ch <= '9'
+func isDigit(ch rune) bool {
+	// Allow Unicode decimal digits
+	return unicode.IsDigit(ch)
 }
 
-func newToken(tokenType token.TokenType, ch byte, position int) token.Token {
+func newToken(tokenType token.TokenType, ch rune, position int) token.Token {
 	return token.Token{Type: tokenType, Literal: string(ch), Position: position}
 }
