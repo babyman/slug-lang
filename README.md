@@ -1,7 +1,22 @@
 Slug
 ===
 
-A small, opinionated programming language.
+My small, opinionated programming language.
+
+A Word of Warning
+===
+"Perfect is the enemy of good."
+---
+
+```
+Slug will never end,
+but still I write and mend.
+Perfect waits and fades —
+good enough, again.
+```
+
+Slug is a work in progress, and may never reach a stable release. However I am using it for all of my personal projects
+in an effort to keep it alive and useful.
 
 Slug Command
 ===

@@ -4,7 +4,8 @@ var {*} = import(
 	"slug.list",
 	"slug.meta",
 	"slug.string",
-	"slug.time"
+	"slug.time",
+	"slug.sys"
 );
 
 var TEST_WITH_TAG = "@testWith";
@@ -77,9 +78,8 @@ var testRunner = fn(module, stats) {
 	});
 }
 
-var run = fn(stats, ...modules) {
-    match modules {
-        [] => """
+var renderResult = fn(stats) {
+"""
 
 Results:
 
@@ -87,10 +87,22 @@ Tests run: {{stats.run}}, Failures: {{stats.fail}}, Errors: {{stats.error}}
 
 Total time {{timer()}}ms
 
-""";
-        [h, ...t] => run(testRunner(h, stats), ...t);
-        _ => "Unrecognized modules parameter!"
-    }
+"""
+}
+
+var run = fn(stats, ...modules) {
+	match modules {
+		[] => {
+			renderResult(stats).println();
+			if (stats.fail > 0 || stats.error > 0) {
+				exit(1);
+			} else {
+				exit(0);
+			}
+		}
+		[h, ...t] => run(testRunner(h, stats), ...t);
+		_ => "Unrecognized modules parameter!"
+	}
 }
 
 run({run:0, fail:0, error:0}, ...args);

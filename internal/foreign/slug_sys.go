@@ -18,7 +18,7 @@ func fnSysExit() *object.Foreign {
 				return ctx.NewError("argument must be NUMBER, got=%s", code.Type())
 			}
 
-			os.Exit(int(code.(*object.Number).Value))
+			os.Exit(code.(*object.Number).Value.ToInt())
 			return ctx.Nil()
 		},
 	}
