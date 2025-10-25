@@ -1,0 +1,230 @@
+// This script scrapes service provider information from a fictitious website
+// and exports it to a CSV file. It includes caching functionality to avoid 
+// repeated requests to the same pages.
+
+var {*} = import(
+	"slug.std",
+	"slug.io.http", 
+	"slug.io.fs",
+	"slug.string",
+	"slug.html",
+	"slug.csv",
+	"slug.time"
+);
+// import regex separately so we can rename `replaceAll` to prevent conflict with `slug.string`
+var {findAllGroups, findAll, replaceAll: rxReplace} = import("slug.regex");
+
+if(mkDirs("./cache")) {
+	println("./cache directory created");
+}
+
+// getPage fetches a web page and caches it locally
+// Parameters:
+//   base: The base URL
+//   page: The page path to fetch
+// Returns: [statusCode, pageContent]
+var getPage = fn(base, page) {
+	var cachePage = "./cache/{{page}}.html";
+	if(exists(cachePage)) {
+		[200, readFile(cachePage)]
+	} else {
+		println("Fetching page {{base}}{{page}}");
+		sleep(5000);
+		var [r, b] = get(base + page);
+		b.writeFile(cachePage);
+		[r, b];
+	}
+}
+
+// extractIndexAndCardLinks recursively extracts all card links from index pages
+// Parameters:
+//   base: Base URL to fetch pages from
+//   pages: List of pages to process
+//   cards: Map of discovered card URLs
+//   pagesSeen: Map of already processed pages
+// Returns: List of card URLs
+var extractIndexAndCardLinks = fn(base, pages = [], cards = {}, pagesSeen = {}) {
+	match pages {
+		[] => cards.keys();
+		[h, ...t] if pagesSeen[h] != nil => {
+			extractIndexAndCardLinks(base, t, cards, pagesSeen);
+		}
+		[h, ...t] => {
+			var page = base + h;
+			var pagesRemaining = t;
+			var [respCode, body] = getPage(base, h);
+			if (respCode < 300) {
+				var pages = body.findAll("\?page=\d+")
+					.filter(fn(v) { pagesSeen[v] == nil });
+				pagesRemaining = pagesRemaining + pages;
+				body.findAll("service.html\?i=\d+").map(fn(v) {
+					cards = cards.put(v, true);
+				});
+			} else {
+				println("Error response {{respCode}} for {{page}}");
+			}
+			extractIndexAndCardLinks(base, pagesRemaining, cards, pagesSeen.put(h, true));
+		}
+	}
+}
+
+var readFirst = fn(v) {
+	if(len(v) > 0 && len(v[0]) > 0) {
+		v.reduce([], fn(acc, v) { acc :+ v[1] })
+		.join("; ")
+		.htmlUnescape()
+	} else {
+		"";
+	}
+}
+
+var readAll = fn(lst, sep = "; ") {
+	lst.filter(fn(v) { len(v) > 1 })
+		.reduce([], fn(acc, v) { acc + v[1:] })
+		.join(sep)
+		.htmlUnescape()
+}
+
+var readServiceTable = fn(tableStr, sep = "; ") {
+	tableStr.findAllGroups("<tr>(.*?)</tr>")
+		.filter(fn(v) { len(v) > 1 })
+		.reduce([], fn(acc, v) { acc + v[1:] })
+		.map(fn(v) { 
+			var header = v.findAllGroups("<th>(.*?)</th>").readFirst();
+			var list = v.findAllGroups("<a href=\".*?\">(.*?)</a>").readAll(", ");
+			if ( list == "" ) {
+				list = v.findAllGroups("<td>(.*?)</td>").readAll(", ");
+			}
+			header + ": " + list;
+		})
+		.join(sep)
+		.htmlUnescape()
+}
+
+var readAmenities = fn(lst, sep = "; ") {
+	lst.filter(fn(v) { len(v) > 1 })
+		.reduce([], fn(acc, v) { acc :+ v[1:] })
+		.map(fn(v) { 
+			var header = v[0];
+			var list = v[1].findAllGroups("<a href=\".*?\">(.*?)</a>").readAll(", ");
+			if ( list == "" ) {
+				list = v[1];
+			}
+			header + ": " + list;
+		})
+		.join(sep)
+		.htmlUnescape()
+}
+
+var scrapeCards = fn(cards, base, rows) {
+	match cards {
+		[] => rows;
+		[h, ...t] => {
+			var [respCode, body] = getPage(base, h);
+			if (respCode < 300) {
+				var row = scrapeCard(body) :+ (base + h);
+				scrapeCards(t, base, rows :+ row);
+			} else {
+				println("Error {{respCode}} when trying to scrape {{base + h}}");
+				scrapeCards(t, base, rows);
+			}
+		}
+	}
+}
+
+var cleanupText = fn(str) {
+	str.rxReplace("<[^>]+>", " ")
+		.rxReplace(" +", " ")
+		.rxReplace("([\r\n]+ +)+", "\n")
+		.htmlUnescape()
+		.trim();
+}
+
+var extractLinks = fn(str) {
+	str.findAllGroups("href=\"(.*?)\"")
+		.filter(fn(s) { !s[1].startsWith("./") })
+		.readAll()
+		.urlDecode()
+}
+
+var fixEmail = fn(str) { str.rxReplace("%40", "@") };
+
+var debug = fn(s) {
+	println(s)
+	s
+}
+
+// scrapeCard extracts structured data from a service provider card
+// Parameters:
+//   card: HTML content of the card
+// Returns: List containing extracted fields in order:
+//   [organization, program, description, address, locality, region,
+//    contact, phone, hours, web links, social media, categories,
+//    amenities, services, last updated]
+var scrapeCard = fn(card) {
+	var i1 = card.indexOf("<div id=\"program_details\">")
+	var i2 = card.indexOf("<p class=\"lastUpd\">")
+	var details = card[i1: i2 + 100];
+	[
+		details.findAllGroups("<span class=\"organization\">(.*?)</span>")
+			.readFirst(),
+		details.findAllGroups("class=\"program_name\">(.*?)</h1>")
+			.readFirst(),
+		details.extractInnerText("div", details.indexOf("<div class=\"program_desc\">"))
+			.cleanupText(),
+		details.findAllGroups("<span class=\"streetAddress\">(.*?)</span>")
+			.readFirst(),
+		details.findAllGroups("<span class=\"addressLocality\">(.*?)</span>")
+			.readFirst(),
+		details.findAllGroups("<span class=\"addressRegion\">(.*?)</span>")
+			.readFirst(),
+		details.findAllGroups("<span class=\"name\">(.*?)</span>")
+			.readFirst(),
+		details.findAllGroups("<span class=\"telephone\">(.*?)</span>")
+			.readFirst(),
+		details.extractInnerText("div", details.indexOf("<div id =\"hours_of_operation\">"))
+			.findAllGroups("<p><strong>(.*?)</strong>:(.*?)</p>")
+			.readAll(),
+		details.extractInnerText("div", details.indexOf("<div id =\"web_links\">"))
+			.extractLinks()
+			.fixEmail(),
+		details.extractInnerText("div", details.indexOf("<div id =\"social_media_links\">"))
+			.extractLinks(),
+		details.extractInnerText("div", details.indexOf("<div id =\"categorization\">"))
+			.findAllGroups("<a href=\".*?\">(.*?)</a>")
+			.readAll(" > "),
+		// Amenities
+		details.findAllGroups("<div class=\"exInfo\"><i>(.*?)</i><b>:</b> <div class=\"exData\">(.*?)</div>")
+			.readAmenities(),
+		details.extractInnerText("table", details.indexOf("<table class=\"fieldsTbl\">"))
+			.readServiceTable(),
+		details.findAllGroups("last updated on: <strong>(.*?)</strong>")
+			.readFirst()
+	];
+}
+
+
+var rowHeaders = [[
+	"Organization",
+	"Program",
+	"Program Description",
+	"Street Address",
+	"Locality",
+	"Region",
+	"Contact Name",
+	"Telephone",
+	"Hours of Operation",
+	"Web Links",
+	"Social Media",
+	"Categories",
+	"Amenities",
+	"Services",
+	"Last Updated",
+	"Source"
+]];
+
+
+toCsv(extractIndexAndCardLinks("https://a.website.com/index.html", [""])
+	.scrapeCards("https://a.website.com/", rowHeaders))
+	.writeFile("scrape-results.csv");
+
