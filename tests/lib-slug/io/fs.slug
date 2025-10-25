@@ -10,9 +10,9 @@ var goodbye = "Goodbye Slug!\n";
 
 // read / write / append entire file content
 // -----------------------------------------
-filename.writeFile(hello);
-filename.appendFile(goodbye);
-filename.readFile().assertEqual(hello + goodbye);
+hello.writeFile(filename);
+goodbye.appendFile(filename);
+readFile(filename).assertEqual(hello + goodbye);
 
 // inspect the file
 // ----------------

@@ -9,21 +9,21 @@ foreign readFile = fn(@str path);
 
 // writeFile writes string content to a file
 // Parameters:
-//   path: path to file to write
 //   contents: string data to write
+//   path: path to file to write
 // Returns:
 //   nil on success, error if write fails
 @export
-foreign writeFile = fn(@str path, @str contents);
+foreign writeFile = fn(@str contents, @str path);
 
 // appendFile appends string content to end of file
 // Parameters:
-//   path: path to file to append to
 //   contents: string data to append
+//   path: path to file to append to
 // Returns:
 //   nil on success, error if write fails
 @export
-foreign appendFile = fn(@str path, @str contents);
+foreign appendFile = fn(@str contents, @str path);
 
 // info gets information about a file
 // Parameters:
@@ -40,6 +40,9 @@ foreign info = fn(@str path);
 //   true if file exists and is accessible, false otherwise
 @export
 foreign exists = fn(@str path);
+
+@export
+foreign mkDirs = fn(... path);
 
 // isDir checks if path points to a directory
 // Parameters:

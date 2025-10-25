@@ -1,0 +1,30 @@
+<table>
+    <thead>
+    <tr>
+        <th>Id</th>
+        <th>Name</th>
+        <th>CPU (μs)</th>
+        <th>IPC In</th>
+        <th>IPC Out</th>
+        <th>Caps</th>
+        <th></th>
+    </tr>
+    </thead>
+    <tbody>
+    {{ range . }}
+    <tr>
+        <td><a>{{ .ID }}</a></td>
+        <td>{{ .Name }}</td>
+        <td>{{ .CPUOps }}</td>
+        <td>{{ .IPCIn }}</td>
+        <td>{{ .IPCOut }}</td>
+        <td>3</td>
+        <td>
+            <a>Restart</a>
+            |
+            <a>Stop</a>
+        </td>
+    </tr>
+    {{ end }}
+    </tbody>
+</table>

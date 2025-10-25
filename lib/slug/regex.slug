@@ -1,0 +1,36 @@
+@testWith(
+    ["test", "\d+"], false,
+    ["aaabbb", "b+"], true,
+    ["123", "\d+"], true
+)
+@export
+foreign matches = fn(@str str, @str pattern);
+
+
+@testWith(
+    ["1|2|3", "\|"], ["1", "2", "3"]
+)
+@export
+foreign split = fn(@str str, @str pattern);
+
+
+@testWith(
+    ["1|2|3", "\d+"], ["1", "2", "3"],
+    ["(foo)", "[a-z]+"], ["foo"]
+)
+@export
+foreign findAll = fn(@str str, @str pattern);
+
+
+@testWith(
+	["<a href=\"foo\">bar</a>", "<a href=\"(.*?)\">(.*?)</a>"], [["<a href=\"foo\">bar</a>", "foo", "bar"]]
+)
+@export
+foreign findAllGroups = fn(@str str, @str pattern);
+
+
+@testWith(
+    ["1|2|3", "\d+", "x"], "x|x|x"
+)
+@export
+foreign replaceAll = fn(@str str, @str pattern, @str repl);

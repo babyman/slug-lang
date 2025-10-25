@@ -54,12 +54,12 @@ func fnIoFsWriteFile() *object.Foreign {
 				return ctx.NewError("wrong number of arguments to `writeFile`, got=%d, want=2", len(args))
 			}
 
-			path, err := unpackString(args[0], "path")
+			content, err := unpackString(args[0], "contents")
 			if err != nil {
 				return ctx.NewError(err.Error())
 			}
 
-			content, err := unpackString(args[1], "contents")
+			path, err := unpackString(args[1], "path")
 			if err != nil {
 				return ctx.NewError(err.Error())
 			}
@@ -81,12 +81,12 @@ func fnIoFsAppendFile() *object.Foreign {
 				return ctx.NewError("wrong number of arguments to `appendFile`, got=%d, want=2", len(args))
 			}
 
-			path, err := unpackString(args[0], "path")
+			content, err := unpackString(args[0], "contents")
 			if err != nil {
 				return ctx.NewError(err.Error())
 			}
 
-			content, err := unpackString(args[1], "contents")
+			path, err := unpackString(args[1], "path")
 			if err != nil {
 				return ctx.NewError(err.Error())
 			}
@@ -156,11 +156,38 @@ func fnIoFsInfo() *object.Foreign {
 	}
 }
 
+func fnIoFsMkdirs() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return ctx.NewError("wrong number of arguments to `mkDirs`, got=%d, want=1", len(args))
+			}
+
+			path, err := unpackString(args[0], "path")
+			if err != nil {
+				return ctx.NewError(err.Error())
+			}
+
+			created := false
+			if _, err := os.Stat(path); os.IsNotExist(err) {
+				created = true
+			}
+
+			err = os.MkdirAll(path, 0755)
+			if err != nil {
+				return ctx.NewError("failed to create directories: %s", err.Error())
+			}
+
+			return ctx.NativeBoolToBooleanObject(created)
+		},
+	}
+}
+
 func fnIoFsIsDir() *object.Foreign {
 	return &object.Foreign{
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
-				return ctx.NewError("wrong number of arguments to `isDirectory`, got=%d, want=1", len(args))
+				return ctx.NewError("wrong number of arguments to `isDir`, got=%d, want=1", len(args))
 			}
 
 			path, err := unpackString(args[0], "path")

@@ -37,6 +37,7 @@ ms.assertEqual("Hello\nSlug!");
 // utf-8 string length
 len("éééé").assertEqual(4);
 
+
 assertEqual(s.len(), 11);
 
 
@@ -72,3 +73,7 @@ assertEqual(s.indexOf("H", 1), -1, "H found at index 0");
 // trim
 // -----------------------
 assertEqual("  foo  ".trim(), "foo");
+
+// Multiple strings to repeat
+// -----------------------
+("é" * 4).assertEqual("éééé");

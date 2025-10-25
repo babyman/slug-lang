@@ -1,0 +1,36 @@
+var {*} = import(
+	"slug.string"
+);
+
+@testWith(
+	[[["a", "b"]]], "a,b\r\n",
+	[[["a", "b"],["c", "d"]]], "a,b\r\nc,d\r\n",
+	[[["a\n", "qu\"ote"]]], "\"a\n\",\"qu\"\"ote\"\r\n"
+)
+@export
+var toCsv = fn(@list rows, @str sep = ",", @str quote = "\"", @str eol = "\r\n", @str acc = "") {
+	match rows {
+		[] => acc;
+		[h, ...t] => toCsv(t, sep, quote, eol, acc + rowToCsv(h, sep, quote, eol));
+	}
+}
+
+var rowToCsv = fn(@list row, @str sep, @str quote, @str eol, @str acc = "") {
+	match row {
+		[] => acc + eol;
+		[h] => rowToCsv([], sep, quote, eol, acc + cellToCsv(h, sep, quote));
+		[h, ...t] => rowToCsv(t, sep, quote, eol, acc + cellToCsv(h, sep, quote) + sep);
+	}
+}
+
+var cellToCsv = fn(@str cell, @str sep, @str quote) {
+	var needsQuote = cell.contains(sep)
+			 || cell.contains(quote)
+			 || cell.contains("\n")
+			 || cell.contains("\r");
+	if (needsQuote) {
+		quote + cell.replaceAll(quote, quote + quote) + quote;
+	} else {
+		cell;
+	}
+}

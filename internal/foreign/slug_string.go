@@ -18,6 +18,8 @@ func fnStringTrim() *object.Foreign {
 		case *object.String:
 			trimmed := strings.TrimFunc(arg.Value, unicode.IsSpace)
 			return &object.String{Value: trimmed}
+		case *object.Nil:
+			return arg
 		default:
 			return ctx.NewError("argument to `trim` not supported, got %s", args[0].Type())
 		}
@@ -82,6 +84,8 @@ func fnStringToUpper() *object.Foreign {
 		switch arg := args[0].(type) {
 		case *object.String:
 			return &object.String{Value: strings.ToUpper(arg.Value)}
+		case *object.Nil:
+			return arg
 		default:
 			return ctx.NewError("argument to `toUpper` not supported, got %s", args[0].Type())
 		}
@@ -98,6 +102,8 @@ func fnStringToLower() *object.Foreign {
 		switch arg := args[0].(type) {
 		case *object.String:
 			return &object.String{Value: strings.ToLower(arg.Value)}
+		case *object.Nil:
+			return arg
 		default:
 			return ctx.NewError("argument to `toLower` not supported, got %s", args[0].Type())
 		}

@@ -1,0 +1,34 @@
+
+@export
+foreign request = fn(@str method, @str url, @str body = "", @map headers = {});
+
+@export
+var get = fn(@str url, @map headers = {}) {
+  request("GET", url, "", headers);
+}
+
+@export
+var post = fn(@str url, @str body, @map headers = {}) {
+  request("POST", url, body, headers);
+}
+
+@export
+var put = fn(@str url, @str body, @map headers = {}) {
+  request("PUT", url, body, headers);
+}
+
+@export
+var patch = fn(@str url, @str body, @map headers = {}) {
+  request("PATCH", url, body, headers);
+}
+
+@export
+var delete = fn(@str url, @map headers = {}) {
+  request("DELETE", url, "", headers);
+}
+
+@export
+var urlDecode = fn(@str str) {
+  // todo implement me!
+  str;
+}

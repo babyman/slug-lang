@@ -18,6 +18,8 @@ arr[1:].assertEqual(["e", "l", "l", "o"]);
 
 arr[:2].assertEqual(["h", "e"]);
 
+arr[:-1].assertEqual(["h", "e", "l", "l"]);
+
 arr[0:4].assertEqual(["h", "e", "l", "l"]);
 
 arr[0:10].assertEqual(["h", "e", "l", "l", "o"]);

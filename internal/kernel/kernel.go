@@ -34,7 +34,6 @@ import (
 	"os"
 	"reflect"
 	"slug/internal/logger"
-	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -400,7 +399,6 @@ func (k *Kernel) Start() {
 		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		for {
 			time.Sleep(time.Duration(1500+r.Intn(1500)) * time.Millisecond)
-			printStatus(k)
 		}
 	}()
 	select {
@@ -423,22 +421,6 @@ func (k *Kernel) broadcastMessage(kernelID ActorID, message any) {
 	}
 }
 
-func printStatus(k *Kernel) {
-	k.Mu.RLock()
-	defer k.Mu.RUnlock()
-	log.Infof("Actors=%d\n", len(k.Actors))
-	var ids []ActorID
-	for Id := range k.Actors {
-		ids = append(ids, Id)
-	}
-	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
-	for _, Id := range ids {
-		a := k.Actors[Id]
-		log.Infof("  - Id=%2d Name=%-12s cpu(μs) %8d ops ipc(in=%3d out=%3d) Caps=%d\n",
-			Id, a.Name, a.CpuOps, a.IpcIn, a.IpcOut, len(a.Caps))
-	}
-}
-
 func (k *Kernel) handler(ctx *ActCtx, msg Message) HandlerSignal {
 	switch payload := msg.Payload.(type) {
 	case Broadcast:
@@ -447,11 +429,9 @@ func (k *Kernel) handler(ctx *ActCtx, msg Message) HandlerSignal {
 	case RequestShutdown:
 		log.Infof("RequestShutdown: %d", payload.ExitCode)
 		k.reply(ctx, msg, nil)
-		printStatus(k)
 		os.Exit(payload.ExitCode)
 	default:
 		log.Warnf("Unhandled message: %v", msg)
-		printStatus(k)
 		k.reply(ctx, msg, nil)
 	}
 	return Continue{}

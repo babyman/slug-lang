@@ -10,6 +10,7 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.io.fs.appendFile": fnIoFsAppendFile(),
 		"slug.io.fs.info":       fnIoFsInfo(),
 		"slug.io.fs.exists":     fnIoFsExists(),
+		"slug.io.fs.mkDirs":     fnIoFsMkdirs(),
 		"slug.io.fs.isDir":      fnIoFsIsDir(),
 		"slug.io.fs.ls":         fnIoFsLs(),
 		"slug.io.fs.rm":         fnIoFsRm(),
@@ -17,6 +18,8 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.io.fs.readLine":   fnIoFsReadLine(),
 		"slug.io.fs.write":      fnIoFsWrite(),
 		"slug.io.fs.closeFile":  fnIoFsCloseFile(),
+
+		"slug.io.http.request": fnIoHttpRequest(),
 
 		"slug.io.tcp.bind":    fnIoTcpBind(),
 		"slug.io.tcp.accept":  fnIoTcpAccept(),
@@ -35,6 +38,12 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.meta.searchScopeTags":  fnMetaSearchScopeTags(),
 		"slug.meta.rebindScopeTags":  fnMetaRebindScopeTags(),
 		"slug.meta.withEnv":          fnMetaWithEnv(),
+
+		"slug.regex.matches":       fnRegexMatches(),
+		"slug.regex.split":         fnRegexSplit(),
+		"slug.regex.findAll":       fnRegexFindAll(),
+		"slug.regex.findAllGroups": fnRegexFindAllGroups(),
+		"slug.regex.replaceAll":    fnRegexReplaceAll(),
 
 		"slug.std.type":        fnStdType(),
 		"slug.std.isDefined":   fnStdIsDefined(),

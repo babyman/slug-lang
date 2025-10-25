@@ -72,7 +72,7 @@ func main() {
 	evalID := k.RegisterService(svc.EvalService, eval.Operations, evalSvc.Handler)
 
 	// REPL service
-	replSvc := &repl.ReplService{EvalID: evalID}
+	replSvc := repl.NewReplService()
 	replID := k.RegisterService(svc.ReplService, repl.Operations, replSvc.Handler)
 
 	// Cap grants
@@ -104,7 +104,9 @@ func main() {
 	_ = k.GrantCap(evalID, soutID, w, nil)
 	_ = k.GrantCap(evalID, logID, w, nil)
 
-	_ = k.GrantCap(replID, evalID, x, nil) // REPL can call EVAL
+	_ = k.GrantCap(replID, lexerID, x, nil)
+	_ = k.GrantCap(replID, parserID, x, nil)
+	_ = k.GrantCap(replID, evalID, x, nil)
 	_ = k.GrantCap(replID, logID, w, nil)
 
 	k.Start()

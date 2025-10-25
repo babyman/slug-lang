@@ -28,7 +28,7 @@ func nextIoTcpId() int64 {
 func unpackString(arg object.Object, argName string) (string, error) {
 
 	if arg.Type() != object.STRING_OBJ {
-		return "", fmt.Errorf("argument to `%s` must be a string, got=%s", argName, arg.Type())
+		return "", fmt.Errorf("argument to `%s` must be a STRING, got=%s", argName, arg.Type())
 	}
 	value := arg.(*object.String)
 	return value.Value, nil

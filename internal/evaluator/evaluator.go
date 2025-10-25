@@ -835,7 +835,7 @@ func (e *Evaluator) ApplyFunction(fnName string, fnObj object.Object, args []obj
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					result = newErrorf("error calling foreign function %s", fn.Name)
+					result = newErrorf("error calling foreign function '%s'", fn.Name)
 				}
 			}()
 			result = fn.Fn(e, args...)
