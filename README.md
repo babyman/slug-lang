@@ -3,8 +3,7 @@ Slug
 
 A small, opinionated programming language.
 
-[![build-and-test.yml](https://github.com/babyman/slug-lang/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/babyman/slug-lang/actions/workflows/build-and-test.yml)
-
+[![build-test-tag-and-release](https://github.com/babyman/slug-lang/actions/workflows/build-test-tag-and-release.yml/badge.svg)](https://github.com/babyman/slug-lang/actions/workflows/build-test-tag-and-release.yml)
 
 A Word of Warning
 ===
