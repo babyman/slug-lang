@@ -3,7 +3,7 @@ var {*} = import (
 );
 
 var sayHi = fn(args) {
-    if(args != nil && args.len() > 0) {
+    if (args != nil && args.len() > 0) {
         "Hello " + args[0] + "!";
     } else {
         "Hello Slug!"
