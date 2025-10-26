@@ -1,7 +1,7 @@
 Slug
 ===
 
-My small, opinionated programming language.
+A small, opinionated programming language.
 
 [![build-and-test.yml](https://github.com/babyman/slug-lang/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/babyman/slug-lang/actions/workflows/build-and-test.yml)
 
