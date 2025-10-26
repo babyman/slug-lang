@@ -1,3 +1,27 @@
+// Slug Test Framework
+//
+// This is a simple test framework for Slug programs that allows you to write and run
+// unit tests. The framework supports both simple test cases and parameterized tests
+// with multiple inputs and expected outputs.
+//
+// Usage:
+//   1. Tag your test functions with either @test or @testWith
+//   2. Run your tests using the test runner
+//   3. View results including passes, failures and errors
+//
+// Example:
+//   @test
+//   var simpleTest = fn() {
+//     assert(1 + 1 == 2);
+//   }
+//
+//   @testWith(
+//     [1, 2, 3], 3,
+//     [7, 9, 8], 9,
+//     [4, 5, 3], 5
+//   )
+//   var max = fn(a, ...b)
+
 var {*} = import(
 	"slug.std",
 	"slug.map",
@@ -8,6 +32,9 @@ var {*} = import(
 	"slug.sys"
 );
 
+// @test - Marks a function as a test case that takes no parameters
+// @testWith - Allows test inputs and expected outputs to be specified
+//
 var TEST_WITH_TAG = "@testWith";
 var TEST_TAG = "@test";
 var timer = delta(clock);
