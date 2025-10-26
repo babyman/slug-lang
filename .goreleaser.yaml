@@ -1,6 +1,8 @@
 
 version: 2
 
+project_name: "Slug"
+
 builds:
   - id: "slug"
     main: "./cmd/app/"
@@ -16,7 +18,8 @@ archives:
   - formats: [tar.gz]
     # this name template makes the OS and Arch compatible with the results of `uname`.
     name_template: >-
-      {{ .ProjectName }}_
+      {{ .ProjectName }}_v
+      {{- .Version }}_
       {{- title .Os }}_
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
