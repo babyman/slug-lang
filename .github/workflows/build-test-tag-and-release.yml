@@ -1,4 +1,4 @@
-name: build-and-test.yml
+name: build-test-tag-and-release
 
 on:
   push:
