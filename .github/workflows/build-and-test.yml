@@ -48,3 +48,11 @@ jobs:
           git push origin "v${{ github.run_number }}"
           git push -f origin latest
 
+      - name: GoReleaser
+        uses: goreleaser/goreleaser-action@v6.4.0
+        with:
+          distribution: goreleaser
+          version: "v${{ github.run_number }}"
+          args: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
