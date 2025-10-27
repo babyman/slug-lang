@@ -1,3 +1,5 @@
+Slug
+===
 
 A Word of Warning
 ===
@@ -157,7 +159,7 @@ println("Hello, Slug!");
 
 Run it with:
 
-```shell script
+```shell
 slug hello_world.slug
 ```
 
