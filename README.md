@@ -20,15 +20,60 @@ good enough, again.
 Slug is a work in progress, and may never reach a stable release. However I am using it for all of my personal projects
 in an effort to keep it alive and useful.
 
-Slug Command
+Installing Slug
 ===
 
-Setup
+Download a Precompiled Binary from GitHub
 ---
+
+You can download the latest release from the Slug [releases page](https://github.com/babyman/slug-lang/releases). Grab
+the latest release for your platform and architecture and extract the binary.
+
+Once you the Slug release you will need to configure your `PATH` to include the `slug` binary,
+see [local setup](#local-setup) for more details.
+
+**IMPORTANT**: If you are running OSX you will also need to `fix` permissions on the binary:
+
+```shell
+xattr -d com.apple.quarantine slug
+codesign -s - --deep --force slug
+```
+
+What do these commands do?
+
+- `xattr -d com.apple.quarantine slug` Removes the macOS quarantine attribute added to files downloaded from the
+  internet, allowing the binary to run without “cannot be opened” security prompts.
+
+- `codesign -s - --deep --force slug` Applies an ad-hoc code signature to the binary (and any nested code with --deep),
+  which satisfies macOS Gatekeeper requirements and prevents “not signed” execution errors.
+
+Build from source
+---
+
+If you have Go installed, you can build from source:
+
+```shell
+git clone https://github.com/babyman/slug-lang.git
+cd slug-lang
+make build
+```
+
+Local setup
+===
+
+Once you have a `slug` binary, you will need to export `$SLUG_HOME` and add the binary to your `$PATH`. `$SLUG_HOME`
+is the directory where slug will find its libraries.
+
+```shell
+# slug home
+export SLUG_HOME=[[path to slug home directory]]
+export PATH="$SLUG_HOME/bin:$PATH"
+```
 
 Docker
 ---
-Running `slug` in a container is the easiest way to get started, I'm using `podman` but the same commands will work with
+
+Running `slug` in a container is also possible, I'm using `podman` but the same commands will work with
 `docker`:
 
 ```shell
@@ -40,18 +85,13 @@ podman run -v $(pwd):/data slug ./docs/examples/password-generator.slug
 
 See `docs/scripts/slug-cli.sh` for a simple wrapper script to run the docker image.
 
-Local install
----
 
-```shell
-# slug home
-export SLUG_HOME=[[path to slug home directory]]
-export PATH="$SLUG_HOME/bin:$PATH"
-```
+Slug Command
+===
 
 Shell scripts
 ---
-The following shell script structure should also with `slug` on your system path
+The following shell script structure should also work with `slug` on your system path
 
 ```shell
 #!/usr/bin/env slug
