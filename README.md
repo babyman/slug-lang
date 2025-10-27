@@ -32,20 +32,20 @@ the latest release for your platform and architecture and extract the binary.
 Once you the Slug release you will need to configure your `PATH` to include the `slug` binary,
 see [local setup](#local-setup) for more details.
 
-**IMPORTANT**: If you are running OSX you will also need to `fix` permissions on the binary:
-
-```shell
-xattr -d com.apple.quarantine slug
-codesign -s - --deep --force slug
-```
-
-What do these commands do?
-
-- `xattr -d com.apple.quarantine slug` Removes the macOS quarantine attribute added to files downloaded from the
-  internet, allowing the binary to run without “cannot be opened” security prompts.
-
-- `codesign -s - --deep --force slug` Applies an ad-hoc code signature to the binary (and any nested code with --deep),
-  which satisfies macOS Gatekeeper requirements and prevents “not signed” execution errors.
+> **IMPORTANT**: If you are running OSX you will also need to `fix` permissions on the binary:
+>
+> ```shell
+> xattr -d com.apple.quarantine ./bin/slug
+> codesign -s - --deep --force ./bin/slug
+> ```
+>
+> What do these commands do?
+>
+> - `xattr -d com.apple.quarantine ./bin/slug` Removes the macOS quarantine attribute added to files downloaded from the
+    internet, allowing the binary to run without “cannot be opened” security prompts.
+>
+> - `codesign -s - --deep --force ./bin/slug` Applies an ad-hoc code signature to the binary (and any nested code with
+    --deep), which satisfies macOS Gatekeeper requirements and prevents “not signed” execution errors.
 
 Build from source
 ---
