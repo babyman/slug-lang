@@ -80,10 +80,10 @@ Running `slug` in a container is also possible, I'm using `podman` but the same 
 # build the image
 podman build -t slug .
 # running an example script
-podman run -v $(pwd):/data slug ./docs/examples/password-generator.slug
+podman run -v $(pwd):/data slug ./extras/examples/password-generator.slug
 ```
 
-See `docs/scripts/slug-cli.sh` for a simple wrapper script to run the docker image.
+See `extras/scripts/slug-cli.sh` for a simple wrapper script to run the docker image.
 
 
 Slug Command
