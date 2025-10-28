@@ -3,10 +3,9 @@ title: Slug
 layout: default
 ---
 
-A Word of Warning
-===
-"Perfect is the enemy of good."
----
+## A Word of Warning
+
+#### _"Perfect is the enemy of good."_
 
 ```
 Slug will never end,
