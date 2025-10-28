@@ -1,5 +1,7 @@
-Slug
-===
+---
+title: Slug :: Welcome
+layout: default
+---
 
 A Word of Warning
 ===
