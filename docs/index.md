@@ -22,7 +22,10 @@ Contents
 ===
 
 - [Installing Slug](#installing-slug)
+    - [Download a Precompiled Binary from GitHub](#download-a-precompiled-binary-from-github)
+    - [Build from source](#build-from-source)
     - [Local setup](#local-setup)
+    - [Sublime Syntax Highlighting](#sublime-syntax-highlighting)
     - [Docker](#docker)
 - [Slug Command](#slug-command)
     - [Shell scripts](#shell-scripts)
@@ -53,17 +56,15 @@ Contents
         - [Error Handling with `try`/`catch` and `throw`](#error-handling-with-trycatch-and-throw)
     - [6. Working Example: Functional Data Pipeline](#6-working-example-functional-data-pipeline)
     - [7. Writing and Running Tests in Slug](#7-writing-and-running-tests-in-slug)
-      - [Using `@testWith`](#using-testwith)
-      - [Using `@test`](#using-test)
-      - [Running Tests](#running-tests)
+        - [Using `@testWith`](#using-testwith)
+        - [Using `@test`](#using-test)
+        - [Running Tests](#running-tests)
     - [8. Reference](#8-reference)
-      - [Operator Precedence and Associativity](#operator-precedence-and-associativity)
+        - [Operator Precedence and Associativity](#operator-precedence-and-associativity)
 
-Installing Slug
-===
+# Installing Slug
 
-Download a Precompiled Binary from GitHub
----
+## Download a Precompiled Binary from GitHub
 
 You can download the latest release from the Slug [releases page](https://github.com/babyman/slug-lang/releases). Grab
 the latest release for your platform and architecture and extract the binary.
@@ -86,8 +87,7 @@ see [local setup](#local-setup) for more details.
 > - `codesign -s - --deep --force ./bin/slug` Applies an ad-hoc code signature to the binary (and any nested code with
     --deep), which satisfies macOS Gatekeeper requirements and prevents “not signed” execution errors.
 
-Build from source
----
+## Build from source
 
 If you have Go installed, you can build from source:
 
@@ -97,8 +97,7 @@ cd slug-lang
 make build
 ```
 
-Local setup
-===
+## Local setup
 
 Once you have a `slug` binary, you will need to export `$SLUG_HOME` and add the binary to your `$PATH`. `$SLUG_HOME`
 is the directory where slug will find its libraries.
@@ -109,8 +108,13 @@ export SLUG_HOME=[[path to slug home directory]]
 export PATH="$SLUG_HOME/bin:$PATH"
 ```
 
-Docker
----
+## Sublime Syntax Highlighting
+
+If you are using [Sublime Text](https://www.sublimetext.com/3), you can install
+the [Slug Syntax Highlighting](https://github.com/babyman/slug-lang/tree/master/extras/Slug.sublime-package) by
+downloading the package and placing it in your Sublime Text `Packages/User` directory.
+
+## Docker
 
 Running `slug` in a container is also possible, I'm using `podman` but the same commands will work with
 `docker`:
@@ -125,11 +129,10 @@ podman run -v $(pwd):/data slug ./extras/examples/password-generator.slug
 See `extras/scripts/slug-cli.sh` for a simple wrapper script to run the docker image.
 
 
-Slug Command
-===
+# Slug Command
 
-Shell scripts
----
+## Shell scripts
+
 The following shell script structure should also work with `slug` on your system path
 
 ```shell
@@ -137,17 +140,15 @@ The following shell script structure should also work with `slug` on your system
 println("Hello Slug!")
 ```
 
-CLI
----
+## CLI
 
 ```shell
 slug --root [path to module root] script[.slug] [args...]
 ```
 
-Repl
----
+## Repl
 
-Slug has a simple repl if launched without a script.
+Stay tuned for this feature.
 
 ---
 
@@ -209,7 +210,7 @@ foundational building blocks of the language.
 
 - `//` is supported since the language follows `C` language style conventions.
 - `#` is supported to allow easy execution as a shell script with the inclusion of `#!`. For example, if `SLUG_HOME` is
-exported and `slug` is on the user path.
+  exported and `slug` is on the user path.
 
 #### **Variable Declarations**
 

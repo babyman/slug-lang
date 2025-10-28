@@ -33,7 +33,7 @@ archives:
     files:
       - LICENSE.md
       - README.md
-      - docs/*
+      - extras/*
       - lib/*
       - tests/*
       - webroot/*
