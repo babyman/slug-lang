@@ -1,5 +1,5 @@
 ---
-title: Slug :: Welcome
+title: 'Slug :: Welcome'
 layout: default
 ---
 
