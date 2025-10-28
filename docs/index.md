@@ -18,6 +18,47 @@ good enough, again.
 Slug is a work in progress, and may never reach a stable release. However I am using it for all of my personal projects
 in an effort to keep it alive and useful.
 
+Contents
+===
+
+- [Installing Slug](#installing-slug)
+    - [Local setup](#local-setup)
+    - [Docker](#docker)
+- [Slug Command](#slug-command)
+    - [Shell scripts](#shell-scripts)
+    - [CLI](#cli)
+    - [Repl](#repl)
+- [Introduction to the Slug Programming Language: A Developer's Guide](#introduction-to-the-slug-programming-language-a-developers-guide)
+    - [1. Getting Started with Slug](#1-getting-started-with-slug)
+        - [Writing Your First Slug Program](#writing-your-first-slug-program)
+    - [2. Core Building Blocks](#2-core-building-blocks)
+        - [Keywords in Slug](#keywords-in-slug)
+        - [Built-in Functions](#built-in-functions)
+        - [Variables in Slug](#variables-in-slug)
+        - [Functions and Closures](#functions-and-closures)
+        - [Function Chaining in Slug](#function-chaining-in-slug)
+        - [Function Call Dispatch and Type Hints](#function-call-dispatch-and-type-hints)
+            - [Function Dispatch](#function-dispatch)
+            - [Using Type Hints](#using-type-hints)
+            - [Tips for Writing Functions with Hints](#tips-for-writing-functions-with-hints)
+    - [3. Functional Programming Constructs](#3-functional-programming-constructs)
+        - [Map, Filter, and Reduce](#map-filter-and-reduce)
+        - [Pattern Matching](#pattern-matching)
+        - [Higher-Order Functions](#higher-order-functions)
+    - [4. Data Structures](#4-data-structures)
+        - [Lists](#lists)
+        - [Maps](#maps)
+    - [5. Flow Control](#5-flow-control)
+        - [Conditionals: `if`/`else`](#conditionals-ifelse)
+        - [Error Handling with `try`/`catch` and `throw`](#error-handling-with-trycatch-and-throw)
+    - [6. Working Example: Functional Data Pipeline](#6-working-example-functional-data-pipeline)
+    - [7. Writing and Running Tests in Slug](#7-writing-and-running-tests-in-slug)
+      - [Using `@testWith`](#using-testwith)
+      - [Using `@test`](#using-test)
+      - [Running Tests](#running-tests)
+    - [8. Reference](#8-reference)
+      - [Operator Precedence and Associativity](#operator-precedence-and-associativity)
+
 Installing Slug
 ===
 
@@ -108,6 +149,8 @@ Repl
 
 Slug has a simple repl if launched without a script.
 
+---
+
 # Introduction to the Slug Programming Language: A Developer's Guide
 
 Welcome to the **Slug Programming Language**! Slug is a versatile, functional-first language that blends simplicity,
@@ -116,34 +159,6 @@ to the core concepts of Slug, its syntax, and its idiomatic use cases.
 
 By the end of this guide, you will have a foundational understanding of Slug’s features, allowing you to build
 structured, functional, and elegant programs.
-
----
-
-## Table of Contents
-
-1. **Getting Started with Slug**
-    - Writing Your First Slug Program
-2. **Core Building Blocks**
-    - Keywords
-    - Built-in Functions
-    - Variables: `var` and `val`
-    - Functions and Closures
-3. **Functional Programming Constructs**
-    - Map, Filter, and Reduce
-    - Pattern Matching
-    - Higher-Order Functions
-4. **Data Structures**
-    - Lists
-    - Maps
-5. **Flow Control**
-    - Conditionals (`if`/`else`)
-    - Error Handling with `try`/`catch` and `throw`
-6. **Working Example**
-    - Building a Functional Pipeline
-7. **Writing and Running Tests in Slug**
-    - Using `@testWith`
-    - Using `@test`
-    - Running Tests
 
 ---
 
@@ -180,10 +195,21 @@ Hello, Slug!
 Below is a concise reference list of the keywords in Slug, along with their descriptions. These keywords form the
 foundational building blocks of the language.
 
-#### **Constants**
+#### **Types**
 
 - `nil`: Represents the absence of a value or "nothing."
 - `true` / `false`: Boolean constants representing logical truth and falsehood.
+- `number`: DEC64 inspired, very experimental ( https://www.crockford.com/dec64.html )
+- `string`
+- `list`: []
+- `map`: {}
+- `function`: fn(){}
+
+#### **Comments**
+
+- `//` is supported since the language follows `C` language style conventions.
+- `#` is supported to allow easy execution as a shell script with the inclusion of `#!`. For example, if `SLUG_HOME` is
+exported and `slug` is on the user path.
 
 #### **Variable Declarations**
 
@@ -621,29 +647,9 @@ Total time 1ms
 With `@test` and `@testWith`, Slug empowers you to write robust, maintainable tests that enhance code quality and
 reliability.
 
+## 8. Reference
 
-Comments
-===
-
-`//` is supported since the language follows `C` language style conventions.
-
-`#` is supported to allow easy execution as a shell script with the inclusion of `#!`. For example, if `SLUG_HOME` is
-exported and `slug` is on the user path.
-
-
-Types
-===
-
-- `Nil`
-- `Boolean`: true or false
-- `Number`: DEC64 inspired, very experimental ( https://www.crockford.com/dec64.html )
-- `String`
-- `List`: []
-- `Map`: {}
-- `Function`: fn(){}
-
-Operator Precedence and Associativity
-===
+### Operator Precedence and Associativity
 
 | Prec | Operator  | Description                      | Associates |
 |------|-----------|----------------------------------|------------|
@@ -661,23 +667,3 @@ Operator Precedence and Associativity
 | 14   | \|\|      | Logical or                       | Left       |
 | 15   | ?:        | Conditional*                     | Right      |
 | 16   | =         | Assignment                       | Right      |
-
-Imports
-===
-
-```slug
-// import all exports from slug.system
-var {*} = import("slug.system");
-
-// import only sqr and sum 
-var {sqr, sum} = import("functions");
-
-// import `sqr` as square and `sum` as foo
-var {sqr: square, sum: foo} = import("functions");
-```
-
-Imports are loaded on demand, circular imports are supported. The search for an import will check for files by
-substituting the `.` for file path separators, for example `slug.system` will become `/slug/system.slug`
-
-- project root (default current directory)
-- the $SLUG_HOME/lib directory
