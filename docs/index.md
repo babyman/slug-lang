@@ -1,5 +1,4 @@
 ---
-title: 'Slug :: Welcome'
 layout: default
 ---
 
