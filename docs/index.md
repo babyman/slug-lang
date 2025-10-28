@@ -1,4 +1,5 @@
 ---
+title: Slug
 layout: default
 ---
 
