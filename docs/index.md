@@ -169,7 +169,7 @@ structured, functional, and elegant programs.
 Create a file called `hello_world.slug` and add the following:
 
 ```
-var {*} import("slug.std");
+var {*} = import("slug.std");
 
 println("Hello, Slug!");
 ```
@@ -288,7 +288,7 @@ Slug supports two types of variable declarations:
 Examples:
 
 ```
-var {*} import("slug.std");
+var {*} = import("slug.std");
 
 var counter = 0;  // Mutable variable
 val greeting = "Hello"; // Immutable constant
@@ -307,7 +307,7 @@ variables.
 Example of defining and calling functions:
 
 ```
-var {*} import("slug.std");
+var {*} = import("slug.std");
 
 val add = fn(a, b) { a + b }  // A function that adds two numbers
 add(3, 4).println();          // Output: 7
@@ -316,7 +316,7 @@ add(3, 4).println();          // Output: 7
 Functions can close over their surrounding environment, making them closures:
 
 ```
-var {*} import("slug.std");
+var {*} = import("slug.std");
 
 val multiplier = fn(factor) {
     fn(num) { num * factor }
@@ -335,7 +335,7 @@ result is equivalent to invoking the function as `call(var)`.
 Example:
 
 ```
-slug var {*} import("slug.std");
+slug var {*} = import("slug.std");
 
 1.println(); // Using function chaining 1.println(); Outputs: 1
 println(1);  // Equivalent traditional function call println(1);
@@ -410,7 +410,7 @@ Slug excels at **functional programming**, empowering you with concise tools and
 - **Reduce**: Aggregate a list into a single value.
 
 ```
-var {*} import("slug.std");
+var {*} = import("slug.std");
 
 val list = [1, 2, 3, 4, 5];
 
@@ -430,7 +430,7 @@ sum.println();
 Use `match` to destructure and inspect values directly.
 
 ```
-var {*} import("slug.std");
+var {*} = import("slug.std");
 
 val classify = fn(value) {
     match value {
@@ -447,7 +447,7 @@ classify(5).println();  // Output: other
 `match` can also destructure complex data like lists:
 
 ```
-var {*} import("slug.std");
+var {*} = import("slug.std");
 
 val sumList = fn(list) {
     match list {
@@ -468,7 +468,7 @@ Slug supports higher-order functions: functions that accept and return functions
 Example:
 
 ```
-var {*} import("slug.std");
+var {*} = import("slug.std");
 
 val applyTwice = fn(f, v) { f(f(v)) };
 
@@ -485,7 +485,7 @@ applyTwice(increment, 10).println();  // Output: 12
 A list is a collection of elements. It supports operations like indexing, appending, and slicing.
 
 ```
-var {*} import("slug.std");
+var {*} = import("slug.std");
 
 val list = [10, 20, 30];
 list[1].println();    // Output: 20
@@ -499,7 +499,7 @@ list[1:].println();   // Output: [20, 30]
 Maps are key-value stores in Slug.
 
 ```
-var {*} import("slug.std");
+var {*} = import("slug.std");
 
 var myMap = {};
 myMap = put(myMap, "name", "Slug");
@@ -513,7 +513,7 @@ get(myMap, "name").println();  // Output: Slug
 ### Conditionals: `if`/`else`
 
 ```
-var {*} import("slug.std");
+var {*} = import("slug.std");
 
 val max = fn(a, b) {
     if (a > b) {
@@ -529,7 +529,7 @@ max(3, 5).println();  // Output: 5
 ### Error Handling with `try`/`catch` and `throw`
 
 ```
-var {*} import("slug.std");
+var {*} = import("slug.std");
 
 val process = fn(value) {
     try {
@@ -557,7 +557,7 @@ We’ll build a pipeline that processes a list of numbers by:
 - Finding the sum of the remaining elements.
 
 ```
-var {*} import("slug.std");
+var {*} = import("slug.std");
 
 val numbers = [1, 2, 3, 4, 5, 6];
 
