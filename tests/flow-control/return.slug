@@ -13,6 +13,6 @@ var f = fn(a) {
     a * a;
 }
 
-1.f().assertEqual(10);
+1 /> f /> assertEqual(10);
 
-2.f().assertEqual(4);
+2 /> f /> assertEqual(4);

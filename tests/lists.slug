@@ -6,21 +6,21 @@ var {*} = import(
 // -----------------------
 var e = [];
 
-e.len().assertEqual(0);
+e /> len() /> assertEqual(0);
 
 // accessing elements by index
 // -----------------------
 var l = [2, 3, 4];
 
-l[0].assertEqual(2);
-l[1].assertEqual(3);
-l[2].assertEqual(4);
-l[3].assertEqual(nil);
+l[0] /> assertEqual(2);
+l[1] /> assertEqual(3);
+l[2] /> assertEqual(4);
+l[3] /> assertEqual(nil);
 
-l[-1].assertEqual(4);
-l[-2].assertEqual(3);
-l[-3].assertEqual(2);
-l[-4].assertEqual(nil);
+l[-1] /> assertEqual(4);
+l[-2] /> assertEqual(3);
+l[-3] /> assertEqual(2);
+l[-4] /> assertEqual(nil);
 
 // list can contain mixed types
 // -----------------------
@@ -28,16 +28,16 @@ var list = ["slug", 42, fn(a) {a * a}];
 
 // length
 // -----------------------
-list.len().assertEqual(3);
+list /> len() /> assertEqual(3);
 
 
 // lists are zero indexed
 // -----------------------
-list[0].assertEqual("slug");
-list[1].assertEqual(42);
+list[0] /> assertEqual("slug");
+list[1] /> assertEqual(42);
 
 // reference the last item
 // -----------------------
-list[2](5).assertEqual(25);
-list[-1](5).assertEqual(25);
-list[len(list) - 1](5).assertEqual(25);
+list[2](5) /> assertEqual(25);
+list[-1](5) /> assertEqual(25);
+list[len(list) - 1](5) /> assertEqual(25);

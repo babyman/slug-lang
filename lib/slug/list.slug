@@ -52,7 +52,7 @@ var shuffle = var fisherYatesShuffle = fn(@list list) {
             list;
         } else {
             val j = rndRange(0, i)
-            _shuffle(list.swap(i, j), i - 1)
+            _shuffle(list /> swap(i, j), i - 1)
         }
     };
     _shuffle(list, len(list) - 1);

@@ -15,29 +15,29 @@ var m1 = {name: "Angus", age: 15, [a]: "value", months: f};
 
 // map size
 // --------
-m1.len().assertEqual(4);
+m1 /> len() /> assertEqual(4);
 
 // read keys using index notation
 // ------------------------------
-m1["name"].assertEqual("Angus");
-m1["age"].assertEqual(15);
+m1["name"] /> assertEqual("Angus");
+m1["age"] /> assertEqual(15);
 
-m1["missing"].assertEqual(nil);
+m1["missing"] /> assertEqual(nil);
 
 
 // read a dynamic key value
 // ------------------------
-m1["key"].assertEqual("value");
+m1["key"] /> assertEqual("value");
 
 // read a dynamic key using index notation
 // ---------------------------------------
-m1[a].assertEqual("value");
+m1[a] /> assertEqual("value");
 
 
 // access a key in a map
 // ---------------------
 
-m1.age.assertEqual(15);
+m1.age /> assertEqual(15);
 
 
 // access and call a function saved in a map
@@ -51,32 +51,32 @@ m1.age.assertEqual(15);
 // this would be great but because vars are untyped every call needs to check
 // the caller to see if it's a map, this will slow the whole language down
 
-m1["months"](m1).assertEqual(180);
+m1["months"](m1) /> assertEqual(180);
 
-(m1.months)(m1).assertEqual(180);
+(m1.months)(m1) /> assertEqual(180);
 
 
 // map manipulation
 // ----------------
 
 
-var m2 = {}.put("k1", "v1")
-        .put("k2", "v2")
-        .put("k3", "v3");
+var m2 = {} /> put("k1", "v1")
+         /> put("k2", "v2")
+         /> put("k3", "v3");
 
-m2.len().assertEqual(3);
-m2.k2.assertEqual("v2");
+m2 /> len() /> assertEqual(3);
+m2.k2 /> assertEqual("v2");
 
-m2.get("k3").assertEqual("v3");
+m2 /> get("k3") /> assertEqual("v3");
 
-var m3 = m2.remove("k2");
+var m3 = m2 /> remove("k2");
 
-m2.len().assertEqual(3);
-m3.len().assertEqual(2);
+m2 /> len() /> assertEqual(3);
+m3 /> len() /> assertEqual(2);
 
-m3.k2.assertEqual(nil);
+m3.k2 /> assertEqual(nil);
 
-m3.keys().len().assertEqual(m3.len());
+m3 /> keys() /> len() /> assertEqual(m3 /> len());
 
-{}.keys().len().assertEqual(0);
+{} /> keys() /> len() /> assertEqual(0);
 

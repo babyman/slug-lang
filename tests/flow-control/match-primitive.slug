@@ -21,18 +21,18 @@ var f = fn(x) {
     }
 }
 
-"hello".f().assertEqual("greeting");
-"hi".f().assertEqual("greeting");
+"hello" /> f() /> assertEqual("greeting");
+"hi" /> f() /> assertEqual("greeting");
 
-"bye".f().assertEqual("farewell");
+"bye" /> f() /> assertEqual("farewell");
 
-true.f().assertEqual("truthy");
-false.f().assertEqual("something else");
+true /> f() /> assertEqual("truthy");
+false /> f() /> assertEqual("something else");
 
-42.f().assertEqual("magic number");
+42 /> f() /> assertEqual("magic number");
 
-// 9.f().assertEqual("small number");
+// 9 /> f() /> assertEqual("small number");
 
 
-43.f().assertEqual("something else");
+43 /> f() /> assertEqual("something else");
 

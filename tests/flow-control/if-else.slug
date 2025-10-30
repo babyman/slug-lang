@@ -12,8 +12,8 @@ var f = fn(a) {
     }
 }
 
-1.f().assertEqual(10, "expected 10");
+1 /> f /> assertEqual(10, "expected 10");
 
-2.f().assertEqual(11);
+2 /> f /> assertEqual(11);
 
-3.f().assertEqual(12);
+3 /> f /> assertEqual(12);

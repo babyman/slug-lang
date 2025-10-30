@@ -89,7 +89,7 @@ foreign swap = fn(@list list, @num index1, @num index2);
 )
 @export
 var compute = fn(@map map, key, f) {
-    map.put(key, f(key, map[key]));
+    map /> put(key, f(key, map[key]));
 }
 
 @testWith(
@@ -98,7 +98,7 @@ var compute = fn(@map map, key, f) {
 @export
 var map = fn(@list vs, f, acc = []) {
 	match vs {
-		[h, ...t] => map(t, f, acc :+ h.f());
+		[h, ...t] => map(t, f, acc :+ h /> f());
 		[] => acc;
 	}
 }
@@ -109,7 +109,7 @@ var map = fn(@list vs, f, acc = []) {
 @export
 var filter = fn(@list vs, f, acc = []) {
 	match vs {
-		[h, ...t] if h.f() => filter(t, f, acc :+ h);
+		[h, ...t] if h /> f() => filter(t, f, acc :+ h);
 		[h, ...t] => filter(t, f, acc);
 		[] => acc;
 	}
@@ -158,7 +158,7 @@ var counter = fn(@num start = 0) {
 )
 @export
 var zipWith = fn(@list lst, f) {
-	lst.map(fn(v) { [v, f()] });
+	lst /> map(fn(v) { [v, f()] });
 }
 
 @testWith(
@@ -167,7 +167,7 @@ var zipWith = fn(@list lst, f) {
 )
 @export
 var zipWithIndex = fn(@list lst) {
-	lst.zipWith(counter(0));
+	lst /> zipWith(counter(0));
 }
 
 @testWith(
@@ -200,12 +200,12 @@ var zip = fn(@list lst1, @list lst2, acc = []) {
 )
 @export
 var toBoolean = fn(v) {
-	match v.type() {
+	match v /> type() {
 		t if t == BOOLEAN_TYPE => v;
 		t if t == NUMBER_TYPE => v == 1;
 		t if t == NIL_TYPE => false;
 		t if t == STRING_TYPE => {
-			match v.toLower() {
+			match v /> toLower() {
 				"true", "yes", "1" => true;
 				"false", "no", "0" => false;
 				_ => UnsupportedTypeConversionError({msg: "Cannot convert '{{v}}' to boolean"})
@@ -231,7 +231,7 @@ foreign parseNumber = fn(@str value);
 )
 @export
 var toNumber = fn(v) {
-	match v.type() {
+	match v /> type() {
 		t if t == NIL_TYPE => nil;
 		t if t == NUMBER_TYPE => v;
 		t if t == STRING_TYPE => parseNumber(v);
@@ -247,7 +247,7 @@ var toNumber = fn(v) {
 )
 @export
 var toString = fn(v) {
-	match v.type() {
+	match v /> type() {
 		t if t == NIL_TYPE => nil;
 		t if t == STRING_TYPE => v;
 		t => v + "";
@@ -300,8 +300,8 @@ var equals = fn(@map m1, @map m2) {
 			_ => false
 		}
 	}
-	var k1 = m1.keys();
-	var k2 = m2.keys();
+	var k1 = m1 /> keys();
+	var k2 = m2 /> keys();
 	if(len(k1) != len(k2)) {
 		false
 	} else {
@@ -320,7 +320,7 @@ var ifNil = fn(v, @fun f) {
 
 @export
 var ifNil = fn(v, default) {
-	v.ifNil(fn() {default})
+	v /> ifNil(fn() {default})
 }
 
 @export

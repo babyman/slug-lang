@@ -4,9 +4,9 @@ var {*} = import(
 
 @export
 var assert = fn(a, msg = nil) {
-    if ( a.type() == BOOLEAN_TYPE && !a ) {
+    if ( a /> type() == BOOLEAN_TYPE && !a ) {
         if ( !msg ) {
-            msg = "{{a}} ({{a.type()}}) is not true";
+            msg = "{{a}} ({{a /> type()}}) is not true";
         }
         throw AssertionError({msg: msg});
     }

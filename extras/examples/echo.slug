@@ -6,21 +6,21 @@ var {*} = import(
 
 var listener = bind("127.0.0.1", 8080);
 defer {
-	listener.close();
+	listener /> close();
 	println("Listener closed", listener);
 }
 
 println("Server listening on 127.0.0.1:8080", listener);
 
 var serverLoop = fn(count = 1) {
-	var connection = listener.accept();
+	var connection = listener /> accept();
 	defer {
-		connection.close();
+		connection /> close();
 		println("<<< connection closed", connection);
 	}
-	var msg = connection.read(1024);
+	var msg = connection /> read(1024);
 	println(count, "Connection received:", msg, listener, connection);
-	connection.write(msg);
+	connection /> write(msg);
 	if(msg != "bye") {
 		serverLoop(count + 1);
 	}

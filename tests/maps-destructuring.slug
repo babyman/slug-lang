@@ -26,7 +26,7 @@ match map {
 // match non-empty map, capture the spread
 // ---------------------------------------
 match map {
-    {...t} => t.len().assertEqual(2);
+    {...t} => t /> len() /> assertEqual(2);
     _ => fail();
 }
 
@@ -34,37 +34,37 @@ match map {
 // -----------------------------------
 match map {
     {k1, ...t} => {
-        t.len().assertEqual(1);
-        k1.assertEqual("v1");
+        t /> len() /> assertEqual(1);
+        k1 /> assertEqual("v1");
     }
     _ => fail();
 }
 
 match map {
     {k1, k2, ...t} => {
-        t.len().assertEqual(0);
-        k1.assertEqual("v1");
-        k2.assertEqual("v2");
+        t /> len() /> assertEqual(0);
+        k1 /> assertEqual("v1");
+        k2 /> assertEqual("v2");
     }
     _ => fail();
 }
 
 match map {
-    {k1} => k1.assertEqual("v1");
+    {k1} => k1 /> assertEqual("v1");
     _ => fail();
 }
 
 // match and alias
 // ---------------
 match map {
-    {k1:key} => key.assertEqual("v1");
+    {k1:key} => key /> assertEqual("v1");
     _ => fail();
 }
 
 // match on a literal
 // ------------------
 match map {
-    {k1:"v1", k2} => k2.assertEqual("v2");
+    {k1:"v1", k2} => k2 /> assertEqual("v2");
     _ => fail();
 }
 
@@ -77,8 +77,8 @@ match map {
 // --------------
 match map {
     {|k1,k2|} => {
-        k1.assertEqual("v1");
-        k2.assertEqual("v2");
+        k1 /> assertEqual("v1");
+        k2 /> assertEqual("v2");
     }
     _ => fail();
 }
@@ -92,8 +92,8 @@ match map {
 // --------------------
 match map {
     {*} => {
-        k1.assertEqual("v1");
-        k2.assertEqual("v2");
+        k1 /> assertEqual("v1");
+        k2 /> assertEqual("v2");
     }
     _ => fail();
 }

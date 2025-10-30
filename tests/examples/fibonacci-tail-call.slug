@@ -16,4 +16,4 @@ var fib = fn(n, a = 0, b = 1) {
     }
 }
 
-fib(10).assertEqual(55, "Fibonacci 10 equals 55");
+fib(10) /> assertEqual(55, "Fibonacci 10 equals 55");

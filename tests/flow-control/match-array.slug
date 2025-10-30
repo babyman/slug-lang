@@ -16,13 +16,13 @@ var f1 = fn(x) {
     }
 };
 
-[].f1().assertEqual("empty list");
+[] /> f1 /> assertEqual("empty list");
 
-[1].f1().assertEqual("list of one");
+[1] /> f1 /> assertEqual("list of one");
 
-[1, 2].f1().assertEqual("list of two");
+[1, 2] /> f1 /> assertEqual("list of two");
 
-[1, 2, 3].f1().assertEqual("list of three");
+[1, 2, 3] /> f1 /> assertEqual("list of three");
 
 //
 // matching list wildcards
@@ -38,13 +38,13 @@ var f2 = fn(x) {
     }
 };
 
-[1, 2, 3, 4, 5].f2().assertEqual("default");
+[1, 2, 3, 4, 5] /> f2 /> assertEqual("default");
 
-[1, 2, 3].f2().assertEqual("list of 3");
+[1, 2, 3] /> f2 /> assertEqual("list of 3");
 
-[1].f2().assertEqual("list of 1");
+[1] /> f2 /> assertEqual("list of 1");
 
-[].f2().assertEqual("empty list");
+[] /> f2 /> assertEqual("empty list");
 
 
 //
@@ -61,14 +61,14 @@ var f3 = fn(x) {
     }
 };
 
-[1, 2].f3().assertEqual("list of two + 0");
+[1, 2] /> f3 /> assertEqual("list of two + 0");
 
-[1, 2, 3, 4].f3().assertEqual("list of two + 2");
+[1, 2, 3, 4] /> f3 /> assertEqual("list of two + 2");
 
-[1].f3().assertEqual("list of one+");
+[1] /> f3 /> assertEqual("list of one+");
 
-[4, 6, 1].f3().assertEqual("6");
+[4, 6, 1] /> f3 /> assertEqual("6");
 
-[].f3().assertEqual("any list");
+[] /> f3 /> assertEqual("any list");
 
 

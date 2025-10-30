@@ -24,30 +24,30 @@ var applyOptions = fn(@list args) {
 		}
 		rebindScopeTags(OPTION_TAG, fn(name, value, tagParams) {
 			readValue(tagParams[0].arg, opts)
-				.convertValue(value.type())
-				.ifNil(value)
+				/> convertValue(value /> type())
+				/> ifNil(value)
 		})
 	}
 }
 
 @export
 var versionMessage = fn() {
-	var helpOpts = searchScopeTags(HELP_TAG)[0].nonNil(getBoundValue, "");
-	var name = helpOpts.name;
-	var version = helpOpts.version;
+	var helpOpts = searchScopeTags(HELP_TAG)[0] /> nonNil(getBoundValue, "");
+	var name = helpOpts /> name;
+	var version = helpOpts /> version;
 	"{{name}} v{{version}}"
 }
 
 @export
 var helpMessage = fn() {
-	var helpTxt = searchScopeTags(HELP_TAG)[0].nonNil(getBoundValue, "")
-	var pairs = searchScopeTags(OPTION_TAG).map(fn(v) {
+	var helpTxt = searchScopeTags(HELP_TAG)[0] /> nonNil(getBoundValue, "")
+	var pairs = searchScopeTags(OPTION_TAG) /> map(fn(v) {
 			[argString(v[BINDING_PARAMS][0].arg), getDesc(v)]
 		})
-	var maxLen = max(...pairs.map(fn(v) { len(v[0]) }))
-	var opts = pairs.map(fn(v) {"  " + padRight(v[0], " ", maxLen) + "  " + v[1]})
-		.sort()
-		.join("\n");
+	var maxLen = max(...pairs /> map(fn(v) { len(v[0]) }))
+	var opts = pairs /> map(fn(v) {"  " + padRight(v[0], " ", maxLen) + "  " + v[1]})
+		/> sort()
+		/> join("\n");
 	if (len(opts) > 0) {
 		opts = "Options:\n" + opts
 	}
@@ -74,22 +74,22 @@ var parseArgs = fn(@list arguments, @num i = 0, @map opts = {}, @list params = [
 	if (len(arguments) > i) {
 		if (arguments[i] == LONG_ARG) {
 			[opts, params + arguments[i+1:]]
-		} else if (arguments[i].startsWith(LONG_ARG)) {
-			val k = arguments[i][2:].split("=", 2);
+		} else if (arguments[i] /> startsWith(LONG_ARG)) {
+			val k = arguments[i][2:] /> split("=", 2);
 			var v = true;
 			if (len(k) > 1) {
 				v = k[1];
-			} else if (i + 1 < len(arguments) && !arguments[i + 1].startsWith(SHORT_ARG)) {
+			} else if (i + 1 < len(arguments) && !arguments[i + 1] /> startsWith(SHORT_ARG)) {
 				v = arguments[i + 1];
 				i = i + 1;
 			}
-			parseArgs(arguments, i + 1, opts.put(k[0], v), params)
-		} else if (arguments[i].startsWith(SHORT_ARG)) {
+			parseArgs(arguments, i + 1, opts /> put(k[0], v), params)
+		} else if (arguments[i] /> startsWith(SHORT_ARG)) {
 			val key = arguments[i][1:]
-			if(len(key) == 1 && i + 1 < len(arguments) && !arguments[i+1].startsWith(SHORT_ARG)) {
-				parseArgs(arguments, i + 2, opts.put(key, arguments[i+1]), params)
+			if(len(key) == 1 && i + 1 < len(arguments) && !arguments[i+1] /> startsWith(SHORT_ARG)) {
+				parseArgs(arguments, i + 2, opts /> put(key, arguments[i+1]), params)
 			} else {
-				val newOpts = key.asList().reduce(opts, fn(a,b) { a.put(b, true) });
+				val newOpts = key /> asList() /> reduce(opts, fn(a,b) { a /> put(b, true) });
 				parseArgs(arguments, i + 1, newOpts, params)
 			}
 		} else {
@@ -115,7 +115,7 @@ var readValue = fn(@str arg, @map opts) {
 var readValue = fn(@list args, @map opts) {
 	match args {
 		nil, [] => nil;
-		[h, ...t] => readValue(h, opts).ifNil(fn() {readValue(t, opts)})
+		[h, ...t] => readValue(h, opts) /> ifNil(fn() {readValue(t, opts)})
 	}
 }
 
@@ -130,7 +130,7 @@ var readValue = fn(@list args, @map opts) {
 	["123", STRING_TYPE], "123"
 )
 var convertValue = fn(newValue, targetType) {
-	if (targetType == newValue.type() || targetType == NIL_TYPE) {
+	if (targetType == newValue /> type() || targetType == NIL_TYPE) {
 		newValue;
 	} else if( targetType == BOOLEAN_TYPE ) {
 		toBoolean(newValue)
@@ -151,11 +151,11 @@ var argString = fn(@str arg) {
 }
 
 var argString = fn(@list arg) {
-	arg.map(argString).join(" ")
+	arg /> map(argString) /> join(" ")
 }
 
 var getDesc = fn(tuple) {
-	val desc = tuple[BINDING_PARAMS][0].description.ifNil("")
+	val desc = tuple[BINDING_PARAMS][0].description /> ifNil("")
 	val default = "[default: {{ tuple[BINDING_VALUE] }}]."
-	"{{desc}} {{default}}".trim()
+	"{{desc}} {{default}}" /> trim()
 }

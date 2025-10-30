@@ -52,6 +52,6 @@ foreign terminate = fn(@num pid);
 
 @export
 var supervisedBy = fn(@num pid, @num supervisorPid) {
-	supervisorPid.supervise(pid);
+	supervisorPid /> supervise(pid);
 	pid;
 }

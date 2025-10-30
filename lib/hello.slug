@@ -3,7 +3,7 @@ var {*} = import (
 );
 
 var sayHi = fn(args) {
-    if (args != nil && args.len() > 0) {
+    if (args != nil && args /> len() > 0) {
         "Hello " + args[0] + "!";
     } else {
         "Hello Slug!"
@@ -14,5 +14,5 @@ var sayHi = fn(args) {
 // if args is defined we may have commandline params
 //
 if(args) {
-    args.sayHi().println();
+    args /> sayHi /> println;
 }

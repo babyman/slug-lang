@@ -9,7 +9,7 @@ var fizzBuzz = fn(max, acc = 1) {
 			[0, _] => "Fizz";
 			[_, 0] => "Buzz";
 			_ => acc;
-		}.println();
+		} /> println();
 		fizzBuzz(max, acc + 1);
 	}
 }

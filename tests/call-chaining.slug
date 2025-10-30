@@ -15,7 +15,7 @@ var {*} = import(
 // double function for testing
 val d = fn(n) { n * 2 };
 
-// boring code
+// unchained code
 assertEqual(d(10), 20)
 
 // chained calls

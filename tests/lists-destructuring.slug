@@ -26,7 +26,7 @@ match list {
 // match non-empty list, capture the spread
 // ----------------------------------------
 match list {
-    [...t] => t.len().assertEqual(2);
+    [...t] => t /> len() /> assertEqual(2);
     _ => fail();
 }
 
@@ -34,30 +34,30 @@ match list {
 // -----------------------------------
 match list {
     [h1, ...t] => {
-        t.len().assertEqual(1);
-        h1.assertEqual("v1");
+        t /> len() /> assertEqual(1);
+        h1 /> assertEqual("v1");
     }
     _ => fail();
 }
 
 match list {
     [h1, h2, ...t] => {
-        t.len().assertEqual(0);
-        h1.assertEqual("v1");
-        h2.assertEqual("v2");
+        t /> len() /> assertEqual(0);
+        h1 /> assertEqual("v1");
+        h2 /> assertEqual("v2");
     }
     _ => fail();
 }
 
 match list {
-    [h1, ...] => h1.assertEqual("v1");
+    [h1, ...] => h1 /> assertEqual("v1");
     _ => fail();
 }
 
 // match on a literal
 // ------------------
 match list {
-    ["v1", h2, ...] => h2.assertEqual("v2");
+    ["v1", h2, ...] => h2 /> assertEqual("v2");
     _ => fail();
 }
 
@@ -70,19 +70,19 @@ match list {
 // --------------
 match list {
     [h1, h2] => {
-        h1.assertEqual("v1");
-        h2.assertEqual("v2");
+        h1 /> assertEqual("v1");
+        h2 /> assertEqual("v2");
     }
     _ => fail();
 }
 
 match list {
-    [_, h2] => h2.assertEqual("v2");
+    [_, h2] => h2 /> assertEqual("v2");
     _ => fail();
 }
 
 match list {
-    [h1, _] => h1.assertEqual("v1");
+    [h1, _] => h1 /> assertEqual("v1");
     _ => fail();
 }
 

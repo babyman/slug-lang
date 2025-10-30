@@ -5,18 +5,18 @@ var {*} = import(
 var name = "Slug";
 var num = 10;
 
-"{{name}}".assertEqual(name);
+"{{name}}" /> assertEqual(name);
 
-"Hello Mr. {{name}}!".assertEqual("Hello Mr. " + name + "!");
+"Hello Mr. {{name}}!" /> assertEqual("Hello Mr. " + name + "!");
 
 ("Mr. {{name}} can math {{ num * 5 + 1 }}" + "!")
-	.assertEqual("Mr. " + name + " can math " + (num * 5 + 1) + "!");
+	 /> assertEqual("Mr. " + name + " can math " + (num * 5 + 1) + "!");
 
 
 // escaping {
 // ----------
 
-"hello \{\{name".assertEqual("hello {" + "{name");
+"hello \{\{name" /> assertEqual("hello {" + "{name");
 
 
 // maps and interpolation
@@ -24,4 +24,4 @@ var num = 10;
 
 var map = {name: "Slug"};
 
-"My name is {{map.name}}!".assertEqual("My name is Slug!");
+"My name is {{map.name}}!" /> assertEqual("My name is Slug!");

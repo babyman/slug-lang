@@ -11,9 +11,9 @@ assert(true, "with a message");
 assert(1 == 1);
 assert(1 == 1, "with a message");
 
-true.assertTrue();
+true /> assertTrue();
 
-false.assertFalse();
+false /> assertFalse();
 
 
 //

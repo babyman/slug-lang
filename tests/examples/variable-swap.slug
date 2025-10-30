@@ -13,5 +13,5 @@ var b = 2;
 
 var [b, a] = [a, b];
 
-a.assertEqual(2);
-b.assertEqual(1);
+a /> assertEqual(2);
+b /> assertEqual(1);

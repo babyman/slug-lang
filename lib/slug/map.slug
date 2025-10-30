@@ -10,8 +10,8 @@ var {*} = import(
 )
 @export
 var union = fn(@map s1, @map s2) {
-	s1.keys().reduce(s2, fn(s, k) {
-		s.put(k, s1[k])
+	s1 /> keys() /> reduce(s2, fn(s, k) {
+		s /> put(k, s1[k])
 	})
 }
 
@@ -23,9 +23,9 @@ var union = fn(@map s1, @map s2) {
 )
 @export
 var intersect = fn(@map s1, @map s2) {
-	s1.keys()
-		.filter(fn(k) { s2[k] == nil })
-		.reduce(s1, fn(s, k) { s.remove(k) })
+	s1 /> keys()
+		/> filter(fn(k) { s2[k] == nil })
+		/> reduce(s1, fn(s, k) { s /> remove(k) })
 }
 
 @testWith(
@@ -34,7 +34,7 @@ var intersect = fn(@map s1, @map s2) {
 )
 @export
 var difference = fn(@map s1, @map s2) {
-	s2.keys()
-		.reduce(s1, fn(s, k) { s.remove(k) })
+	s2 /> keys()
+		/> reduce(s1, fn(s, k) { s /> remove(k) })
 }
 

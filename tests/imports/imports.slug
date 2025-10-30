@@ -7,8 +7,8 @@ var {*} = import(
 var {sqr, sum: f} = import("functions");
 
 
-51.sqr().assertEqual(2601);
+51 /> sqr /> assertEqual(2601);
 
-[2, 3, 4].f().sqr().assertEqual(81);
+[2, 3, 4] /> f /> sqr /> assertEqual(81);
 
-[51, 23].f().assertEqual(74);
+[51, 23] /> f /> assertEqual(74);

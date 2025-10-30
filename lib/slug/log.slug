@@ -32,16 +32,16 @@ var logger = fn(logLevel = NONE) {
 }
 
 // create a mailbox and bind the logging function to it
-var logActor = mailbox().bindActor(logger);
+var logActor = mailbox() /> bindActor(logger);
 
 @export
 var configureLogging = fn(level) {
-    val lvl = LEVELS.indexOfValue(level);
-    logActor.send({ tag:"configure", level: lvl })
+    val lvl = LEVELS /> indexOfValue(level);
+    logActor /> send({ tag:"configure", level: lvl })
 }
 
 var _log = fn(level, message, args) {
-    logActor.send({ tag: "log", time: clock(), level: level, message: message, args: args })
+    logActor /> send({ tag: "log", time: clock(), level: level, message: message, args: args })
 }
 
 @export

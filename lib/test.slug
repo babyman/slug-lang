@@ -45,63 +45,63 @@ var runTestFn = fn(f, name, stats) {
 		println("  [\033[32mPASS\033[0m] {{name}}()");
 	} catch err {
 		{type:"AssertionError", msg} => {
-			stats = stats.compute("fail", fn(k, v) { v + 1});
+			stats = stats /> compute("fail", fn(k, v) { v + 1});
 			println("  [\033[31mFAIL\033[0m] {{name}}(): {{msg}}")
 		}
 		{type} => {
-			stats = stats.compute("error", fn(k, v) { v + 1});
+			stats = stats /> compute("error", fn(k, v) { v + 1});
 			println("  [\033[31mERROR\033[0m] {{name}}() threw {{type}}")
 		}
 	}
-	stats.compute("run", fn(k, v) { v + 1});
+	stats /> compute("run", fn(k, v) { v + 1});
 }
 
 var runTests = fn(f, name, args, stats) {
 	match args {
 		[] => stats;
-		[a, e, ...t] => {
+		[params, expected, ...t] => {
 			try {
-				val out = f(...a);
-				match out.type() {
-					t if t == LIST_TYPE && out.equals(e) => println("  [\033[32mPASS\033[0m] {{name}}({{a}}) == {{out}}");
-					t if t == MAP_TYPE && out.equals(e) => println("  [\033[32mPASS\033[0m] {{name}}({{a}}) == {{out}}");
-					_ if out == e => println("  [\033[32mPASS\033[0m] {{name}}({{a}}) == {{out}}");
+				val out = f(...params);
+				match out /> type() {
+					t if t == LIST_TYPE && out /> equals(expected) => println("  [\033[32mPASS\033[0m] {{name}}({{params}}) == {{out}}");
+					t if t == MAP_TYPE && out /> equals(expected) => println("  [\033[32mPASS\033[0m] {{name}}({{params}}) == {{out}}");
+					_ if out == expected => println("  [\033[32mPASS\033[0m] {{name}}({{params}}) == {{out}}");
 					_ => {
-						stats = stats.compute("fail", fn(k, v) { v + 1});
-						println("  [\033[31mFAIL\033[0m] {{name}}({{a}}) == {{out}} expected {{e}}");
+						stats = stats /> compute("fail", fn(k, v) { v + 1});
+						println("  [\033[31mFAIL\033[0m] {{name}}({{params}}) == {{out}} expected {{expected}}");
 					}
 				}
 			} catch err {
 				{type} => {
-					stats = stats.compute("error", fn(k, v) { v + 1});
-					println("  [\033[31mERROR\033[0m] {{name}}({{a}}) == threw {{type}} expected {{e}}")
+					stats = stats /> compute("error", fn(k, v) { v + 1});
+					println("  [\033[31mERROR\033[0m] {{name}}({{params}}) == threw {{type}} expected {{expected}}")
 				}
 			}
-			stats = stats.compute("run", fn(k, v) { v + 1});
+			stats = stats /> compute("run", fn(k, v) { v + 1});
 			runTests(f, name, t, stats);
 		}
 	}
 }
 
 var testRunner = fn(module, stats) {
-	if(module.endsWith(".slug")) {
+	if(module /> endsWith(".slug")) {
 		module = module[:-len(".slug")]
 	}
-	module = module.replaceAll("/", ".")
+	module = module /> replaceAll("/", ".")
 	println(module + ":")
-	var m = module.searchModuleTags(TEST_WITH_TAG, true)
-				.union(module.searchModuleTags(TEST_TAG, true))
-	m.keys().map(fn(k) {
-		var args = m[k].getTag(TEST_WITH_TAG);
+	var m = module /> searchModuleTags(TEST_WITH_TAG, true)
+				/> union(module /> searchModuleTags(TEST_TAG, true))
+	m /> keys() /> map(fn(k) {
+		var args = m[k] /> getTag(TEST_WITH_TAG);
 		if(args) {
 			runTests(m[k], k, args, {run:0, fail:0, error:0});
 		} else {
 			runTestFn(m[k], k, {run:0, fail:0, error:0});
 		}
-	}).reduce(stats, fn(vs, new) {
-		vs.compute("run", fn(k, v) {v + new[k]})
-			.compute("fail", fn(k, v) {v + new[k]})
-			.compute("error", fn(k, v) {v + new[k]});
+	}) /> reduce(stats, fn(vs, new) {
+		vs /> compute("run", fn(k, v) {v + new[k]})
+			/> compute("fail", fn(k, v) {v + new[k]})
+			/> compute("error", fn(k, v) {v + new[k]});
 	});
 }
 
@@ -120,7 +120,7 @@ Total time {{timer()}}ms
 var run = fn(stats, ...modules) {
 	match modules {
 		[] => {
-			renderResult(stats).println();
+			renderResult(stats) /> println();
 			if (stats.fail > 0 || stats.error > 0) {
 				exit(1);
 			} else {
