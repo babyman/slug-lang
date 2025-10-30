@@ -1,0 +1,25 @@
+var {*} = import(
+    "slug.test"
+);
+
+// Call Chaining Operator `/>`
+// The `/>`operator enables function call chaining by taking the value on its left side
+// and passing it as the first parameter to the function on its right side.
+// 
+// For example:
+//   10 /> double     is equivalent to     double(10)
+//   10 /> double />  addOne    is equivalent to    addOne(double(10))
+//
+// The function call parentheses are optional when no additional arguments are needed.
+
+// double function for testing
+val d = fn(n) { n * 2 };
+
+// boring code
+assertEqual(d(10), 20)
+
+// chained calls
+10 /> d() /> assertEqual(20);
+
+// brackets optional
+10 /> d /> assertEqual(20);

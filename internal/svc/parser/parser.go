@@ -53,6 +53,7 @@ var precedences = map[token.TokenType]int{
 	token.PERIOD:              CALL,
 	token.LPAREN:              CALL,
 	token.INTERPOLATION_START: CALL,
+	token.CALL_CHAIN:          CALL,
 	token.LBRACKET:            INDEX,
 }
 
@@ -122,6 +123,7 @@ func New(l lexer.Tokenizer, source string) *Parser {
 	p.registerInfix(token.APPEND_ITEM, p.parseInfixExpression)
 	p.registerInfix(token.PREPEND_ITEM, p.parseInfixExpression)
 
+	p.registerInfix(token.CALL_CHAIN, p.parseCallChainExpression)
 	p.registerInfix(token.PERIOD, p.parseFunctionFirstCallExpression)
 	p.registerInfix(token.LPAREN, p.parseCallExpression)
 	p.registerInfix(token.LBRACKET, p.parseIndexExpression)
@@ -998,6 +1000,33 @@ func (p *Parser) parseFunctionParameters() []*ast.FunctionParameter {
 	}
 
 	return parameters
+}
+
+func (p *Parser) parseCallChainExpression(left ast.Expression) ast.Expression {
+	if !p.expectPeek(token.IDENT) {
+		p.addError("expected function identifier after '/>', got %s instead", p.peekToken.Type)
+		return nil
+	}
+
+	function := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+
+	if p.peekTokenIs(token.LPAREN) {
+		p.nextToken()
+		args := p.parseExpressionList(token.RPAREN)
+		args = append([]ast.Expression{left}, args...)
+		return &ast.CallExpression{
+			Token:     function.Token,
+			Function:  function,
+			Arguments: args,
+		}
+	} else {
+		args := []ast.Expression{left}
+		return &ast.CallExpression{
+			Token:     function.Token,
+			Function:  function,
+			Arguments: args,
+		}
+	}
 }
 
 // Modify parseFunctionFirstCallExpression to include enhanced context

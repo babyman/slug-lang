@@ -53,6 +53,7 @@ const (
 	//RANGE    = ".."
 	ELLIPSIS        = "..."
 	NOT_IMPLEMENTED = "???"
+	CALL_CHAIN      = "/>"
 
 	// Delimiters
 	PERIOD    = "."

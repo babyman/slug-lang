@@ -29,7 +29,12 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 	case '!':
 		tok = g.lexer.handleCompoundToken(token.BANG, '=', token.NOT_EQ)
 	case '/':
-		tok = newToken(token.SLASH, g.lexer.ch, startPosition)
+		if g.lexer.peekChar() == '>' {
+			tok = token.Token{Type: token.CALL_CHAIN, Literal: "/>", Position: startPosition}
+			g.lexer.readChar()
+		} else {
+			tok = newToken(token.SLASH, g.lexer.ch, startPosition)
+		}
 	case '*':
 		tok = newToken(token.ASTERISK, g.lexer.ch, startPosition)
 	case '%':
@@ -39,7 +44,15 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 	case '&':
 		tok = g.lexer.handleCompoundToken(token.BITWISE_AND, '&', token.LOGICAL_AND)
 	case '|':
-		tok = g.lexer.handleCompoundToken2(token.BITWISE_OR, '|', token.LOGICAL_OR, '}', token.MATCH_KEYS_CLOSE)
+		if g.lexer.peekChar() == '|' {
+			tok = token.Token{Type: token.LOGICAL_OR, Literal: "||", Position: startPosition}
+			g.lexer.readChar()
+		} else if g.lexer.peekChar() == '}' {
+			tok = token.Token{Type: token.MATCH_KEYS_CLOSE, Literal: "|}", Position: startPosition}
+			g.lexer.readChar()
+		} else {
+			tok = newToken(token.BITWISE_OR, g.lexer.ch, startPosition)
+		}
 	case '_':
 		if isLetter(g.lexer.peekChar()) {
 			tok.Literal = g.lexer.readIdentifier()

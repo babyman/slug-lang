@@ -45,6 +45,7 @@ f2=fn
 +:
 :+
 (_hello)
+/>
 // comment at eof
 //`
 
@@ -179,6 +180,7 @@ f2=fn
 		{token.LPAREN, "("},
 		{token.IDENT, "_hello"},
 		{token.RPAREN, ")"},
+		{token.CALL_CHAIN, "/>"},
 		{token.EOF, ""},
 	}
 
