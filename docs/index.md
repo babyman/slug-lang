@@ -293,8 +293,8 @@ var {*} = import("slug.std");
 var counter = 0;  // Mutable variable
 val greeting = "Hello"; // Immutable constant
 
-counter = counter + 1;   // Reassigning is allowed with var
-counter.println();       // Prints: 1
+counter = counter + 1;      // Reassigning is allowed with var
+counter /> println();       // Prints: 1
 ```
 
 ---
@@ -310,7 +310,7 @@ Example of defining and calling functions:
 var {*} = import("slug.std");
 
 val add = fn(a, b) { a + b }  // A function that adds two numbers
-add(3, 4).println();          // Output: 7
+add(3, 4) /> println();       // Output: 7
 ```
 
 Functions can close over their surrounding environment, making them closures:
@@ -323,13 +323,13 @@ val multiplier = fn(factor) {
 };
 
 val double = multiplier(2);
-double(5).println();  // Output: 10
+double(5) /> println();  // Output: 10
 ```
 
 ### Function Chaining in Slug
 
 Slug supports function chaining, which allows for a cleaner and more expressive syntax. When a variable is placed before
-a function call in the format `var.call()`, it is automatically passed as the first parameter to the function. The
+a function call in the format `var /> call()`, it is automatically passed as the first parameter to the function. The
 result is equivalent to invoking the function as `call(var)`.
 
 Example:
@@ -337,8 +337,8 @@ Example:
 ```
 slug var {*} = import("slug.std");
 
-1.println(); // Using function chaining 1.println(); Outputs: 1
-println(1);  // Equivalent traditional function call println(1);
+1 /> println(); // Using function chaining Outputs: 1
+println(1);     // Equivalent traditional function call
 ```
 
 By supporting function chaining, Slug simplifies code readability and enables a more fluid programming style, especially
@@ -414,13 +414,13 @@ var {*} = import("slug.std");
 
 val list = [1, 2, 3, 4, 5];
 
-val squares = list.map(fn(v) { v * v });           // [1, 4, 9, 16, 25]
-val evens = list.filter(fn(v) { v % 2 == 0 });     // [2, 4]
-val sum = list.reduce(0, fn(acc, v) { acc + v });  // 15
+val squares = list /> map(fn(v) { v * v });           // [1, 4, 9, 16, 25]
+val evens = list /> filter(fn(v) { v % 2 == 0 });     // [2, 4]
+val sum = list /> reduce(0, fn(acc, v) { acc + v });  // 15
 
-squares.println();
-evens.println();
-sum.println();
+squares /> println();
+evens /> println();
+sum /> println();
 ```
 
 ---
@@ -440,8 +440,8 @@ val classify = fn(value) {
     }
 };
 
-classify(1).println();  // Output: one
-classify(5).println();  // Output: other
+classify(1) /> println();  // Output: one
+classify(5) /> println();  // Output: other
 ```
 
 `match` can also destructure complex data like lists:
@@ -456,7 +456,7 @@ val sumList = fn(list) {
     }
 };
 
-sumList([1, 2, 3]).println();  // Output: 6
+sumList([1, 2, 3]) /> println();  // Output: 6
 ```
 
 ---
@@ -473,7 +473,7 @@ var {*} = import("slug.std");
 val applyTwice = fn(f, v) { f(f(v)) };
 
 val increment = fn(x) { x + 1 };
-applyTwice(increment, 10).println();  // Output: 12
+applyTwice(increment, 10) /> println();  // Output: 12
 ```
 
 ---
@@ -488,10 +488,10 @@ A list is a collection of elements. It supports operations like indexing, append
 var {*} = import("slug.std");
 
 val list = [10, 20, 30];
-list[1].println();    // Output: 20
-list[-1].println();   // Output: 30
-list[:1].println();   // Output: [10]
-list[1:].println();   // Output: [20, 30]
+list[1] /> println();    // Output: 20
+list[-1] /> println();   // Output: 30
+list[:1] /> println();   // Output: [10]
+list[1:] /> println();   // Output: [20, 30]
 ```
 
 ### Maps
@@ -503,7 +503,7 @@ var {*} = import("slug.std");
 
 var myMap = {};
 myMap = put(myMap, "name", "Slug");
-get(myMap, "name").println();  // Output: Slug
+get(myMap, "name") /> println();  // Output: Slug
 ```
 
 ---
@@ -523,7 +523,7 @@ val max = fn(a, b) {
     }
 };
 
-max(3, 5).println();  // Output: 5
+max(3, 5) /> println();  // Output: 5
 ```
 
 ### Error Handling with `try`/`catch` and `throw`
@@ -543,7 +543,7 @@ val process = fn(value) {
     }
 };
 
-process(-1).println();  // Output: Caught error: Negative value not allowed
+process(-1) /> println();  // Output: Caught error: Negative value not allowed
 ```
 
 ---
@@ -562,9 +562,9 @@ var {*} = import("slug.std");
 val numbers = [1, 2, 3, 4, 5, 6];
 
 val result = numbers
-    .map(fn(x) { x * x })          // [1, 4, 9, 16, 25, 36]
-    .filter(fn(x) { x % 2 == 0 })  // [4, 16, 36]
-    .reduce(0, fn(acc, x) { acc + x });  // 56
+    /> map(fn(x) { x * x })          // [1, 4, 9, 16, 25, 36]
+    /> filter(fn(x) { x % 2 == 0 })  // [4, 16, 36]
+    /> reduce(0, fn(acc, x) { acc + x });  // 56
 
 println("Result:", result);  // Output: Result: 56
 ```
@@ -613,7 +613,7 @@ var {*} = import("slug.test");
 @test
 var simpleTest = fn() {
     val result = 1 + 1;
-    result.assertEqual(2);
+    result /> assertEqual(2);
 }
 ```
 
