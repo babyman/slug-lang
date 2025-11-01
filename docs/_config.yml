@@ -7,3 +7,7 @@ baseurl: ""
 
 title: Slug
 description: a small opinionated programming language!
+
+toc:
+  min_level: 1
+  max_level: 3
