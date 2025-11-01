@@ -26,6 +26,7 @@ const (
 	PREFIX      // -X or !X
 	CALL        // myFunction(X)
 	INDEX       // list[index]
+	CALL_CHAIN  // 10 /> abs
 )
 
 var precedences = map[token.TokenType]int{
@@ -53,7 +54,7 @@ var precedences = map[token.TokenType]int{
 	token.PERIOD:              CALL,
 	token.LPAREN:              CALL,
 	token.INTERPOLATION_START: CALL,
-	token.CALL_CHAIN:          CALL,
+	token.CALL_CHAIN:          CALL_CHAIN,
 	token.LBRACKET:            INDEX,
 }
 
@@ -1038,21 +1039,20 @@ func (p *Parser) parseFunctionFirstCallExpression(left ast.Expression) ast.Expre
 
 	function := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 
-	if p.peekTokenIs(token.LPAREN) {
-		p.nextToken()
-		args := p.parseExpressionList(token.RPAREN)
-		args = append([]ast.Expression{left}, args...)
-		return &ast.CallExpression{
-			Token:     function.Token,
-			Function:  function,
-			Arguments: args,
-		}
-	} else {
-		return &ast.IndexExpression{
-			Token: function.Token,
-			Left:  left,
-			Index: &ast.StringLiteral{Token: function.Token, Value: function.Value},
-		}
+	//if p.peekTokenIs(token.LPAREN) {
+	//	p.nextToken()
+	//	args := p.parseExpressionList(token.RPAREN)
+	//	//args = append([]ast.Expression{left}, args...)
+	//	return &ast.CallExpression{
+	//		Token:     function.Token,
+	//		Function:  function,
+	//		Arguments: args,
+	//	}
+	//}
+	return &ast.IndexExpression{
+		Token: function.Token,
+		Left:  left,
+		Index: &ast.StringLiteral{Token: function.Token, Value: function.Value},
 	}
 }
 

@@ -199,7 +199,7 @@ foundational building blocks of the language.
 
 - `nil`: Represents the absence of a value or "nothing."
 - `true` / `false`: Boolean constants representing logical truth and falsehood.
-- `number`: DEC64 inspired, very experimental ( https://www.crockford.com/dec64.html )
+- `number`: DEC64 inspired, very experimental, see [DEC64: Decimal Floating Point]( https://www.crockford.com/dec64.html )
 - `string`
 - `list`: []
 - `map`: {}
