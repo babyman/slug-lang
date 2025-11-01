@@ -207,8 +207,8 @@ foundational building blocks of the language.
 
 #### **Comments**
 
-- `//` is supported since the language follows `C` language style conventions.
-- `#` is supported to allow easy execution as a shell script with the inclusion of `#!`. For example, if `SLUG_HOME` is
+- `//` is supported since the language follows C language style conventions.
+- `#` is supported to allow easy execution as a shell script with the inclusion of `#!/usr/bin/env slug`. For example, if `SLUG_HOME` is
   exported and `slug` is on the user path.
 
 #### **Variable Declarations**
