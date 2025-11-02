@@ -11,7 +11,7 @@ var sayHi = fn(args) {
 }
 
 //
-// if args is defined we may have commandline params
+// if args is defined we have commandline params
 //
 if(args) {
     args /> sayHi /> println;
