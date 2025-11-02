@@ -9,6 +9,9 @@ var str = "hello";
 
 str[3] /> assertEqual("l");
 
+// negative indexing
+str[-1] /> assertEqual("o");
+
 
 // repeating strings
 // -----------------
