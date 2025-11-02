@@ -13,6 +13,8 @@ builds:
       - linux
       - windows
       - darwin
+    ldflags:
+      - s -w -X main.Version={{.Version}} -X main.BuildDate={{.Date}} -X main.Commit={{.Commit}}
 
 archives:
   - formats: [tar.gz]

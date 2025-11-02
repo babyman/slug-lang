@@ -54,17 +54,6 @@ endif
 
 
 windows: clean
-	GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ./bin/slug.exe ./cmd/app/
-
-
-package: release windows
-	mkdir -p ./dist/slug/bin ./dist/slug/lib ./dist/slug/docs
-	cp -r ./bin/* ./dist/slug/bin/
-	cp -r ./lib/* ./dist/slug/lib/ 2>/dev/null || :
-	cp -r ./docs/* ./dist/slug/docs/ 2>/dev/null || :
-	cp readme.md ./dist/slug/ 2>/dev/null || :
-ifeq ($(OS), Darwin)
-	cd ./dist && zip -r slug.zip slug
-else
-	cd ./dist && zip -r slug.zip slug
-endif
+	GOOS=windows GOARCH=amd64 go build \
+		-ldflags="-s -w -X main.Version=${BUILD_VER} -X main.BuildDate=${BUILD_DATE} -X main.Commit=${COMMIT}" \
+		-o ./bin/slug.exe ./cmd/app/
