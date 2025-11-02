@@ -57,7 +57,7 @@ contexts:
         1: support.function.slug
 
     # Operators
-    - match: (=>|==|!=|<=|>=|&&|\|\||<<|>>|\.\.\.|\?\?\?|&|\||\^|~|:+|+:)
+    - match: (/>|=>|==|!=|<=|>=|&&|\|\||<<|>>|\.\.\.|\?\?\?|&|\||\^|~|:+|+:)
       scope: keyword.operator.slug
     - match: (=|\+|-|\*|/|%|!|<|>|\.)
       scope: keyword.operator.slug
