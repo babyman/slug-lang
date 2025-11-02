@@ -14,6 +14,7 @@ var {*} = import(
 
 // double function for testing
 val d = fn(n) { n * 2 };
+val x = fn(a, b) { a * b };
 
 // unchained code
 assertEqual(d(10), 20)
@@ -21,5 +22,37 @@ assertEqual(d(10), 20)
 // chained calls
 10 /> d() /> assertEqual(20);
 
-// brackets optional
+// brackets optional for single parameter functions
 10 /> d /> assertEqual(20);
+
+// brackets are required when more parameters are present
+10 /> x(10) /> assertEqual(100);
+
+// chaining with maps
+// ==================
+//
+// if a map contains a function it can be chained
+
+val m1 = { key: d };
+val m2 = { key: m1 };
+val m3 = { key: m2 };
+
+10 /> m1.key /> assertEqual(20);
+10 /> m2.key.key /> assertEqual(20);
+10 /> m3.key.key.key /> assertEqual(20);
+
+10 /> m1["key"] /> assertEqual(20);
+10 /> m3["key"].key["key"] /> assertEqual(20);
+
+// chaining with lists
+//
+// if a list contains a function it can be chained as well
+
+val l1 = [d];
+val l2 = [l1];
+
+10 /> l1[0]() /> assertEqual(20);
+10 /> l1[0] /> assertEqual(20);
+10 /> l2[0][0]() /> assertEqual(20);
+10 /> l2[0][0] /> assertEqual(20);
+

@@ -24,9 +24,9 @@ const (
 	SUM         // +
 	PRODUCT     // *
 	PREFIX      // -X or !X
+	CALL_CHAIN  // 10 /> abs
 	CALL        // myFunction(X)
 	INDEX       // list[index]
-	CALL_CHAIN  // 10 /> abs
 )
 
 var precedences = map[token.TokenType]int{
@@ -125,7 +125,7 @@ func New(l lexer.Tokenizer, source string) *Parser {
 	p.registerInfix(token.PREPEND_ITEM, p.parseInfixExpression)
 
 	p.registerInfix(token.CALL_CHAIN, p.parseCallChainExpression)
-	p.registerInfix(token.PERIOD, p.parseFunctionFirstCallExpression)
+	p.registerInfix(token.PERIOD, p.parseDotIdentifierToIndexExpression)
 	p.registerInfix(token.LPAREN, p.parseCallExpression)
 	p.registerInfix(token.LBRACKET, p.parseIndexExpression)
 	p.registerInfix(token.INTERPOLATION_START, p.parseInterpolationExpression)
@@ -1004,55 +1004,41 @@ func (p *Parser) parseFunctionParameters() []*ast.FunctionParameter {
 }
 
 func (p *Parser) parseCallChainExpression(left ast.Expression) ast.Expression {
-	if !p.expectPeek(token.IDENT) {
-		p.addError("expected function identifier after '/>', got %s instead", p.peekToken.Type)
+	precedence := p.curPrecedence()
+	p.nextToken()
+
+	right := p.parseExpression(precedence)
+	if right == nil {
+		p.addError("expected function after '/>'")
 		return nil
 	}
 
-	function := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	// If right is a call, prepend left to its arguments.
+	if call, ok := right.(*ast.CallExpression); ok {
+		call.Arguments = append([]ast.Expression{left}, call.Arguments...)
+		return call
+	}
 
-	if p.peekTokenIs(token.LPAREN) {
-		p.nextToken()
-		args := p.parseExpressionList(token.RPAREN)
-		args = append([]ast.Expression{left}, args...)
-		return &ast.CallExpression{
-			Token:     function.Token,
-			Function:  function,
-			Arguments: args,
-		}
-	} else {
-		args := []ast.Expression{left}
-		return &ast.CallExpression{
-			Token:     function.Token,
-			Function:  function,
-			Arguments: args,
-		}
+	// Otherwise, call right with only the chained left value.
+	return &ast.CallExpression{
+		Token:     p.curToken,
+		Function:  right,
+		Arguments: []ast.Expression{left},
 	}
 }
 
-// Modify parseFunctionFirstCallExpression to include enhanced context
-func (p *Parser) parseFunctionFirstCallExpression(left ast.Expression) ast.Expression {
+func (p *Parser) parseDotIdentifierToIndexExpression(left ast.Expression) ast.Expression {
 	if !p.expectPeek(token.IDENT) {
-		p.addError("expected function identifier after '.', got %s instead", p.peekToken.Type)
+		p.addError("expected identifier after '.', got %s instead", p.peekToken.Type)
 		return nil
 	}
 
-	function := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	mapKey := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 
-	//if p.peekTokenIs(token.LPAREN) {
-	//	p.nextToken()
-	//	args := p.parseExpressionList(token.RPAREN)
-	//	//args = append([]ast.Expression{left}, args...)
-	//	return &ast.CallExpression{
-	//		Token:     function.Token,
-	//		Function:  function,
-	//		Arguments: args,
-	//	}
-	//}
 	return &ast.IndexExpression{
-		Token: function.Token,
+		Token: mapKey.Token,
 		Left:  left,
-		Index: &ast.StringLiteral{Token: function.Token, Value: function.Value},
+		Index: &ast.StringLiteral{Token: mapKey.Token, Value: mapKey.Value},
 	}
 }
 
