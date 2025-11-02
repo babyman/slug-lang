@@ -15,7 +15,7 @@ structured, functional, and elegant programs.
 
 Create a file called `hello_world.slug` and add the following:
 
-```
+```slug
 var {*} = import("slug.std");
 
 println("Hello, Slug!");
@@ -105,7 +105,7 @@ val {*} = import("slug.std");
 - **Usage**: Accepts a single argument, which can be a list, map, or string. Returns the length as an integer.
 - **Example**:
 
-```
+```slug
 val size = len([1, 2, 3]);       // 3
 val textLength = len("hello");   // 5
 ```
@@ -118,7 +118,7 @@ val textLength = len("hello");   // 5
 - **Usage**: Both accept one or more arguments of any type, outputting their string representations separated by spaces.
 - **Examples**:
 
-``` slug
+```slug
   print("Hello", "Slug!");       // Outputs: Hello Slug!
   println("Welcome to Slug!");   // Outputs: Welcome to Slug!\n
 ```
@@ -134,7 +134,7 @@ Slug supports two types of variable declarations:
 
 Examples:
 
-```
+```slug
 var {*} = import("slug.std");
 
 var counter = 0;  // Mutable variable
@@ -153,7 +153,7 @@ variables.
 
 Example of defining and calling functions:
 
-```
+```slug
 var {*} = import("slug.std");
 
 val add = fn(a, b) { a + b }  // A function that adds two numbers
@@ -162,7 +162,7 @@ add(3, 4) /> println();       // Output: 7
 
 Functions can close over their surrounding environment, making them closures:
 
-```
+```slug
 var {*} = import("slug.std");
 
 val multiplier = fn(factor) {
@@ -173,29 +173,26 @@ val double = multiplier(2);
 double(5) /> println();  // Output: 10
 ```
 
-### Function Chaining in Slug
+### Function Chaining, The Trail Operator (`/>`)
 
-Slug supports function chaining, which allows for a cleaner and more expressive syntax. When a variable is placed before
-a function call in the format `var /> call()`, it is automatically passed as the first parameter to the function. The
-result is equivalent to invoking the function as `call(var)`.
+Slug values simplicity and flow - and the **trail operator** (`/>`) captures both.
 
-Example:
+Each value *slides forward* through the trail, passed into the next function or expression. It’s clean, readable, and
+feels like watching data follow its own path.
 
+```slug
+var double = fn(n) { n * 2 }
+var map = { double: double }
+var lst = [nil, double]
+
+10 /> map.double /> lst[1] /> println("is 40")
+
+// is the equivalent of:
+println(lst[1](map.double(10)), "is 40")
 ```
-slug var {*} = import("slug.std");
 
-1 /> println(); // Using function chaining Outputs: 1
-println(1);     // Equivalent traditional function call
-```
-
-By supporting function chaining, Slug simplifies code readability and enables a more fluid programming style, especially
-when writing pipelines or working with multiple transformations.
-
-### Function Call Dispatch and Type Hints
-
-Slug's function call dispatch mechanism determines the correct function to call in cases where multiple function
-signatures might match incoming arguments. The dispatch process evaluates function signatures based on the provided
-arguments and their compatibility with type hints.
+…but the trail reads the way you think: left to right, step by step. A small bit of syntax that makes code feel alive -
+like a slug gliding gracefully across a path of transformations.
 
 #### Function Dispatch
 
@@ -256,7 +253,7 @@ Slug excels at **functional programming**, empowering you with concise tools and
 - **Filter**: Keep elements that satisfy a condition.
 - **Reduce**: Aggregate a list into a single value.
 
-```
+```slug
 var {*} = import("slug.std");
 
 val list = [1, 2, 3, 4, 5];
@@ -276,7 +273,7 @@ sum /> println();
 
 Use `match` to destructure and inspect values directly.
 
-```
+```slug
 var {*} = import("slug.std");
 
 val classify = fn(value) {
@@ -293,7 +290,7 @@ classify(5) /> println();  // Output: other
 
 `match` can also destructure complex data like lists:
 
-```
+```slug
 var {*} = import("slug.std");
 
 val sumList = fn(list) {
@@ -314,7 +311,7 @@ Slug supports higher-order functions: functions that accept and return functions
 
 Example:
 
-```
+```slug
 var {*} = import("slug.std");
 
 val applyTwice = fn(f, v) { f(f(v)) };
@@ -331,7 +328,7 @@ applyTwice(increment, 10) /> println();  // Output: 12
 
 A list is a collection of elements. It supports operations like indexing, appending, and slicing.
 
-```
+```slug
 var {*} = import("slug.std");
 
 val list = [10, 20, 30];
@@ -345,7 +342,7 @@ list[1:] /> println();   // Output: [20, 30]
 
 Maps are key-value stores in Slug.
 
-```
+```slug
 var {*} = import("slug.std");
 
 var myMap = {};
@@ -359,7 +356,7 @@ get(myMap, "name") /> println();  // Output: Slug
 
 ### Conditionals: `if`/`else`
 
-```
+```slug
 var {*} = import("slug.std");
 
 val max = fn(a, b) {
@@ -375,7 +372,7 @@ max(3, 5) /> println();  // Output: 5
 
 ### Error Handling with `try`/`catch` and `throw`
 
-```
+```slug
 var {*} = import("slug.std");
 
 val process = fn(value) {
@@ -403,7 +400,7 @@ We’ll build a pipeline that processes a list of numbers by:
 - Filtering for even numbers.
 - Finding the sum of the remaining elements.
 
-```
+```slug
 var {*} = import("slug.std");
 
 val numbers = [1, 2, 3, 4, 5, 6];

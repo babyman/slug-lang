@@ -11,7 +11,7 @@ var {*} = import(
 	"slug.csv",
 	"slug.time"
 );
-// import regex separately so we can rename `replaceAll` to prevent conflict with `slug.string`
+// import regex separately so we can rename `replaceAll` to prevent conflict with `slug.string`.replaceAll
 var {findAllGroups, findAll, replaceAll: rxReplace} = import("slug.regex");
 
 if(mkDirs("./cache")) {
