@@ -4,6 +4,7 @@ layout: default
 ---
 
 ##  _"Perfect is the enemy of good."_
+{:.no_toc}
 
 ```
 Slug will never end,
@@ -15,8 +16,8 @@ good enough, again.
 Slug is a work in progress, and may never reach a stable release. However I am using it for all of my personal projects
 in an effort to keep it alive and useful.
 
-Contents
-===
+# Contents
+{:.no_toc}
 * TOC
 {:toc}
 
