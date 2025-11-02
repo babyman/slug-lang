@@ -11,6 +11,9 @@ var Operations = kernel.OpRights{
 }
 
 type Cli struct {
+	Version   string
+	BuildDate string
+	Commit    string
 }
 
 func (cli *Cli) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {

@@ -71,8 +71,8 @@ var extractIndexAndCardLinks = fn(base, pages = [], cards = {}, pagesSeen = {}) 
 var readFirst = fn(v) {
 	if(len(v) > 0 && len(v[0]) > 0) {
 		v /> reduce([], fn(acc, v) { acc :+ v[1] })
-		 /> join("; ")
-		 /> htmlUnescape()
+			/> join("; ")
+			/> htmlUnescape()
 	} else {
 		"";
 	}
@@ -80,16 +80,16 @@ var readFirst = fn(v) {
 
 var readAll = fn(lst, sep = "; ") {
 	lst /> filter(fn(v) { len(v) > 1 })
-		 /> reduce([], fn(acc, v) { acc + v[1:] })
-		 /> join(sep)
-		 /> htmlUnescape()
+		/> reduce([], fn(acc, v) { acc + v[1:] })
+		/> join(sep)
+		/> htmlUnescape()
 }
 
 var readServiceTable = fn(tableStr, sep = "; ") {
 	tableStr /> findAllGroups("<tr>(.*?)</tr>")
-		 /> filter(fn(v) { len(v) > 1 })
-		 /> reduce([], fn(acc, v) { acc + v[1:] })
-		 /> map(fn(v) { 
+		/> filter(fn(v) { len(v) > 1 })
+		/> reduce([], fn(acc, v) { acc + v[1:] })
+		/> map(fn(v) {
 			var header = v /> findAllGroups("<th>(.*?)</th>") /> readFirst();
 			var list = v /> findAllGroups("<a href=\".*?\">(.*?)</a>") /> readAll(", ");
 			if ( list == "" ) {
@@ -97,14 +97,14 @@ var readServiceTable = fn(tableStr, sep = "; ") {
 			}
 			header + ": " + list;
 		})
-		 /> join(sep)
-		 /> htmlUnescape()
+		/> join(sep)
+		/> htmlUnescape()
 }
 
 var readAmenities = fn(lst, sep = "; ") {
 	lst /> filter(fn(v) { len(v) > 1 })
-		 /> reduce([], fn(acc, v) { acc :+ v[1:] })
-		 /> map(fn(v) { 
+		/> reduce([], fn(acc, v) { acc :+ v[1:] })
+		/> map(fn(v) {
 			var header = v[0];
 			var list = v[1] /> findAllGroups("<a href=\".*?\">(.*?)</a>") /> readAll(", ");
 			if ( list == "" ) {
@@ -112,8 +112,8 @@ var readAmenities = fn(lst, sep = "; ") {
 			}
 			header + ": " + list;
 		})
-		 /> join(sep)
-		 /> htmlUnescape()
+		/> join(sep)
+		/> htmlUnescape()
 }
 
 var scrapeCards = fn(cards, base, rows) {
@@ -134,17 +134,17 @@ var scrapeCards = fn(cards, base, rows) {
 
 var cleanupText = fn(str) {
 	str /> rxReplace("<[^>]+>", " ")
-		 /> rxReplace(" +", " ")
-		 /> rxReplace("([\r\n]+ +)+", "\n")
-		 /> htmlUnescape()
-		 /> trim();
+		/> rxReplace(" +", " ")
+		/> rxReplace("([\r\n]+ +)+", "\n")
+		/> htmlUnescape()
+		/> trim();
 }
 
 var extractLinks = fn(str) {
 	str /> findAllGroups("href=\"(.*?)\"")
-		 /> filter(fn(s) { !s[1] /> startsWith("./") })
-		 /> readAll()
-		 /> urlDecode()
+		/> filter(fn(s) { !s[1] /> startsWith("./") })
+		/> readAll()
+		/> urlDecode()
 }
 
 var fixEmail = fn(str) { str /> rxReplace("%40", "@") };
@@ -167,39 +167,39 @@ var scrapeCard = fn(card) {
 	var details = card[i1: i2 + 100];
 	[
 		details /> findAllGroups("<span class=\"organization\">(.*?)</span>")
-			 /> readFirst(),
+				/> readFirst(),
 		details /> findAllGroups("class=\"program_name\">(.*?)</h1>")
-			 /> readFirst(),
+				/> readFirst(),
 		details /> extractInnerText("div", details /> indexOf("<div class=\"program_desc\">"))
-			 /> cleanupText(),
+				/> cleanupText(),
 		details /> findAllGroups("<span class=\"streetAddress\">(.*?)</span>")
-			 /> readFirst(),
+				/> readFirst(),
 		details /> findAllGroups("<span class=\"addressLocality\">(.*?)</span>")
-			 /> readFirst(),
+				/> readFirst(),
 		details /> findAllGroups("<span class=\"addressRegion\">(.*?)</span>")
-			 /> readFirst(),
+				/> readFirst(),
 		details /> findAllGroups("<span class=\"name\">(.*?)</span>")
-			 /> readFirst(),
+				/> readFirst(),
 		details /> findAllGroups("<span class=\"telephone\">(.*?)</span>")
-			 /> readFirst(),
+				/> readFirst(),
 		details /> extractInnerText("div", details /> indexOf("<div id =\"hours_of_operation\">"))
-			 /> findAllGroups("<p><strong>(.*?)</strong>:(.*?)</p>")
-			 /> readAll(),
+				/> findAllGroups("<p><strong>(.*?)</strong>:(.*?)</p>")
+				/> readAll(),
 		details /> extractInnerText("div", details /> indexOf("<div id =\"web_links\">"))
-			 /> extractLinks()
-			 /> fixEmail(),
+				/> extractLinks()
+				/> fixEmail(),
 		details /> extractInnerText("div", details /> indexOf("<div id =\"social_media_links\">"))
-			 /> extractLinks(),
+				/> extractLinks(),
 		details /> extractInnerText("div", details /> indexOf("<div id =\"categorization\">"))
-			 /> findAllGroups("<a href=\".*?\">(.*?)</a>")
-			 /> readAll(" > "),
+				/> findAllGroups("<a href=\".*?\">(.*?)</a>")
+				/> readAll(" > "),
 		// Amenities
 		details /> findAllGroups("<div class=\"exInfo\"><i>(.*?)</i><b>:</b> <div class=\"exData\">(.*?)</div>")
-			 /> readAmenities(),
+				/> readAmenities(),
 		details /> extractInnerText("table", details /> indexOf("<table class=\"fieldsTbl\">"))
-			 /> readServiceTable(),
+				/> readServiceTable(),
 		details /> findAllGroups("last updated on: <strong>(.*?)</strong>")
-			 /> readFirst()
+				/> readFirst()
 	];
 }
 
@@ -224,7 +224,8 @@ var rowHeaders = [[
 ]];
 
 
-toCsv(extractIndexAndCardLinks("https://a.website.com/index.html", [""])
-	 /> scrapeCards("https://a.website.com/", rowHeaders))
-	 /> writeFile("scrape-results.csv");
+extractIndexAndCardLinks("https://a.website.com/index.html", [""])
+	/> scrapeCards("https://a.website.com/", rowHeaders)
+	/> toCsv()
+	/> writeFile("data.csv");
 

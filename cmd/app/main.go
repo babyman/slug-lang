@@ -16,6 +16,12 @@ import (
 	"slug/internal/svc/sout"
 )
 
+var (
+	Version   = "dev"
+	BuildDate = "unknown"
+	Commit    = "unknown"
+)
+
 const (
 	r   = kernel.RightRead
 	rw  = kernel.RightRead | kernel.RightWrite
@@ -52,7 +58,11 @@ func main() {
 	resID := k.RegisterService(svc.ResolverService, resolver.Operations, res.Handler)
 
 	// CLI Service
-	cliSvc := &cli.Cli{}
+	cliSvc := &cli.Cli{
+		Version:   Version,
+		BuildDate: BuildDate,
+		Commit:    Commit,
+	}
 	cliID := k.RegisterService(svc.CliService, cli.Operations, cliSvc.Handler)
 
 	// File system service

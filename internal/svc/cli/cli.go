@@ -2,6 +2,7 @@ package cli
 
 import (
 	"flag"
+	"fmt"
 	"slug/internal/kernel"
 	"slug/internal/logger"
 	"slug/internal/svc"
@@ -16,12 +17,16 @@ var (
 	logLevel string
 	logFile  string
 	help     bool
+	version  bool
 )
 
 const TenYears = time.Hour * 24 * 365 * 10
 
 func init() {
 	flag.BoolVar(&help, "help", false, "Display help information and exit")
+	flag.BoolVar(&help, "h", false, "Display help information and exit")
+	flag.BoolVar(&version, "version", false, "Display version information and exit")
+	flag.BoolVar(&version, "v", false, "Display version information and exit")
 	// evaluator config
 	flag.StringVar(&rootPath, "root", resolver.DefaultRootPath, "Set the root context for the program (used for imports)")
 	// parser config
@@ -36,6 +41,11 @@ func (cli *Cli) onBoot(ctx *kernel.ActCtx) any {
 	flag.Parse()
 
 	kernelID, _ := ctx.K.ActorByName(kernel.KernelService)
+
+	if version {
+		cli.handleVersionRequest(ctx, kernelID)
+		return nil
+	}
 
 	if help {
 		cli.handleHelpRequest(ctx, kernelID)
@@ -113,6 +123,12 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 	return nil
 }
 
+func (cli *Cli) handleVersionRequest(ctx *kernel.ActCtx, kernelID kernel.ActorID) {
+
+	svc.SendStdOut(ctx, fmt.Sprintf("slug version 'v%s' %s %s\n", cli.Version, cli.BuildDate, cli.Commit))
+	ctx.SendSync(kernelID, kernel.RequestShutdown{ExitCode: 0})
+}
+
 func (cli *Cli) handleHelpRequest(ctx *kernel.ActCtx, kernelID kernel.ActorID) {
 
 	svc.SendStdOut(ctx, cli.helpMessage())
@@ -126,17 +142,21 @@ Options:
   -root <path>       Set the root context for the program (used for imports). Default is '.'
   -debug-ast         Render the AST as a JSON file.
   -help              Display this help information and exit.
+  -version           Display version information and exit.
   -log-level <level> Set the log level: trace, debug, info, warn, error, none. Default is 'none'.
   -log-file <path>   Specify a log file to write logs. Default is stderr.
 
 Details:
 This is the Slug programming language. 
-You can provide a filename to execute a Slug program, or run without arguments to start the interactive REPL.
 
 Examples:
-  slug                          Start the interactive REPL
-  slug -root=/path/to/root      Start the REPL with a specific root path
   slug -log-level=debug         Start with debug logging enabled
   slug myfile.slug              Execute the provided Slug file
-  slug myfile.slug arg1 arg2    Execute the file with command-line arguments`
+  slug myfile.slug arg1 arg2    Execute the file with command-line arguments
+
+Version Information:
+  Version:    ` + cli.Version + `
+  Build Date: ` + cli.BuildDate + `
+  Commit:     ` + cli.Commit + `
+`
 }

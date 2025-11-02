@@ -1,6 +1,10 @@
 BINARY_NAME=slug
 OS := $(shell uname)
 
+BUILD_VER = Dev
+BUILD_DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+COMMIT := $(shell git rev-parse --short HEAD)
+
 run:
 	# e.g. make run ARGS='--root ./tests --debug-ast ./tests/nil.slug'
 	time go run ./cmd/app/main.go $(ARGS)
@@ -31,7 +35,9 @@ clean:
 
 build:
 	mkdir -p ./bin
-	go build -o ./bin/$(BINARY_NAME) ./cmd/app/
+	go build \
+		-ldflags="-X main.Version=${BUILD_VER} -X main.BuildDate=${BUILD_DATE} -X main.Commit=${COMMIT}" \
+		-o ./bin/$(BINARY_NAME) ./cmd/app/
 ifeq ($(OS), Darwin)
 	codesign --sign - ./bin/$(BINARY_NAME)
 endif
@@ -39,7 +45,9 @@ endif
 
 release: clean
 	mkdir -p ./bin
-	go build -ldflags="-s -w" -o ./bin/$(BINARY_NAME) ./cmd/app/
+	go build \
+		-ldflags="-s -w -X main.Version=${BUILD_VER} -X main.BuildDate=${BUILD_DATE} -X main.Commit=${COMMIT}" \
+ 		-o ./bin/$(BINARY_NAME) ./cmd/app/
 ifeq ($(OS), Darwin)
 	codesign --sign - ./bin/$(BINARY_NAME)
 endif
