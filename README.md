@@ -5,10 +5,13 @@ A small, opinionated programming language.
 
 [![build-test-tag-and-release](https://github.com/babyman/slug-lang/actions/workflows/build-test-tag-and-release.yml/badge.svg)](https://github.com/babyman/slug-lang/actions/workflows/build-test-tag-and-release.yml)
 
-A Word of Warning
-===
-"Perfect is the enemy of good."
----
+
+[![GitHub watchers](https://img.shields.io/github/watchers/babyman/slug-lang.svg?style=social&label=Watch)](https://GitHub.com/babyman/slug-lang/watchers)
+[![GitHub forks](https://img.shields.io/github/forks/babyman/slug-lang.svg?style=social&label=Fork)](https://GitHub.com/babyman/slug-lang/fork)
+[![GitHub stars](https://img.shields.io/github/stars/babyman/slug-lang?style=social&label=Star)](https://GitHub.com/babyman/slug-lang/stargazers)
+
+
+## "Perfect is the enemy of good."
 
 ```
 Slug will never end,

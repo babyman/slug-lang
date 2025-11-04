@@ -113,10 +113,10 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 	p := result.Payload.(svc.EvaluateResult)
 
 	if p.Error != nil {
-		svc.SendStdOut(ctx, p.Error.Error())
+		svc.SendStdOut(ctx, p.Error.Error()+"\n")
 		ctx.SendSync(kernelID, kernel.RequestShutdown{ExitCode: -100})
 	} else {
-		svc.SendStdOut(ctx, p.Result)
+		svc.SendStdOut(ctx, p.Result+"\n")
 		ctx.SendSync(kernelID, kernel.RequestShutdown{ExitCode: 0})
 	}
 
