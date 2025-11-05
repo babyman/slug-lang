@@ -21,8 +21,8 @@ test:
 		go run ./cmd/app/main.go -log-level none --root ./tests $$file || exit 1; \
 	done
 	go run ./cmd/app/main.go -log-level none test \
-			slug.csv slug.html slug.list slug.map slug.math slug.regex slug.std slug.string slug.time \
-			slug.crypto \
+			slug.html slug.list slug.map slug.math slug.regex slug.std slug.string slug.time \
+			slug.csv slug.crypto \
 			|| exit 1
 
 lc: clean

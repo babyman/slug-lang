@@ -1,11 +1,11 @@
 var {*} = import(
-	"slug.string"
+	"slug.string",
 );
 
 @testWith(
 	[[["a", "b"]]], "a,b\r\n",
 	[[["a", "b"],["c", "d"]]], "a,b\r\nc,d\r\n",
-	[[["a\n", "qu\"ote"]]], "\"a\n\",\"qu\"\"ote\"\r\n"
+	[[["a\n", "qu\"ote"]]], "\"a\n\",\"qu\"\"ote\"\r\n",
 )
 @export
 var toCsv = fn(@list rows, @str sep = ",", @str quote = "\"", @str eol = "\r\n", @str acc = "") {
@@ -32,5 +32,75 @@ var cellToCsv = fn(@str cell, @str sep, @str quote) {
 		quote + cell /> replaceAll(quote, quote + quote) + quote;
 	} else {
 		cell;
+	}
+}
+
+@testWith(
+	["a,b,c"], [["a", "b", "c"]],
+	["a,b,c\r\nd,\"e\n f\",g"], [["a", "b", "c"], ["d", "e\n f", "g"]],
+)
+@export
+var fromCsv = fn(@str csvStr, @str sep = ",", @str quote = "\"") {
+	parseCsv(csvStr, sep, quote, 0, len(csvStr), [], [], false);
+}
+
+var parseCsv = fn(@str csvStr, @str sep, @str quote, @num i, @num n, @list accRows, @list accRow, @bool inQuotes, @str accField = "") {
+	if (i >= n) {
+		// End of input: flush pending field/row
+		var finalRow = flushFieldToRow(accRow, accField);
+		var finalRows = flushRow(accRows, finalRow);
+		finalRows;
+	} else {
+		var c = csvStr[i];
+
+		if (inQuotes) {
+			if (c == quote) {
+				// Possible escaped quote
+				if (i + 1 < n && csvStr[i + 1] == quote) {
+					parseCsv(csvStr, sep, quote, i + 2, n, accRows, accRow, true, accField + quote);
+				} else {
+					// Closing quote
+					parseCsv(csvStr, sep, quote, i + 1, n, accRows, accRow, false, accField);
+				}
+			} else {
+				parseCsv(csvStr, sep, quote, i + 1, n, accRows, accRow, true, accField + c);
+			}
+		} else {
+			if (c == quote) {
+				parseCsv(csvStr, sep, quote, i + 1, n, accRows, accRow, true, accField);
+			} else if (c == sep) {
+				// End of field
+				parseCsv(csvStr, sep, quote, i + 1, n, accRows, accRow :+ accField, false, "");
+			} else if (c == "\r") {
+				// End of record: handle CRLF
+				var nextI = if (i + 1 < n && csvStr[i + 1] == "\n") { i + 2; } else { i + 1; };
+				var finishedRow = accRow :+ accField;
+				parseCsv(csvStr, sep, quote, nextI, n, accRows :+ finishedRow, [], false, "");
+			} else if (c == "\n") {
+				// End of record: LF
+				var finishedRow = accRow :+ accField;
+				parseCsv(csvStr, sep, quote, i + 1, n, accRows :+ finishedRow, [], false, "");
+			} else {
+				parseCsv(csvStr, sep, quote, i + 1, n, accRows, accRow, false, accField + c);
+			}
+		}
+	}
+}
+
+// Helpers
+
+var flushFieldToRow = fn(@list row, @str field) {
+	if (len(field) == 0 && len(row) == 0) {
+		row;
+	} else {
+		row :+ field;
+	}
+}
+
+var flushRow = fn(@list rows, @list row) {
+	if (len(row) == 0) {
+		rows;
+	} else {
+		rows :+ row;
 	}
 }
