@@ -6,7 +6,7 @@ import (
 	"sort"
 )
 
-func fnSortWithComparator() *object.Foreign {
+func fnListSortWithComparator() *object.Foreign {
 	return &object.Foreign{
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			// Check if there are exactly two arguments: the list and the comparator.

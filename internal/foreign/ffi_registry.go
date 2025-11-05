@@ -28,7 +28,10 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.io.tcp.write":   fnIoTcpWrite(),
 		"slug.io.tcp.close":   fnIoTcpClose(),
 
-		"slug.list.sortWithComparator": fnSortWithComparator(),
+		"slug.crypto.sha256":     fnCryptoSha256(),
+		"slug.crypto.hmacSha256": fnCryptoHmacSha256(),
+
+		"slug.list.sortWithComparator": fnListSortWithComparator(),
 
 		"slug.math.rndRange": fnMathRndRange(),
 

@@ -46,7 +46,8 @@ foundational building blocks of the language.
 
 - `nil`: Represents the absence of a value or "nothing."
 - `true` / `false`: Boolean constants representing logical truth and falsehood.
-- `number`: DEC64 inspired, very experimental, see [DEC64: Decimal Floating Point]( https://www.crockford.com/dec64.html )
+- `number`: DEC64 inspired, very experimental,
+  see [DEC64: Decimal Floating Point]( https://www.crockford.com/dec64.html )
 - `string`
 - `list`: []
 - `map`: {}
@@ -55,7 +56,8 @@ foundational building blocks of the language.
 #### **Comments**
 
 - `//` is supported since the language follows C language style conventions.
-- `#` is supported to allow easy execution as a shell script with the inclusion of `#!/usr/bin/env slug`. For example, if `SLUG_HOME` is
+- `#` is supported to allow easy execution as a shell script with the inclusion of `#!/usr/bin/env slug`. For example,
+  if `SLUG_HOME` is
   exported and `slug` is on the user path.
 
 #### **Variable Declarations**
@@ -83,7 +85,9 @@ foundational building blocks of the language.
 
 #### **Dangling Commas**
 
-Slug supports dangling commas in lists and maps. This allows you to write code that is easy to refactor and rearrange.
+Slug supports dangling commas in lists, maps, tag and function call parameter lists. This allows you to write code that
+is easy to refactor and rearrange. Dangling commas are **NOT** allowed in function definitions (i.e `fn(a,b,)` is
+invalid).
 
 ```slug
 var {*} = import(

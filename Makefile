@@ -21,8 +21,9 @@ test:
 		go run ./cmd/app/main.go -log-level none --root ./tests $$file || exit 1; \
 	done
 	go run ./cmd/app/main.go -log-level none test \
-			slug.math slug.std slug.list slug.string slug.map slug.time slug.regex slug.html \
-			slug.csv || exit 1
+			slug.csv slug.html slug.list slug.map slug.math slug.regex slug.std slug.string slug.time \
+			slug.crypto \
+			|| exit 1
 
 lc: clean
 	cloc  --exclude-dir=.idea --read-lang-def=slug_cloc_definition.txt .
