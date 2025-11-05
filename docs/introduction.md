@@ -81,6 +81,28 @@ foundational building blocks of the language.
 - `throw`: Explicitly raises an error within the program.
 - `defer`: Ensures a block of code runs after its enclosing scope exits, often used for cleanup tasks.
 
+#### **Dangling Commas**
+
+Slug supports dangling commas in lists and maps. This allows you to write code that is easy to refactor and rearrange.
+
+```slug
+var {*} = import(
+	"slug.std",
+);
+
+val map = {
+	k: 50,
+};
+
+var list = [
+	1,
+	[1,2,],
+	11,
+];
+
+println(map, list,);
+```
+
 ---
 
 ### Built-in Functions

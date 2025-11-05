@@ -1110,8 +1110,15 @@ func (p *Parser) parseExpressionList(end token.TokenType) []ast.Expression {
 	}
 
 	for p.peekTokenIs(token.COMMA) {
-		p.nextToken()
-		p.nextToken()
+		p.nextToken() // consume comma
+
+		// Allow a dangling/trailing comma before the closing token
+		if p.peekTokenIs(end) {
+			p.nextToken() // consume end
+			return list
+		}
+
+		p.nextToken() // move to next element
 
 		// Handle spread syntax on subsequent arguments
 		if p.curTokenIs(token.ELLIPSIS) {
@@ -1253,8 +1260,17 @@ func (p *Parser) parseMapLiteral() ast.Expression {
 
 		mapLit.Pairs[key] = value
 
-		if !p.peekTokenIs(token.RBRACE) && !p.expectPeek(token.COMMA) {
+		// If next is '}', we're done; allow optional trailing comma before '}'
+		if p.peekTokenIs(token.RBRACE) {
+			break
+		}
+		if !p.expectPeek(token.COMMA) {
 			return nil
+		}
+		// After a comma, if the next is '}', accept dangling comma and finish
+		if p.peekTokenIs(token.RBRACE) {
+			p.nextToken() // consume '}'
+			return mapLit
 		}
 	}
 
