@@ -5,7 +5,7 @@ var {*} = import (
 @testWith(
 	[nil], nil,
 	[""], "",
-	[" slug "], "slug"
+	[" slug "], "slug",
 )
 @export
 foreign trim = fn(@str str);
@@ -15,7 +15,7 @@ foreign trim = fn(@str str);
 	["hello slug", "l"], 2,
 	["hello slug", "l", 2 + 1], 3,
 	["hello slug", "l", 4], 7,
-	["éé|éé", "|"], 2
+	["éé|éé", "|"], 2,
 )
 @export
 foreign indexOf = fn(@str str, @str seq, @num index = 0);
@@ -23,7 +23,7 @@ foreign indexOf = fn(@str str, @str seq, @num index = 0);
 @testWith(
 	[nil], nil,
 	[""], "",
-	["slug"], "SLUG"
+	["slug"], "SLUG",
 )
 @export
 foreign toUpper = fn(@str str);
@@ -31,14 +31,14 @@ foreign toUpper = fn(@str str);
 @testWith(
 	[nil], nil,
 	[""], "",
-	["SLUG"], "slug"
+	["SLUG"], "slug",
 )
 @export
 foreign toLower = fn(@str str);
 
 @testWith(
 	["hello slug", "slug"], true,
-	["hello slug", "snail"], false
+	["hello slug", "snail"], false,
 )
 @export
 var contains = fn(@str str, @str seq) {
@@ -47,7 +47,7 @@ var contains = fn(@str str, @str seq) {
 
 @testWith(
 	["hello slug", "slug"], false,
-	["hello slug", "hello"], true
+	["hello slug", "hello"], true,
 )
 @export
 var startsWith = fn(@str str, @str start) {
@@ -56,7 +56,7 @@ var startsWith = fn(@str str, @str start) {
 
 @testWith(
 	["hello slug", "slug"], true,
-	["hello slug", "hello"], false
+	["hello slug", "hello"], false,
 )
 @export
 var endsWith = fn(@str str, @str end) {
@@ -67,7 +67,7 @@ var endsWith = fn(@str str, @str end) {
 	[nil], false,
 	[""], false,
 	["slug"], false,
-	["SLUG"], true
+	["SLUG"], true,
 )
 @export
 var isUpper = fn(@str str) {
@@ -82,7 +82,7 @@ var isUpper = fn(@str str) {
 	[nil], false,
 	[""], false,
 	["slug"], true,
-	["SLUG"], false
+	["SLUG"], false,
 )
 @export
 var isLower = fn(@str str) {
@@ -104,7 +104,7 @@ var isLower = fn(@str str) {
 //   Array of substrings split by the delimiter
 @testWith(
 	["slug/test", "/"], ["slug", "test"],
-	["éé|éé", "|"], ["éé", "éé"]
+	["éé|éé", "|"], ["éé", "éé"],
 )
 @export
 var split = fn(@str str, @str delimiter, @num max = -1, @num count = 1, @list strs = []) {
@@ -120,7 +120,7 @@ var split = fn(@str str, @str delimiter, @num max = -1, @num count = 1, @list st
 @testWith(
 	[[], "."], "",
 	[["slug"], "."], "slug",
-	[["slug", "test"], "."], "slug.test"
+	[["slug", "test"], "."], "slug.test",
 )
 @export
 var join = fn(strs, @str delimiter, @str str = nil) {
@@ -136,7 +136,7 @@ var join = fn(strs, @str delimiter, @str str = nil) {
 	[nil, "/", "."], nil,
 	["slug/test", "/", "."], "slug.test",
 	["slug", "/", "."], "slug",
-	["E &amp; S", "&amp;", "&"], "E & S"
+	["E &amp; S", "&amp;", "&"], "E & S",
 )
 @export
 var replaceAll = fn(@str str, @str replace, @str with) {
