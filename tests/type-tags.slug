@@ -1,0 +1,49 @@
+var {*} = import(
+    "slug.std",
+    "slug.test",
+);
+
+
+var add = fn(@num b) {
+    b + 255
+}
+
+var add = fn(@bool b) {
+    !b
+}
+
+var add = fn(@str b) {
+    b + " slug"
+}
+
+var add = fn(@list b) {
+    b :+ 255
+}
+
+var add = fn(@map b) {
+    put(b, "k", 255)
+}
+
+var add = fn(@bytes b) {
+    b :+ 255
+}
+
+var add = fn(@fun b) {
+    b() + 255
+}
+
+
+"hello" /> add /> assertEqual("hello slug");
+
+false /> add /> assertEqual(true);
+
+1 /> add /> assertEqual(256);
+
+[] /> add /> assertEqual([255]);
+
+{} /> add /> len /> assertEqual(1);
+
+0x"63ff00" /> add /> assertEqual(0x"63ff00ff");
+
+fn() { 12 } /> add /> assertEqual(267)
+

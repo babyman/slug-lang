@@ -46,12 +46,13 @@ foundational building blocks of the language.
 
 - `nil`: Represents the absence of a value or "nothing."
 - `true` / `false`: Boolean constants representing logical truth and falsehood.
-- `number`: DEC64 inspired, very experimental,
+- `number`: a DEC64 inspired floating decimal point value, very experimental,
   see [DEC64: Decimal Floating Point]( https://www.crockford.com/dec64.html )
 - `string`
-- `list`: []
-- `map`: {}
-- `function`: fn(){}
+- `list`: an ordered collection of values `[1, 2, 3]`
+- `map`: a collection of key-value pairs `{k:v, k:v, ...}`
+- `bytes`: a byte sequence `0x"ff00"` 
+- `function`: a function `fn(){}`
 
 #### **Comments**
 
@@ -246,6 +247,7 @@ objects with specific types.
 - `@bool`: Matches objects of type `Boolean`.
 - `@list`: Matches objects of type `List`.
 - `@map`: Matches objects of type `Map`.
+- `@bytes`: Matches objects of type `Bytes`.
 - `@fun`: Matches objects of type `Function`.
 
 **Example: Function with Type Hints**

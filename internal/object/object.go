@@ -45,6 +45,7 @@ var TypeTags = map[string]string{
 	"@str":       STRING_OBJ,
 	"@map":       MAP_OBJ,
 	"@list":      LIST_OBJ,
+	"@bytes":     BYTE_OBJ,
 	"@bool":      BOOLEAN_OBJ,
 	FUNCTION_TAG: FUNCTION_OBJ,
 }

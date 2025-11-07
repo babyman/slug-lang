@@ -11,6 +11,7 @@ var {*} = import(
 @export val STRING_TYPE = "STRING";
 @export val LIST_TYPE = "LIST";
 @export val MAP_TYPE = "MAP";
+@export val BYTES_TYPE = "BYTES";
 @export val FUNCTION_TYPE = "FUNCTION";
 
 
@@ -23,7 +24,8 @@ var {*} = import(
 	["Hello Slug!"], STRING_TYPE,
 	[[1, 2]], LIST_TYPE,
 	[{key:"value"}], MAP_TYPE,
-	[fn(a){a}], FUNCTION_TYPE
+	[0x"ff"], BYTES_TYPE,
+	[fn(a){a}], FUNCTION_TYPE,
 )
 @export
 foreign type = fn(val);
