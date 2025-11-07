@@ -46,6 +46,8 @@ f2=fn
 :+
 (_hello)
 />
+0x"414243"
+0x""
 // comment at eof
 //`
 
@@ -181,6 +183,8 @@ f2=fn
 		{token.IDENT, "_hello"},
 		{token.RPAREN, ")"},
 		{token.CALL_CHAIN, "/>"},
+		{token.BYTES, "414243"},
+		{token.BYTES, ""},
 		{token.EOF, ""},
 	}
 

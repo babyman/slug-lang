@@ -176,6 +176,37 @@ func (l *Lexer) readNumber() string {
 	return l.input[start:l.position]
 }
 
+func (l *Lexer) readByteArrayLiteral() (string, bool) {
+	// read hex chars until closing ", ensure [0-9A-Fa-f]+ and even length
+	start := l.position
+	if l.ch != '"' {
+		for {
+			l.readChar()
+			if l.ch == '"' || l.ch == 0 {
+				break
+			}
+			if !((l.ch >= '0' && l.ch <= '9') ||
+				(l.ch >= 'a' && l.ch <= 'f') ||
+				(l.ch >= 'A' && l.ch <= 'F')) {
+				return "", false
+			}
+		}
+	}
+	// stop at '"' without consuming beyond it
+	if l.ch != '"' {
+		return "", false
+	}
+	hexStr := l.input[start:l.position]
+	// check even length
+	if len(hexStr)%2 != 0 {
+		return "", false
+	}
+	// after finishing, advance one char to move past closing quote
+	l.readChar()
+	// return the hex string (e.g., "414243") and true, or "", false on error
+	return hexStr, true
+}
+
 // Unicode-aware helpers
 func isLetter(ch rune) bool {
 	// Letters, underscore, and categories like Letter and Mark to support identifiers like café,变量

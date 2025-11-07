@@ -22,9 +22,13 @@ var rnd = fn(values, counter = 0) {
 
 val randomNumbers = rnd({}, 100);
 
-randomNumbers /> len /> assertEqual(10);
-randomNumbers /> keys
-     /> map(fn(k) {randomNumbers[k]})
-     /> reduce(0, fn(a, b) {a + b})
-     /> assertEqual(100);
+randomNumbers
+    /> len 
+    /> assertEqual(10);
+
+randomNumbers
+    /> keys
+    /> map(fn(k) {randomNumbers[k]})
+    /> reduce(0, fn(a, b) {a + b})
+    /> assertEqual(100);
 

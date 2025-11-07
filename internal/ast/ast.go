@@ -2,6 +2,7 @@ package ast
 
 import (
 	"bytes"
+	"encoding/hex"
 	"slug/internal/dec64"
 	"slug/internal/token"
 	"strings"
@@ -377,6 +378,17 @@ func (p *FunctionParameter) String() string {
 	out.WriteString(")")
 
 	return out.String()
+}
+
+type BytesLiteral struct {
+	Token token.Token
+	Value []byte
+}
+
+func (bl *BytesLiteral) expressionNode()      {}
+func (bl *BytesLiteral) TokenLiteral() string { return bl.Token.Literal }
+func (bl *BytesLiteral) String() string {
+	return `0x"` + hex.EncodeToString(bl.Value) + `"`
 }
 
 type StringLiteral struct {

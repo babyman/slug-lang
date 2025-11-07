@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"slug/internal/ast"
@@ -23,6 +24,7 @@ const (
 	SHIFT       // bit shifting
 	SUM         // +
 	PRODUCT     // *
+	LIST_CONCAT // +: and :+
 	PREFIX      // -X or !X
 	CALL_CHAIN  // 10 /> abs
 	CALL        // myFunction(X)
@@ -49,12 +51,12 @@ var precedences = map[token.TokenType]int{
 	token.SLASH:               PRODUCT,
 	token.ASTERISK:            PRODUCT,
 	token.PERCENT:             PRODUCT,
-	token.APPEND_ITEM:         PRODUCT,
-	token.PREPEND_ITEM:        PRODUCT,
+	token.APPEND_ITEM:         LIST_CONCAT,
+	token.PREPEND_ITEM:        LIST_CONCAT,
+	token.CALL_CHAIN:          CALL_CHAIN,
 	token.PERIOD:              CALL,
 	token.LPAREN:              CALL,
 	token.INTERPOLATION_START: CALL,
-	token.CALL_CHAIN:          CALL_CHAIN,
 	token.LBRACKET:            INDEX,
 }
 
@@ -88,6 +90,7 @@ func New(l lexer.Tokenizer, source string) *Parser {
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
 	p.registerPrefix(token.NUMBER, p.parseNumberLiteral)
 	p.registerPrefix(token.STRING, p.parseStringLiteral)
+	p.registerPrefix(token.BYTES, p.parseBytesLiteral)
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
 	p.registerPrefix(token.COMPLEMENT, p.parsePrefixExpression)
@@ -382,6 +385,21 @@ func (p *Parser) parseNumberLiteral() ast.Expression {
 
 func (p *Parser) parseStringLiteral() ast.Expression {
 	return &ast.StringLiteral{Token: p.curToken, Value: p.curToken.Literal}
+}
+
+func (p *Parser) parseBytesLiteral() ast.Expression {
+	lit := &ast.BytesLiteral{Token: p.curToken}
+	if p.curToken.Literal == "" {
+		lit.Value = []byte{}
+	} else {
+		value, err := hex.DecodeString(p.curToken.Literal)
+		if err != nil {
+			p.addError("could not parse %q as bytes", p.curToken.Literal)
+			return nil
+		}
+		lit.Value = value
+	}
+	return lit
 }
 
 func (p *Parser) parsePrefixExpression() ast.Expression {

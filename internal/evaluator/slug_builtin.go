@@ -71,6 +71,8 @@ func fnBuiltinLen() *object.Foreign {
 			return &object.Number{Value: dec64.FromInt(len(arg.Pairs))}
 		case *object.String:
 			return &object.Number{Value: dec64.FromInt(utf8.RuneCountInString(arg.Value))}
+		case *object.Bytes:
+			return &object.Number{Value: dec64.FromInt(len(arg.Value))}
 		default:
 			return ctx.NewError("argument to `len` not supported, got %s",
 				args[0].Type())

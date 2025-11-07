@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"errors"
 	"fmt"
 	"slug/internal/ast"
 	"slug/internal/dec64"
@@ -159,6 +160,9 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 
 	case *ast.StringLiteral:
 		return &object.String{Value: node.Value}
+
+	case *ast.BytesLiteral:
+		return &object.Bytes{Value: node.Value}
 
 	case *ast.Boolean:
 		return e.NativeBoolToBooleanObject(node.Value)
@@ -454,23 +458,34 @@ func (e *Evaluator) evalInfixExpression(
 ) object.Object {
 	switch {
 	case left.Type() == object.NUMBER_OBJ && right.Type() == object.NUMBER_OBJ:
-		return e.evalIntegerInfixExpression(operator, left, right)
+		return e.evalNumberInfixExpression(operator, left, right)
+
 	case left.Type() == object.STRING_OBJ && right.Type() == object.STRING_OBJ:
 		return e.evalStringInfixExpression(operator, left, right)
-	case operator == "*" && left.Type() == object.STRING_OBJ && right.Type() == object.NUMBER_OBJ:
-		return e.evalStringMultiplication(left, right)
+
+	case left.Type() == object.BOOLEAN_OBJ && right.Type() == object.BOOLEAN_OBJ:
+		return e.evalBooleanInfixExpression(operator, left, right)
+
+	case operator == "+:" && right.Type() == object.LIST_OBJ:
+		return e.evalListInfixExpression(operator, left, right)
+	case operator == ":+" && left.Type() == object.LIST_OBJ:
+		return e.evalListInfixExpression(operator, left, right)
+	case left.Type() == object.LIST_OBJ && right.Type() == object.LIST_OBJ:
+		return e.evalListInfixExpression(operator, left, right)
+
+	case operator == "+:" && right.Type() == object.BYTE_OBJ && left.Type() == object.NUMBER_OBJ:
+		return e.evalBytesInfixExpression(operator, left, right)
+	case operator == ":+" && left.Type() == object.BYTE_OBJ && right.Type() == object.NUMBER_OBJ:
+		return e.evalBytesInfixExpression(operator, left, right)
+	case left.Type() == object.BYTE_OBJ && right.Type() == object.BYTE_OBJ:
+		return e.evalBytesInfixExpression(operator, left, right)
+
 	case operator == "==":
 		return e.NativeBoolToBooleanObject(left == right)
 	case operator == "!=":
 		return e.NativeBoolToBooleanObject(left != right)
-	case operator == ":+" && left.Type() == object.LIST_OBJ:
-		return e.evalListInfixExpression(operator, left, right)
-	case operator == "+:" && right.Type() == object.LIST_OBJ:
-		return e.evalListInfixExpression(operator, left, right)
-	case left.Type() == object.LIST_OBJ && right.Type() == object.LIST_OBJ:
-		return e.evalListInfixExpression(operator, left, right)
-	case left.Type() == object.BOOLEAN_OBJ && right.Type() == object.BOOLEAN_OBJ:
-		return e.evalBooleanInfixExpression(operator, left, right)
+	case operator == "*" && left.Type() == object.STRING_OBJ && right.Type() == object.NUMBER_OBJ:
+		return e.evalStringMultiplication(left, right)
 	case left.Type() == object.STRING_OBJ || right.Type() == object.STRING_OBJ:
 		return e.evalStringPlusOtherInfixExpression(operator, left, right)
 	case left.Type() != right.Type():
@@ -560,6 +575,10 @@ func (e *Evaluator) evalBooleanInfixExpression(
 	rightVal := right.(*object.Boolean).Value
 
 	switch operator {
+	case "==":
+		return e.NativeBoolToBooleanObject(left == right)
+	case "!=":
+		return e.NativeBoolToBooleanObject(left != right)
 	case "&&":
 		return e.NativeBoolToBooleanObject(leftVal && rightVal)
 	case "||":
@@ -570,7 +589,7 @@ func (e *Evaluator) evalBooleanInfixExpression(
 	}
 }
 
-func (e *Evaluator) evalIntegerInfixExpression(
+func (e *Evaluator) evalNumberInfixExpression(
 	operator string,
 	left, right object.Object,
 ) object.Object {
@@ -682,6 +701,10 @@ func (e *Evaluator) evalListInfixExpression(
 ) object.Object {
 
 	switch operator {
+	case "==":
+		return e.NativeBoolToBooleanObject(e.objectsEqual(left, right))
+	case "!=":
+		return e.NativeBoolToBooleanObject(!e.objectsEqual(left, right))
 	case "+:":
 		rightVal := right.(*object.List)
 		length := len(rightVal.Elements) + 1
@@ -707,6 +730,55 @@ func (e *Evaluator) evalListInfixExpression(
 			return &object.List{Elements: newElements}
 		}
 		return &object.List{Elements: []object.Object{}}
+	default:
+		return newErrorf("unknown operator: %s %s %s",
+			left.Type(), operator, right.Type())
+	}
+}
+
+func (e *Evaluator) evalBytesInfixExpression(
+	operator string,
+	left, right object.Object,
+) object.Object {
+
+	switch operator {
+	case "==":
+		return e.NativeBoolToBooleanObject(e.objectsEqual(left, right))
+	case "!=":
+		return e.NativeBoolToBooleanObject(!e.objectsEqual(left, right))
+	case "+:":
+		byteValue, err := byteValue(left.(*object.Number))
+		if err != nil {
+			return newErrorf("cannot convert number to byte: %s", err.Error())
+		}
+		rightVal := right.(*object.Bytes)
+		length := len(rightVal.Value) + 1
+		newBytes := make([]byte, length)
+		newBytes[0] = byteValue
+		copy(newBytes[1:], rightVal.Value)
+		return &object.Bytes{Value: newBytes}
+	case ":+":
+		byteValue, err := byteValue(right.(*object.Number))
+		if err != nil {
+			return newErrorf("cannot convert number to byte: %s", err.Error())
+		}
+		leftVal := left.(*object.Bytes)
+		length := len(leftVal.Value) + 1
+		newBytes := make([]byte, length)
+		copy(newBytes, leftVal.Value)
+		newBytes[length-1] = byteValue
+		return &object.Bytes{Value: newBytes}
+	case "+":
+		leftVal := left.(*object.Bytes)
+		rightVal := right.(*object.Bytes)
+		length := len(leftVal.Value) + len(rightVal.Value)
+		if length > 0 {
+			newBytes := make([]byte, length)
+			copy(newBytes, leftVal.Value)
+			copy(newBytes[len(leftVal.Value):], rightVal.Value)
+			return &object.Bytes{Value: newBytes}
+		}
+		return &object.Bytes{Value: []byte{}}
 	default:
 		return newErrorf("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
@@ -1038,59 +1110,14 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 
 	case *ast.ListPattern:
 		// Check if the value is an list
-		arr, ok := value.(*object.List)
-		if !ok {
+		switch v := value.(type) {
+		case *object.List:
+			return e.patternMatchesList(env, p, v, isConstant, isExport, isImport)
+		case *object.Bytes:
+			return e.patternMatchesBytes(env, p, v, isConstant, isExport, isImport)
+		default:
 			return false, nil
 		}
-
-		// Empty list pattern matches empty list
-		if len(p.Elements) == 0 {
-			return len(arr.Elements) == 0, nil
-		}
-
-		_, isSpread := p.Elements[len(p.Elements)-1].(*ast.SpreadPattern)
-
-		// Check if list length matches pattern length
-		if (len(p.Elements) != len(arr.Elements) && !isSpread) || (len(p.Elements) > len(arr.Elements)+1 && isSpread) {
-			return false, nil
-		}
-
-		// scoped environment to capture the match bindings, these will be copied to the parent env on success
-		scoped := object.NewEnclosedEnvironment(env, nil)
-		e.PushEnv(scoped)
-
-		for i, elemPattern := range p.Elements {
-			if spread, isSpread := elemPattern.(*ast.SpreadPattern); isSpread {
-				matched, err := e.patternMatches(spread, &object.List{Elements: arr.Elements[i:]}, isConstant, isExport, isImport)
-				if err != nil || !matched {
-					return false, err
-				}
-				break
-			} else {
-				matched, err := e.patternMatches(elemPattern, arr.Elements[i], isConstant, isExport, isImport)
-				if err != nil || !matched {
-					return false, err
-				}
-			}
-		}
-
-		// Copy bindings from scoped environment to parent environment
-		for name, binding := range scoped.Bindings {
-			value, _ := scoped.Get(name)
-			if binding.IsMutable {
-				if _, err := env.Define(name, value, isExport, isImport); err != nil {
-					return false, err
-				}
-			} else {
-				if _, err := env.DefineConstant(name, value, isExport, isImport); err != nil {
-					return false, err
-				}
-			}
-		}
-
-		e.PopEnv()
-
-		return true, nil
 
 	case *ast.MapPattern:
 		// Check if value is a map
@@ -1214,6 +1241,124 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 	return false, nil
 }
 
+func (e *Evaluator) patternMatchesList(
+	env *object.Environment,
+	listPattern *ast.ListPattern,
+	list *object.List,
+	isConstant bool,
+	isExport bool,
+	isImport bool,
+) (bool, error) {
+
+	// Empty list pattern matches empty list
+	if len(listPattern.Elements) == 0 {
+		return len(list.Elements) == 0, nil
+	}
+
+	_, isSpread := listPattern.Elements[len(listPattern.Elements)-1].(*ast.SpreadPattern)
+
+	// Check if list length matches pattern length
+	if (len(listPattern.Elements) != len(list.Elements) && !isSpread) || (len(listPattern.Elements) > len(list.Elements)+1 && isSpread) {
+		return false, nil
+	}
+
+	// scoped environment to capture the match bindings, these will be copied to the parent env on success
+	scoped := object.NewEnclosedEnvironment(env, nil)
+	e.PushEnv(scoped)
+
+	for i, elemPattern := range listPattern.Elements {
+		if spread, isSpread := elemPattern.(*ast.SpreadPattern); isSpread {
+			matched, err := e.patternMatches(spread, &object.List{Elements: list.Elements[i:]}, isConstant, isExport, isImport)
+			if err != nil || !matched {
+				return false, err
+			}
+			break
+		} else {
+			matched, err := e.patternMatches(elemPattern, list.Elements[i], isConstant, isExport, isImport)
+			if err != nil || !matched {
+				return false, err
+			}
+		}
+	}
+
+	// Copy bindings from scoped environment to parent environment
+	for name, binding := range scoped.Bindings {
+		value, _ := scoped.Get(name)
+		if binding.IsMutable {
+			if _, err := env.Define(name, value, isExport, isImport); err != nil {
+				return false, err
+			}
+		} else {
+			if _, err := env.DefineConstant(name, value, isExport, isImport); err != nil {
+				return false, err
+			}
+		}
+	}
+
+	e.PopEnv()
+
+	return true, nil
+}
+
+func (e *Evaluator) patternMatchesBytes(
+	env *object.Environment,
+	listPattern *ast.ListPattern,
+	bytes *object.Bytes,
+	isConstant bool,
+	isExport bool,
+	isImport bool,
+) (bool, error) {
+
+	// Empty bytes pattern matches empty bytes
+	if len(listPattern.Elements) == 0 {
+		return len(bytes.Value) == 0, nil
+	}
+
+	_, isSpread := listPattern.Elements[len(listPattern.Elements)-1].(*ast.SpreadPattern)
+
+	// Check if bytes length matches pattern length
+	if (len(listPattern.Elements) != len(bytes.Value) && !isSpread) || (len(listPattern.Elements) > len(bytes.Value)+1 && isSpread) {
+		return false, nil
+	}
+
+	// scoped environment to capture the match bindings, these will be copied to the parent env on success
+	scoped := object.NewEnclosedEnvironment(env, nil)
+	e.PushEnv(scoped)
+
+	for i, elemPattern := range listPattern.Elements {
+		if spread, isSpread := elemPattern.(*ast.SpreadPattern); isSpread {
+			matched, err := e.patternMatches(spread, &object.Bytes{Value: bytes.Value[i:]}, isConstant, isExport, isImport)
+			if err != nil || !matched {
+				return false, err
+			}
+			break
+		} else {
+			matched, err := e.patternMatches(elemPattern, &object.Number{Value: dec64.FromInt(int(bytes.Value[i]))}, isConstant, isExport, isImport)
+			if err != nil || !matched {
+				return false, err
+			}
+		}
+	}
+
+	// Copy bindings from scoped environment to parent environment
+	for name, binding := range scoped.Bindings {
+		value, _ := scoped.Get(name)
+		if binding.IsMutable {
+			if _, err := env.Define(name, value, isExport, isImport); err != nil {
+				return false, err
+			}
+		} else {
+			if _, err := env.DefineConstant(name, value, isExport, isImport); err != nil {
+				return false, err
+			}
+		}
+	}
+
+	e.PopEnv()
+
+	return true, nil
+}
+
 // evaluatePatternAsCondition evaluates patterns as conditions for valueless match
 func (e *Evaluator) evaluatePatternAsCondition(pattern ast.MatchPattern) bool {
 	switch p := pattern.(type) {
@@ -1281,6 +1426,19 @@ func (e *Evaluator) objectsEqual(a, b object.Object) bool {
 			}
 		}
 
+		return true
+
+	case *object.Bytes:
+		bArr := b.(*object.Bytes)
+		if len(aVal.Value) != len(bArr.Value) {
+			return false
+		}
+
+		for i, elem := range aVal.Value {
+			if elem != bArr.Value[i] {
+				return false
+			}
+		}
 		return true
 
 	case *object.Map:
@@ -1385,6 +1543,13 @@ func (e *Evaluator) evalIndexExpression(left, index object.Object) object.Object
 			}
 		}
 		return e.evalListIndexExpression(left, index)
+	case left.Type() == object.BYTE_OBJ:
+		if slice, ok := index.(*object.Slice); ok {
+			if arr, ok := left.(*object.Bytes); ok {
+				return e.evalByteSlice(arr.Value, slice)
+			}
+		}
+		return e.evalByteIndexExpression(left, index)
 	case left.Type() == object.MAP_OBJ:
 		return e.evalMapIndexExpression(left, index)
 	default:
@@ -1428,6 +1593,22 @@ func (e *Evaluator) evalListIndexExpression(list, index object.Object) object.Ob
 	return listObject.Elements[idx]
 }
 
+func (e *Evaluator) evalByteIndexExpression(list, index object.Object) object.Object {
+	bytesObject := list.(*object.Bytes)
+	idx := index.(*object.Number).Value.ToInt64()
+	max := int64(len(bytesObject.Value) - 1)
+
+	if idx < 0 {
+		idx = max + idx + 1
+	}
+
+	if idx < 0 || idx > max {
+		return NIL
+	}
+
+	return &object.Number{Value: dec64.FromInt(int(bytesObject.Value[idx]))}
+}
+
 func (e *Evaluator) evalStringIndexExpression(str, index object.Object) object.Object {
 	stringObject := str.(*object.String)
 	idx := index.(*object.Number).Value.ToInt64()
@@ -1452,6 +1633,15 @@ func (e *Evaluator) evalListSlice(elements []object.Object, slice *object.Slice)
 		result = append(result, elements[i])
 	}
 	return &object.List{Elements: result}
+}
+
+func (e *Evaluator) evalByteSlice(elements []byte, slice *object.Slice) object.Object {
+	start, end, step := e.computeSliceIndices(len(elements), slice)
+	var result []byte
+	for i := start; i < end; i += step {
+		result = append(result, elements[i])
+	}
+	return &object.Bytes{Value: result}
 }
 
 func (e *Evaluator) evalStringSlice(value string, slice *object.Slice) object.Object {
@@ -1569,4 +1759,13 @@ func hasExportTag(tags []*ast.Tag) bool {
 		}
 	}
 	return false
+}
+
+func byteValue(n *object.Number) (byte, error) {
+
+	value := n.Value.ToInt()
+	if value < 0 || value > 255 {
+		return 0, errors.New("byte must be between 0 and 255, got " + n.Inspect())
+	}
+	return byte(value), nil
 }

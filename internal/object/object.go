@@ -2,6 +2,7 @@ package object
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"hash/fnv"
 	"math"
@@ -18,6 +19,7 @@ const (
 	BOOLEAN_OBJ = "BOOLEAN"
 	NUMBER_OBJ  = "NUMBER"
 	STRING_OBJ  = "STRING"
+	BYTE_OBJ    = "BYTES"
 
 	LIST_OBJ = "LIST"
 	MAP_OBJ  = "MAP"
@@ -170,6 +172,33 @@ func (s *String) GetTags() map[string]List {
 }
 func (s *String) SetTag(tag string, params List) {
 	setTag(&s.Tags, tag, params)
+}
+
+type Bytes struct {
+	Tags  map[string]List
+	Value []byte
+}
+
+func (b *Bytes) Type() ObjectType { return BYTE_OBJ }
+func (b *Bytes) Inspect() string {
+	return `0x"` + hex.EncodeToString(b.Value) + `"`
+}
+func (b *Bytes) MapKey() MapKey {
+	h := fnv.New64a()
+	h.Write(b.Value)
+	return MapKey{Type: b.Type(), Value: h.Sum64()}
+}
+func (b *Bytes) HasTag(tag string) bool {
+	return hasTag(tag, b.Tags)
+}
+func (b *Bytes) GetTagParams(tag string) (List, bool) {
+	return getTagParams(tag, b.Tags)
+}
+func (b *Bytes) GetTags() map[string]List {
+	return getTags(&b.Tags)
+}
+func (b *Bytes) SetTag(tag string, params List) {
+	setTag(&b.Tags, tag, params)
 }
 
 type Nil struct{}

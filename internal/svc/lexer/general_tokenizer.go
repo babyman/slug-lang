@@ -137,6 +137,19 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 			tok.Position = startPosition
 			return tok
 		} else if isDigit(g.lexer.ch) {
+			if g.lexer.ch == '0' && g.lexer.peekChar() == 'x' && g.lexer.peekTwoChars() == '"' {
+				// consume 0
+				g.lexer.readChar()
+				// consume x
+				g.lexer.readChar()
+				// consume opening "
+				g.lexer.readChar()
+				bytesLit, ok := g.lexer.readByteArrayLiteral()
+				if ok {
+					return token.Token{Type: token.BYTES, Literal: bytesLit, Position: startPosition}
+				}
+				return token.Token{Type: token.ILLEGAL, Literal: "invalid byte array literal", Position: startPosition}
+			}
 			tok.Type = token.NUMBER
 			tok.Literal = g.lexer.readNumber()
 			tok.Position = startPosition
