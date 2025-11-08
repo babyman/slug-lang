@@ -1,0 +1,11 @@
+var {*} = import(
+    "slug.test",
+);
+
+
+
+// slug uses decimal floating point math to avoid the pitfalls of floating point arithmetic
+// in JavaScript this will evaluate to 0.30000000000000004
+// --------------------------------------
+(0.1 + 0.2) /> assertEqual(0.3);
+

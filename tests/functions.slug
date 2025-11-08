@@ -4,7 +4,8 @@ var {*} = import(
 );
 
 
-// declare a function
+// declare a function and mark it as exported
+// this will allow it to be imported and used in other modules
 @export
 var sqr = fn(a) { a * a }
 

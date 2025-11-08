@@ -17,3 +17,17 @@ var f = fn(a) {
 2 /> f /> assertEqual(11);
 
 3 /> f /> assertEqual(12);
+
+
+// if with no else returns nil
+// ---------------------------
+
+var ifTest = fn(a) {
+    if ( a < 5 ) {
+        "small"
+    }
+}
+
+1 /> ifTest /> assertEqual("small");
+
+5 /> ifTest /> assertEqual(nil);

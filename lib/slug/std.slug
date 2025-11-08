@@ -35,7 +35,7 @@ foreign type = fn(val);
 	["__not_defined__"], false
 )
 @export
-foreign isDefined = fn(val);
+foreign isDefined = fn(@str val);
 
 @export
 foreign printf = fn(@str str, ...args);

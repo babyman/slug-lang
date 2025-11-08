@@ -1,6 +1,6 @@
 var {*} = import(
     "slug.std",
-    "slug.test"
+    "slug.test",
 );
 
 var list = ["v1", "v2"]
