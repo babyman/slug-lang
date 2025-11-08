@@ -28,3 +28,25 @@ l[-4] /> assertEqual(nil);
 l[2] /> assertEqual(4);
 l[-1] /> assertEqual(4);
 l[len(l) - 1] /> assertEqual(4);
+
+// bitwise operations
+// -----------------------
+(0x"ff00" & 0x"0ff0") /> assertEqual(0x"0f00");
+(0x"ffff" | 0x"0000") /> assertEqual(0x"ffff");
+(0x"ffff" ^ 0x"0000") /> assertEqual(0x"ffff");
+(~0x"00ff") /> assertEqual(0x"ff00");
+
+// if one bytes object is shorter it is repeated for bitwise operations
+// -----------------------
+(0x"ff" ^ 0x"0000") /> assertEqual(0x"ffff");
+
+// numbers will be converted to 1 byte bytes objects
+// -----------------------
+(255 & 0x"0ff0") /> assertEqual(0x"0ff0");
+(255 | 0x"0000") /> assertEqual(0x"ffff");
+(255 ^ 0x"0000") /> assertEqual(0x"ffff");
+
+(0x"0ff0" & 255) /> assertEqual(0x"0ff0");
+(0x"0000" | 255) /> assertEqual(0x"ffff");
+(0x"0000" ^ 255) /> assertEqual(0x"ffff");
+

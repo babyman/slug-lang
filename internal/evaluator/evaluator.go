@@ -485,6 +485,18 @@ func (e *Evaluator) evalInfixExpression(
 		return e.evalBytesInfixExpression(operator, left, right)
 	case left.Type() == object.BYTE_OBJ && right.Type() == object.BYTE_OBJ:
 		return e.evalBytesInfixExpression(operator, left, right)
+	case operator == "&" && left.Type() == object.BYTE_OBJ && right.Type() == object.NUMBER_OBJ:
+		return doOp(right, left, AndBytes)
+	case operator == "&" && right.Type() == object.BYTE_OBJ && left.Type() == object.NUMBER_OBJ:
+		return doOp(left, right, AndBytes)
+	case operator == "|" && left.Type() == object.BYTE_OBJ && right.Type() == object.NUMBER_OBJ:
+		return doOp(right, left, OrBytes)
+	case operator == "|" && right.Type() == object.BYTE_OBJ && left.Type() == object.NUMBER_OBJ:
+		return doOp(left, right, OrBytes)
+	case operator == "^" && left.Type() == object.BYTE_OBJ && right.Type() == object.NUMBER_OBJ:
+		return doOp(right, left, XorBytes)
+	case operator == "^" && right.Type() == object.BYTE_OBJ && left.Type() == object.NUMBER_OBJ:
+		return doOp(left, right, XorBytes)
 
 	case operator == "==":
 		return e.NativeBoolToBooleanObject(left == right)
@@ -526,12 +538,20 @@ func (e *Evaluator) evalMinusPrefixOperatorExpression(right object.Object) objec
 }
 
 func (e *Evaluator) evalComplementPrefixOperatorExpression(right object.Object) object.Object {
-	if right.Type() != object.NUMBER_OBJ {
+	switch v := right.(type) {
+	case *object.Number:
+		value := v.Value
+		return &object.Number{Value: ^value}
+	case *object.Bytes:
+		value := v.Value
+		complement := make([]byte, len(value))
+		for i, b := range value {
+			complement[i] = ^b
+		}
+		return &object.Bytes{Value: complement}
+	default:
 		return newErrorf("unknown operator: -%s", right.Type())
 	}
-
-	value := right.(*object.Number).Value
-	return &object.Number{Value: ^value}
 }
 
 func (e *Evaluator) evalShortCircuitInfixExpression(left object.Object, node *ast.InfixExpression) object.Object {
@@ -797,13 +817,26 @@ func (e *Evaluator) evalBytesInfixExpression(
 	}
 }
 
+func doOp(right object.Object, left object.Object, op ByteOp) object.Object {
+	bv, err := byteValue(right.(*object.Number))
+	if err != nil {
+		return newErrorf("cannot convert number to byte: %s", err.Error())
+	}
+	short := []byte{bv}
+	return performBitwiseByteOperation(left.(*object.Bytes).Value, short, op)
+}
+
 func performBitwiseOperation(left, right object.Object, op ByteOp) object.Object {
 	leftVal := left.(*object.Bytes).Value
 	rightVal := right.(*object.Bytes).Value
+	return performBitwiseByteOperation(leftVal, rightVal, op)
+}
+
+func performBitwiseByteOperation(leftVal, rightVal []byte, op ByteOp) object.Object {
 
 	// Repeat the shorter slice to match the longer length, then bitwise AND
 	if len(leftVal) == 0 || len(rightVal) == 0 {
-		return &object.Bytes{Value: []byte{}}
+		return &object.Error{Message: "cannot perform bitwise operation on empty bytes"}
 	}
 	var long, short []byte
 	if len(leftVal) >= len(rightVal) {
