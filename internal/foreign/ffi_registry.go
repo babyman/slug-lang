@@ -28,6 +28,13 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.io.tcp.write":   fnIoTcpWrite(),
 		"slug.io.tcp.close":   fnIoTcpClose(),
 
+		"slug.bytes.strToBytes":    fnBytesStrToBytes(),
+		"slug.bytes.bytesToStr":    fnBytesBytesToStr(),
+		"slug.bytes.hexStrToBytes": fnBytesHexStrToBytes(),
+		"slug.bytes.bytesToHexStr": fnBytesBytesToHexStr(),
+		"slug.bytes.base64Encode":  fnBytesBase64Encode(),
+		"slug.bytes.base64Decode":  fnBytesBase64Decode(),
+
 		"slug.crypto.sha256":     fnCryptoSha256(),
 		"slug.crypto.hmacSha256": fnCryptoHmacSha256(),
 

@@ -1,0 +1,47 @@
+
+@testWith(
+    [""], 0x"",
+    ["hello slug"], 0x"68656c6c6f20736c7567",
+)
+@export
+foreign strToBytes = fn(@str s)
+
+
+@testWith(
+    [0x""], "",
+    [0x"68656c6c6f20736c7567"], "hello slug",
+)
+@export
+foreign bytesToStr = fn(@bytes b)
+
+
+@testWith(
+    [""], 0x"",
+    ["68656c6c6f20736c7567"], 0x"68656c6c6f20736c7567",
+)
+@export
+foreign hexStrToBytes = fn(@str hex)
+
+
+@testWith(
+    [0x""], "",
+    [0x"68656c6c6f20736c7567"], "68656c6c6f20736c7567",
+)
+@export
+foreign bytesToHexStr = fn(@bytes b)
+
+
+@testWith(
+    [""], 0x"",
+    ["aGVsbG8gc2x1Zw=="], 0x"68656c6c6f20736c7567",
+)
+@export
+foreign base64Decode = fn(@str s)
+
+
+@testWith(
+    [0x""], "",
+    [0x"68656c6c6f20736c7567"], "aGVsbG8gc2x1Zw==",
+)
+@export
+foreign base64Encode = fn(@bytes b)

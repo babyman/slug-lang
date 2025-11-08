@@ -22,7 +22,7 @@ test:
 	done
 	go run ./cmd/app/main.go -log-level none test \
 			slug.html slug.list slug.map slug.math slug.regex slug.std slug.string slug.time \
-			slug.csv slug.crypto \
+			slug.csv slug.crypto slug.bytes \
 			|| exit 1
 
 lc: clean
