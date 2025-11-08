@@ -25,6 +25,12 @@ type Evaluator struct {
 	Ctx      *kernel.ActCtx
 }
 
+type ByteOp func(a, b byte) byte
+
+func AndBytes(a, b byte) byte { return a & b }
+func OrBytes(a, b byte) byte  { return a | b }
+func XorBytes(a, b byte) byte { return a ^ b }
+
 func (e *Evaluator) ActCtx() *kernel.ActCtx {
 	return e.Ctx
 }
@@ -746,6 +752,12 @@ func (e *Evaluator) evalBytesInfixExpression(
 		return e.NativeBoolToBooleanObject(e.objectsEqual(left, right))
 	case "!=":
 		return e.NativeBoolToBooleanObject(!e.objectsEqual(left, right))
+	case "&":
+		return performBitwiseOperation(left, right, AndBytes)
+	case "|":
+		return performBitwiseOperation(left, right, OrBytes)
+	case "^":
+		return performBitwiseOperation(left, right, XorBytes)
 	case "+:":
 		byteValue, err := byteValue(left.(*object.Number))
 		if err != nil {
@@ -783,6 +795,27 @@ func (e *Evaluator) evalBytesInfixExpression(
 		return newErrorf("unknown operator: %s %s %s",
 			left.Type(), operator, right.Type())
 	}
+}
+
+func performBitwiseOperation(left, right object.Object, op ByteOp) object.Object {
+	leftVal := left.(*object.Bytes).Value
+	rightVal := right.(*object.Bytes).Value
+
+	// Repeat the shorter slice to match the longer length, then bitwise AND
+	if len(leftVal) == 0 || len(rightVal) == 0 {
+		return &object.Bytes{Value: []byte{}}
+	}
+	var long, short []byte
+	if len(leftVal) >= len(rightVal) {
+		long, short = leftVal, rightVal
+	} else {
+		long, short = rightVal, leftVal
+	}
+	out := make([]byte, len(long))
+	for i := 0; i < len(long); i++ {
+		out[i] = op(long[i], short[i%len(short)])
+	}
+	return &object.Bytes{Value: out}
 }
 
 func (e *Evaluator) evalIfExpression(
