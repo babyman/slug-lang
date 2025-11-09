@@ -37,7 +37,7 @@ jobs:
       - name: Tag build version
         run: |
           V="$(cat VERSION)"
-          VERSION="v${V}-build${{ github.run_number }}"
+          VERSION="v${V}-b${{ github.run_number }}"
           echo "Tagging with verson $VERSION"
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
