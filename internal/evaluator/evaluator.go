@@ -19,6 +19,11 @@ var (
 	FALSE = &object.Boolean{Value: false}
 )
 
+const (
+	precision        = 14
+	roundingStrategy = dec64.RoundHalfUp
+)
+
 type Evaluator struct {
 	envStack []*object.Environment // Environment stack encapsulated in an evaluator struct
 	Actor    *Actor                // can be null
@@ -630,7 +635,7 @@ func (e *Evaluator) evalNumberInfixExpression(
 	case "*":
 		return &object.Number{Value: leftVal.Mul(rightVal)}
 	case "/":
-		return &object.Number{Value: leftVal.Div(rightVal, 14, dec64.RoundHalfUp)} // todo make this a constant at least, should really be config
+		return &object.Number{Value: leftVal.Div(rightVal, precision, roundingStrategy)}
 	case "%":
 		return &object.Number{Value: leftVal.Mod(rightVal)}
 	case "&":
