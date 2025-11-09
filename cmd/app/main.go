@@ -17,6 +17,7 @@ import (
 )
 
 var (
+	// Version is the current version of the slug binary loaded from the VERSION file in the root of the project.
 	Version   = "dev"
 	BuildDate = "unknown"
 	Commit    = "unknown"
