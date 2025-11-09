@@ -35,7 +35,9 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.bytes.base64Encode":  fnBytesBase64Encode(),
 		"slug.bytes.base64Decode":  fnBytesBase64Decode(),
 
+		"slug.crypto.md5":    fnCryptoMd5(),
 		"slug.crypto.sha256": fnCryptoSha256(),
+		"slug.crypto.sha512": fnCryptoSha512(),
 
 		"slug.list.sortWithComparator": fnListSortWithComparator(),
 

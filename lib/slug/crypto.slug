@@ -3,7 +3,26 @@ var {*} = import (
 );
 
 @export
+foreign md5 = fn(@bytes bytes);
+
+@export
 foreign sha256 = fn(@bytes bytes);
+
+@export
+foreign sha512 = fn(@bytes bytes);
+
+
+@testWith(
+	["hello"], "5d41402abc4b2a76b9719d911017c592",
+	[""], "d41d8cd98f00b204e9800998ecf8427e",
+)
+@export
+var md5 = fn(@str str) {
+
+	str /> strToBytes
+		/> md5
+		/> bytesToHexStr
+}
 
 
 @testWith(
@@ -15,6 +34,19 @@ var sha256 = fn(@str str) {
 
 	str /> strToBytes
 		/> sha256
+		/> bytesToHexStr
+}
+
+
+@testWith(
+	["hello"], "9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043",
+	[""], "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e",
+)
+@export
+var sha512 = fn(@str str) {
+
+	str /> strToBytes
+		/> sha512
 		/> bytesToHexStr
 }
 
@@ -32,28 +64,46 @@ var hmacSha256 = fn(@str message, @str secret) {
 
 
 @export
-var hmacSha256 = fn(@bytes message, @bytes key) {
-    var blockSize = 64;
+var hmacSha256 = fn(@bytes message, @bytes secret) {
 
-    # Step 1: Hash long keys down to one block
-    if ( len(key) > blockSize ) {
-        key = sha256(key)
+	calculateHmacSignature(message, secret, 64, sha256)
+}
+
+
+@testWith(
+	["hello", "slug"], "61d76feb488501a02e020bacca460b5b67c51352cff2dd78c70da0871d15b1e40903000d27e3a42b3461a1996dc14b3c2eaa5d9ad3d1e2505bb16fb933e52093",
+)
+@export
+var hmacSha512 = fn(@str message, @str secret) {
+
+    message /> strToBytes
+        /> hmacSha512(strToBytes(secret))
+        /> bytesToHexStr
+}
+
+
+@export
+var hmacSha512 = fn(@bytes message, @bytes secret) {
+
+	calculateHmacSignature(message, secret, 128, sha512)
+}
+
+
+var calculateHmacSignature = fn(@bytes message, @bytes secret, @num blockSize, @fun algo) {
+
+    if (len(secret) > blockSize) {
+        secret = algo(secret)
     }
 
-    # Step 2: Pad short keys with zeros
-    if ( len(key) < blockSize ) {
-        var padLen = blockSize - len(key)
+    if (len(secret) < blockSize) {
+        var padLen = blockSize - len(secret)
         var pad = 0x"00"
-        key = key + (pad /> repeat(padLen))
+        secret = secret + (pad /> repeat(padLen))
     }
 
-    # Step 3: Prepare inner and outer pad constants
     var ipad = 0x"36" /> repeat(blockSize)
     var opad = 0x"5c" /> repeat(blockSize)
 
-    # Step 4: Compute inner hash
-    var inner = sha256((key ^ ipad) + message)
-
-    # Step 5: Compute outer hash
-    sha256((key ^ opad) + inner)
+    var inner = algo((secret ^ ipad) + message)
+    algo((secret ^ opad) + inner)
 }
