@@ -50,6 +50,10 @@ func FromInt(coef int) Dec64 {
 	return FromInt64(int64(coef))
 }
 
+func FromUint(coef uint64) Dec64 {
+	return FromInt64(int64(coef))
+}
+
 func FromInt64(coef int64) Dec64 {
 	if coef == 0 {
 		return ZERO
@@ -420,4 +424,93 @@ func pow10(n int64) int64 {
 		r *= 10
 	}
 	return r
+}
+
+// Bitwise operations section.
+// Policy: only allowed for exact integers (exponent == 0). Otherwise, return NaN.
+// For shifts, the shift count must be exponent==0 and non-negative.
+
+// And returns bitwise AND of two integer Dec64 values.
+func (a Dec64) And(b Dec64) Dec64 {
+	if a.IsNaN() || b.IsNaN() || a.Exponent() != 0 || b.Exponent() != 0 {
+		return NAN
+	}
+	c := a.Coefficient() & b.Coefficient()
+	// Ensure result fits signed 56-bit coefficient domain if you want strictness.
+	if c > MAX_COEFF || c < MIN_COEFF {
+		return NAN
+	}
+	return New(c, 0)
+}
+
+// Or returns bitwise OR of two integer Dec64 values.
+func (a Dec64) Or(b Dec64) Dec64 {
+	if a.IsNaN() || b.IsNaN() || a.Exponent() != 0 || b.Exponent() != 0 {
+		return NAN
+	}
+	c := a.Coefficient() | b.Coefficient()
+	if c > MAX_COEFF || c < MIN_COEFF {
+		return NAN
+	}
+	return New(c, 0)
+}
+
+// Xor returns bitwise XOR of two integer Dec64 values.
+func (a Dec64) Xor(b Dec64) Dec64 {
+	if a.IsNaN() || b.IsNaN() || a.Exponent() != 0 || b.Exponent() != 0 {
+		return NAN
+	}
+	c := a.Coefficient() ^ b.Coefficient()
+	if c > MAX_COEFF || c < MIN_COEFF {
+		return NAN
+	}
+	return New(c, 0)
+}
+
+// Not returns bitwise NOT of an integer Dec64 value.
+func (a Dec64) Not() Dec64 {
+	if a.IsNaN() || a.Exponent() != 0 {
+		return NAN
+	}
+	c := ^a.Coefficient()
+	if c > MAX_COEFF || c < MIN_COEFF {
+		return NAN
+	}
+	return New(c, 0)
+}
+
+// ShiftLeft returns a << n for integer Dec64 a and integer, non-negative shift n.
+func (a Dec64) ShiftLeft(n Dec64) Dec64 {
+	if a.IsNaN() || n.IsNaN() || a.Exponent() != 0 || n.Exponent() != 0 {
+		return NAN
+	}
+	shift := n.Coefficient()
+	if shift < 0 || shift > 62 { // conservative: avoid undefined or excessive shifts
+		return NAN
+	}
+	c := a.Coefficient()
+	shifted := c << uint(shift)
+	// Check we remain within signed 56-bit coefficient domain
+	if shifted > MAX_COEFF || shifted < MIN_COEFF {
+		return NAN
+	}
+	return New(shifted, 0)
+}
+
+// ShiftRight returns arithmetic right shift a >> n for integer Dec64 a and integer, non-negative shift n.
+func (a Dec64) ShiftRight(n Dec64) Dec64 {
+	if a.IsNaN() || n.IsNaN() || a.Exponent() != 0 || n.Exponent() != 0 {
+		return NAN
+	}
+	shift := n.Coefficient()
+	if shift < 0 || shift > 62 {
+		return NAN
+	}
+	c := a.Coefficient()
+	shifted := c >> uint(shift)
+	// Always fits signed 56-bit because shifting right reduces magnitude
+	if shifted > MAX_COEFF || shifted < MIN_COEFF {
+		return NAN
+	}
+	return New(shifted, 0)
 }

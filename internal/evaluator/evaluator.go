@@ -541,7 +541,7 @@ func (e *Evaluator) evalComplementPrefixOperatorExpression(right object.Object) 
 	switch v := right.(type) {
 	case *object.Number:
 		value := v.Value
-		return &object.Number{Value: ^value}
+		return &object.Number{Value: value.Not()}
 	case *object.Bytes:
 		value := v.Value
 		complement := make([]byte, len(value))
@@ -634,15 +634,15 @@ func (e *Evaluator) evalNumberInfixExpression(
 	case "%":
 		return &object.Number{Value: leftVal.Mod(rightVal)}
 	case "&":
-		return &object.Number{Value: leftVal & rightVal}
+		return &object.Number{Value: leftVal.And(rightVal)}
 	case "|":
-		return &object.Number{Value: leftVal | rightVal}
+		return &object.Number{Value: leftVal.Or(rightVal)}
 	case "^":
-		return &object.Number{Value: leftVal ^ rightVal}
+		return &object.Number{Value: leftVal.Xor(rightVal)}
 	case "<<":
-		return &object.Number{Value: leftVal << rightVal}
+		return &object.Number{Value: leftVal.ShiftLeft(rightVal)}
 	case ">>":
-		return &object.Number{Value: leftVal >> rightVal}
+		return &object.Number{Value: leftVal.ShiftRight(rightVal)}
 	case "<":
 		return e.NativeBoolToBooleanObject(leftVal.Lt(rightVal))
 	case "<=":

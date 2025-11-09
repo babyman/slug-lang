@@ -199,6 +199,10 @@ func (l *Lexer) readHexLiteral() (string, bool) {
 		return "", false
 	}
 	hexStr := l.input[start:l.position]
+	// check even length
+	if len(hexStr)%2 != 0 {
+		return "", false
+	}
 	return hexStr, true
 }
 
