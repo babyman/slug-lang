@@ -8,17 +8,17 @@ var get = fn(@str url, @map headers = {}) {
 }
 
 @export
-var post = fn(@str url, @str body, @map headers = {}) {
+var post = fn(@str body, @str url, @map headers = {}) {
   request("POST", url, body, headers);
 }
 
 @export
-var put = fn(@str url, @str body, @map headers = {}) {
+var put = fn(@str body, @str url, @map headers = {}) {
   request("PUT", url, body, headers);
 }
 
 @export
-var patch = fn(@str url, @str body, @map headers = {}) {
+var patch = fn(@str body, @str url, @map headers = {}) {
   request("PATCH", url, body, headers);
 }
 
