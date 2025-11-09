@@ -46,6 +46,11 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
+  groups:
+    - title: "Features"
+      regexp: "^feat(.*)"
+    - title: "Fixes"
+      regexp: "^fix(.*)"
 
 release:
   make_latest: true
