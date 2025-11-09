@@ -176,8 +176,36 @@ func (l *Lexer) readNumber() string {
 	return l.input[start:l.position]
 }
 
+func (l *Lexer) readHexLiteral() (string, bool) {
+	start := l.position
+	l.readChar() // consume '0'
+	if l.ch != 'x' {
+		return "", false
+	}
+	l.readChar() // consume 'x'
+
+	digitStart := l.position
+	for {
+		if (l.ch >= '0' && l.ch <= '9') ||
+			(l.ch >= 'a' && l.ch <= 'f') ||
+			(l.ch >= 'A' && l.ch <= 'F') {
+			l.readChar()
+			continue
+		}
+		break
+	}
+	// Must have at least one hex digit
+	if l.position == digitStart {
+		return "", false
+	}
+	hexStr := l.input[start:l.position]
+	return hexStr, true
+}
+
 func (l *Lexer) readByteArrayLiteral() (string, bool) {
-	// read hex chars until closing ", ensure [0-9A-Fa-f]+ and even length
+	l.readChar() // consume 0
+	l.readChar() // consume x
+	l.readChar() // consume opening "
 	start := l.position
 	if l.ch != '"' {
 		for {

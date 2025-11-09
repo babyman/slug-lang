@@ -373,6 +373,24 @@ func (p *Parser) parseIdentifier() ast.Expression {
 func (p *Parser) parseNumberLiteral() ast.Expression {
 	lit := &ast.NumberLiteral{Token: p.curToken}
 
+	// Support hexadecimal integer literals starting with 0x or 0X
+	if len(p.curToken.Literal) > 2 && (p.curToken.Literal[0] == '0') && (p.curToken.Literal[1] == 'x') {
+		// Decode hex digits (after the 0x/0X prefix)
+		bytesVal, err := hex.DecodeString(p.curToken.Literal[2:])
+		if err != nil {
+			p.addError("could not parse %q as hex number", p.curToken.Literal)
+			return nil
+		}
+		// Convert the resulting bytes into an unsigned integer (big-endian)
+		var u uint64
+		for _, b := range bytesVal {
+			u = (u << 8) | uint64(b)
+		}
+		// Store as a decimal value
+		lit.Value = dec64.FromUint(u)
+		return lit
+	}
+
 	value, err := dec64.FromString(p.curToken.Literal)
 	if err != nil {
 		p.addError("could not parse %q as number", p.curToken.Literal)
