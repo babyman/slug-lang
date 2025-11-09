@@ -45,3 +45,17 @@ foreign base64Decode = fn(@str s)
 )
 @export
 foreign base64Encode = fn(@bytes b)
+
+
+@testWith(
+    [0x"ff", 3], 0x"ffffff",
+)
+@export
+var repeat = fn(@bytes b, @num count, @bytes acc = 0x"") {
+
+    if ( count == 0 ) {
+        acc
+    } else {
+        repeat(b, count - 1, acc + b)
+    }
+}

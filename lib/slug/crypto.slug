@@ -1,14 +1,59 @@
+var {*} = import (
+	"slug.bytes",
+);
+
+@export
+foreign sha256 = fn(@bytes bytes);
+
 
 @testWith(
 	["hello"], "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
 	[""], "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 )
 @export
-foreign sha256 = fn(@str str);
+var sha256 = fn(@str str) {
+
+	str /> strToBytes
+		/> sha256
+		/> bytesToHexStr
+}
 
 
 @testWith(
 	["hello", "slug"], "341f4d32b6b1104f0804b4565a805286ff7d3dc95bf1bd90aade8ac72905c71d",
 )
 @export
-foreign hmacSha256 = fn(@str message, @str secret);
+var hmacSha256 = fn(@str message, @str secret) {
+
+	message /> strToBytes
+		/> hmacSha256(strToBytes(secret))
+		/> bytesToHexStr
+}
+
+
+@export
+var hmacSha256 = fn(@bytes message, @bytes key) {
+    var blockSize = 64;
+
+    # Step 1: Hash long keys down to one block
+    if ( len(key) > blockSize ) {
+        key = sha256(key)
+    }
+
+    # Step 2: Pad short keys with zeros
+    if ( len(key) < blockSize ) {
+        var padLen = blockSize - len(key)
+        var pad = 0x"00"
+        key = key + (pad /> repeat(padLen))
+    }
+
+    # Step 3: Prepare inner and outer pad constants
+    var ipad = 0x"36" /> repeat(blockSize)
+    var opad = 0x"5c" /> repeat(blockSize)
+
+    # Step 4: Compute inner hash
+    var inner = sha256((key ^ ipad) + message)
+
+    # Step 5: Compute outer hash
+    sha256((key ^ opad) + inner)
+}
