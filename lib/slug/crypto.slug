@@ -52,6 +52,18 @@ var sha512 = fn(@str str) {
 
 
 @testWith(
+	["hello", "slug"], "341f4d32b6b1104f0804b4565a805286ff7d3dc95bf1bd90aade8ac72905c71d",
+)
+@export
+var hmacSha256Hex = fn(@str message, @str secret) {
+
+	message /> strToBytes
+		/> hmacSha256(strToBytes(secret))
+		/> bytesToHexStr
+}
+
+
+@testWith(
 	["hello", "slug"], "NB9NMraxEE8IBLRWWoBShv99Pclb8b2Qqt6KxykFxx0=",
 )
 @export
@@ -67,6 +79,18 @@ var hmacSha256 = fn(@str message, @str secret) {
 var hmacSha256 = fn(@bytes message, @bytes secret) {
 
 	calculateHmacSignature(message, secret, 64, sha256)
+}
+
+
+@testWith(
+	["hello", "slug"], "61d76feb488501a02e020bacca460b5b67c51352cff2dd78c70da0871d15b1e40903000d27e3a42b3461a1996dc14b3c2eaa5d9ad3d1e2505bb16fb933e52093",
+)
+@export
+var hmacSha512Hex = fn(@str message, @str secret) {
+
+    message /> strToBytes
+        /> hmacSha512(strToBytes(secret))
+        /> bytesToHexStr
 }
 
 
