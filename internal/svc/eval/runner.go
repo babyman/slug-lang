@@ -38,7 +38,6 @@ func evaluateMessagePayload(ctx *kernel.ActCtx, payload svc.EvaluateProgram) obj
 
 	// Optional profiling via env var: SLUG_CPU_PROFILE=<path>
 	profPath := os.Getenv("SLUG_CPU_PROFILE")
-	println("CPU profiling:", profPath)
 	var profFile *os.File
 	if profPath != "" {
 		var err error
@@ -50,12 +49,9 @@ func evaluateMessagePayload(ctx *kernel.ActCtx, payload svc.EvaluateProgram) obj
 			_ = profFile.Close()
 			profFile = nil
 		} else {
-			println("CPU profiling enabled:", profPath)
 			defer func() {
-				println("CPU profiling completing", profPath)
 				pprof.StopCPUProfile()
 				_ = profFile.Close()
-				println("CPU profiling completed", profPath)
 			}()
 		}
 	}
