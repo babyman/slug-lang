@@ -39,6 +39,10 @@ import (
 	"time"
 )
 
+const (
+	ActorMailboxSize = 64
+)
+
 var log = logger.NewLogger("kernel", SystemLogLevel())
 
 // ===== Kernel =====
@@ -85,7 +89,7 @@ func (k *Kernel) RegisterActor(name string, handler Handler) ActorID {
 	act := &Actor{
 		Id:       id,
 		Name:     name,
-		inbox:    make(chan Message, 64),
+		inbox:    make(chan Message, ActorMailboxSize),
 		handler:  handler,
 		children: make(map[ActorID]bool),
 		Caps:     make(map[int64]*Capability),
@@ -111,7 +115,7 @@ func (k *Kernel) SpawnChild(parent ActorID, name string, handler Handler) (Actor
 		Id:       id,
 		Name:     name,
 		Parent:   parent,
-		inbox:    make(chan Message, 64), // or configurable
+		inbox:    make(chan Message, ActorMailboxSize),
 		handler:  handler,
 		children: make(map[ActorID]bool),
 		Caps:     make(map[int64]*Capability),

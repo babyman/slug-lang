@@ -3,6 +3,8 @@ package eval
 import (
 	"errors"
 	"fmt"
+	"os"
+	"runtime/pprof"
 	"slug/internal/evaluator"
 	"slug/internal/kernel"
 	"slug/internal/object"
@@ -12,6 +14,51 @@ import (
 func Run(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	fwdMsg := svc.UnpackFwd(msg)
 	payload, _ := fwdMsg.Payload.(svc.EvaluateProgram)
+
+	evaluated := evaluateMessagePayload(ctx, payload)
+	if evaluated != nil && evaluated.Type() != object.NIL_OBJ {
+		if evaluated.Type() == object.ERROR_OBJ {
+			svc.Reply(ctx, fwdMsg, svc.EvaluateResult{
+				Error: errors.New(evaluated.Inspect()),
+			})
+		} else {
+			svc.Reply(ctx, fwdMsg, svc.EvaluateResult{
+				Result: fmt.Sprint(evaluated.Inspect()),
+			})
+		}
+	} else {
+		svc.Reply(ctx, fwdMsg, svc.EvaluateResult{})
+	}
+
+	// terminate when complete
+	return kernel.Terminate{}
+}
+
+func evaluateMessagePayload(ctx *kernel.ActCtx, payload svc.EvaluateProgram) object.Object {
+
+	// Optional profiling via env var: SLUG_CPU_PROFILE=<path>
+	profPath := os.Getenv("SLUG_CPU_PROFILE")
+	println("CPU profiling:", profPath)
+	var profFile *os.File
+	if profPath != "" {
+		var err error
+		profFile, err = os.Create(profPath)
+		if err != nil {
+			fmt.Printf("could not create CPU profile %q: %v\n", profPath, err)
+		} else if err := pprof.StartCPUProfile(profFile); err != nil {
+			fmt.Printf("could not start CPU profile: %v\n", err)
+			_ = profFile.Close()
+			profFile = nil
+		} else {
+			println("CPU profiling enabled:", profPath)
+			defer func() {
+				println("CPU profiling completing", profPath)
+				pprof.StopCPUProfile()
+				_ = profFile.Close()
+				println("CPU profiling completed", profPath)
+			}()
+		}
+	}
 
 	// Start the environment
 	env := object.NewEnvironment()
@@ -46,21 +93,5 @@ func Run(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	defer svc.SendInfo(ctx, " ---- done ----")
 
 	// Evaluate the program within the provided environment
-	evaluated := e.Eval(module.Program)
-	if evaluated != nil && evaluated.Type() != object.NIL_OBJ {
-		if evaluated.Type() == object.ERROR_OBJ {
-			svc.Reply(ctx, fwdMsg, svc.EvaluateResult{
-				Error: errors.New(evaluated.Inspect()),
-			})
-		} else {
-			svc.Reply(ctx, fwdMsg, svc.EvaluateResult{
-				Result: fmt.Sprint(evaluated.Inspect()),
-			})
-		}
-	} else {
-		svc.Reply(ctx, fwdMsg, svc.EvaluateResult{})
-	}
-
-	// terminate when complete
-	return kernel.Terminate{}
+	return e.Eval(module.Program)
 }

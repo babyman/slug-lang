@@ -24,3 +24,14 @@ Slug is a work in progress, and may never reach a stable release. However I am u
 in an effort to keep it alive and useful.
 
 **See the [slug website](http://www.sluglang.org) for installation instructions and language information.** 
+
+## Running Slug
+
+### Env Vars
+
+The following environment variables can be set to configure slug.
+
+- `SLUG_HOME` - The directory where slug will search for libraries and modules.
+- `SLUG_CPU_PROFILE` - If set (cpu.prof), slug will write a CPU profile to this file.
+- `KERNEL_LOG_LEVEL` - The log level for the kernel (trace, debug, info, warn, error, fatal).
+
