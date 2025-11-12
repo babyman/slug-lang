@@ -49,6 +49,8 @@ changelog:
   groups:
     - title: "Features"
       regexp: "^feat(.*)"
+    - title: "Refactor"
+      regexp: "^refactor(.*)"
     - title: "Fixes"
       regexp: "^fix(.*)"
 

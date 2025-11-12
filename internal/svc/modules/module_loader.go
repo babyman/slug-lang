@@ -73,23 +73,23 @@ func lexAndParseModule(
 
 	lex, err := ctx.SendSync(lexId, lexer.LexString{Sourcecode: module.Src})
 	if err != nil {
-		svc.SendInfof(ctx, "Failed to lex file: %s", err)
+		log.Infof("Failed to lex file: %s", err)
 		return nil, err
 	}
 
 	tokens := lex.Payload.(lexer.LexedTokens).Tokens
-	svc.SendDebugf(ctx, "Lexed %s, got %v", module.Path, tokens)
+	log.Debugf("Lexed %s, got %v", module.Path, tokens)
 
 	parse, err := ctx.SendSync(parseId, parser.ParseTokens{Sourcecode: module.Src, Tokens: tokens})
 	if err != nil {
-		svc.SendWarnf(ctx, "Failed to parse file: %s", err)
+		log.Warnf("Failed to parse file: %s", err)
 		return nil, err
 	}
 
 	ast := parse.Payload.(parser.ParsedAst).Program
 	errors := parse.Payload.(parser.ParsedAst).Errors
 	//fmt.Printf("Compiled %s, got %v", module.Path, ast)
-	svc.SendDebugf(ctx, "Compiled %s, got %v", module.Path, ast)
+	log.Debugf("Compiled %s, got %v", module.Path, ast)
 
 	module.Program = ast
 
@@ -98,7 +98,7 @@ func lexAndParseModule(
 	if debugAst {
 		json, err := parser.RenderASTAsJSON(module.Program)
 		if err != nil {
-			svc.SendErrorf(ctx, "Failed to render AST as JSON: %s", err)
+			log.Errorf("Failed to render AST as JSON: %s", err)
 		} else {
 			fsID, ok := ctx.K.ActorByName(svc.FsService)
 			if ok {

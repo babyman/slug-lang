@@ -2,7 +2,6 @@ package evaluator
 
 import (
 	"slug/internal/dec64"
-	"slug/internal/log"
 	"slug/internal/object"
 )
 

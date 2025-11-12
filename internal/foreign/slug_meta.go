@@ -2,7 +2,6 @@ package foreign
 
 import (
 	"slug/internal/ast"
-	"slug/internal/log"
 	"slug/internal/object"
 	"strings"
 )

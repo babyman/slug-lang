@@ -6,12 +6,15 @@ import (
 	"slug/internal/ast"
 	"slug/internal/dec64"
 	"slug/internal/kernel"
+	"slug/internal/logger"
 	"slug/internal/object"
 	"slug/internal/svc"
 	"slug/internal/svc/modules"
 	"slug/internal/token"
 	"strings"
 )
+
+var log = logger.NewLogger("evaluator", svc.LogLevel)
 
 var (
 	NIL   = &object.Nil{}
@@ -55,7 +58,7 @@ func (e *Evaluator) Receive(timeout int64) (object.Object, bool) {
 	if !b {
 		return nil, false
 	}
-	svc.SendDebugf(e.Ctx, "ACT: %d (%d) message received: %s\n", e.Actor.PID, e.Actor.MailboxPID, message.String())
+	log.Debugf("ACT: %d (%d) message received: %s\n", e.Actor.PID, e.Actor.MailboxPID, message.String())
 	switch m := message.(type) {
 	case UserMessage:
 		return m.Payload.(object.Object), true
@@ -81,7 +84,7 @@ func (e *Evaluator) Receive(timeout int64) (object.Object, bool) {
 		notification.Put(&object.String{Value: "mailbox"}, messages)
 		return notification, true
 	default:
-		svc.SendWarnf(e.Ctx, "ACT: %d (%d) Unknown message type: %T", e.Actor.PID, e.Actor.MailboxPID, m)
+		log.Warnf("ACT: %d (%d) Unknown message type: %T", e.Actor.PID, e.Actor.MailboxPID, m)
 		notification := &object.Map{}
 		notification.Put(&object.String{Value: "tag"}, &object.String{Value: "__unknown_message__"})
 		notification.Put(&object.String{Value: "type"}, &object.String{Value: fmt.Sprintf("%T", m)})
@@ -95,7 +98,7 @@ func (e *Evaluator) Nil() *object.Nil {
 
 func (e *Evaluator) PushEnv(env *object.Environment) {
 	e.envStack = append(e.envStack, env)
-	svc.SendTracef(e.Ctx, ">%s", strings.Repeat("-", len(e.envStack)))
+	log.Tracef(">%s", strings.Repeat("-", len(e.envStack)))
 }
 
 func (e *Evaluator) CurrentEnv() *object.Environment {
@@ -281,7 +284,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 
 		// If this is a tail call, wrap it in a TailCall object instead of evaluating
 		if node.IsTailCall {
-			//svc.SendInfof(e.Ctx, "Tail calling %s with %d arguments", node.Token.Literal, len(args))
+			//log.Infof( "Tail calling %s with %d arguments", node.Token.Literal, len(args))
 			return &object.TailCall{
 				FnName:    node.Token.Literal,
 				Function:  function,
@@ -289,7 +292,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			}
 		}
 
-		//svc.SendInfof(e.Ctx, "Calling %s with %d arguments", node.Token.Literal, len(args))
+		//log.Infof( "Calling %s with %d arguments", node.Token.Literal, len(args))
 		// For non-tail calls, invoke the function directly
 		return e.ApplyFunction(node.Token.Literal, function, args)
 
@@ -379,7 +382,7 @@ func (e *Evaluator) LoadModule(pathParts []string) (*object.Module, error) {
 	module := reply.Payload.(modules.LoadModuleResult).Module
 
 	if module.Env != nil {
-		svc.SendDebugf(e.Ctx, "return loaded module: %v", module.Name)
+		log.Debugf("return loaded module: %v", module.Name)
 		return module, nil
 	}
 
@@ -392,11 +395,11 @@ func (e *Evaluator) LoadModule(pathParts []string) (*object.Module, error) {
 	// Evaluate the module
 	module.Env = moduleEnv
 
-	svc.SendDebugf(e.Ctx, "load module: %v\n", module.Name)
+	log.Debugf("load module: %v\n", module.Name)
 	e.PushEnv(moduleEnv)
 	e.Eval(module.Program)
 	e.PopEnv()
-	svc.SendInfof(e.Ctx, "Module %s env len %d\n", module.Name, len(module.Env.Bindings))
+	log.Infof("Module %s env len %d\n", module.Name, len(module.Env.Bindings))
 
 	// Import the module into the current environment
 	return module, nil

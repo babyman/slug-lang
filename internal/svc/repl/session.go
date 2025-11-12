@@ -21,7 +21,7 @@ func (r *Repl) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSig
 
 		lex, err := ctx.SendSync(lexId, lexer.LexString{Sourcecode: payload.Src})
 		if err != nil {
-			svc.SendInfof(ctx, "Failed to lex file: %s", err)
+			log.Infof("Failed to lex file: %s", err)
 			svc.Reply(ctx, fwdMsg, RsEvalResp{Error: err})
 			return kernel.Continue{}
 		}
@@ -30,7 +30,7 @@ func (r *Repl) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSig
 
 		parse, err := ctx.SendSync(parseId, parser.ParseTokens{Sourcecode: payload.Src, Tokens: tokens})
 		if err != nil {
-			svc.SendWarnf(ctx, "Failed to parse file: %s", err)
+			log.Warnf("Failed to parse file: %s", err)
 			svc.Reply(ctx, fwdMsg, RsEvalResp{Error: err})
 			return kernel.Continue{}
 		}

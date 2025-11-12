@@ -78,7 +78,7 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 	filename := flag.Args()[0]
 	args := flag.Args()[1:]
 
-	svc.SendInfof(ctx, "Executing %s with args %v", filename, args)
+	log.Infof("Executing %s with args %v", filename, args)
 
 	modsID, _ := ctx.K.ActorByName(svc.ModuleService)
 	evalId, _ := ctx.K.ActorByName(svc.EvalService)
@@ -88,7 +88,7 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 		Args: args,
 	})
 	if err != nil {
-		svc.SendErrorf(ctx, "err: %v", err)
+		log.Errorf("err: %v", err)
 		return nil
 	}
 	loadResult, ok := modReply.Payload.(modules.LoadModuleResult)
@@ -105,7 +105,7 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 		Args:    args,
 	})
 	if err != nil {
-		svc.SendWarnf(ctx, "Failed to execute file: %s", err)
+		log.Warnf("Failed to execute file: %s", err)
 		return nil
 	}
 

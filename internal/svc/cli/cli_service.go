@@ -3,8 +3,11 @@ package cli
 import (
 	"reflect"
 	"slug/internal/kernel"
+	"slug/internal/logger"
 	"slug/internal/svc"
 )
+
+var log = logger.NewLogger("cli-svc", svc.LogLevel)
 
 var Operations = kernel.OpRights{
 	reflect.TypeOf(kernel.Boot{}): kernel.RightExec,

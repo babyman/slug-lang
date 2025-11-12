@@ -4,9 +4,12 @@ import (
 	"reflect"
 	"slug/internal/ast"
 	"slug/internal/kernel"
+	"slug/internal/logger"
 	"slug/internal/svc"
 	"slug/internal/token"
 )
+
+var log = logger.NewLogger("parser-svc", svc.LogLevel)
 
 type ParseTokens struct {
 	Sourcecode string
@@ -52,7 +55,7 @@ func (s *Service) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 		workedId, _ := ctx.SpawnChild("parse-wrk", parseHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
-			svc.SendError(ctx, err.Error())
+			log.Error(err.Error())
 		}
 	default:
 		svc.Reply(ctx, msg, kernel.UnknownOperation{})
@@ -67,7 +70,7 @@ func parseHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 		p := New(NewTokenSliceProvider(payload.Tokens), payload.Sourcecode)
 		program := p.ParseProgram()
 
-		svc.SendDebugf(ctx, "Parsed program: %v", program)
+		log.Errorf("Parsed program: %v", program)
 		svc.Reply(ctx, fwdMsg, ParsedAst{
 			Program: program,
 			Errors:  p.errors,

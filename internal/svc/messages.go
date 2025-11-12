@@ -2,12 +2,9 @@ package svc
 
 import (
 	"slug/internal/ast"
-	"slug/internal/kernel"
-	"slug/internal/logger"
 )
 
 const SOutService = "sout"
-const LogService = "log"
 const ModuleService = "mods"
 const ResolverService = "resolver"
 const CliService = "cli"
@@ -16,22 +13,6 @@ const LexerService = "lexer"
 const ParserService = "parser"
 const EvalService = "eval"
 const ReplService = "repl"
-
-// Log service messages
-// ====================
-
-type LogfMessage struct {
-	Source  kernel.ActorID
-	Level   logger.Level
-	Message string
-	Args    []any
-}
-
-type LogMessage struct {
-	Source  kernel.ActorID
-	Level   logger.Level
-	Message string
-}
 
 // SOut service messages
 // ====================

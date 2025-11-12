@@ -11,7 +11,7 @@ import (
 )
 
 // ===== REPL Service =====
-var log = logger.NewLogger("repl", logger.INFO)
+var log = logger.NewLogger("repl-svc", logger.INFO)
 
 type RsStart struct {
 }

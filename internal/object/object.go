@@ -9,10 +9,13 @@ import (
 	"slug/internal/ast"
 	"slug/internal/dec64"
 	"slug/internal/kernel"
-	"slug/internal/log"
+	"slug/internal/logger"
+	"slug/internal/svc"
 	"strings"
 	"unicode/utf8"
 )
+
+var log = logger.NewLogger("object", svc.LogLevel)
 
 const (
 	NIL_OBJ     = "NIL"
@@ -344,7 +347,7 @@ func (fg *FunctionGroup) SetTag(tag string, params List) {
 	}
 }
 func (fg *FunctionGroup) DispatchToFunction(fnName string, args []Object) (Object, bool) {
-	log.Info("dispatching to function group size: %d, param count %d", len(fg.Functions), len(args))
+	log.Debugf("dispatching to function group size: %d, param count %d", len(fg.Functions), len(args))
 
 	n := len(args)
 	var bestMatch Object
@@ -377,11 +380,11 @@ func (fg *FunctionGroup) DispatchToFunction(fnName string, args []Object) (Objec
 	}
 
 	if bestMatch != nil {
-		log.Debug("best match: %s", bestMatch.Inspect())
+		log.Debugf("best match: %s", bestMatch.Inspect())
 		//fmt.Printf("-----\nbest match: %s, best max %d, score: %d\n\n", bestMatch.Inspect(), bestMax, bestScore)
 		return bestMatch, true
 	} else {
-		log.Debug("no match found for %v params", n)
+		log.Debugf("no match found for %v params", n)
 	}
 
 	var a strings.Builder
@@ -420,7 +423,7 @@ func evaluateFunctionMatch(params []*ast.FunctionParameter, args []Object) int {
 					return -1
 				}
 			} else if arg.Type() != NIL_OBJ {
-				log.Warn("no match for argument type %s", arg.Type())
+				log.Warnf("no match for argument type %s", arg.Type())
 			}
 		}
 	}

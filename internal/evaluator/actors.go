@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"slug/internal/kernel"
-	"slug/internal/log"
 	"slug/internal/object"
 	"sync"
 	"time"

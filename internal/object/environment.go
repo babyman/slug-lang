@@ -3,7 +3,6 @@ package object
 import (
 	"fmt"
 	"slug/internal/ast"
-	"slug/internal/log"
 	"slug/internal/svc/parser"
 )
 
@@ -61,7 +60,7 @@ func (e *Environment) Get(name string) (Object, bool) {
 	if !ok {
 		return nil, false
 	}
-	log.Info("Found binding for '%s': %v", name, binding)
+	log.Debugf("Found binding for '%s': %v", name, binding)
 	return binding.Value, true
 }
 
@@ -128,7 +127,7 @@ func (e *Environment) define(name string, val Object, isMutable bool, isExported
 	}
 	e.Bindings[name] = binding
 	//fmt.Printf("binding: %v %v %v %v\n", binding.Value.Type(), name, val.Inspect(), binding.Meta)
-	log.Debug("binding: %v %v %v\n", binding.Value.Type(), name, binding.Meta)
+	log.Debugf("binding: %v %v %v\n", binding.Value.Type(), name, binding.Meta)
 	return val, nil
 }
 
@@ -166,7 +165,7 @@ func (e *Environment) Assign(name string, val Object) (Object, error) {
 			binding.Value = val
 		}
 		//fmt.Printf("assigning: %v %v %v %v\n", binding.Value.Type(), name, binding.Value, binding.Meta)
-		log.Debug("assigning: %v %v %v\n", binding.Value.Type(), name, binding.Meta)
+		log.Debugf("assigning: %v %v %v\n", binding.Value.Type(), name, binding.Meta)
 		return val, nil
 	}
 	if e.Outer != nil {
@@ -200,7 +199,7 @@ func reverse(slice []StackFrame) []StackFrame {
 }
 
 func (e *Environment) RegisterDefer(deferStmt ast.Statement) {
-	log.Debug(">>> Stashing deferred block: %v", deferStmt)
+	log.Debugf(">>> Stashing deferred block: %v", deferStmt)
 	e.deferStack = append(e.deferStack, deferStmt)
 }
 
@@ -208,6 +207,6 @@ func (e *Environment) ExecuteDeferred(evalFunc func(stmt ast.Statement)) {
 	defer func() { e.deferStack = nil }() // Always clear defer stack
 	for i := len(e.deferStack) - 1; i >= 0; i-- {
 		evalFunc(e.deferStack[i]) // Execute each deferred statement
-		log.Debug("<<< Executing deferred block: %s", e.deferStack[i])
+		log.Debugf("<<< Executing deferred block: %s", e.deferStack[i])
 	}
 }

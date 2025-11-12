@@ -3,10 +3,13 @@ package modules
 import (
 	"reflect"
 	"slug/internal/kernel"
+	"slug/internal/logger"
 	"slug/internal/object"
 	"slug/internal/svc"
 	"strings"
 )
+
+var log = logger.NewLogger("module-svc", svc.LogLevel)
 
 type LoadFile struct {
 	Path string
@@ -55,7 +58,7 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 		workedId, _ := ctx.SpawnChild("mods-fl-wrk", eval.loadFileHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
-			svc.SendError(ctx, err.Error())
+			log.Error(err.Error())
 		}
 
 	case LoadModule:
@@ -63,7 +66,7 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 		if id, ok := m.moduleRegistry[moduleName]; ok {
 			err := ctx.SendAsync(id, msg)
 			if err != nil {
-				svc.SendError(ctx, err.Error())
+				log.Error(err.Error())
 			}
 		} else {
 			loader := ModuleLoader{
@@ -73,7 +76,7 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 			m.moduleRegistry[moduleName] = workedId
 			err := ctx.SendAsync(workedId, msg)
 			if err != nil {
-				svc.SendError(ctx, err.Error())
+				log.Error(err.Error())
 			}
 		}
 	default:

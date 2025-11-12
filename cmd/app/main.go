@@ -8,7 +8,6 @@ import (
 	"slug/internal/svc/eval"
 	"slug/internal/svc/fs"
 	"slug/internal/svc/lexer"
-	"slug/internal/svc/log"
 	"slug/internal/svc/modules"
 	"slug/internal/svc/parser"
 	"slug/internal/svc/repl"
@@ -45,10 +44,6 @@ func main() {
 	// system out Service
 	out := &sout.SOut{}
 	soutID := k.RegisterService(svc.SOutService, sout.Operations, out.Handler)
-
-	// system out Service
-	logSvc := &log.LogService{}
-	logID := k.RegisterService(svc.LogService, log.Operations, logSvc.Handler)
 
 	// system out Service
 	mods := modules.NewModules()
@@ -91,7 +86,6 @@ func main() {
 
 	_ = k.GrantCap(cliID, resID, x, nil)   // x for kernel.ConfigureSystem
 	_ = k.GrantCap(cliID, modsID, rx, nil) // x for kernel.ConfigureSystem
-	_ = k.GrantCap(cliID, logID, wx, nil)  // x for kernel.ConfigureSystem
 	_ = k.GrantCap(cliID, soutID, w, nil)
 	_ = k.GrantCap(cliID, evalID, x, nil)
 	_ = k.GrantCap(cliID, kernelID, x, nil)
@@ -100,25 +94,15 @@ func main() {
 	_ = k.GrantCap(modsID, lexerID, x, nil)
 	_ = k.GrantCap(modsID, parserID, x, nil)
 	_ = k.GrantCap(modsID, fsID, w, nil)
-	_ = k.GrantCap(modsID, logID, w, nil)
 
 	_ = k.GrantCap(resID, fsID, r, nil)
-	_ = k.GrantCap(resID, logID, w, nil)
-
-	_ = k.GrantCap(fsID, logID, w, nil)
-
-	_ = k.GrantCap(lexerID, logID, w, nil)
-
-	_ = k.GrantCap(parserID, logID, w, nil)
 
 	_ = k.GrantCap(evalID, modsID, r, nil)
 	_ = k.GrantCap(evalID, soutID, w, nil)
-	_ = k.GrantCap(evalID, logID, w, nil)
 
 	_ = k.GrantCap(replID, lexerID, x, nil)
 	_ = k.GrantCap(replID, parserID, x, nil)
 	_ = k.GrantCap(replID, evalID, x, nil)
-	_ = k.GrantCap(replID, logID, w, nil)
 
 	k.Start()
 }

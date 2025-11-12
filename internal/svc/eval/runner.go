@@ -85,8 +85,8 @@ func evaluateMessagePayload(ctx *kernel.ActCtx, payload svc.EvaluateProgram) obj
 	e.PushEnv(env)
 	defer e.PopEnv()
 
-	svc.SendInfo(ctx, " ---- begin ----")
-	defer svc.SendInfo(ctx, " ---- done ----")
+	log.Info(ctx, " ---- begin ----")
+	defer log.Info(ctx, " ---- done ----")
 
 	// Evaluate the program within the provided environment
 	return e.Eval(module.Program)
