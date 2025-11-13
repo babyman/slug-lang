@@ -68,7 +68,8 @@ func main() {
 		AddSource: false,
 		Level:     logLevelFromString(logLevel),
 	}
-	defaultLogger := slog.New(slog.NewJSONHandler(os.Stdout, loggerOptions))
+	logWriter := configureLogWritter()
+	defaultLogger := slog.New(slog.NewJSONHandler(logWriter, loggerOptions))
 	slog.SetDefault(defaultLogger)
 
 	// kernel config
@@ -159,6 +160,21 @@ func main() {
 	_ = k.GrantCap(replID, evalID, x, nil)
 
 	k.Start()
+}
+
+func configureLogWritter() *os.File {
+	var logWriter *os.File
+	var err error
+	if logFile != "" {
+		logWriter, err = os.OpenFile(logFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to open log file '%s': %v; falling back to stderr\n", logFile, err)
+			logWriter = os.Stderr
+		}
+	} else {
+		logWriter = os.Stderr
+	}
+	return logWriter
 }
 
 func printVersion() {
