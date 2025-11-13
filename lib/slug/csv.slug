@@ -40,7 +40,7 @@ var cellToCsv = fn(@str cell, @str sep, @str quote) {
 	["a,b,c\r\nd,\"e\n f\",g"], [["a", "b", "c"], ["d", "e\n f", "g"]],
 )
 @export
-var fromCsv = fn(@str csvStr, @str sep = ",", @str quote = "\"") {
+var fromCsvString = fn(@str csvStr, @str sep = ",", @str quote = "\"") {
 	parseCsv(csvStr, sep, quote, 0, len(csvStr), [], [], false);
 }
 
