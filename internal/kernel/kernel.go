@@ -43,6 +43,8 @@ const (
 	ActorMailboxSize = 64
 )
 
+var Version = "0.0.1"
+
 // ===== Kernel =====
 
 type Kernel struct {

@@ -71,6 +71,9 @@ func main() {
 	defaultLogger := slog.New(slog.NewJSONHandler(os.Stdout, loggerOptions))
 	slog.SetDefault(defaultLogger)
 
+	// kernel config
+	kernel.Version = Version
+
 	if version {
 		printVersion()
 		return

@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"slug/internal/dec64"
+	"slug/internal/kernel"
 	"slug/internal/object"
 	"strings"
 )
@@ -42,6 +43,7 @@ func fnIoHttpRequest() *object.Foreign {
 				return ctx.NewError(err.Error())
 			}
 
+			req.Header.Set("user-agent", "Slug/"+kernel.Version)
 			for _, v := range mapObj.Pairs {
 				req.Header.Set(v.Key.Inspect(), v.Value.Inspect())
 			}
