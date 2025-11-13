@@ -8,11 +8,6 @@ import (
 	"time"
 )
 
-var (
-	rootPath string
-	debugAST bool
-)
-
 const TenYears = time.Hour * 24 * 365 * 10
 
 func (cli *Cli) onBoot(ctx *kernel.ActCtx) any {
@@ -21,8 +16,8 @@ func (cli *Cli) onBoot(ctx *kernel.ActCtx) any {
 
 	ctx.SendSync(kernelID, kernel.Broadcast{
 		Payload: kernel.ConfigureSystem{
-			SystemRootPath: rootPath,
-			DebugAST:       debugAST,
+			SystemRootPath: cli.RootPath,
+			DebugAST:       cli.DebugAST,
 		}})
 
 	if cli.FileName != "" {

@@ -14,6 +14,8 @@ type Cli struct {
 	Version   string
 	BuildDate string
 	Commit    string
+	RootPath  string
+	DebugAST  bool
 	FileName  string
 	Args      []string
 }

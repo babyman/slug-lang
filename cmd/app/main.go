@@ -108,6 +108,8 @@ func main() {
 		Version:   Version,
 		BuildDate: BuildDate,
 		Commit:    Commit,
+		RootPath:  rootPath,
+		DebugAST:  debugAST,
 		FileName:  flag.Arg(0),
 		Args:      flag.Args()[1:],
 	}

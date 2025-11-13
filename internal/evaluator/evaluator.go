@@ -407,11 +407,14 @@ func (e *Evaluator) LoadModule(pathParts []string) (*object.Module, error) {
 	// Evaluate the module
 	module.Env = moduleEnv
 
-	slog.Debug("load module: %v\n", module.Name)
+	slog.Debug("load module",
+		slog.Any("module-name", module.Name))
 	e.PushEnv(moduleEnv)
 	e.Eval(module.Program)
 	e.PopEnv()
-	slog.Info("Module %s env len %d\n", module.Name, len(module.Env.Bindings))
+	slog.Info("Module loaded",
+		slog.Any("module-name", module.Name),
+		slog.Any("environment-size", len(module.Env.Bindings)))
 
 	// Import the module into the current environment
 	return module, nil
