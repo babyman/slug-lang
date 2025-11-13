@@ -19,7 +19,6 @@ test:
 	@for file in $(shell find ./tests -name "*.slug" | sort); do \
 		echo "Running tests for $$file"; \
 		go run ./cmd/app/main.go -log-level none --root ./tests $$file || exit 1; \
-		sleep 1; \
 	done
 	go run ./cmd/app/main.go -log-level none test \
 			slug.html slug.list slug.map slug.math slug.regex slug.std slug.string slug.time \

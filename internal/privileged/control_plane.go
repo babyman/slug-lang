@@ -76,6 +76,7 @@ func (c *ControlPlane) handleActors(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	err := t.Execute(w, out)
 	if err != nil {
-		slog.Error("actors template error", slog.Any("error", err.Error()))
+		slog.Error("actors template error",
+			slog.Any("error", err.Error()))
 	}
 }
