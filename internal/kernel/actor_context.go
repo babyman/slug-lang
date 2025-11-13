@@ -7,10 +7,6 @@ import (
 	"time"
 )
 
-const (
-	defaultTimeout = 60 * time.Second
-)
-
 type ActCtx struct {
 	K    IKernel
 	Self ActorID
