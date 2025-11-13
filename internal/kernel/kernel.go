@@ -30,10 +30,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math/rand"
 	"os"
 	"reflect"
-	"slug/internal/logger"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -42,8 +42,6 @@ import (
 const (
 	ActorMailboxSize = 64
 )
-
-var log = logger.NewLogger("kernel", SystemLogLevel())
 
 // ===== Kernel =====
 
@@ -174,8 +172,14 @@ func (k *Kernel) cleanupActor(a *Actor, reason string) {
 	k.Mu.Lock()
 	defer k.Mu.Unlock()
 
-	log.Infof("Cleaning up actor %d (%s) cpu(μs) %d ops ipc(in=%d out=%d) Caps=%d: %s\n",
-		a.Id, a.Name, a.CpuOps, a.IpcIn, a.IpcOut, len(a.Caps), reason)
+	slog.Info("Cleaning up actor",
+		slog.Any("actor-id", a.Id),
+		slog.Any("actor-name", a.Name),
+		slog.Any("cpu-time", a.CpuOps),
+		slog.Any("ipc-in", a.IpcIn),
+		slog.Any("ipc-out", a.IpcOut),
+		slog.Any("caps", len(a.Caps)),
+		slog.Any("reason", reason))
 
 	// Kill children first
 	for childID := range a.children {
@@ -194,7 +198,9 @@ func (k *Kernel) cleanupActor(a *Actor, reason string) {
 	// Send cleanup messages in reverse order (LIFO)
 	for i := len(a.Cleanup) - 1; i >= 0; i-- {
 		cleanupMsg := a.Cleanup[i]
-		log.Infof("Sending cleanup message from %d to %d", cleanupMsg.From, cleanupMsg.To)
+		slog.Info("Sending cleanup message",
+			slog.Any("from", cleanupMsg.From),
+			slog.Any("to", cleanupMsg.To))
 		// Send cleanup message without capability checks since this is part of shutdown
 		if target := k.Actors[cleanupMsg.To]; target != nil {
 			select {
@@ -202,10 +208,12 @@ func (k *Kernel) cleanupActor(a *Actor, reason string) {
 				// Message sent successfully
 			default:
 				// Target inbox full or closed, log and continue
-				log.Warnf("Failed to send cleanup message to actor %d: inbox full or closed", cleanupMsg.To)
+				slog.Warn("Failed to send cleanup message to actor, inbox full or closed",
+					slog.Any("to", cleanupMsg.To))
 			}
 		} else {
-			log.Warnf("Cleanup target actor %d not found", cleanupMsg.To)
+			slog.Warn("Cleanup target actor not found",
+				slog.Any("to", cleanupMsg.To))
 		}
 	}
 
@@ -232,7 +240,9 @@ func (k *Kernel) cleanupActor(a *Actor, reason string) {
 
 // restartActor recreates an actor with the same configuration
 func (k *Kernel) restartActor(a *Actor, restart Restart) {
-	log.Infof("Restarting actor %d (%s)", a.Id, a.Name)
+	slog.Info("Restarting actor",
+		slog.Any("id", a.Id),
+		slog.String("name", a.Name))
 
 	// todo this will require new capabilities or nothing can call it!
 
@@ -243,12 +253,18 @@ func (k *Kernel) restartActor(a *Actor, restart Restart) {
 	// Register a new actor with the same name and handler
 	newID := k.RegisterActor(name, handler)
 
-	log.Infof("Actor %s restarted with new ID %d (was %d)", name, newID, a.Id)
+	slog.Info("Actor restarted",
+		slog.String("name", name),
+		slog.Any("new-id", newID),
+		slog.Any("old-id", a.Id))
 }
 
 // handleActorError processes actor errors based on policy
 func (k *Kernel) handleActorError(a *Actor, err Error) {
-	log.Errorf("Actor %d (%s) reported error: %v", a.Id, a.Name, err.Err)
+	slog.Error("Actor reported error",
+		slog.Any("id", a.Id),
+		slog.String("name", a.Name),
+		slog.Any("error", err.Err))
 
 	// Error handling policy - can be configured based on requirements
 	// For now, we'll log the error and continue
@@ -324,7 +340,11 @@ func (k *Kernel) isPermitted(from ActorID, to ActorID, payload any) error {
 		msgType := reflect.TypeOf(payload)
 		if rights, ok := k.resolveRights(to, msgType); ok {
 			if !k.hasCap(from, to, rights) {
-				log.Warnf("E_POLICY: cap not granted for Operations=%v for op %T from %d to target %d", rights, payload, from, to)
+				slog.Warn("E_POLICY: cap not granted for Operation",
+					slog.Any("rights", rights),
+					slog.Any("payload", payload),
+					slog.Any("from", from),
+					slog.Any("to", to))
 				return fmt.Errorf("E_POLICY: cap not granted for Operations=%v for op %T to target %d", rights, payload, to)
 			}
 		} else {
@@ -332,11 +352,16 @@ func (k *Kernel) isPermitted(from ActorID, to ActorID, payload any) error {
 				// parent has full rwx on child
 				return nil
 			}
-			log.Warnf("E_POLICY: no defined Operations for op %T from %d to target %d", payload, from, to)
+			slog.Warn("E_POLICY: no defined Operation",
+				slog.Any("payload", payload),
+				slog.Any("from", from),
+				slog.Any("to", to))
 			return fmt.Errorf("E_POLICY: no defined Operations for op %T to target %d", payload, to)
 		}
 	} else {
-		log.Warnf("E_POLICY: nil payload from %d to target %d", from, to)
+		slog.Warn("E_POLICY: nil payload",
+			slog.Any("from", from),
+			slog.Any("to", to))
 		return fmt.Errorf("E_POLICY: nil payload to target %d", to)
 	}
 	return nil
@@ -352,7 +377,9 @@ func (k *Kernel) SendInternal(from ActorID, to ActorID, payload any, resp chan M
 	target := k.Actors[to]
 	k.Mu.RUnlock()
 	if target == nil {
-		log.Warnf("E_NO_SUCH: target actor, from %d to %d", from, to)
+		slog.Warn("E_NO_SUCH: target actor",
+			slog.Any("from", from),
+			slog.Any("to", to))
 		return errors.New("E_NO_SUCH: target actor")
 	}
 	msg := Message{From: from, To: to, Payload: payload, Resp: resp}
@@ -363,7 +390,9 @@ func (k *Kernel) SendInternal(from ActorID, to ActorID, payload any, resp chan M
 		}
 		return nil
 	case <-time.After(2 * time.Second):
-		log.Warnf("E_BUSY: target inbox full, from %d to %d", from, to)
+		slog.Warn("E_BUSY: target inbox full",
+			slog.Any("from", from),
+			slog.Any("to", to))
 		return errors.New("E_BUSY: target inbox full")
 	}
 }
@@ -418,7 +447,10 @@ func (k *Kernel) broadcastMessage(kernelID ActorID, message any) {
 		if actorID != kernelID && k.isPermitted(kernelID, actorID, message) == nil {
 			go func(id ActorID) {
 				if err := k.SendInternal(kernelID, id, message, nil); err != nil {
-					log.Warnf("Failed to send %T to actor %d: %v", message, id, err)
+					slog.Warn("Failed to send payload",
+						slog.Any("payload", message),
+						slog.Any("to", id),
+						slog.Any("error", err))
 				}
 			}(actorID)
 		}
@@ -431,11 +463,13 @@ func (k *Kernel) handler(ctx *ActCtx, msg Message) HandlerSignal {
 		k.broadcastMessage(msg.From, payload.Payload)
 		k.reply(ctx, msg, nil)
 	case RequestShutdown:
-		log.Infof("RequestShutdown: %d", payload.ExitCode)
+		slog.Info("RequestShutdown",
+			slog.Int("exitCode", payload.ExitCode))
 		k.reply(ctx, msg, nil)
 		os.Exit(payload.ExitCode)
 	default:
-		log.Warnf("Unhandled message: %v", msg)
+		slog.Warn("Unhandled message",
+			slog.Any("message", msg))
 		k.reply(ctx, msg, nil)
 	}
 	return Continue{}

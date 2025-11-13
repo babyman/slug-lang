@@ -2,13 +2,14 @@ package object
 
 import (
 	"fmt"
+	"log/slog"
 	"slug/internal/ast"
 	"slug/internal/svc/parser"
 )
 
 // NewEnclosedEnvironment initializes an environment with a parent and optional stack frame.
 func NewEnclosedEnvironment(outer *Environment, stackFrame *StackFrame) *Environment {
-	log.Trace("------ new env ------\n")
+	slog.Debug("------ new env ------\n")
 	env := NewEnvironment()
 	env.Outer = outer
 	env.Path = outer.Path
@@ -60,7 +61,9 @@ func (e *Environment) Get(name string) (Object, bool) {
 	if !ok {
 		return nil, false
 	}
-	log.Debugf("Found binding for '%s': %v", name, binding)
+	slog.Debug("Found binding",
+		slog.Any("name", name),
+		slog.Any("binding", binding))
 	return binding.Value, true
 }
 
@@ -127,7 +130,10 @@ func (e *Environment) define(name string, val Object, isMutable bool, isExported
 	}
 	e.Bindings[name] = binding
 	//fmt.Printf("binding: %v %v %v %v\n", binding.Value.Type(), name, val.Inspect(), binding.Meta)
-	log.Debugf("binding: %v %v %v\n", binding.Value.Type(), name, binding.Meta)
+	slog.Debug("binding value",
+		slog.Any("type", binding.Value.Type()),
+		slog.Any("name", name),
+		slog.Any("meta", binding.Meta))
 	return val, nil
 }
 
@@ -165,7 +171,10 @@ func (e *Environment) Assign(name string, val Object) (Object, error) {
 			binding.Value = val
 		}
 		//fmt.Printf("assigning: %v %v %v %v\n", binding.Value.Type(), name, binding.Value, binding.Meta)
-		log.Debugf("assigning: %v %v %v\n", binding.Value.Type(), name, binding.Meta)
+		slog.Debug("assigning bound value",
+			slog.Any("type", binding.Value.Type()),
+			slog.Any("name", name),
+			slog.Any("meta", binding.Meta))
 		return val, nil
 	}
 	if e.Outer != nil {
@@ -199,7 +208,8 @@ func reverse(slice []StackFrame) []StackFrame {
 }
 
 func (e *Environment) RegisterDefer(deferStmt ast.Statement) {
-	log.Debugf(">>> Stashing deferred block: %v", deferStmt)
+	slog.Debug("Stashing deferred block",
+		slog.Any("deferred-statement", deferStmt))
 	e.deferStack = append(e.deferStack, deferStmt)
 }
 
@@ -207,6 +217,7 @@ func (e *Environment) ExecuteDeferred(evalFunc func(stmt ast.Statement)) {
 	defer func() { e.deferStack = nil }() // Always clear defer stack
 	for i := len(e.deferStack) - 1; i >= 0; i-- {
 		evalFunc(e.deferStack[i]) // Execute each deferred statement
-		log.Debugf("<<< Executing deferred block: %s", e.deferStack[i])
+		slog.Debug("Executing deferred block",
+			slog.Any("deferred-statement", e.deferStack[i]))
 	}
 }

@@ -2,16 +2,16 @@ package repl
 
 import (
 	"errors"
+	"fmt"
 	"html/template"
+	"log/slog"
 	"net/http"
 	"reflect"
 	"slug/internal/kernel"
-	"slug/internal/logger"
 	"slug/internal/svc"
 )
 
 // ===== REPL Service =====
-var log = logger.NewLogger("repl-svc", logger.INFO)
 
 type RsStart struct {
 }
@@ -46,8 +46,9 @@ func NewReplService() *ReplService {
 	}
 	repl.routes()
 	addr := ":8080"
-	log.Infof("listening on http://localhost%s/", addr)
-	go func() { log.Error(http.ListenAndServe(addr, repl.mux)) }()
+	slog.Info("repl listening for connections on",
+		slog.Any("url", fmt.Sprintf("http://localhost%s/", addr)))
+	go func() { slog.Error("Repl service error", slog.Any("error", http.ListenAndServe(addr, repl.mux))) }()
 	return repl
 }
 
@@ -75,7 +76,7 @@ func (rs *ReplService) routes() {
 }
 
 func (rs *ReplService) handleIndex(w http.ResponseWriter, r *http.Request) {
-	log.Infof("handling index")
+	slog.Info("handling index")
 	http.ServeFile(w, r, "webroot/repl/index.html")
 }
 
@@ -101,7 +102,7 @@ func (rs *ReplService) handleRepl(w http.ResponseWriter, r *http.Request) {
 	t, _ := template.ParseFiles("webroot/repl/templates/repl.html")
 	err := t.Execute(w, out)
 	if err != nil {
-		log.Errorf("%s", err.Error())
+		slog.Error("error rendering repl template", slog.Any("error", err.Error()))
 	}
 }
 
@@ -116,6 +117,6 @@ func (rs *ReplService) handleReplEval(w http.ResponseWriter, r *http.Request) {
 	t, _ := template.ParseFiles("webroot/templates/repl.html")
 	err := t.Execute(w, repl)
 	if err != nil {
-		log.Errorf("%s", err.Error())
+		slog.Error("error rendering repl html", slog.Any("error", err.Error()))
 	}
 }

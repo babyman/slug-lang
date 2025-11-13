@@ -2,6 +2,7 @@ package evaluator
 
 import (
 	"fmt"
+	"log/slog"
 	"math/rand"
 	"slug/internal/kernel"
 	"slug/internal/object"
@@ -168,7 +169,9 @@ func (a *Actor) run() {
 }
 
 func (a *Actor) start() {
-	log.Trace("ACT: %d (%d) started\n", a.PID, a.MailboxPID)
+	slog.Debug("ACT: started",
+		slog.Any("pid", a.PID),
+		slog.Any("mailbox-pid", a.MailboxPID))
 	out := a.Evaluator.ApplyFunction("", a.Function, a.Args)
 	reason := "return"
 	switch out.(type) {
@@ -265,13 +268,17 @@ func NewMailbox(pid int64, mode RelayMode) *Mailbox {
 }
 
 func (m *Mailbox) run() {
-	log.Trace("BOX: %d running\n", m.PID)
+	slog.Debug("BOX: running",
+		slog.Any("pid", m.PID))
 	var queue []AMessage
 
 	for {
 		select {
 		case item := <-m.InTray:
-			log.Debug("BOX: %d queue size %d, received: %s\n", m.PID, len(queue), item.String())
+			slog.Debug("BOX: message received",
+				slog.Any("pid", m.PID),
+				slog.Any("queue-len", len(queue)),
+				slog.Any("message", item.String()))
 			switch msg := item.(type) {
 			case Shutdown:
 				//fmt.Printf("Mailbox %d received stop message\n", m.PID)
@@ -331,7 +338,9 @@ func (m *Mailbox) BindActor(actor *Actor) {
 func (m *Mailbox) UnbindActor(actorPID int64, failed bool) {
 	for i, actor := range m.Actors {
 		if actor.PID == actorPID {
-			log.Trace("ACT: %d (%d), unbinding Actor\n", actorPID, m.PID)
+			slog.Debug("ACT: unbinding Actor",
+				slog.Any("actor-pid", actorPID),
+				slog.Any("pid", m.PID))
 			m.Actors = append(m.Actors[:i], m.Actors[i+1:]...)
 			actor.InTray <- UnboundActor{}
 			close(actor.InTray)
@@ -413,7 +422,9 @@ func (a *ActorSystem) BindNewActor(
 
 		mailbox.InTray <- BindActor{actor: actor}
 
-		log.Debug("ACT: %d (%d) Actor created and bound", actor.PID, mailbox.PID)
+		slog.Debug("ACT: Actor created and bound",
+			slog.Any("actor-pid", actor.PID),
+			slog.Any("pid", mailbox.PID))
 
 		return pid, true
 	}
@@ -539,7 +550,8 @@ func (a *ActorSystem) Shutdown() {
 
 	for _, mailbox := range mailboxes {
 		System.Send(mailbox.PID, Shutdown{})
-		log.Trace("BOX SHUTDOWN: %d, closing InTray\n", mailbox.PID)
+		slog.Debug("BOX SHUTDOWN: closing InTray\n",
+			slog.Any("pid", mailbox.PID))
 		close(mailbox.InTray)
 	}
 }
@@ -563,7 +575,9 @@ func CreateMainThreadMailbox() *Actor {
 	System.mailboxes[pid] = mailbox
 	System.mailboxesLock.Unlock()
 
-	log.Trace("ACT: main Actor %d (%d) created\n", actor.PID, actor.MailboxPID)
+	slog.Debug("ACT: main Actor created",
+		slog.Any("actor-pid", actor.PID),
+		slog.Any("pid", actor.MailboxPID))
 
 	// do not run the function for main
 	//go Actor.start()

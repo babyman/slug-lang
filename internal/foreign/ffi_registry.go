@@ -1,12 +1,8 @@
 package foreign
 
 import (
-	"slug/internal/logger"
 	"slug/internal/object"
-	"slug/internal/svc"
 )
-
-var log = logger.NewLogger("foreign", svc.LogLevel)
 
 func GetForeignFunctions() map[string]*object.Foreign {
 	return map[string]*object.Foreign{

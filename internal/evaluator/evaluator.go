@@ -3,18 +3,16 @@ package evaluator
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"slug/internal/ast"
 	"slug/internal/dec64"
 	"slug/internal/kernel"
-	"slug/internal/logger"
 	"slug/internal/object"
 	"slug/internal/svc"
 	"slug/internal/svc/modules"
 	"slug/internal/token"
 	"strings"
 )
-
-var log = logger.NewLogger("evaluator", svc.LogLevel)
 
 var (
 	NIL   = &object.Nil{}
@@ -58,7 +56,10 @@ func (e *Evaluator) Receive(timeout int64) (object.Object, bool) {
 	if !b {
 		return nil, false
 	}
-	log.Debugf("ACT: %d (%d) message received: %s\n", e.Actor.PID, e.Actor.MailboxPID, message.String())
+	slog.Debug("ACT: message received",
+		slog.Any("actor-pid", e.Actor.PID),
+		slog.Any("pid", e.Actor.MailboxPID),
+		slog.Any("", message.String()))
 	switch m := message.(type) {
 	case UserMessage:
 		return m.Payload.(object.Object), true
@@ -84,7 +85,10 @@ func (e *Evaluator) Receive(timeout int64) (object.Object, bool) {
 		notification.Put(&object.String{Value: "mailbox"}, messages)
 		return notification, true
 	default:
-		log.Warnf("ACT: %d (%d) Unknown message type: %T", e.Actor.PID, e.Actor.MailboxPID, m)
+		slog.Warn("ACT: Unknown message type",
+			slog.Any("actor-pid", e.Actor.PID),
+			slog.Any("pid", e.Actor.MailboxPID),
+			slog.Any("message-type", m))
 		notification := &object.Map{}
 		notification.Put(&object.String{Value: "tag"}, &object.String{Value: "__unknown_message__"})
 		notification.Put(&object.String{Value: "type"}, &object.String{Value: fmt.Sprintf("%T", m)})
@@ -98,7 +102,8 @@ func (e *Evaluator) Nil() *object.Nil {
 
 func (e *Evaluator) PushEnv(env *object.Environment) {
 	e.envStack = append(e.envStack, env)
-	log.Tracef(">%s", strings.Repeat("-", len(e.envStack)))
+	slog.Debug("push stack frame",
+		slog.Int("stack-size", len(e.envStack)))
 }
 
 func (e *Evaluator) CurrentEnv() *object.Environment {
@@ -117,7 +122,8 @@ func (e *Evaluator) PopEnv() {
 		e.Eval(stmt)
 	})
 	e.envStack = e.envStack[:len(e.envStack)-1]
-	//svc.SendTracef(e.Ctx, "<%s", strings.Repeat("-", len(e.envStack)))
+	slog.Debug("pop stack frame",
+		slog.Int("stack-size", len(e.envStack)))
 }
 
 func (e *Evaluator) Eval(node ast.Node) object.Object {
@@ -284,7 +290,10 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 
 		// If this is a tail call, wrap it in a TailCall object instead of evaluating
 		if node.IsTailCall {
-			//log.Infof( "Tail calling %s with %d arguments", node.Token.Literal, len(args))
+			slog.Debug("Tail call",
+				slog.Any("function", node.Token.Literal),
+				slog.Any("argument-count", len(args)))
+
 			return &object.TailCall{
 				FnName:    node.Token.Literal,
 				Function:  function,
@@ -292,7 +301,9 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			}
 		}
 
-		//log.Infof( "Calling %s with %d arguments", node.Token.Literal, len(args))
+		slog.Debug("Function call",
+			slog.Any("function", node.Token.Literal),
+			slog.Any("argument-count", len(args)))
 		// For non-tail calls, invoke the function directly
 		return e.ApplyFunction(node.Token.Literal, function, args)
 
@@ -382,7 +393,8 @@ func (e *Evaluator) LoadModule(pathParts []string) (*object.Module, error) {
 	module := reply.Payload.(modules.LoadModuleResult).Module
 
 	if module.Env != nil {
-		log.Debugf("return loaded module: %v", module.Name)
+		slog.Debug("return previously loaded module",
+			slog.Any("name", module.Name))
 		return module, nil
 	}
 
@@ -395,11 +407,11 @@ func (e *Evaluator) LoadModule(pathParts []string) (*object.Module, error) {
 	// Evaluate the module
 	module.Env = moduleEnv
 
-	log.Debugf("load module: %v\n", module.Name)
+	slog.Debug("load module: %v\n", module.Name)
 	e.PushEnv(moduleEnv)
 	e.Eval(module.Program)
 	e.PopEnv()
-	log.Infof("Module %s env len %d\n", module.Name, len(module.Env.Bindings))
+	slog.Info("Module %s env len %d\n", module.Name, len(module.Env.Bindings))
 
 	// Import the module into the current environment
 	return module, nil

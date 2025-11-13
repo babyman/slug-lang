@@ -1,6 +1,7 @@
 package repl
 
 import (
+	"log/slog"
 	"slug/internal/kernel"
 	"slug/internal/svc"
 	"slug/internal/svc/lexer"
@@ -21,7 +22,7 @@ func (r *Repl) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSig
 
 		lex, err := ctx.SendSync(lexId, lexer.LexString{Sourcecode: payload.Src})
 		if err != nil {
-			log.Infof("Failed to lex file: %s", err)
+			slog.Info("Failed to lex file", slog.Any("error", err))
 			svc.Reply(ctx, fwdMsg, RsEvalResp{Error: err})
 			return kernel.Continue{}
 		}
@@ -30,7 +31,7 @@ func (r *Repl) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSig
 
 		parse, err := ctx.SendSync(parseId, parser.ParseTokens{Sourcecode: payload.Src, Tokens: tokens})
 		if err != nil {
-			log.Warnf("Failed to parse file: %s", err)
+			slog.Warn("Failed to parse file", slog.Any("error", err))
 			svc.Reply(ctx, fwdMsg, RsEvalResp{Error: err})
 			return kernel.Continue{}
 		}

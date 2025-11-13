@@ -1,6 +1,10 @@
 package main
 
 import (
+	"flag"
+	"fmt"
+	"log/slog"
+	"os"
 	"slug/internal/kernel"
 	"slug/internal/privileged"
 	"slug/internal/svc"
@@ -32,7 +36,50 @@ const (
 	x   = kernel.RightExec
 )
 
+var (
+	rootPath string
+	logLevel string
+	logFile  string
+	debugAST bool
+	help     bool
+	version  bool
+)
+
+func init() {
+	flag.BoolVar(&help, "help", false, "Display help information and exit")
+	flag.BoolVar(&help, "h", false, "Display help information and exit")
+	flag.BoolVar(&version, "version", false, "Display version information and exit")
+	flag.BoolVar(&version, "v", false, "Display version information and exit")
+	// evaluator config
+	flag.StringVar(&rootPath, "root", resolver.DefaultRootPath, "Set the root context for the program (used for imports)")
+	// parser config
+	flag.BoolVar(&debugAST, "debug-ast", false, "Render the AST as a JSON file")
+	// log config
+	flag.StringVar(&logLevel, "log-level", "NONE", "Log level: trace, debug, info, warn, error, none")
+	flag.StringVar(&logFile, "log-file", "", "Log file path (if not set, logs to stderr)")
+}
+
 func main() {
+
+	flag.Parse()
+
+	// Creates a new Logger that uses a JSONHandler to write to standard output
+	loggerOptions := &slog.HandlerOptions{
+		AddSource: false,
+		Level:     logLevelFromString(logLevel),
+	}
+	defaultLogger := slog.New(slog.NewJSONHandler(os.Stdout, loggerOptions))
+	slog.SetDefault(defaultLogger)
+
+	if version {
+		printVersion()
+		return
+	}
+
+	if help {
+		printHelp()
+		return
+	}
 
 	k := kernel.NewKernel()
 
@@ -58,6 +105,8 @@ func main() {
 		Version:   Version,
 		BuildDate: BuildDate,
 		Commit:    Commit,
+		FileName:  flag.Arg(0),
+		Args:      flag.Args()[1:],
 	}
 	cliID := k.RegisterService(svc.CliService, cli.Operations, cliSvc.Handler)
 
@@ -105,4 +154,50 @@ func main() {
 	_ = k.GrantCap(replID, evalID, x, nil)
 
 	k.Start()
+}
+
+func printVersion() {
+
+	fmt.Printf("slug version 'v%s' %s %s\n", Version, BuildDate, Commit)
+}
+
+func printHelp() {
+	fmt.Printf(`Usage: slug [options] [filename [args...]]
+
+Options:
+  -root <path>       Set the root context for the program (used for imports). Default is '.'
+  -debug-ast         Render the AST as a JSON file.
+  -help              Display this help information and exit.
+  -version           Display version information and exit.
+  -log-level <level> Set the log level: trace, debug, info, warn, error, none. Default is 'none'.
+  -log-file <path>   Specify a log file to write logs. Default is stderr.
+
+Details:
+This is the Slug programming language. 
+
+Examples:
+  slug -log-level=debug         Start with debug logging enabled
+  slug myfile.slug              Execute the provided Slug file
+  slug myfile.slug arg1 arg2    Execute the file with command-line arguments
+
+Version Information:
+  Version:    v%s
+  Build Date: %s
+  Commit:     %s
+`, Version, BuildDate, Commit)
+}
+
+func logLevelFromString(level string) slog.Level {
+	switch level {
+	case "debug":
+		return slog.LevelDebug
+	case "info":
+		return slog.LevelInfo
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelError
+	}
 }

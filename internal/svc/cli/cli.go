@@ -1,84 +1,45 @@
 package cli
 
 import (
-	"flag"
-	"fmt"
+	"log/slog"
 	"slug/internal/kernel"
-	"slug/internal/logger"
 	"slug/internal/svc"
 	"slug/internal/svc/modules"
-	"slug/internal/svc/resolver"
 	"time"
 )
 
 var (
 	rootPath string
 	debugAST bool
-	logLevel string
-	logFile  string
-	help     bool
-	version  bool
 )
 
 const TenYears = time.Hour * 24 * 365 * 10
 
-func init() {
-	flag.BoolVar(&help, "help", false, "Display help information and exit")
-	flag.BoolVar(&help, "h", false, "Display help information and exit")
-	flag.BoolVar(&version, "version", false, "Display version information and exit")
-	flag.BoolVar(&version, "v", false, "Display version information and exit")
-	// evaluator config
-	flag.StringVar(&rootPath, "root", resolver.DefaultRootPath, "Set the root context for the program (used for imports)")
-	// parser config
-	flag.BoolVar(&debugAST, "debug-ast", false, "Render the AST as a JSON file")
-	// log config
-	flag.StringVar(&logLevel, "log-level", "NONE", "Log level: trace, debug, info, warn, error, none")
-	flag.StringVar(&logFile, "log-file", "", "Log file path (if not set, logs to stderr)")
-}
-
 func (cli *Cli) onBoot(ctx *kernel.ActCtx) any {
-
-	flag.Parse()
 
 	kernelID, _ := ctx.K.ActorByName(kernel.KernelService)
 
-	if version {
-		cli.handleVersionRequest(ctx, kernelID)
-		return nil
-	}
+	ctx.SendSync(kernelID, kernel.Broadcast{
+		Payload: kernel.ConfigureSystem{
+			SystemRootPath: rootPath,
+			DebugAST:       debugAST,
+		}})
 
-	if help {
-		cli.handleHelpRequest(ctx, kernelID)
-		return nil
-	}
-
-	if len(flag.Args()) > 0 {
-		cli.configureSystem(ctx)
+	if cli.FileName != "" {
 		return cli.handleCommandlineArguments(ctx, kernelID)
 	}
 
 	return nil
 }
 
-func (cli *Cli) configureSystem(ctx *kernel.ActCtx) (kernel.Message, error) {
-
-	kernelID, _ := ctx.K.ActorByName(kernel.KernelService)
-	level := logger.ParseLevel(logLevel)
-	return ctx.SendSync(kernelID, kernel.Broadcast{
-		Payload: kernel.ConfigureSystem{
-			LogLevel:       level,
-			LogPath:        logFile,
-			SystemRootPath: rootPath,
-			DebugAST:       debugAST,
-		}})
-}
-
 func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.ActorID) any {
 
-	filename := flag.Args()[0]
-	args := flag.Args()[1:]
+	filename := cli.FileName
+	args := cli.Args
 
-	log.Infof("Executing %s with args %v", filename, args)
+	slog.Info("Executing slug file",
+		slog.Any("filename", filename),
+		slog.Any("args", args))
 
 	modsID, _ := ctx.K.ActorByName(svc.ModuleService)
 	evalId, _ := ctx.K.ActorByName(svc.EvalService)
@@ -88,7 +49,8 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 		Args: args,
 	})
 	if err != nil {
-		log.Errorf("err: %v", err)
+		slog.Error("module load error",
+			slog.Any("error", err))
 		return nil
 	}
 	loadResult, ok := modReply.Payload.(modules.LoadModuleResult)
@@ -105,7 +67,8 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 		Args:    args,
 	})
 	if err != nil {
-		log.Warnf("Failed to execute file: %s", err)
+		slog.Warn("Failed to execute file",
+			slog.Any("error", err))
 		return nil
 	}
 
@@ -121,42 +84,4 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 	}
 
 	return nil
-}
-
-func (cli *Cli) handleVersionRequest(ctx *kernel.ActCtx, kernelID kernel.ActorID) {
-
-	svc.SendStdOut(ctx, fmt.Sprintf("slug version 'v%s' %s %s\n", cli.Version, cli.BuildDate, cli.Commit))
-	ctx.SendSync(kernelID, kernel.RequestShutdown{ExitCode: 0})
-}
-
-func (cli *Cli) handleHelpRequest(ctx *kernel.ActCtx, kernelID kernel.ActorID) {
-
-	svc.SendStdOut(ctx, cli.helpMessage())
-	ctx.SendSync(kernelID, kernel.RequestShutdown{ExitCode: 0})
-}
-
-func (cli *Cli) helpMessage() string {
-	return `Usage: slug [options] [filename [args...]]
-
-Options:
-  -root <path>       Set the root context for the program (used for imports). Default is '.'
-  -debug-ast         Render the AST as a JSON file.
-  -help              Display this help information and exit.
-  -version           Display version information and exit.
-  -log-level <level> Set the log level: trace, debug, info, warn, error, none. Default is 'none'.
-  -log-file <path>   Specify a log file to write logs. Default is stderr.
-
-Details:
-This is the Slug programming language. 
-
-Examples:
-  slug -log-level=debug         Start with debug logging enabled
-  slug myfile.slug              Execute the provided Slug file
-  slug myfile.slug arg1 arg2    Execute the file with command-line arguments
-
-Version Information:
-  Version:    ` + cli.Version + `
-  Build Date: ` + cli.BuildDate + `
-  Commit:     ` + cli.Commit + `
-`
 }

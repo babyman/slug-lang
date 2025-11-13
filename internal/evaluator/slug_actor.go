@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"log/slog"
 	"slug/internal/dec64"
 	"slug/internal/object"
 )
@@ -131,7 +132,9 @@ func fnActorRegister() *object.Foreign {
 				return ctx.NewError("second argument to register must be a string name")
 			}
 
-			log.Debug("BOX: %d registering as '%s'", pid.Value.ToInt64(), name.Value)
+			slog.Debug("BOX: registered",
+				slog.Any("pid", pid.Value.ToInt64()),
+				slog.Any("name", name.Value))
 			System.Register(pid.Value.ToInt64(), name.Value)
 			return pid
 		},

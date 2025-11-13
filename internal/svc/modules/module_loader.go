@@ -3,6 +3,7 @@ package modules
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"slug/internal/kernel"
 	"slug/internal/object"
 	"slug/internal/svc"
@@ -73,23 +74,28 @@ func lexAndParseModule(
 
 	lex, err := ctx.SendSync(lexId, lexer.LexString{Sourcecode: module.Src})
 	if err != nil {
-		log.Infof("Failed to lex file: %s", err)
+		slog.Info("Failed to lex module source",
+			slog.Any("error", err))
 		return nil, err
 	}
 
 	tokens := lex.Payload.(lexer.LexedTokens).Tokens
-	log.Debugf("Lexed %s, got %v", module.Path, tokens)
+	slog.Debug("Lexed module %s, got %v",
+		slog.Any("path", module.Path),
+		slog.Any("tokens", tokens))
 
 	parse, err := ctx.SendSync(parseId, parser.ParseTokens{Sourcecode: module.Src, Tokens: tokens})
 	if err != nil {
-		log.Warnf("Failed to parse file: %s", err)
+		slog.Warn("Failed to parse source",
+			slog.Any("error", err))
 		return nil, err
 	}
 
 	ast := parse.Payload.(parser.ParsedAst).Program
 	errors := parse.Payload.(parser.ParsedAst).Errors
-	//fmt.Printf("Compiled %s, got %v", module.Path, ast)
-	log.Debugf("Compiled %s, got %v", module.Path, ast)
+	slog.Debug("Compiled %s, got %v",
+		slog.Any("path", module.Path),
+		slog.Any("ast", ast))
 
 	module.Program = ast
 
@@ -98,7 +104,8 @@ func lexAndParseModule(
 	if debugAst {
 		json, err := parser.RenderASTAsJSON(module.Program)
 		if err != nil {
-			log.Errorf("Failed to render AST as JSON: %s", err)
+			slog.Error("Failed to render AST as JSON",
+				slog.Any("error", err))
 		} else {
 			fsID, ok := ctx.K.ActorByName(svc.FsService)
 			if ok {

@@ -3,6 +3,7 @@ package eval
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"runtime/pprof"
 	"slug/internal/evaluator"
@@ -85,8 +86,8 @@ func evaluateMessagePayload(ctx *kernel.ActCtx, payload svc.EvaluateProgram) obj
 	e.PushEnv(env)
 	defer e.PopEnv()
 
-	log.Info(ctx, " ---- begin ----")
-	defer log.Info(ctx, " ---- done ----")
+	slog.Info(" ---- begin ----")
+	defer slog.Info(" ---- done ----")
 
 	// Evaluate the program within the provided environment
 	return e.Eval(module.Program)

@@ -2,19 +2,17 @@ package resolver
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"reflect"
 	"slug/internal/kernel"
-	"slug/internal/logger"
 	"slug/internal/svc"
 	"slug/internal/svc/fs"
 	"strings"
 )
 
 const DefaultRootPath = "."
-
-var log = logger.NewLogger("resolver-svc", svc.LogLevel)
 
 type ResolveFile struct {
 	Path string
@@ -59,14 +57,14 @@ func (r *Resolver) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handle
 		workedId, _ := ctx.SpawnChild("res-f-wrk", r.resolveFileHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
-			log.Error(err.Error())
+			slog.Error("error messaging file handler", slog.Any("error", err.Error()))
 		}
 
 	case ResolveModule:
 		workedId, _ := ctx.SpawnChild("res-m-wrk", r.resolveModuleHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
-			log.Error(err.Error())
+			slog.Error("error messaging module handler", slog.Any("error", err.Error()))
 		}
 
 	default:
@@ -118,8 +116,10 @@ func (r *Resolver) resolveModule(ctx *kernel.ActCtx, rootPath string, pathParts 
 
 	moduleName := strings.Join(pathParts, ".")
 
-	log.Infof("Loading module '%s' from path parts: %v  Root path: %s\n",
-		moduleName, pathParts, rootPath)
+	slog.Info("Loading module",
+		slog.Any("moduleName", moduleName),
+		slog.Any("pathParts", pathParts),
+		slog.Any("rootPath", rootPath))
 
 	// Complete the module path
 	moduleRelativePath := strings.Join(pathParts, "/")
@@ -128,7 +128,7 @@ func (r *Resolver) resolveModule(ctx *kernel.ActCtx, rootPath string, pathParts 
 	// Attempt to load the module's source
 	fsResponse, err := ctx.SendSync(fsId, fs.Read{Path: modulePath})
 	if err != nil {
-		log.Infof("Failed to read file: %s", err)
+		slog.Info("Failed to read file", slog.Any("error", err))
 		return "", "", "", err
 	}
 

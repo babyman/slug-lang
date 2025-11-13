@@ -1,14 +1,12 @@
 package lexer
 
 import (
+	"log/slog"
 	"reflect"
 	"slug/internal/kernel"
-	"slug/internal/logger"
 	"slug/internal/svc"
 	"slug/internal/token"
 )
-
-var log = logger.NewLogger("lexer-svc", svc.LogLevel)
 
 type LexString struct {
 	Sourcecode string
@@ -31,7 +29,9 @@ func (m *LexingService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.H
 		workedId, _ := ctx.SpawnChild("lex-wrk", lexHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
-			log.Errorf(err.Error())
+			slog.Error("error sending message",
+				slog.Any("pid", workedId),
+				slog.Any("error", err.Error()))
 		}
 
 	default:

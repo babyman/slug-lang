@@ -1,15 +1,15 @@
 package privileged
 
 import (
+	"fmt"
 	"html/template"
+	"log/slog"
 	"net/http"
 	"slug/internal/kernel"
-	"slug/internal/logger"
 	"sort"
 )
 
 // ===== Control Plane (HTTP) =====
-var log = logger.NewLogger("control plane", kernel.SystemLogLevel())
 
 type ControlPlane struct {
 	kernel      *kernel.Kernel
@@ -20,8 +20,9 @@ func (c *ControlPlane) Initialize(k *kernel.Kernel) {
 	c.kernel = k
 	c.routes()
 	addr := ":8081"
-	log.Infof("listening on http://localhost%s/", addr)
-	go func() { log.Error(http.ListenAndServe(addr, nil)) }()
+	slog.Info("control-plane listening for connections on",
+		slog.Any("url", fmt.Sprintf("http://localhost%s/", addr)))
+	go func() { slog.Error("Control plane error", slog.Any("error", http.ListenAndServe(addr, nil))) }()
 }
 
 func (c *ControlPlane) routes() {
@@ -75,6 +76,6 @@ func (c *ControlPlane) handleActors(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	err := t.Execute(w, out)
 	if err != nil {
-		log.Error(err.Error())
+		slog.Error("actors template error", slog.Any("error", err.Error()))
 	}
 }

@@ -1,6 +1,7 @@
 package foreign
 
 import (
+	"log/slog"
 	"slug/internal/ast"
 	"slug/internal/object"
 	"strings"
@@ -87,13 +88,20 @@ func fnMetaSearchModuleTags() *object.Foreign {
 				return ctx.NewError("failed to load module '%s': %s", moduleName.Value, err.Error())
 			}
 
-			log.Debug("module: %s (%s), len %d\n", module.Name, module.Path, len(module.Env.Bindings))
+			slog.Debug("module loaded",
+				slog.Any("module-name", module.Name),
+				slog.Any("path", module.Path),
+				slog.Any("binding-count", len(module.Env.Bindings)))
 
 			m := &object.Map{}
 
 			for name, binding := range module.Env.Bindings {
 
-				log.Debug("name: %s, binding: %s\n", name, binding.Value.Type())
+				slog.Debug("binding module value",
+					slog.Any("module-name", module.Name),
+					slog.Any("binding-name", name),
+					slog.Any("bound-value", binding.Value.Type()),
+				)
 
 				if binding.Meta.IsImport {
 					continue
@@ -141,7 +149,7 @@ func fnMetaSearchScopeTags() *object.Foreign {
 								Elements: tuple,
 							})
 						} else {
-							log.Warn("should not happen")
+							slog.Warn("this should not happen")
 						}
 					}
 				}
@@ -204,7 +212,9 @@ func fnMetaRebindScopeTags() *object.Foreign {
 								return ctx.NewError(err.Error())
 							}
 						} else {
-							log.Debug("rebind not supported for %s, %s is not mutable", name, binding.Value.Inspect())
+							slog.Debug("rebind not supported for immutable value",
+								slog.Any("name", name),
+								slog.Any("value", binding.Value.Inspect()))
 						}
 					}
 				}

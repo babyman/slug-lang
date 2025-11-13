@@ -2,6 +2,7 @@ package kernel
 
 import (
 	"fmt"
+	"log/slog"
 	"slug/internal/util/future"
 	"time"
 )
@@ -32,7 +33,10 @@ func (c *ActCtx) SendFuture(to ActorID, payload any) (*future.Future[Message], e
 		respCh := make(chan Message, 1)
 		err := c.K.SendInternal(c.Self, to, payload, respCh)
 		if err != nil {
-			log.Warnf("Error sending message to %d from %d: %v", to, c.Self, err)
+			slog.Warn("Error sending message",
+				slog.Any("to", to),
+				slog.Any("from", c.Self),
+				slog.Any("error", err))
 			return Message{}, err
 		}
 		select {
@@ -56,7 +60,11 @@ func (c *ActCtx) SendSyncWithTimeout(to ActorID, payload any, timeout time.Durat
 
 	resp, err, ok := f.AwaitTimeout(timeout)
 	if !ok {
-		log.Warnf("E_DEADLINE: reply timeout %v, from %d to %d, %T", timeout, c.Self, to, payload)
+		slog.Warn("E_DEADLINE: reply timeout",
+			slog.Any("timeout", timeout),
+			slog.Any("from", c.Self),
+			slog.Any("to", to),
+			slog.Any("payload", payload))
 		return Message{}, fmt.Errorf("E_DEADLINE: reply timeout %v", timeout)
 	}
 	return resp, err

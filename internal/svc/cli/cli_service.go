@@ -3,11 +3,8 @@ package cli
 import (
 	"reflect"
 	"slug/internal/kernel"
-	"slug/internal/logger"
 	"slug/internal/svc"
 )
-
-var log = logger.NewLogger("cli-svc", svc.LogLevel)
 
 var Operations = kernel.OpRights{
 	reflect.TypeOf(kernel.Boot{}): kernel.RightExec,
@@ -17,6 +14,8 @@ type Cli struct {
 	Version   string
 	BuildDate string
 	Commit    string
+	FileName  string
+	Args      []string
 }
 
 func (cli *Cli) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {

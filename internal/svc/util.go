@@ -3,10 +3,7 @@ package svc
 import (
 	"errors"
 	"slug/internal/kernel"
-	"slug/internal/logger"
 )
-
-var LogLevel = logger.INFO
 
 func Reply(ctx *kernel.ActCtx, req kernel.Message, payload any) {
 	if req.Resp != nil {

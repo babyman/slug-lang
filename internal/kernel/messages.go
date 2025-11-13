@@ -2,7 +2,6 @@ package kernel
 
 import (
 	"reflect"
-	"slug/internal/logger"
 )
 
 const KernelService = "kernel"
@@ -18,8 +17,6 @@ type Boot struct {
 }
 
 type ConfigureSystem struct {
-	LogLevel       logger.Level
-	LogPath        string
 	DebugAST       bool
 	SystemRootPath string
 }
