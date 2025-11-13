@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	defaultTimeout = 10 * time.Second
+	defaultTimeout = 60 * time.Second
 )
 
 type ActCtx struct {
