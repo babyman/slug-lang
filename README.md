@@ -33,5 +33,4 @@ The following environment variables can be set to configure slug.
 
 - `SLUG_HOME` - The directory where slug will search for libraries and modules.
 - `SLUG_CPU_PROFILE` - If set (cpu.prof), slug will write a CPU profile to this file.
-- `KERNEL_LOG_LEVEL` - The log level for the kernel (trace, debug, info, warn, error, fatal).
 

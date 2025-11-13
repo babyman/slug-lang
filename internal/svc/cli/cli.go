@@ -39,12 +39,13 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 	modsID, _ := ctx.K.ActorByName(svc.ModuleService)
 	evalId, _ := ctx.K.ActorByName(svc.EvalService)
 
-	modReply, err := ctx.SendSync(modsID, modules.LoadFile{ // todo
+	modReply, err := ctx.SendSync(modsID, modules.LoadFile{
 		Path: filename,
 		Args: args,
 	})
 	if err != nil {
 		slog.Error("module load error",
+			slog.Any("filename", filename),
 			slog.Any("error", err))
 		return nil
 	}
@@ -63,6 +64,7 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 	})
 	if err != nil {
 		slog.Warn("Failed to execute file",
+			slog.Any("filename", filename),
 			slog.Any("error", err))
 		return nil
 	}
