@@ -2,6 +2,7 @@ var {*} = import(
 	"slug.string",
 );
 
+// converts a list of lists to a CSV string
 @testWith(
 	[[["a", "b"]]], "a,b\r\n",
 	[[["a", "b"],["c", "d"]]], "a,b\r\nc,d\r\n",
