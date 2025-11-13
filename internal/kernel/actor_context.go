@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+const (
+	defaultTimeout = 10 * time.Second
+)
+
 type ActCtx struct {
 	K    IKernel
 	Self ActorID
@@ -49,7 +53,7 @@ func (c *ActCtx) SendFuture(to ActorID, payload any) (*future.Future[Message], e
 
 // SendSync sends and waits for a single reply.
 func (c *ActCtx) SendSync(to ActorID, payload any) (Message, error) {
-	return c.SendSyncWithTimeout(to, payload, 5*time.Second)
+	return c.SendSyncWithTimeout(to, payload, defaultTimeout)
 }
 
 func (c *ActCtx) SendSyncWithTimeout(to ActorID, payload any, timeout time.Duration) (Message, error) {
