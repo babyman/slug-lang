@@ -36,12 +36,14 @@ var (
 	Version   = "dev"
 	BuildDate = "unknown"
 	Commit    = "unknown"
-	rootPath  string
-	logLevel  string
-	logFile   string
-	debugAST  bool
 	help      bool
 	version   bool
+	// logging
+	logLevel string
+	logFile  string
+	// config vars
+	rootPath string
+	debugAST bool
 )
 
 func init() {
