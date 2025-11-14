@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"slug/internal/kernel"
 	"slug/internal/svc"
+	"slug/internal/util"
 )
 
 var Operations = kernel.OpRights{
@@ -11,13 +12,9 @@ var Operations = kernel.OpRights{
 }
 
 type Cli struct {
-	Version   string
-	BuildDate string
-	Commit    string
-	RootPath  string
-	DebugAST  bool
-	FileName  string
-	Args      []string
+	Config   util.Configuration
+	FileName string
+	Args     []string
 }
 
 func (cli *Cli) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {

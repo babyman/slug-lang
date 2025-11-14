@@ -10,13 +10,18 @@ import (
 	"slug/internal/kernel"
 	"slug/internal/object"
 	"slug/internal/svc"
+	"slug/internal/util"
 )
 
-func Run(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
+type Runner struct {
+	Config util.Configuration
+}
+
+func (r Runner) Run(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	fwdMsg := svc.UnpackFwd(msg)
 	payload, _ := fwdMsg.Payload.(svc.EvaluateProgram)
 
-	evaluated := evaluateMessagePayload(ctx, payload)
+	evaluated := r.evaluateMessagePayload(ctx, payload)
 	if evaluated != nil && evaluated.Type() != object.NIL_OBJ {
 		if evaluated.Type() == object.ERROR_OBJ {
 			svc.Reply(ctx, fwdMsg, svc.EvaluateResult{
@@ -35,7 +40,7 @@ func Run(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	return kernel.Terminate{}
 }
 
-func evaluateMessagePayload(ctx *kernel.ActCtx, payload svc.EvaluateProgram) object.Object {
+func (r Runner) evaluateMessagePayload(ctx *kernel.ActCtx, payload svc.EvaluateProgram) object.Object {
 
 	// Optional profiling via env var: SLUG_CPU_PROFILE=<path>
 	profPath := os.Getenv("SLUG_CPU_PROFILE")
@@ -80,8 +85,9 @@ func evaluateMessagePayload(ctx *kernel.ActCtx, payload svc.EvaluateProgram) obj
 	}
 
 	e := evaluator.Evaluator{
-		Actor: evaluator.CreateMainThreadMailbox(),
-		Ctx:   ctx,
+		Config: r.Config,
+		Actor:  evaluator.CreateMainThreadMailbox(),
+		Ctx:    ctx,
 	}
 	e.PushEnv(env)
 	defer e.PopEnv()

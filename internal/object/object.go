@@ -10,6 +10,7 @@ import (
 	"slug/internal/ast"
 	"slug/internal/dec64"
 	"slug/internal/kernel"
+	"slug/internal/util"
 	"strings"
 	"unicode/utf8"
 )
@@ -63,6 +64,7 @@ type EvaluatorContext interface {
 	NativeBoolToBooleanObject(input bool) *Boolean
 	LoadModule(pathParts []string) (*Module, error)
 	ActCtx() *kernel.ActCtx
+	GetConfiguration() util.Configuration
 }
 
 type ForeignFunction func(ctx EvaluatorContext, args ...Object) Object

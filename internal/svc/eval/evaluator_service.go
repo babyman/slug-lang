@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"slug/internal/kernel"
 	"slug/internal/svc"
+	"slug/internal/util"
 )
 
 var Operations = kernel.OpRights{
@@ -12,12 +13,14 @@ var Operations = kernel.OpRights{
 }
 
 type EvaluatorService struct {
+	Config util.Configuration
 }
 
 func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	switch payload := msg.Payload.(type) {
 	case svc.EvaluateProgram:
-		workedId, _ := ctx.SpawnChild("run:"+payload.Name, Run)
+		r := Runner{Config: m.Config}
+		workedId, _ := ctx.SpawnChild("run:"+payload.Name, r.Run)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			slog.Error("error sending message",

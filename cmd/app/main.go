@@ -18,6 +18,7 @@ import (
 	"slug/internal/svc/repl"
 	"slug/internal/svc/resolver"
 	"slug/internal/svc/sout"
+	"slug/internal/util"
 )
 
 const (
@@ -70,9 +71,6 @@ func main() {
 	defaultLogger := slog.New(slog.NewJSONHandler(logWriter, loggerOptions))
 	slog.SetDefault(defaultLogger)
 
-	// kernel config
-	kernel.Version = Version
-
 	if version {
 		printVersion()
 		return
@@ -81,6 +79,14 @@ func main() {
 	if help {
 		printHelp()
 		return
+	}
+
+	config := util.Configuration{
+		Version:   Version,
+		BuildDate: BuildDate,
+		Commit:    Commit,
+		RootPath:  rootPath,
+		DebugAST:  debugAST,
 	}
 
 	k := kernel.NewKernel()
@@ -104,13 +110,9 @@ func main() {
 
 	// CLI Service
 	cliSvc := &cli.Cli{
-		Version:   Version,
-		BuildDate: BuildDate,
-		Commit:    Commit,
-		RootPath:  rootPath,
-		DebugAST:  debugAST,
-		FileName:  flag.Arg(0),
-		Args:      flag.Args()[1:],
+		Config:   config,
+		FileName: flag.Arg(0),
+		Args:     flag.Args()[1:],
 	}
 	cliID := k.RegisterService(svc.CliService, cli.Operations, cliSvc.Handler)
 
@@ -127,7 +129,9 @@ func main() {
 	parserID := k.RegisterService(svc.ParserService, parser.Operations, parserSvc.Handler)
 
 	// Evaluator service
-	evalSvc := &eval.EvaluatorService{}
+	evalSvc := &eval.EvaluatorService{
+		Config: config,
+	}
 	evalID := k.RegisterService(svc.EvalService, eval.Operations, evalSvc.Handler)
 
 	// REPL service
@@ -193,7 +197,7 @@ Options:
   -debug-ast         Render the AST as a JSON file.
   -help              Display this help information and exit.
   -version           Display version information and exit.
-  -log-level <level> Set the log level: trace, debug, info, warn, error, none. Default is 'none'.
+  -log-level <level> Set the log level: debug, info, warn, error. Default is 'error'.
   -log-file <path>   Specify a log file to write logs. Default is stderr.
 
 Details:
@@ -205,7 +209,7 @@ Examples:
   slug myfile.slug arg1 arg2    Execute the file with command-line arguments
 
 Version Information:
-  Version:    v%s
+  Version:    %s
   Build Date: %s
   Commit:     %s
 `, Version, BuildDate, Commit)

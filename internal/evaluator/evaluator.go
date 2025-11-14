@@ -11,6 +11,7 @@ import (
 	"slug/internal/svc"
 	"slug/internal/svc/modules"
 	"slug/internal/token"
+	"slug/internal/util"
 	"strings"
 )
 
@@ -25,17 +26,22 @@ const (
 	roundingStrategy = dec64.RoundHalfUp
 )
 
-type Evaluator struct {
-	envStack []*object.Environment // Environment stack encapsulated in an evaluator struct
-	Actor    *Actor                // can be null
-	Ctx      *kernel.ActCtx
-}
-
 type ByteOp func(a, b byte) byte
 
 func AndBytes(a, b byte) byte { return a & b }
 func OrBytes(a, b byte) byte  { return a | b }
 func XorBytes(a, b byte) byte { return a ^ b }
+
+type Evaluator struct {
+	Config   util.Configuration
+	envStack []*object.Environment // Environment stack encapsulated in an evaluator struct
+	Actor    *Actor                // can be null
+	Ctx      *kernel.ActCtx
+}
+
+func (e *Evaluator) GetConfiguration() util.Configuration {
+	return e.Config
+}
 
 func (e *Evaluator) ActCtx() *kernel.ActCtx {
 	return e.Ctx

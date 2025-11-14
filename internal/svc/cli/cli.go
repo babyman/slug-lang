@@ -16,8 +16,8 @@ func (cli *Cli) onBoot(ctx *kernel.ActCtx) any {
 
 	ctx.SendSync(kernelID, kernel.Broadcast{
 		Payload: kernel.ConfigureSystem{
-			SystemRootPath: cli.RootPath,
-			DebugAST:       cli.DebugAST,
+			SystemRootPath: cli.Config.RootPath,
+			DebugAST:       cli.Config.DebugAST,
 		}})
 
 	if cli.FileName != "" {

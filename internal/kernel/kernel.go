@@ -41,10 +41,8 @@ import (
 
 const (
 	ActorMailboxSize = 64
-	defaultTimeout   = 60 * time.Second
+	defaultTimeout   = 5 * time.Second
 )
-
-var Version = "0.0.1"
 
 // ===== Kernel =====
 
