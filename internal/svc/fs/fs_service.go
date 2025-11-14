@@ -37,13 +37,15 @@ type Fs struct {
 func (fs *Fs) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	switch msg.Payload.(type) {
 	case Read:
-		workedId, _ := ctx.SpawnChild("file-reader", fs.readHandler)
+		worker := FsWorker{}
+		workedId, _ := ctx.SpawnChild("file-reader", worker.readHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			svc.Reply(ctx, msg, ReadResp{Err: err})
 		}
 	case WriteBytes:
-		workedId, _ := ctx.SpawnChild("file-write-bytes", fs.writeHandler)
+		worker := FsWorker{}
+		workedId, _ := ctx.SpawnChild("file-write-bytes", worker.writeHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			svc.Reply(ctx, msg, WriteResp{Err: err})
@@ -54,7 +56,10 @@ func (fs *Fs) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSign
 	return kernel.Continue{}
 }
 
-func (fs *Fs) readHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
+type FsWorker struct {
+}
+
+func (fs *FsWorker) readHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	fwdMsg := svc.UnpackFwd(msg)
 	switch payload := fwdMsg.Payload.(type) {
 	case Read:
@@ -69,7 +74,7 @@ func (fs *Fs) readHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 	return kernel.Terminate{}
 }
 
-func (fs *Fs) writeHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
+func (fs *FsWorker) writeHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	fwdMsg := svc.UnpackFwd(msg)
 	switch payload := fwdMsg.Payload.(type) {
 	case WriteBytes:

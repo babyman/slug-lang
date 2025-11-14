@@ -50,10 +50,10 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 		svc.Reply(ctx, msg, nil)
 
 	case LoadFile:
-		eval := FileLoader{
+		worker := FileLoader{
 			DebugAST: m.debugAST,
 		}
-		workedId, _ := ctx.SpawnChild("mods-fl-wrk", eval.loadFileHandler)
+		workedId, _ := ctx.SpawnChild("mods-fl-wrk", worker.loadFileHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			slog.Error("error sending message to file loader",
@@ -69,14 +69,14 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 					slog.Any("error", err.Error()))
 			}
 		} else {
-			loader := ModuleLoader{
+			worker := ModuleLoader{
 				DebugAST: m.debugAST,
 			}
-			workedId, _ := ctx.SpawnChild("mods-load-wrk:"+moduleName, loader.loadModuleHandler)
+			workedId, _ := ctx.SpawnChild("mods-load-wrk:"+moduleName, worker.loadModuleHandler)
 			m.moduleRegistry[moduleName] = workedId
 			err := ctx.SendAsync(workedId, msg)
 			if err != nil {
-				slog.Error("error sending message to new module loader",
+				slog.Error("error sending message to new module worker",
 					slog.Any("error", err.Error()))
 			}
 		}

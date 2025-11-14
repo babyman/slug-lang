@@ -19,8 +19,8 @@ type EvaluatorService struct {
 func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	switch payload := msg.Payload.(type) {
 	case svc.EvaluateProgram:
-		r := Runner{Config: m.Config}
-		workedId, _ := ctx.SpawnChild("run:"+payload.Name, r.Run)
+		worker := Runner{Config: m.Config}
+		workedId, _ := ctx.SpawnChild("run:"+payload.Name, worker.Run)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			slog.Error("error sending message",

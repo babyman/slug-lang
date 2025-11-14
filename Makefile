@@ -16,7 +16,7 @@ live:
 stress:
 	@for i in `seq 1 100`; do \
 		echo "Run $$i"; \
-		go run -race ./cmd/app/main.go -log-level none --root ./tests ./tests/defer.slug || exit 1; \
+		go run -race ./cmd/app/main.go -log-level none --root ./tests ./tests/functions-arity.slug || exit 1; \
 	done
 
 test:
