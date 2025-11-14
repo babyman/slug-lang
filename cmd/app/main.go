@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"slug/internal/kernel"
 	"slug/internal/privileged"
 	"slug/internal/svc"
@@ -19,13 +20,6 @@ import (
 	"slug/internal/svc/sout"
 )
 
-var (
-	// Version is the current version of the slug binary loaded from the VERSION file in the root of the project.
-	Version   = "dev"
-	BuildDate = "unknown"
-	Commit    = "unknown"
-)
-
 const (
 	r   = kernel.RightRead
 	rw  = kernel.RightRead | kernel.RightWrite
@@ -37,12 +31,16 @@ const (
 )
 
 var (
-	rootPath string
-	logLevel string
-	logFile  string
-	debugAST bool
-	help     bool
-	version  bool
+	// Version is the current version of the slug binary loaded from the VERSION file in the root of the project.
+	Version   = "dev"
+	BuildDate = "unknown"
+	Commit    = "unknown"
+	rootPath  string
+	logLevel  string
+	logFile   string
+	debugAST  bool
+	help      bool
+	version   bool
 )
 
 func init() {
@@ -68,7 +66,7 @@ func main() {
 		AddSource: false,
 		Level:     logLevelFromString(logLevel),
 	}
-	logWriter := configureLogWritter()
+	logWriter := configureLogWriter()
 	defaultLogger := slog.New(slog.NewJSONHandler(logWriter, loggerOptions))
 	slog.SetDefault(defaultLogger)
 
@@ -162,10 +160,15 @@ func main() {
 	k.Start()
 }
 
-func configureLogWritter() *os.File {
+func configureLogWriter() *os.File {
 	var logWriter *os.File
 	var err error
 	if logFile != "" {
+		// Create parent directories if they don't exist
+		if err := os.MkdirAll(filepath.Dir(logFile), 0o755); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to create log directory for '%s': %v; falling back to stderr\n", logFile, err)
+			return os.Stderr
+		}
 		logWriter, err = os.OpenFile(logFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to open log file '%s': %v; falling back to stderr\n", logFile, err)
