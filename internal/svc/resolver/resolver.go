@@ -54,14 +54,16 @@ func (r *Resolver) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handle
 		svc.Reply(ctx, msg, nil)
 
 	case ResolveFile:
-		workedId, _ := ctx.SpawnChild("res-f-wrk", r.resolveFileHandler)
+		worker := ResolveWorker{RootPath: r.RootPath, SlugHome: r.SlugHome}
+		workedId, _ := ctx.SpawnChild("res-f-wrk", worker.resolveFileHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			slog.Error("error messaging file handler", slog.Any("error", err.Error()))
 		}
 
 	case ResolveModule:
-		workedId, _ := ctx.SpawnChild("res-m-wrk", r.resolveModuleHandler)
+		worker := ResolveWorker{RootPath: r.RootPath, SlugHome: r.SlugHome}
+		workedId, _ := ctx.SpawnChild("res-m-wrk", worker.resolveModuleHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			slog.Error("error messaging module handler", slog.Any("error", err.Error()))
@@ -73,7 +75,12 @@ func (r *Resolver) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handle
 	return kernel.Continue{}
 }
 
-func (r *Resolver) resolveModuleHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
+type ResolveWorker struct {
+	RootPath string
+	SlugHome string
+}
+
+func (r *ResolveWorker) resolveModuleHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	fwdMsg := svc.UnpackFwd(msg)
 	payload, _ := fwdMsg.Payload.(ResolveModule)
 
@@ -89,7 +96,7 @@ func (r *Resolver) resolveModuleHandler(ctx *kernel.ActCtx, msg kernel.Message) 
 	return kernel.Terminate{}
 }
 
-func (r *Resolver) resolveFileHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
+func (r *ResolveWorker) resolveFileHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	fwdMsg := svc.UnpackFwd(msg)
 	payload, _ := fwdMsg.Payload.(ResolveFile)
 
@@ -110,7 +117,7 @@ func (r *Resolver) resolveFileHandler(ctx *kernel.ActCtx, msg kernel.Message) ke
 	return kernel.Terminate{}
 }
 
-func (r *Resolver) resolveModule(ctx *kernel.ActCtx, rootPath string, pathParts []string) (string, string, string, error) {
+func (r *ResolveWorker) resolveModule(ctx *kernel.ActCtx, rootPath string, pathParts []string) (string, string, string, error) {
 
 	fsId, _ := ctx.K.ActorByName(svc.FsService)
 
@@ -153,7 +160,7 @@ func (r *Resolver) resolveModule(ctx *kernel.ActCtx, rootPath string, pathParts 
 	return moduleName, modulePath, readResp.Data, readResp.Err
 }
 
-func (r *Resolver) slugLibPath(moduleName string, moduleRelativePath string) (string, error) {
+func (r *ResolveWorker) slugLibPath(moduleName string, moduleRelativePath string) (string, error) {
 	if r.SlugHome == "" {
 		return "", fmt.Errorf("error reading module '%s': SLUG_HOME environment variable is not set", moduleName)
 	}

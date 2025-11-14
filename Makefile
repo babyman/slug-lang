@@ -13,14 +13,20 @@ live:
 	# requires `entr` see https://eradman.com/entrproject/
 	find . \( -name "*.slug" -o -name "*.go" \) | entr -r time go run ./cmd/app/ $(ARGS)
 
-test: build
+stress:
+	@for i in `seq 1 100`; do \
+		echo "Run $$i"; \
+		go run -race ./cmd/app/main.go -log-level none --root ./tests ./tests/defer.slug || exit 1; \
+	done
+
+test:
 	# e.g. find . \( -name "*.slug" -o -name "*.go" \) | entr -r time make test
 	go test ./... || exit 1
 	@for file in $(shell find ./tests -name "*.slug" | sort); do \
 		echo "Running tests for $$file"; \
-		./bin/$(BINARY_NAME) -log-level none --root ./tests $$file || exit 1; \
+		go run ./cmd/app/main.go -log-level none --root ./tests $$file || exit 1; \
 	done
-	./bin/$(BINARY_NAME) -log-level none test \
+	go run ./cmd/app/main.go -log-level none test \
 			slug.html slug.list slug.map slug.math slug.regex slug.std slug.string slug.time \
 			slug.csv slug.crypto slug.bytes \
 			|| exit 1
