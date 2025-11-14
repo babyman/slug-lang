@@ -82,7 +82,6 @@ func (k *Kernel) RegisterCleanup(id ActorID, msg Message) {
 // RegisterActor wires an actor into the kernel.
 func (k *Kernel) RegisterActor(name string, handler Handler) ActorID {
 	k.Mu.Lock()
-	defer k.Mu.Unlock()
 	id := ActorID(k.NextActorID)
 	k.NextActorID++
 	act := &Actor{
@@ -98,6 +97,8 @@ func (k *Kernel) RegisterActor(name string, handler Handler) ActorID {
 	if name != "" {
 		k.NameIdx[name] = id
 	}
+	k.Mu.Unlock()
+
 	go k.runActor(act)
 	return id
 }
@@ -105,7 +106,6 @@ func (k *Kernel) RegisterActor(name string, handler Handler) ActorID {
 func (k *Kernel) SpawnChild(parent ActorID, name string, handler Handler) (ActorID, error) {
 
 	k.Mu.Lock()
-	defer k.Mu.Unlock()
 
 	id := ActorID(k.NextActorID)
 	k.NextActorID++
@@ -132,6 +132,7 @@ func (k *Kernel) SpawnChild(parent ActorID, name string, handler Handler) (Actor
 			k.createCapWithMuLock(id, c.Target, c.Rights, c.Scope)
 		}
 	}
+	k.Mu.Unlock()
 
 	go k.runActor(child)
 	return id, nil
@@ -278,6 +279,8 @@ func (k *Kernel) handleActorError(a *Actor, err Error) {
 
 // RegisterPrivilegedService registers a service that needs kernel access
 func (k *Kernel) RegisterPrivilegedService(name string, svc PrivilegedService) {
+	k.Mu.Lock()
+	defer k.Mu.Unlock()
 	k.PrivilegedServices[name] = svc
 }
 
@@ -285,8 +288,8 @@ func (k *Kernel) RegisterPrivilegedService(name string, svc PrivilegedService) {
 func (k *Kernel) RegisterService(name string, ops OpRights, handler Handler) ActorID {
 	id := k.RegisterActor(name, handler)
 	k.Mu.Lock()
+	defer k.Mu.Unlock()
 	k.OpsBySvc[id] = ops
-	k.Mu.Unlock()
 	return id
 }
 
@@ -349,6 +352,8 @@ func (k *Kernel) isPermitted(from ActorID, to ActorID, payload any) error {
 				return fmt.Errorf("E_POLICY: cap not granted for Operations=%v for op %T to target %d", rights, payload, to)
 			}
 		} else {
+			k.Mu.RLock()
+			defer k.Mu.RUnlock()
 			if child, ok := k.Actors[to]; ok && child.Parent == from {
 				// parent has full rwx on child
 				return nil
@@ -415,9 +420,11 @@ func (k *Kernel) ActorByName(name string) (ActorID, bool) {
 // Name→ActorID lookup helpers
 func (k *Kernel) Start() {
 
+	k.Mu.RLock()
 	for _, svc := range k.PrivilegedServices {
 		svc.Initialize(k)
 	}
+	k.Mu.RUnlock()
 
 	// if the CLI service is running send it a boot message
 	kernelID, _ := k.ActorByName(KernelService)
@@ -443,18 +450,24 @@ func (k *Kernel) Start() {
 
 func (k *Kernel) broadcastMessage(kernelID ActorID, message any) {
 	k.Mu.RLock()
-	defer k.Mu.RUnlock()
-	for actorID := range k.Actors {
-		if actorID != kernelID && k.isPermitted(kernelID, actorID, message) == nil {
-			go func(id ActorID) {
-				if err := k.SendInternal(kernelID, id, message, nil); err != nil {
-					slog.Warn("Failed to send payload",
-						slog.Any("payload", message),
-						slog.Any("to", id),
-						slog.Any("error", err))
-				}
-			}(actorID)
+	// snapshot the recipients you want to send to
+	var recipients []ActorID
+	for id := range k.Actors {
+		if id != kernelID && k.isPermitted(kernelID, id, message) == nil {
+			recipients = append(recipients, id)
 		}
+	}
+	k.Mu.RUnlock()
+
+	for actorID := range recipients {
+		go func(id ActorID) {
+			if err := k.SendInternal(kernelID, id, message, nil); err != nil {
+				slog.Warn("Failed to send payload",
+					slog.Any("payload", message),
+					slog.Any("to", id),
+					slog.Any("error", err))
+			}
+		}(ActorID(actorID))
 	}
 }
 
