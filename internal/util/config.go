@@ -5,5 +5,6 @@ type Configuration struct {
 	BuildDate string
 	Commit    string
 	RootPath  string
+	SlugHome  string
 	DebugAST  bool
 }

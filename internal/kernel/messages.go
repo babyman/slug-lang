@@ -16,11 +16,6 @@ var Operations = OpRights{
 type Boot struct {
 }
 
-type ConfigureSystem struct {
-	DebugAST       bool
-	SystemRootPath string
-}
-
 type RequestShutdown struct {
 	ExitCode int `json:"exitcode,omitempty"`
 }

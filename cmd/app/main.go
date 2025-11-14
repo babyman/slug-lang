@@ -31,6 +31,10 @@ const (
 	x   = kernel.RightExec
 )
 
+const (
+	DefaultRootPath = "."
+)
+
 var (
 	// Version is the current version of the slug binary loaded from the VERSION file in the root of the project.
 	Version   = "dev"
@@ -52,7 +56,7 @@ func init() {
 	flag.BoolVar(&version, "version", false, "Display version information and exit")
 	flag.BoolVar(&version, "v", false, "Display version information and exit")
 	// evaluator config
-	flag.StringVar(&rootPath, "root", resolver.DefaultRootPath, "Set the root context for the program (used for imports)")
+	flag.StringVar(&rootPath, "root", DefaultRootPath, "Set the root context for the program (used for imports)")
 	// parser config
 	flag.BoolVar(&debugAST, "debug-ast", false, "Render the AST as a JSON file")
 	// log config
@@ -89,6 +93,7 @@ func main() {
 		Commit:    Commit,
 		RootPath:  rootPath,
 		DebugAST:  debugAST,
+		SlugHome:  os.Getenv("SLUG_HOME"),
 	}
 
 	k := kernel.NewKernel()
@@ -103,11 +108,13 @@ func main() {
 	soutID := k.RegisterService(svc.SOutService, sout.Operations, out.Handler)
 
 	// system out Service
-	mods := modules.NewModules()
+	mods := modules.NewModules(config)
 	modsID := k.RegisterService(svc.ModuleService, modules.Operations, mods.Handler)
 
 	// system out Service
-	res := resolver.NewResolver()
+	res := &resolver.Resolver{
+		Config: config,
+	}
 	resID := k.RegisterService(svc.ResolverService, resolver.Operations, res.Handler)
 
 	// CLI Service

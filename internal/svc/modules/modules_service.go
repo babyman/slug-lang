@@ -6,6 +6,7 @@ import (
 	"slug/internal/kernel"
 	"slug/internal/object"
 	"slug/internal/svc"
+	"slug/internal/util"
 	"strings"
 )
 
@@ -26,32 +27,27 @@ type LoadModuleResult struct {
 }
 
 var Operations = kernel.OpRights{
-	reflect.TypeOf(kernel.ConfigureSystem{}): kernel.RightExec,
-	reflect.TypeOf(LoadFile{}):               kernel.RightRead,
-	reflect.TypeOf(LoadModule{}):             kernel.RightRead,
+	reflect.TypeOf(LoadFile{}):   kernel.RightRead,
+	reflect.TypeOf(LoadModule{}): kernel.RightRead,
 }
 
 type Modules struct {
-	debugAST       bool
+	Config         util.Configuration
 	moduleRegistry map[string]kernel.ActorID
 }
 
-func NewModules() *Modules {
+func NewModules(config util.Configuration) *Modules {
 	return &Modules{
-		debugAST:       false,
+		Config:         config,
 		moduleRegistry: make(map[string]kernel.ActorID),
 	}
 }
 
 func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	switch payload := msg.Payload.(type) {
-	case kernel.ConfigureSystem:
-		m.debugAST = payload.DebugAST
-		svc.Reply(ctx, msg, nil)
-
 	case LoadFile:
 		worker := FileLoader{
-			DebugAST: m.debugAST,
+			DebugAST: m.Config.DebugAST,
 		}
 		workedId, _ := ctx.SpawnChild("mods-fl-wrk", worker.loadFileHandler)
 		err := ctx.SendAsync(workedId, msg)
@@ -70,7 +66,7 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 			}
 		} else {
 			worker := ModuleLoader{
-				DebugAST: m.debugAST,
+				DebugAST: m.Config.DebugAST,
 			}
 			workedId, _ := ctx.SpawnChild("mods-load-wrk:"+moduleName, worker.loadModuleHandler)
 			m.moduleRegistry[moduleName] = workedId

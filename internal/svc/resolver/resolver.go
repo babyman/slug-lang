@@ -9,10 +9,9 @@ import (
 	"slug/internal/kernel"
 	"slug/internal/svc"
 	"slug/internal/svc/fs"
+	"slug/internal/util"
 	"strings"
 )
-
-const DefaultRootPath = "."
 
 type ResolveFile struct {
 	Path string
@@ -30,31 +29,18 @@ type ResolvedResult struct {
 }
 
 var Operations = kernel.OpRights{
-	reflect.TypeOf(kernel.ConfigureSystem{}): kernel.RightExec,
-	reflect.TypeOf(ResolveFile{}):            kernel.RightRead,
-	reflect.TypeOf(ResolveModule{}):          kernel.RightRead,
+	reflect.TypeOf(ResolveFile{}):   kernel.RightRead,
+	reflect.TypeOf(ResolveModule{}): kernel.RightRead,
 }
 
 type Resolver struct {
-	RootPath string
-	SlugHome string
-}
-
-func NewResolver() *Resolver {
-	return &Resolver{
-		RootPath: DefaultRootPath,
-		SlugHome: os.Getenv("SLUG_HOME"),
-	}
+	Config util.Configuration
 }
 
 func (r *Resolver) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
-	switch payload := msg.Payload.(type) {
-	case kernel.ConfigureSystem:
-		r.RootPath = payload.SystemRootPath
-		svc.Reply(ctx, msg, nil)
-
+	switch msg.Payload.(type) {
 	case ResolveFile:
-		worker := ResolveWorker{RootPath: r.RootPath, SlugHome: r.SlugHome}
+		worker := ResolveWorker{RootPath: r.Config.RootPath, SlugHome: r.Config.SlugHome}
 		workedId, _ := ctx.SpawnChild("res-f-wrk", worker.resolveFileHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
@@ -62,7 +48,7 @@ func (r *Resolver) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handle
 		}
 
 	case ResolveModule:
-		worker := ResolveWorker{RootPath: r.RootPath, SlugHome: r.SlugHome}
+		worker := ResolveWorker{RootPath: r.Config.RootPath, SlugHome: r.Config.SlugHome}
 		workedId, _ := ctx.SpawnChild("res-m-wrk", worker.resolveModuleHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
@@ -102,10 +88,6 @@ func (r *ResolveWorker) resolveFileHandler(ctx *kernel.ActCtx, msg kernel.Messag
 
 	newRootPath, modulePathParts, err := calculateModulePath(payload.Path, r.RootPath)
 	name, path, data, err := r.resolveModule(ctx, newRootPath, modulePathParts)
-
-	if err != nil && r.RootPath != DefaultRootPath {
-		r.RootPath = newRootPath
-	}
 
 	svc.Reply(ctx, fwdMsg, ResolvedResult{
 		ModuleName: name,
