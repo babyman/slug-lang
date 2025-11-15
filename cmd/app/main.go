@@ -150,25 +150,24 @@ func main() {
 	// Cap grants
 	_ = k.GrantCap(kernelID, cliID, x, nil)
 
-	_ = k.GrantCap(cliID, resID, x, nil)   // x for kernel.ConfigureSystem
-	_ = k.GrantCap(cliID, modsID, rx, nil) // x for kernel.ConfigureSystem
-	_ = k.GrantCap(cliID, soutID, w, nil)
 	_ = k.GrantCap(cliID, evalID, x, nil)
 	_ = k.GrantCap(cliID, kernelID, x, nil)
+	_ = k.GrantCap(cliID, modsID, rx, nil)
+	_ = k.GrantCap(cliID, soutID, w, nil)
 
-	_ = k.GrantCap(modsID, resID, r, nil)
+	_ = k.GrantCap(modsID, fsID, w, nil)
 	_ = k.GrantCap(modsID, lexerID, x, nil)
 	_ = k.GrantCap(modsID, parserID, x, nil)
-	_ = k.GrantCap(modsID, fsID, w, nil)
+	_ = k.GrantCap(modsID, resID, r, nil)
 
 	_ = k.GrantCap(resID, fsID, r, nil)
 
 	_ = k.GrantCap(evalID, modsID, r, nil)
 	_ = k.GrantCap(evalID, soutID, w, nil)
 
+	_ = k.GrantCap(replID, evalID, x, nil)
 	_ = k.GrantCap(replID, lexerID, x, nil)
 	_ = k.GrantCap(replID, parserID, x, nil)
-	_ = k.GrantCap(replID, evalID, x, nil)
 
 	k.Start()
 }

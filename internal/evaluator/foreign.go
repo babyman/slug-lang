@@ -6,10 +6,11 @@ import (
 )
 
 var builtins = map[string]*object.Foreign{
-	"import":  fnBuiltinImport(),
-	"len":     fnBuiltinLen(),
-	"print":   fnBuiltinPrint(),
-	"println": fnBuiltinPrintLn(),
+	"compileSnippet": fnBuiltinCompileSnippet(),
+	"import":         fnBuiltinImport(),
+	"len":            fnBuiltinLen(),
+	"print":          fnBuiltinPrint(),
+	"println":        fnBuiltinPrintLn(),
 }
 
 var foreignFunctions map[string]*object.Foreign
@@ -24,18 +25,18 @@ func lookupForeign(name string) (*object.Foreign, bool) {
 func getForeignFunctions() map[string]*object.Foreign {
 	if foreignFunctions == nil {
 		foreignFunctions = map[string]*object.Foreign{
-			"slug.actor.mailbox":    fnActorMailbox(),
 			"slug.actor.bindActor":  fnActorBindActor(),
-			"slug.actor.self":       fnActorSelf(),
-			"slug.actor.send":       fnActorSend(),
+			"slug.actor.children":   fnActorChildren(),
+			"slug.actor.mailbox":    fnActorMailbox(),
 			"slug.actor.receive":    fnActorReceive(),
 			"slug.actor.register":   fnActorRegister(),
+			"slug.actor.self":       fnActorSelf(),
+			"slug.actor.send":       fnActorSend(),
+			"slug.actor.supervise":  fnActorSupervise(),
+			"slug.actor.supervisor": fnActorSupervisor(),
+			"slug.actor.terminate":  fnActorTerminate(),
 			"slug.actor.unregister": fnActorUnregister(),
 			"slug.actor.whereIs":    fnActorWhereIs(),
-			"slug.actor.children":   fnActorChildren(),
-			"slug.actor.supervisor": fnActorSupervisor(),
-			"slug.actor.supervise":  fnActorSupervise(),
-			"slug.actor.terminate":  fnActorTerminate(),
 		}
 		for k, v := range foreign.GetForeignFunctions() {
 			foreignFunctions[k] = v
