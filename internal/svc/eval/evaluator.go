@@ -33,11 +33,10 @@ func OrBytes(a, b byte) byte  { return a | b }
 func XorBytes(a, b byte) byte { return a ^ b }
 
 type Evaluator struct {
-	Config   util.Configuration
-	envStack []*object.Environment // Environment stack encapsulated in an evaluator struct
-	Actor    *Actor                // can be null
-	Actor2   kernel.SlugReceiver   // can be null
-	Ctx      *kernel.ActCtx
+	Config       util.Configuration
+	envStack     []*object.Environment // Environment stack encapsulated in an evaluator struct
+	SlugReceiver kernel.SlugReceiver   // can be null
+	Ctx          *kernel.ActCtx
 }
 
 func (e *Evaluator) GetConfiguration() util.Configuration {
@@ -45,69 +44,14 @@ func (e *Evaluator) GetConfiguration() util.Configuration {
 }
 
 func (e *Evaluator) WaitForMessage(timeout int64) (any, bool) {
-	if e.Actor2 == nil {
+	if e.SlugReceiver == nil {
 		return nil, false
 	}
-	return e.Actor2.WaitForMessage(timeout)
+	return e.SlugReceiver.WaitForMessage(timeout)
 }
 
 func (e *Evaluator) ActCtx() *kernel.ActCtx {
 	return e.Ctx
-}
-
-func (e *Evaluator) PID() int64 {
-	if e.Actor == nil {
-		return 0
-	}
-	return e.Actor.MailboxPID
-}
-
-func (e *Evaluator) Receive(timeout int64) (object.Object, bool) {
-	if e.Actor == nil {
-		return nil, false
-	}
-	message, b := e.Actor.WaitForMessage(timeout)
-	if !b {
-		return nil, false
-	}
-	slog.Debug("ACT: message received",
-		slog.Any("actor-pid", e.Actor.PID),
-		slog.Any("pid", e.Actor.MailboxPID),
-		slog.Any("", message.String()))
-	switch m := message.(type) {
-	case UserMessage:
-		return m.Payload.(object.Object), true
-	case ActorExited:
-		notification := &object.Map{}
-		notification.Put(&object.String{Value: "tag"}, &object.String{Value: "__exit__"})
-		notification.Put(&object.String{Value: "from"}, &object.Number{Value: dec64.FromInt64(m.MailboxPID)})
-		notification.Put(&object.String{Value: "fn"}, m.Function)
-		notification.Put(&object.String{Value: "args"}, &object.List{Elements: m.Args})
-		notification.Put(&object.String{Value: "reason"}, &object.String{Value: m.Reason})
-		notification.Put(&object.String{Value: "result"}, m.Result)
-
-		if m.Result != nil {
-			if lm, ok := (*m.LastMessage).(UserMessage); ok {
-				notification.Put(&object.String{Value: "lastMessage"}, lm.Payload.(object.Object))
-			}
-		}
-
-		messages := &object.List{}
-		for _, msg := range m.QueuedMessages {
-			messages.Elements = append(messages.Elements, msg.Payload.(object.Object))
-		}
-		notification.Put(&object.String{Value: "mailbox"}, messages)
-		return notification, true
-	default:
-		slog.Warn("ACT: Unknown message type",
-			slog.Any("actor-pid", e.Actor.PID),
-			slog.Any("pid", e.Actor.MailboxPID),
-			slog.Any("message-type", m))
-		notification := &object.Map{}
-		notification.Put(&object.String{Value: "tag"}, &object.String{Value: "__unknown_message__"})
-		notification.Put(&object.String{Value: "type"}, &object.String{Value: fmt.Sprintf("%T", m)})
-		return notification, true
-	}
 }
 
 func (e *Evaluator) Nil() *object.Nil {

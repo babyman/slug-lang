@@ -122,10 +122,9 @@ func (r *Runner) evaluateMessagePayload(ctx *kernel.ActCtx, payload svc.Evaluate
 	}
 
 	e := Evaluator{
-		Config: r.Config,
-		Actor:  CreateMainThreadMailbox(),
-		Actor2: r,
-		Ctx:    ctx,
+		Config:       r.Config,
+		SlugReceiver: r,
+		Ctx:          ctx,
 	}
 	e.PushEnv(env)
 	defer e.PopEnv()

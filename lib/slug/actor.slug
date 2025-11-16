@@ -1,57 +1,19 @@
-// mode = roundrobin | broadcast
-@export
-foreign mailbox = fn(@str mode = "roundrobin");
 
 @export
-foreign bindActor = fn(@num pid, f, ...args);
+foreign spawn = fn(@fun f, ...args); // -> pid
 
-// self returns the PID of the current process
-// Returns:
-//   integer PID of the calling process, error if called outside process context
-@export
-foreign self = fn();
-
-// send delivers a message to the specified process
-// Parameters:
-//   pid: process ID of the recipient
-//   message: data to send to the process
-// Returns:
-//   the recipient's PID
-@export
-foreign send = fn(@num pid, ...messages);
-
-// receive waits for a message to arrive in the process mailbox
-// Parameters:
-//   timeout: optional integer timeout in milliseconds
-// Returns:
-//   received message data, or nil on timeout
-@export
-foreign receive = fn(@num timeout = 0);
-
-// returns the pid of the mailbox to a name
-@export
-foreign register = fn (@num pid, @str name);
 
 @export
-foreign unregister = fn (@num pid, @str name);
+foreign self = fn(); // -> pid
+
 
 @export
-foreign whereIs = fn(@str name);
+foreign send = fn(@num pid, msg); // -> pid
+
 
 @export
-foreign children = fn(@num pid);
+foreign receive = fn(@num timeout_ms = 0); // -> msg | nil
 
-@export
-foreign supervisor = fn();
-
-@export
-foreign supervise = fn(@num supervisorPid, ...childPids);
 
 @export
 foreign terminate = fn(@num pid);
-
-@export
-var supervisedBy = fn(@num pid, @num supervisorPid) {
-	supervisorPid /> supervise(pid);
-	pid;
-}

@@ -12,9 +12,9 @@ var worker = fn(pid, message, pause = 0) {
     pid /> send({from: self(), tag:"{{message}}:{{pause}} from {{self()}} for {{pid}}", pause: pause});
 }
 
-mailbox() /> bindActor(worker, self(), "hello Slug!", 300);
-mailbox() /> bindActor(worker, self(), "hello Slug!", 200);
-mailbox() /> bindActor(worker, self(), "hello Slug!", 100);
+spawn(worker, self(), "hello Slug!", 300);
+spawn(worker, self(), "hello Slug!", 200);
+spawn(worker, self(), "hello Slug!", 100);
 
 receive().pause /> assertEqual(100);
 receive().pause /> assertEqual(200);

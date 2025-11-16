@@ -56,9 +56,7 @@ var TypeTags = map[string]string{
 // execution context and helper methods.
 type EvaluatorContext interface {
 	CurrentEnv() *Environment
-	PID() int64
 	ApplyFunction(fnName string, fnObj Object, args []Object) Object
-	Receive(timeout int64) (Object, bool)
 	NewError(message string, a ...interface{}) *Error
 	Nil() *Nil
 	NativeBoolToBooleanObject(input bool) *Boolean

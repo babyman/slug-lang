@@ -1,6 +1,6 @@
 var {*} = import(
     "slug.std", 
-    "slug.a2",
+    "slug.actor",
     "slug.time",
     "slug.list"
 );
@@ -16,9 +16,11 @@ val LEVELS = ["trace", "debug", "info", "warn", "error", "none"];
 val COLOURS = ["\033[90m", "\033[36m", "\033[32m", "\033[33m", "\033[31m"];
 val RESET_COLOR = "\033[0m";
 
-var logger = fn(logLevel = NONE) {
+// private var to track log level
+var logLevel = NONE;
+
+var logger = fn() {
     match receive() {
-        {tag:"configure", level} => logger(level)
         {tag:"log", level, ...l} if level >= logLevel => {
                 val tag = sprintf("%s%-5s%s", COLOURS[level], LEVELS[level], RESET_COLOR);
                 var msg = sprintf(l.message, ...l.args);
@@ -28,32 +30,32 @@ var logger = fn(logLevel = NONE) {
                 printf("%s [ %s ] %s", fmtClock(l.time, "2006-01-02 15:04:05.000"), tag, msg);
             }
     }
-    logger(logLevel);
+    logger();
 }
 
 // create a mailbox and bind the logging function to it
 var logActor = spawn(logger);
 
-@export
-var configureLogging = fn(level) {
-    // val lvl = LEVELS /> indexOfValue(level);
-    val lvl = level;
-    logActor /> send({ tag:"configure", level: lvl })
-}
-
-var _log = fn(level, message, args) {
-    logActor /> send({ tag: "log", time: clock(), level: level, message: message, args: args })
+var sendLog = fn(level, message, args) {
+    if ( level >=  logLevel ) {
+        logActor /> send({ tag: "log", time: clock(), level: level, message: message, args: args })
+    }
 }
 
 @export
-var logTrace = fn(message, ...args) { _log(TRACE, message, args) }
+var configureLogging = fn(@num level) {
+    logLevel = level
+}
+
 @export
-var logDebug = fn(message, ...args) { _log(DEBUG, message, args) }
+var trace = fn(message, ...args) { sendLog(TRACE, message, args) }
 @export
-var logInfo = fn(message, ...args) { _log(INFO, message, args) }
+var debug = fn(message, ...args) { sendLog(DEBUG, message, args) }
 @export
-var logWarn = fn(message, ...args) { _log(WARN, message, args) }
+var info = fn(message, ...args) { sendLog(INFO, message, args) }
 @export
-var logError = fn(message, ...args) { _log(ERROR, message, args) }
+var warn = fn(message, ...args) { sendLog(WARN, message, args) }
 @export
-var logNone = fn(message, ...args) { _log(NONE, message, args) }
+var error = fn(message, ...args) { sendLog(ERROR, message, args) }
+@export
+var none = fn(message, ...args) { sendLog(NONE, message, args) }

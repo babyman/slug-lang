@@ -48,10 +48,10 @@ func (s *SlugFunctionActor) Run(ctx *kernel.ActCtx, msg kernel.Message) kernel.H
 		// handling SlugActorMessage inputs used by WaitForMessage.
 		go func(args []object.Object) {
 			e := Evaluator{
-				envStack: []*object.Environment{s.Function.Env},
-				Actor2:   s, // for WaitForMessage
-				Config:   s.Config,
-				Ctx:      ctx,
+				envStack:     []*object.Environment{s.Function.Env},
+				SlugReceiver: s,
+				Config:       s.Config,
+				Ctx:          ctx,
 			}
 			out := e.ApplyFunction("<anon>", s.Function, args)
 
