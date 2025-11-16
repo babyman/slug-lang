@@ -134,10 +134,13 @@ func (k *Kernel) SpawnChild(parent ActorID, name string, ops OpRights, handler H
 			k.createCapWithMuLock(id, c.Target, c.Rights, c.Scope)
 		}
 
-		// Create self-capabilities for parent and child
+		// Create capabilities for parent to child
+		k.createCapWithMuLock(parent.Id, child.Id, RightRead|RightWrite|RightExec, nil)
+
+		// Create capabilities for child to parent
 		k.createCapWithMuLock(child.Id, parent.Id, RightRead|RightWrite|RightExec, nil)
 
-		// Create self-capabilities for child to itself
+		// Create capabilities for child to itself
 		k.createCapWithMuLock(child.Id, child.Id, RightRead|RightWrite|RightExec, nil)
 	}
 	k.Mu.Unlock()
@@ -145,7 +148,8 @@ func (k *Kernel) SpawnChild(parent ActorID, name string, ops OpRights, handler H
 	go k.runActor(child)
 
 	slog.Info("Spawned child actor",
-		slog.Any("id", id),
+		slog.Any("parent-id", parent),
+		slog.Any("child-id", id),
 		slog.Any("name", name))
 	return id, nil
 }
@@ -358,7 +362,7 @@ func (k *Kernel) isPermitted(from ActorID, to ActorID, payload any) error {
 		msgType := reflect.TypeOf(payload)
 		if rights, ok := k.resolveRights(to, msgType); ok {
 			if !k.hasCap(from, to, rights) {
-				slog.Warn("E_POLICY: cap not granted for Operation",
+				slog.Error("E_POLICY: cap not granted for Operation",
 					slog.Any("rights", rights),
 					slog.Any("from", from),
 					slog.Any("to", to),
