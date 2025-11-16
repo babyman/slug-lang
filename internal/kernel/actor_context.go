@@ -12,11 +12,15 @@ type ActCtx struct {
 	Self ActorID
 }
 
+type SlugReceiver interface {
+	WaitForMessage(timeout int64) (any, bool)
+}
+
 type IKernel interface {
 	ActorByName(name string) (ActorID, bool)
 	SendInternal(from ActorID, to ActorID, payload any, respCh chan Message) error
 	RegisterCleanup(id ActorID, msg Message)
-	SpawnChild(parent ActorID, name string, handler Handler) (ActorID, error)
+	SpawnChild(parent ActorID, name string, ops OpRights, handler Handler) (ActorID, error)
 }
 
 func (c *ActCtx) RegisterCleanup(msg Message) {
@@ -49,7 +53,7 @@ func (c *ActCtx) SendFuture(to ActorID, payload any) (*future.Future[Message], e
 
 // SendSync sends and waits for a single reply.
 func (c *ActCtx) SendSync(to ActorID, payload any) (Message, error) {
-	return c.SendSyncWithTimeout(to, payload, defaultTimeout)
+	return c.SendSyncWithTimeout(to, payload, defaultSendTimeout)
 }
 
 func (c *ActCtx) SendSyncWithTimeout(to ActorID, payload any, timeout time.Duration) (Message, error) {
@@ -70,7 +74,7 @@ func (c *ActCtx) SendSyncWithTimeout(to ActorID, payload any, timeout time.Durat
 	return resp, err
 }
 
-func (c *ActCtx) SpawnChild(name string, handler Handler) (ActorID, error) {
+func (c *ActCtx) SpawnChild(name string, ops OpRights, handler Handler) (ActorID, error) {
 
-	return c.K.SpawnChild(c.Self, name, handler)
+	return c.K.SpawnChild(c.Self, name, ops, handler)
 }

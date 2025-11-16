@@ -10,6 +10,8 @@ import (
 
 var Operations = kernel.OpRights{
 	reflect.TypeOf(svc.EvaluateProgram{}): kernel.RightExec,
+	reflect.TypeOf(SlugActorMessage{}):    kernel.RightExec,
+	reflect.TypeOf(SlugFunctionDone{}):    kernel.RightExec,
 }
 
 type EvaluatorService struct {
@@ -19,8 +21,11 @@ type EvaluatorService struct {
 func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	switch payload := msg.Payload.(type) {
 	case svc.EvaluateProgram:
-		worker := Runner{Config: m.Config}
-		workedId, _ := ctx.SpawnChild("run:"+payload.Name, worker.Run)
+		worker := Runner{
+			Config:  m.Config,
+			Mailbox: make(chan SlugActorMessage),
+		}
+		workedId, _ := ctx.SpawnChild("run:"+payload.Name, Operations, worker.Run)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			slog.Error("error sending message",

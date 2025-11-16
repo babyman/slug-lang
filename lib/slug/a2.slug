@@ -1,0 +1,19 @@
+
+@export
+foreign spawn = fn(@fun f, ...args); // -> pid
+
+
+@export
+foreign self = fn(); // -> pid
+
+
+@export
+foreign send = fn(@num pid, msg); // -> pid
+
+
+@export
+foreign receive = fn(@num timeout_ms = 0); // -> msg | nil
+
+
+@export
+foreign terminate = fn(@num pid);

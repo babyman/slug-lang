@@ -6,41 +6,78 @@ import (
 	"log/slog"
 	"os"
 	"runtime/pprof"
-	"slug/internal/evaluator"
 	"slug/internal/kernel"
 	"slug/internal/object"
 	"slug/internal/svc"
 	"slug/internal/util"
+	"time"
 )
 
 type Runner struct {
-	Config util.Configuration
+	Config  util.Configuration
+	Mailbox chan SlugActorMessage
+	// internal state
+	started bool
 }
 
-func (r Runner) Run(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
-	fwdMsg := svc.UnpackFwd(msg)
-	payload, _ := fwdMsg.Payload.(svc.EvaluateProgram)
-
-	evaluated := r.evaluateMessagePayload(ctx, payload)
-	if evaluated != nil && evaluated.Type() != object.NIL_OBJ {
-		if evaluated.Type() == object.ERROR_OBJ {
-			svc.Reply(ctx, fwdMsg, svc.EvaluateResult{
-				Error: errors.New(evaluated.Inspect()),
-			})
-		} else {
-			svc.Reply(ctx, fwdMsg, svc.EvaluateResult{
-				Result: fmt.Sprint(evaluated.Inspect()),
-			})
-		}
-	} else {
-		svc.Reply(ctx, fwdMsg, svc.EvaluateResult{})
+func (r *Runner) WaitForMessage(timeout int64) (any, bool) {
+	if timeout <= 0 {
+		msg := <-r.Mailbox
+		return msg, true
 	}
 
-	// terminate when complete
-	return kernel.Terminate{}
+	select {
+	case msg := <-r.Mailbox:
+		return msg, true
+	case <-time.After(time.Duration(timeout) * time.Millisecond):
+		return SlugActorMessage{}, false
+	}
 }
 
-func (r Runner) evaluateMessagePayload(ctx *kernel.ActCtx, payload svc.EvaluateProgram) object.Object {
+func (r *Runner) Run(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
+	fwdMsg := svc.UnpackFwd(msg)
+
+	switch payload := fwdMsg.Payload.(type) {
+	case svc.EvaluateProgram:
+		// avoid starting the same code multiple times
+		if r.started {
+			return kernel.Continue{}
+		}
+		r.started = true
+
+		// Run the code in its own goroutine so this actor can keep
+		// handling SlugActorMessage inputs used by WaitForMessage.
+		go func() {
+
+			evaluated := r.evaluateMessagePayload(ctx, payload)
+			if evaluated != nil && evaluated.Type() != object.NIL_OBJ {
+				if evaluated.Type() == object.ERROR_OBJ {
+					svc.Reply(ctx, fwdMsg, svc.EvaluateResult{
+						Error: errors.New(evaluated.Inspect()),
+					})
+				} else {
+					svc.Reply(ctx, fwdMsg, svc.EvaluateResult{
+						Result: fmt.Sprint(evaluated.Inspect()),
+					})
+				}
+			} else {
+				svc.Reply(ctx, fwdMsg, svc.EvaluateResult{})
+			}
+		}()
+
+		return kernel.Continue{}
+
+	case SlugActorMessage:
+		slog.Warn("received actor message", slog.Any("payload", payload.Msg))
+		r.Mailbox <- payload
+		return kernel.Continue{}
+
+	default:
+		return kernel.Continue{}
+	}
+}
+
+func (r *Runner) evaluateMessagePayload(ctx *kernel.ActCtx, payload svc.EvaluateProgram) object.Object {
 
 	// Optional profiling via env var: SLUG_CPU_PROFILE=<path>
 	profPath := os.Getenv("SLUG_CPU_PROFILE")
@@ -84,9 +121,10 @@ func (r Runner) evaluateMessagePayload(ctx *kernel.ActCtx, payload svc.EvaluateP
 		Env:     env,
 	}
 
-	e := evaluator.Evaluator{
+	e := Evaluator{
 		Config: r.Config,
-		Actor:  evaluator.CreateMainThreadMailbox(),
+		Actor:  CreateMainThreadMailbox(),
+		Actor2: r,
 		Ctx:    ctx,
 	}
 	e.PushEnv(env)

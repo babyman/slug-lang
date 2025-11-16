@@ -49,7 +49,7 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 		worker := FileLoader{
 			DebugAST: m.Config.DebugAST,
 		}
-		workedId, _ := ctx.SpawnChild("mods-fl-wrk", worker.loadFileHandler)
+		workedId, _ := ctx.SpawnChild("mods-fl-wrk", Operations, worker.loadFileHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			slog.Error("error sending message to file loader",
@@ -68,7 +68,7 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 			worker := ModuleLoader{
 				DebugAST: m.Config.DebugAST,
 			}
-			workedId, _ := ctx.SpawnChild("mods-load-wrk:"+moduleName, worker.loadModuleHandler)
+			workedId, _ := ctx.SpawnChild("mods-load-wrk:"+moduleName, Operations, worker.loadModuleHandler)
 			m.moduleRegistry[moduleName] = workedId
 			err := ctx.SendAsync(workedId, msg)
 			if err != nil {

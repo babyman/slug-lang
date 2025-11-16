@@ -2,12 +2,16 @@ package svc
 
 import (
 	"errors"
+	"log/slog"
 	"slug/internal/kernel"
 )
 
 func Reply(ctx *kernel.ActCtx, req kernel.Message, payload any) {
 	if req.Resp != nil {
 		req.Resp <- kernel.Message{From: ctx.Self, To: req.From, Payload: payload}
+	} else {
+		slog.Debug("no response channel found",
+			slog.Any("request", req))
 	}
 }
 

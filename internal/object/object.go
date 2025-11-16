@@ -65,16 +65,12 @@ type EvaluatorContext interface {
 	LoadModule(pathParts []string) (*Module, error)
 	ActCtx() *kernel.ActCtx
 	GetConfiguration() util.Configuration
+	WaitForMessage(timeout int64) (any, bool)
 }
 
 type ForeignFunction func(ctx EvaluatorContext, args ...Object) Object
 
 type ObjectType string
-
-type MapKey struct {
-	Type  ObjectType
-	Value uint64
-}
 
 type Hashable interface {
 	Object
@@ -490,6 +486,11 @@ func (l *List) GetTags() map[string]List {
 }
 func (l *List) SetTag(tag string, params List) {
 	setTag(&l.Tags, tag, params)
+}
+
+type MapKey struct {
+	Type  ObjectType
+	Value uint64
 }
 
 type MapPair struct {

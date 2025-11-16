@@ -50,7 +50,7 @@ type Service struct {
 func (s *Service) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	switch msg.Payload.(type) {
 	case ParseTokens:
-		workedId, _ := ctx.SpawnChild("parse-wrk", parseHandler)
+		workedId, _ := ctx.SpawnChild("parse-wrk", Operations, parseHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			slog.Error("error sending message to new parser", slog.Any("error", err.Error()))

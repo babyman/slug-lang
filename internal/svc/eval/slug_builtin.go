@@ -1,4 +1,4 @@
-package evaluator
+package eval
 
 import (
 	"bytes"
@@ -110,25 +110,6 @@ func fnBuiltinPrintLn() *object.Foreign {
 				}
 			}
 			svc.SendStdOut(ctx.ActCtx(), out.String())
-			return ctx.Nil()
-		},
-	}
-}
-
-func fnBuiltinCompileSnippet() *object.Foreign {
-	return &object.Foreign{
-		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
-
-			if len(args) != 1 {
-				return ctx.NewError("compileSnippet expects one argument")
-			}
-
-			if args[0].Type() != object.STRING_OBJ {
-				return ctx.NewError("argument to compileSnippet must be a string")
-			}
-
-			// todo - compile snippet and return an actor reference
-
 			return ctx.Nil()
 		},
 	}

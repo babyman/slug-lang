@@ -1,4 +1,4 @@
-package evaluator
+package eval
 
 import (
 	"slug/internal/foreign"
@@ -6,11 +6,10 @@ import (
 )
 
 var builtins = map[string]*object.Foreign{
-	"compileSnippet": fnBuiltinCompileSnippet(),
-	"import":         fnBuiltinImport(),
-	"len":            fnBuiltinLen(),
-	"print":          fnBuiltinPrint(),
-	"println":        fnBuiltinPrintLn(),
+	"import":  fnBuiltinImport(),
+	"len":     fnBuiltinLen(),
+	"print":   fnBuiltinPrint(),
+	"println": fnBuiltinPrintLn(),
 }
 
 var foreignFunctions map[string]*object.Foreign
@@ -37,6 +36,12 @@ func getForeignFunctions() map[string]*object.Foreign {
 			"slug.actor.terminate":  fnActorTerminate(),
 			"slug.actor.unregister": fnActorUnregister(),
 			"slug.actor.whereIs":    fnActorWhereIs(),
+
+			"slug.a2.receive":   fnActor2Receive(),
+			"slug.a2.self":      fnActor2Self(),
+			"slug.a2.send":      fnActor2Send(),
+			"slug.a2.spawn":     fnActor2Spawn(),
+			"slug.a2.terminate": fnActor2Terminate(),
 		}
 		for k, v := range foreign.GetForeignFunctions() {
 			foreignFunctions[k] = v

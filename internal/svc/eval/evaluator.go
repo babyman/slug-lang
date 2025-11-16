@@ -1,4 +1,4 @@
-package evaluator
+package eval
 
 import (
 	"errors"
@@ -36,11 +36,19 @@ type Evaluator struct {
 	Config   util.Configuration
 	envStack []*object.Environment // Environment stack encapsulated in an evaluator struct
 	Actor    *Actor                // can be null
+	Actor2   kernel.SlugReceiver   // can be null
 	Ctx      *kernel.ActCtx
 }
 
 func (e *Evaluator) GetConfiguration() util.Configuration {
 	return e.Config
+}
+
+func (e *Evaluator) WaitForMessage(timeout int64) (any, bool) {
+	if e.Actor2 == nil {
+		return nil, false
+	}
+	return e.Actor2.WaitForMessage(timeout)
 }
 
 func (e *Evaluator) ActCtx() *kernel.ActCtx {

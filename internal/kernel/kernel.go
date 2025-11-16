@@ -40,8 +40,9 @@ import (
 )
 
 const (
-	ActorMailboxSize = 64
-	defaultTimeout   = 5 * time.Second
+	ActorMailboxSize   = 64
+	defaultSendTimeout = 5 * time.Second
+	fullMailboxTimeout = 2 * time.Second
 )
 
 // ===== Kernel =====
@@ -103,7 +104,7 @@ func (k *Kernel) RegisterActor(name string, handler Handler) ActorID {
 	return id
 }
 
-func (k *Kernel) SpawnChild(parent ActorID, name string, handler Handler) (ActorID, error) {
+func (k *Kernel) SpawnChild(parent ActorID, name string, ops OpRights, handler Handler) (ActorID, error) {
 
 	k.Mu.Lock()
 
@@ -122,6 +123,7 @@ func (k *Kernel) SpawnChild(parent ActorID, name string, handler Handler) (Actor
 	}
 
 	k.Actors[child.Id] = child
+	k.OpsBySvc[id] = ops
 
 	// register as child of parent
 	if parent, ok := k.Actors[parent]; ok {
@@ -131,10 +133,20 @@ func (k *Kernel) SpawnChild(parent ActorID, name string, handler Handler) (Actor
 		for _, c := range parent.Caps {
 			k.createCapWithMuLock(id, c.Target, c.Rights, c.Scope)
 		}
+
+		// Create self-capabilities for parent and child
+		k.createCapWithMuLock(child.Id, parent.Id, RightRead|RightWrite|RightExec, nil)
+
+		// Create self-capabilities for child to itself
+		k.createCapWithMuLock(child.Id, child.Id, RightRead|RightWrite|RightExec, nil)
 	}
 	k.Mu.Unlock()
 
 	go k.runActor(child)
+
+	slog.Info("Spawned child actor",
+		slog.Any("id", id),
+		slog.Any("name", name))
 	return id, nil
 }
 
@@ -143,7 +155,9 @@ func (k *Kernel) runActor(a *Actor) {
 	for msg := range a.inbox {
 		if exit, ok := msg.Payload.(Exit); ok {
 			k.cleanupActor(a, exit.Reason)
-			println("Exiting actor", a.Name, "with reason", exit.Reason)
+			slog.Info("actor exiting",
+				slog.String("name", a.Name),
+				slog.String("reason", exit.Reason))
 			return
 		}
 
@@ -346,9 +360,9 @@ func (k *Kernel) isPermitted(from ActorID, to ActorID, payload any) error {
 			if !k.hasCap(from, to, rights) {
 				slog.Warn("E_POLICY: cap not granted for Operation",
 					slog.Any("rights", rights),
-					slog.Any("payload", payload),
 					slog.Any("from", from),
-					slog.Any("to", to))
+					slog.Any("to", to),
+					slog.Any("payload-type", reflect.TypeOf(payload).String()))
 				return fmt.Errorf("E_POLICY: cap not granted for Operations=%v for op %T to target %d", rights, payload, to)
 			}
 		} else {
@@ -358,16 +372,17 @@ func (k *Kernel) isPermitted(from ActorID, to ActorID, payload any) error {
 				// parent has full rwx on child
 				return nil
 			}
-			slog.Warn("E_POLICY: no defined Operation",
-				slog.Any("payload", payload),
+			slog.Error("E_POLICY: no defined Operation",
 				slog.Any("from", from),
-				slog.Any("to", to))
-			return fmt.Errorf("E_POLICY: no defined Operations for op %T to target %d", payload, to)
+				slog.Any("to", to),
+				slog.Any("payload-type", reflect.TypeOf(payload).String()))
+			return fmt.Errorf("E_POLICY: no defined Operations for op %T from %d to target %d", payload, from, to)
 		}
 	} else {
 		slog.Warn("E_POLICY: nil payload",
 			slog.Any("from", from),
-			slog.Any("to", to))
+			slog.Any("to", to),
+			slog.Any("payload-type", reflect.TypeOf(payload).String()))
 		return fmt.Errorf("E_POLICY: nil payload to target %d", to)
 	}
 	return nil
@@ -392,10 +407,19 @@ func (k *Kernel) SendInternal(from ActorID, to ActorID, payload any, resp chan M
 	select {
 	case target.inbox <- msg:
 		if a := k.getActor(from); a != nil {
+			slog.Info("Sent message",
+				slog.Any("from", from),
+				slog.Any("to", to),
+				slog.Any("payload-type", reflect.TypeOf(payload).String()))
 			atomic.AddUint64(&a.IpcOut, 1)
+		} else {
+			slog.Warn("Failed to send message, to actor not found",
+				slog.Any("from", from),
+				slog.Any("to", to),
+			)
 		}
 		return nil
-	case <-time.After(2 * time.Second):
+	case <-time.After(fullMailboxTimeout):
 		slog.Warn("E_BUSY: target inbox full",
 			slog.Any("from", from),
 			slog.Any("to", to))

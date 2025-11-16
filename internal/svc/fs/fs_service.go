@@ -38,14 +38,14 @@ func (fs *Fs) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSign
 	switch msg.Payload.(type) {
 	case Read:
 		worker := FsWorker{}
-		workedId, _ := ctx.SpawnChild("file-reader", worker.readHandler)
+		workedId, _ := ctx.SpawnChild("file-reader", Operations, worker.readHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			svc.Reply(ctx, msg, ReadResp{Err: err})
 		}
 	case WriteBytes:
 		worker := FsWorker{}
-		workedId, _ := ctx.SpawnChild("file-write-bytes", worker.writeHandler)
+		workedId, _ := ctx.SpawnChild("file-write-bytes", Operations, worker.writeHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			svc.Reply(ctx, msg, WriteResp{Err: err})

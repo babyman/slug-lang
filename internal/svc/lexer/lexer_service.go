@@ -26,7 +26,7 @@ type LexingService struct {
 func (m *LexingService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	switch msg.Payload.(type) {
 	case LexString:
-		workedId, _ := ctx.SpawnChild("lex-wrk", lexHandler)
+		workedId, _ := ctx.SpawnChild("lex-wrk", Operations, lexHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			slog.Error("error sending message",

@@ -41,7 +41,7 @@ func (r *Resolver) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handle
 	switch msg.Payload.(type) {
 	case ResolveFile:
 		worker := ResolveWorker{RootPath: r.Config.RootPath, SlugHome: r.Config.SlugHome}
-		workedId, _ := ctx.SpawnChild("res-f-wrk", worker.resolveFileHandler)
+		workedId, _ := ctx.SpawnChild("res-f-wrk", Operations, worker.resolveFileHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			slog.Error("error messaging file handler", slog.Any("error", err.Error()))
@@ -49,7 +49,7 @@ func (r *Resolver) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handle
 
 	case ResolveModule:
 		worker := ResolveWorker{RootPath: r.Config.RootPath, SlugHome: r.Config.SlugHome}
-		workedId, _ := ctx.SpawnChild("res-m-wrk", worker.resolveModuleHandler)
+		workedId, _ := ctx.SpawnChild("res-m-wrk", Operations, worker.resolveModuleHandler)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			slog.Error("error messaging module handler", slog.Any("error", err.Error()))

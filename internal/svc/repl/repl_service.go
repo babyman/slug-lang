@@ -56,7 +56,7 @@ func (rs *ReplService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Ha
 	switch payload := msg.Payload.(type) {
 	case RsStart:
 		worker := Repl{}
-		workedId, _ := ctx.SpawnChild("repl", worker.Handler)
+		workedId, _ := ctx.SpawnChild("repl", Operations, worker.Handler)
 		svc.Reply(ctx, msg, RsStartResp{SessionID: workedId})
 	case RsEval:
 		ctx.SendAsync(payload.SessionID, msg)
