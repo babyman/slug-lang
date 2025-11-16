@@ -1,16 +1,16 @@
 var {*} = import(
     "slug.std", 
-    "slug.actor",
+    "slug.a2",
     "slug.time",
     "slug.list"
 );
 
-val TRACE = 0;
-val DEBUG = 1;
-val INFO = 2;
-val WARN = 3;
-val ERROR = 4;
-val NONE = 5;
+@export val TRACE = 0;
+@export val DEBUG = 1;
+@export val INFO = 2;
+@export val WARN = 3;
+@export val ERROR = 4;
+@export val NONE = 5;
 
 val LEVELS = ["trace", "debug", "info", "warn", "error", "none"];
 val COLOURS = ["\033[90m", "\033[36m", "\033[32m", "\033[33m", "\033[31m"];
@@ -32,11 +32,12 @@ var logger = fn(logLevel = NONE) {
 }
 
 // create a mailbox and bind the logging function to it
-var logActor = mailbox() /> bindActor(logger);
+var logActor = spawn(logger);
 
 @export
 var configureLogging = fn(level) {
-    val lvl = LEVELS /> indexOfValue(level);
+    // val lvl = LEVELS /> indexOfValue(level);
+    val lvl = level;
     logActor /> send({ tag:"configure", level: lvl })
 }
 
