@@ -44,10 +44,16 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 		return nil
 	}
 	loadResult, ok := modReply.Payload.(modules.LoadModuleResult)
-	module := loadResult.Module
 	if !ok {
 		return nil
 	}
+	if loadResult.Error != nil {
+		svc.SendStdOut(ctx, loadResult.Error.Error())
+		ctx.SendSync(kernelID, kernel.RequestShutdown{ExitCode: 1})
+		return nil
+	}
+
+	module := loadResult.Module
 
 	future, err := ctx.SendFuture(evalId, svc.EvaluateProgram{
 		Name:    module.Name,
@@ -68,7 +74,7 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 
 	if p.Error != nil {
 		svc.SendStdOut(ctx, p.Error.Error()+"\n")
-		ctx.SendSync(kernelID, kernel.RequestShutdown{ExitCode: -100})
+		ctx.SendSync(kernelID, kernel.RequestShutdown{ExitCode: 1})
 	} else {
 		svc.SendStdOut(ctx, p.Result+"\n")
 		ctx.SendSync(kernelID, kernel.RequestShutdown{ExitCode: 0})
