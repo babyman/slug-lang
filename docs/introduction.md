@@ -72,6 +72,7 @@ foundational building blocks of the language.
   provides the alternative block.
 - `match`: A powerful pattern-matching construct for handling various cases based on the structure of values.
 - `return`: Exits a function and optionally returns a value.
+- `recur` restarts the current function in tail position with a new set of arguments, providing loop-like control flow without growing the call stack.
 
 #### **Functionality**
 
@@ -396,6 +397,23 @@ val max = fn(a, b) {
 };
 
 max(3, 5) /> println();  // Output: 5
+```
+
+### Tail-recursive looping: `recur`
+
+`recur` is a special form that restarts the current function in tail position with a new set of arguments, giving you 
+loop-like behavior without growing the call stack; it works in both named and anonymous functions, and the compiler 
+will report an error if you use `recur` in a position that is not actually tail-recursive.
+
+```slug
+// Sum 1..n using tail recursion in an anonymous function
+fn(n, acc) {
+	if (n == 0) { 
+		acc
+	} else {
+		recur(n - 1, acc + n) 
+	} 
+}(5, 0) /> println(); // Output: 15
 ```
 
 ### Error Handling with `try`/`catch` and `throw`

@@ -326,6 +326,26 @@ func (fl *FunctionLiteral) String() string {
 	return out.String()
 }
 
+type RecurExpression struct {
+	Token     token.Token  // the 'recur' token
+	Arguments []Expression // recur(arg1, arg2, ...)
+}
+
+func (r *RecurExpression) expressionNode()      {}
+func (r *RecurExpression) TokenLiteral() string { return r.Token.Literal }
+func (r *RecurExpression) String() string {
+	out := bytes.Buffer{}
+	out.WriteString("recur(")
+	for i, a := range r.Arguments {
+		if i > 0 {
+			out.WriteString(", ")
+		}
+		out.WriteString(a.String())
+	}
+	out.WriteString(")")
+	return out.String()
+}
+
 type CallExpression struct {
 	Token      token.Token // The '(' token
 	Function   Expression  // Identifier or FunctionLiteral

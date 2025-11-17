@@ -12,7 +12,7 @@ var fib = fn(n, a = 0, b = 1) {
     } else if (n == 1) {
         b;
     } else {
-        fib(n - 1, b, a + b);
+        recur(n - 1, b, a + b);
     }
 }
 

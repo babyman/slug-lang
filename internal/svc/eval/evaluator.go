@@ -37,6 +37,12 @@ type Evaluator struct {
 	envStack     []*object.Environment // Environment stack encapsulated in an evaluator struct
 	SlugReceiver kernel.SlugReceiver   // can be null
 	Ctx          *kernel.ActCtx
+
+	// callStack keeps track of the current function for things like `recur`
+	callStack []struct {
+		FnName string
+		FnObj  object.Object
+	}
 }
 
 func (e *Evaluator) GetConfiguration() util.Configuration {
@@ -82,6 +88,29 @@ func (e *Evaluator) PopEnv() {
 	e.envStack = e.envStack[:len(e.envStack)-1]
 	slog.Debug("pop stack frame",
 		slog.Int("stack-size", len(e.envStack)))
+}
+
+// Helpers for tracking the current function (for `recur`)
+func (e *Evaluator) pushCallFrame(fnName string, fnObj object.Object) {
+	e.callStack = append(e.callStack, struct {
+		FnName string
+		FnObj  object.Object
+	}{FnName: fnName, FnObj: fnObj})
+}
+
+func (e *Evaluator) popCallFrame() {
+	if len(e.callStack) == 0 {
+		return
+	}
+	e.callStack = e.callStack[:len(e.callStack)-1]
+}
+
+func (e *Evaluator) currentCallFrame() (string, object.Object, bool) {
+	if len(e.callStack) == 0 {
+		return "", nil, false
+	}
+	top := e.callStack[len(e.callStack)-1]
+	return top.FnName, top.FnObj, true
 }
 
 func (e *Evaluator) Eval(node ast.Node) object.Object {
@@ -264,6 +293,48 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			slog.Any("argument-count", len(args)))
 		// For non-tail calls, invoke the function directly
 		return e.ApplyFunction(node.Token.Literal, function, args)
+
+	case *ast.RecurExpression:
+		// Evaluate arguments (respecting spread, same as call)
+		var args []object.Object
+		for _, arg := range node.Arguments {
+			if spreadExpr, ok := arg.(*ast.SpreadExpression); ok {
+				spreadValue := e.Eval(spreadExpr.Value)
+				if e.isError(spreadValue) {
+					return spreadValue
+				}
+
+				list, ok := spreadValue.(*object.List)
+				if !ok {
+					return newErrorf("spread operator can only be used on lists, got %s", spreadValue.Type())
+				}
+				args = append(args, list.Elements...)
+			} else {
+				evaluatedArg := e.Eval(arg)
+				if e.isError(evaluatedArg) {
+					return evaluatedArg
+				}
+				args = append(args, evaluatedArg)
+			}
+		}
+
+		fnName, fnObj, ok := e.currentCallFrame()
+		if !ok || fnObj == nil {
+			// `recur` should only be valid inside a function body;
+			// semantic checks should normally prevent this, but guard at runtime too.
+			return newErrorf("recur used outside of a function")
+		}
+
+		slog.Debug("Tail recur",
+			slog.Any("function", fnName),
+			slog.Any("argument-count", len(args)))
+
+		// Map directly to TailCall for the current function
+		return &object.TailCall{
+			FnName:    fnName,
+			Function:  fnObj,
+			Arguments: args,
+		}
 
 	case *ast.ListLiteral:
 		elements := e.evalExpressions(node.Elements)
@@ -928,6 +999,10 @@ func (e *Evaluator) ApplyFunction(fnName string, fnObj object.Object, args []obj
 		}
 
 	case *object.Function:
+
+		// Track current function for `recur`
+		e.pushCallFrame(fnName, fn)
+		defer e.popCallFrame()
 
 		// Create a new call frame and push it
 		e.PushEnv(e.extendFunctionEnv(fn, args))

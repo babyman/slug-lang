@@ -48,6 +48,7 @@ f2=fn
 />
 0x"414243"
 0x""
+recur
 // comment at eof
 //`
 
@@ -185,6 +186,7 @@ f2=fn
 		{token.CALL_CHAIN, "/>"},
 		{token.BYTES, "414243"},
 		{token.BYTES, ""},
+		{token.RECUR, "recur"},
 		{token.EOF, ""},
 	}
 

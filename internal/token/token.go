@@ -79,6 +79,7 @@ const (
 	IF       = "IF"
 	ELSE     = "ELSE"
 	RETURN   = "RETURN"
+	RECUR    = "RECUR"
 	NIL      = "NIL"
 	TRY      = "TRY"
 	CATCH    = "CATCH"
@@ -110,6 +111,7 @@ var keywords = map[string]TokenType{
 	"else":   ELSE,
 	"match":  MATCH,
 	"return": RETURN,
+	"recur":  RECUR,
 
 	// error handling
 	"try":   TRY,

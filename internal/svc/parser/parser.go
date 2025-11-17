@@ -104,6 +104,7 @@ func New(l lexer.Tokenizer, source string) *Parser {
 	p.registerPrefix(token.MATCH, p.parseMatchExpression)
 	p.registerPrefix(token.VAR, p.parseVarStatement)
 	p.registerPrefix(token.VAL, p.parseValStatement)
+	p.registerPrefix(token.RECUR, p.parseRecurExpression)
 
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
@@ -162,12 +163,20 @@ func (p *Parser) addError(message string, args ...interface{}) {
 
 func (p *Parser) peekError(t token.TokenType) {
 	// Line and column are extracted using the position of the peek token.
-	p.addError("expected next token to be %s, got %s instead", t, p.peekToken.Type)
+	p.addErrorAt(p.peekToken.Position, "expected next token to be %s, got %s instead", t, p.peekToken.Type)
 }
 
 func (p *Parser) noPrefixParseFnError(t token.TokenType) {
 	// Line and column are extracted using the position of the current token.
 	p.addError("no prefix parse function for %s found", t)
+}
+
+// addErrorAt reports an error at the given absolute position in the source.
+func (p *Parser) addErrorAt(pos int, message string, args ...interface{}) {
+	line, col := GetLineAndColumn(p.src, pos)
+	m := fmt.Sprintf(message, args...)
+	msg := fmt.Sprintf("[%3d:%2d] %s", line, col, m)
+	p.errors = append(p.errors, msg)
 }
 
 // Update `expectPeek` to include line and column context when a peek error happens
@@ -907,6 +916,9 @@ func (p *Parser) parseFunctionLiteral() ast.Expression {
 	// Analyze function body for tail calls
 	setTailCallFlags(lit)
 
+	// Validate that all `recur` occurrences are in tail position
+	p.validateRecurUsage(lit)
+
 	return lit
 }
 
@@ -958,6 +970,11 @@ func markTailCall(expr ast.Expression) bool {
 	case *ast.CallExpression:
 		// This is a direct tail call
 		e.IsTailCall = true
+		return true
+
+	case *ast.RecurExpression:
+		// recur is always a tail call if we see it in a tail position
+		// (enforced by how this function is called)
 		return true
 
 	case *ast.IfExpression:
@@ -1115,6 +1132,25 @@ func (p *Parser) generateSignature(params []*ast.FunctionParameter) ast.FSig {
 	}
 
 	return sig
+}
+
+func (p *Parser) parseRecurExpression() ast.Expression {
+	// Current token is 'recur'
+	expr := &ast.RecurExpression{
+		Token:     p.curToken,
+		Arguments: nil,
+	}
+
+	// Expect '(' after 'recur'
+	if !p.expectPeek(token.LPAREN) {
+		return nil
+	}
+
+	// Reuse generic expression list parsing until ')'
+	args := p.parseExpressionList(token.RPAREN)
+	expr.Arguments = args
+
+	return expr
 }
 
 func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression {
@@ -1506,4 +1542,141 @@ func GetLineAndColumn(src string, pos int) (line int, column int) {
 		}
 	}
 	return
+}
+
+// validateRecurUsage ensures that all `recur` expressions inside a function
+// appear only in tail position. Violations are reported as parser errors.
+func (p *Parser) validateRecurUsage(fn *ast.FunctionLiteral) {
+	if fn.Body == nil {
+		return
+	}
+	// The function body as a whole is in tail position.
+	p.validateRecurInBlock(fn.Body, true)
+}
+
+// validateRecurInBlock walks a block and validates `recur` usage.
+// `inTail` indicates whether the *result* of this block is in tail position.
+func (p *Parser) validateRecurInBlock(block *ast.BlockStatement, inTail bool) {
+	if block == nil || len(block.Statements) == 0 {
+		return
+	}
+
+	for i, stmt := range block.Statements {
+		// Only the last statement can be in tail position relative to this block.
+		stmtInTail := inTail && (i == len(block.Statements)-1)
+		p.validateRecurInStatement(stmt, stmtInTail)
+	}
+}
+
+// validateRecurInStatement validates recur usage in a single statement,
+// propagating tail-position information appropriately.
+func (p *Parser) validateRecurInStatement(stmt ast.Statement, inTail bool) {
+	switch s := stmt.(type) {
+	case *ast.ReturnStatement:
+		// The returned expression is in tail position.
+		p.validateRecurInExpr(s.ReturnValue, true)
+
+	case *ast.ExpressionStatement:
+		// The expression is tail-position only if this statement is.
+		p.validateRecurInExpr(s.Expression, inTail)
+
+	default:
+		// Other statement types cannot be in tail position (their inner
+		// expressions are not used as the function result), so any `recur`
+		// inside them is always invalid.
+		// We still traverse their sub-expressions with inTail=false if needed later.
+	}
+}
+
+// validateRecurInExpr walks an expression tree and reports non-tail `recur` usage.
+// `inTail` is true only when this expression as a whole is in tail position.
+func (p *Parser) validateRecurInExpr(expr ast.Expression, inTail bool) {
+	if expr == nil {
+		return
+	}
+
+	switch e := expr.(type) {
+	case *ast.RecurExpression:
+		// `recur` is only allowed when the entire expression is in tail position.
+		if !inTail {
+			p.addErrorAt(e.Token.Position, "'recur' is only allowed in tail position")
+		}
+		// No need to descend further; `recur` has only arguments which are not expressions themselves here.
+
+	case *ast.IfExpression:
+		// Condition is never tail position.
+		p.validateRecurInExpr(e.Condition, false)
+
+		// The result of the then/else block is the result of the if-expression.
+		p.validateRecurInBlock(e.ThenBranch, inTail)
+		if e.ElseBranch != nil {
+			p.validateRecurInBlock(e.ElseBranch, inTail)
+		}
+
+	case *ast.MatchExpression:
+		// The matched value is not tail-position.
+		if e.Value != nil {
+			p.validateRecurInExpr(e.Value, false)
+		}
+
+		// Each case body contributes to the result of the whole match.
+		for _, c := range e.Cases {
+			if c == nil {
+				continue
+			}
+			// Pattern and guard are never tail-position.
+			// (Patterns are not expressions; guard is a condition.)
+			if c.Guard != nil {
+				p.validateRecurInExpr(c.Guard, false)
+			}
+			if c.Body != nil {
+				p.validateRecurInBlock(c.Body, inTail)
+			}
+		}
+
+	case *ast.CallExpression:
+		// Even if the call itself is in tail position, its callee/args are not.
+		p.validateRecurInExpr(e.Function, false)
+		for _, arg := range e.Arguments {
+			p.validateRecurInExpr(arg, false)
+		}
+
+	case *ast.PrefixExpression:
+		p.validateRecurInExpr(e.Right, false)
+
+	case *ast.InfixExpression:
+		p.validateRecurInExpr(e.Left, false)
+		p.validateRecurInExpr(e.Right, false)
+
+	case *ast.ListLiteral:
+		for _, el := range e.Elements {
+			p.validateRecurInExpr(el, false)
+		}
+
+	case *ast.MapLiteral:
+		for k, v := range e.Pairs {
+			p.validateRecurInExpr(k, false)
+			p.validateRecurInExpr(v, false)
+		}
+
+	case *ast.IndexExpression:
+		p.validateRecurInExpr(e.Left, false)
+		p.validateRecurInExpr(e.Index, false)
+
+	case *ast.SliceExpression:
+		p.validateRecurInExpr(e.Start, false)
+		p.validateRecurInExpr(e.End, false)
+		p.validateRecurInExpr(e.Step, false)
+
+	case *ast.SpreadExpression:
+		p.validateRecurInExpr(e.Value, false)
+
+	case *ast.FunctionLiteral:
+		// Nested function literals have their own tail-position semantics.
+		// Don't propagate outer tailness into inner functions.
+		p.validateRecurUsage(e)
+
+	default:
+		// For literals, identifiers, etc., there is nothing to check.
+	}
 }

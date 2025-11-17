@@ -10,7 +10,7 @@ var fizzBuzz = fn(max, acc = 1) {
 			[_, 0] => "Buzz";
 			_ => acc;
 		} /> println();
-		fizzBuzz(max, acc + 1);
+		recur(max, acc + 1);
 	}
 }
 

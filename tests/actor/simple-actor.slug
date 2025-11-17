@@ -9,7 +9,7 @@ var ping = fn() {
 	match receive() {
 		{from, msg} => {
 				from /> send("pong: " + msg);      // reply
-				ping();                            // recurse
+				recur();                           // recurse
 			}
 		_ => println("exit {{ self() }}!");
 	}

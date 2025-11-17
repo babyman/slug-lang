@@ -6,12 +6,18 @@ var {*} = import(
 
 // and
 // --------
-assert(true && true, "true && true");
-assert(true && false == false, "true && false == false");
-assert(!(true && false), "true && false");
+(true && true) /> assertTrue("true && true");
+(true && false == false) /> assertTrue("true && false == false");
+(!(true && false)) /> assertTrue("true && false");
 
 // or
 // --------
-assert(true || true, "true || true");
-assert(true || false, "true || false");
+(true || true) /> assertTrue("true || true");
+(true || false) /> assertTrue("true || false");
+
+
+// not
+// --------
+(!true) /> assertFalse("!true");
+(!false) /> assertTrue("!false");
 

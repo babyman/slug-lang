@@ -16,7 +16,7 @@ var rnd = fn(values, counter = 0) {
         values
     } else {
         values = values /> compute(rndRange(0, 10), fn(k, v) {if(v == nil) {1} else {v + 1}});
-        rnd(values, counter - 1)
+        recur(values, counter - 1)
     }
 }
 
