@@ -13,14 +13,14 @@ import (
 	"time"
 )
 
-type Runner struct {
+type SlugProgramActor struct {
 	Config  util.Configuration
 	Mailbox chan SlugActorMessage
 	// internal state
 	started bool
 }
 
-func (r *Runner) WaitForMessage(timeout int64) (any, bool) {
+func (r *SlugProgramActor) WaitForMessage(timeout int64) (any, bool) {
 	if timeout <= 0 {
 		msg := <-r.Mailbox
 		return msg, true
@@ -34,7 +34,7 @@ func (r *Runner) WaitForMessage(timeout int64) (any, bool) {
 	}
 }
 
-func (r *Runner) Run(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
+func (r *SlugProgramActor) Run(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	fwdMsg := svc.UnpackFwd(msg)
 
 	switch payload := fwdMsg.Payload.(type) {
@@ -77,7 +77,7 @@ func (r *Runner) Run(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSigna
 	}
 }
 
-func (r *Runner) evaluateMessagePayload(ctx *kernel.ActCtx, payload svc.EvaluateProgram) object.Object {
+func (r *SlugProgramActor) evaluateMessagePayload(ctx *kernel.ActCtx, payload svc.EvaluateProgram) object.Object {
 
 	// Optional profiling via env var: SLUG_CPU_PROFILE=<path>
 	profPath := os.Getenv("SLUG_CPU_PROFILE")

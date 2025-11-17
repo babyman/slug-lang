@@ -21,7 +21,7 @@ type EvaluatorService struct {
 func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	switch payload := msg.Payload.(type) {
 	case svc.EvaluateProgram:
-		worker := Runner{
+		worker := SlugProgramActor{
 			Config:  m.Config,
 			Mailbox: make(chan SlugActorMessage),
 		}
