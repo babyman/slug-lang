@@ -1,0 +1,10 @@
+var log = import("slug.log")
+
+
+log.configureLogging(log.TRACE);
+
+log.trace("hello Slug");
+log.debug("hello Slug");
+log.info("hello Slug");
+log.warn("hello Slug");
+log.error("hello Slug");
