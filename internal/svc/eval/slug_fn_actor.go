@@ -3,6 +3,7 @@ package eval
 import (
 	"log/slog"
 	"slug/internal/dec64"
+	"slug/internal/foreign"
 	"slug/internal/kernel"
 	"slug/internal/object"
 )
@@ -23,23 +24,20 @@ func fnActorSpawn() *object.Foreign {
 				return ctx.NewError("wrong number of arguments. got=%d, want>=1", len(args))
 			}
 
-			fn, ok := args[0].(*object.FunctionGroup)
+			objects := args[1:]
+			fun, ok := foreign.ToFunctionArgument(args[0], objects)
 			if !ok {
 				return ctx.NewError("first argument to `spawn` must be FUNCTION, got=%s", args[0].Type())
 			}
-			a := args[1:]
 
-			function, ok := fn.DispatchToFunction("", a)
-			f, ok := function.(*object.Function)
-
-			actor := NewSlugFunctionActor(ctx.GetConfiguration(), f)
+			actor := NewSlugFunctionActor(ctx.GetConfiguration(), fun)
 			pid, err := ctx.ActCtx().SpawnChild("slug-actor", Operations, actor.Run)
 			if err != nil {
 				return ctx.NewError("failed to spawn actor: %v", err)
 			}
 
 			ctx.ActCtx().SendAsync(pid, SlugStart{
-				Args: a,
+				Args: objects,
 			})
 
 			return &object.Number{Value: dec64.FromInt64(int64(pid))}

@@ -17,3 +17,13 @@ foreign receive = fn(@num timeout_ms = 0); // -> msg | nil
 
 @export
 foreign terminate = fn(@num pid);
+
+
+@export
+var spawnFn = fn(@fun f, ...args) {
+	val replyTo = self();
+	spawn(fn() {
+		send(replyTo, f(...args));
+	});
+}
+
