@@ -77,8 +77,9 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.string.trim":    fnStringTrim(),
 
 		"slug.sys.env":    fnSysEnv(),
-		"slug.sys.setEnv": fnSysSetEnv(),
+		"slug.sys.exec":   fnSysExec(),
 		"slug.sys.exit":   fnSysExit(),
+		"slug.sys.setEnv": fnSysSetEnv(),
 
 		"slug.time.clock":      fnTimeClock(),
 		"slug.time.fmtClock":   fnTimeFmtClock(),

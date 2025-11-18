@@ -25,7 +25,7 @@ var assertFalse = fn(a, msg = nil) {
 var assertEqual = fn(a, b, msg = nil) {
     if ( a != b ) {
         if ( !msg ) {
-            msg = "{{a}} is not equal to {{b}}";
+            msg = "'{{a}}' is not equal to '{{b}}'";
         }
         throw AssertionError({msg: msg});
     }

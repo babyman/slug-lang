@@ -12,3 +12,12 @@ foreign setEnv = fn(@str str);
 
 @export
 foreign exit = fn(@num exitCode);
+
+// exec runs a system command and returns [stdout, stderr] as strings.
+// Parameters:
+//   cmd - full command line to execute (e.g. "ls -al", "git status")
+//   timeout - a timeout in milliseconds
+// Returns:
+//   list [stdout, stderr]
+@export
+foreign exec = fn(@str cmd, @num timeout = 0);
