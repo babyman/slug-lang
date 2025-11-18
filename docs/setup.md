@@ -49,17 +49,3 @@ export PATH="$SLUG_HOME/bin:$PATH"
 If you are using [Sublime Text](https://www.sublimetext.com/3), you can install
 the [Slug Syntax Highlighting](https://github.com/babyman/slug-lang/tree/master/extras/Slug.sublime-package) by
 downloading the package and placing it in your Sublime Text `Packages/User` directory.
-
-## Docker
-
-Running `slug` in a container is also possible, I'm using `podman` but the same commands will work with
-`docker`:
-
-```shell
-# build the image
-podman build -t slug .
-# running an example script
-podman run -v $(pwd):/data slug ./extras/examples/password-generator.slug
-```
-
-See `extras/scripts/slug-cli.sh` for a simple wrapper script to run the docker image.

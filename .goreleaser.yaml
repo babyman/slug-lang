@@ -53,6 +53,8 @@ changelog:
       regexp: "^refactor(.*)"
     - title: "Fixes"
       regexp: "^fix(.*)"
+    - title: "Chores"
+      regexp: "^chore(.*)"
 
 release:
   make_latest: true
