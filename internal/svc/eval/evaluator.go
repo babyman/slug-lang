@@ -33,10 +33,12 @@ func OrBytes(a, b byte) byte  { return a | b }
 func XorBytes(a, b byte) byte { return a ^ b }
 
 type Evaluator struct {
-	Config       util.Configuration
-	envStack     []*object.Environment // Environment stack encapsulated in an evaluator struct
-	SlugReceiver kernel.SlugReceiver   // can be null
-	Ctx          *kernel.ActCtx
+	Config         util.Configuration
+	Sandbox        bool
+	AllowedImports []string
+	envStack       []*object.Environment // Environment stack encapsulated in an evaluator struct
+	SlugReceiver   kernel.SlugReceiver   // can be null
+	Ctx            *kernel.ActCtx
 
 	// callStack keeps track of the current function for things like `recur`
 	callStack []struct {
@@ -410,8 +412,22 @@ func (e *Evaluator) evalProgram(program *ast.Program) object.Object {
 	return result
 }
 
-func (e *Evaluator) LoadModule(pathParts []string) (*object.Module, error) {
+func (e *Evaluator) LoadModule(modName string) (*object.Module, error) {
 
+	if e.Sandbox {
+		allowed := false
+		for _, m := range e.AllowedImports {
+			if m == modName {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			return nil, errors.New("module not allowed")
+		}
+	}
+
+	pathParts := strings.Split(modName, ".")
 	modsId, _ := e.Ctx.K.ActorByName(svc.ModuleService)
 	reply, err := e.Ctx.SendSync(modsId, modules.LoadModule{
 		PathParts: pathParts,

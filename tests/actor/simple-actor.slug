@@ -8,8 +8,8 @@ var {*} = import(
 var ping = fn() {
 	match receive() {
 		{from, msg} => {
-				from /> send("pong: " + msg);      // reply
-				recur();                           // recurse
+				from /> send("pong: " + msg);
+				recur();
 			}
 		_ => println("exit {{ self() }}!");
 	}

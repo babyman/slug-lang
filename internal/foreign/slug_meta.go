@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"slug/internal/ast"
 	"slug/internal/object"
-	"strings"
 )
 
 func fnMetaHasTag() *object.Foreign {
@@ -83,7 +82,7 @@ func fnMetaSearchModuleTags() *object.Foreign {
 			}
 
 			// Load the targeted module
-			module, err := ctx.LoadModule(strings.Split(moduleName.Value, "."))
+			module, err := ctx.LoadModule(moduleName.Value)
 			if err != nil {
 				return ctx.NewError("failed to load module '%s': %s", moduleName.Value, err.Error())
 			}

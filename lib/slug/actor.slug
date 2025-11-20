@@ -4,6 +4,10 @@ foreign spawn = fn(@fun f, ...args); // -> pid
 
 
 @export
+foreign spawnSrc = fn(@str src, @list allowedImports = []); // -> pid
+
+
+@export
 foreign self = fn(); // -> pid
 
 

@@ -60,7 +60,7 @@ type EvaluatorContext interface {
 	NewError(message string, a ...interface{}) *Error
 	Nil() *Nil
 	NativeBoolToBooleanObject(input bool) *Boolean
-	LoadModule(pathParts []string) (*Module, error)
+	LoadModule(pathParts string) (*Module, error)
 	ActCtx() *kernel.ActCtx
 	GetConfiguration() util.Configuration
 	WaitForMessage(timeout int64) (any, bool)

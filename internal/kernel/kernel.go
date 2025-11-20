@@ -159,8 +159,9 @@ func (k *Kernel) runActor(a *Actor) {
 	for msg := range a.inbox {
 		if exit, ok := msg.Payload.(Exit); ok {
 			k.cleanupActor(a, exit.Reason)
-			slog.Info("actor exiting",
-				slog.String("name", a.Name),
+			slog.Error("actor exiting",
+				slog.Any("actor-id", a.Id),
+				slog.String("actor-name", a.Name),
 				slog.String("reason", exit.Reason))
 			return
 		}
@@ -175,6 +176,10 @@ func (k *Kernel) runActor(a *Actor) {
 			continue
 		case Terminate:
 			k.cleanupActor(a, signal.Reason)
+			slog.Info("actor terminating",
+				slog.Any("actor-id", a.Id),
+				slog.String("actor-name", a.Name),
+				slog.String("reason", signal.Reason))
 			return
 		case Restart:
 			k.cleanupActor(a, signal.Reason)

@@ -28,6 +28,7 @@ func getForeignFunctions() map[string]*object.Foreign {
 			"slug.actor.self":      fnActorSelf(),
 			"slug.actor.send":      fnActorSend(),
 			"slug.actor.spawn":     fnActorSpawn(),
+			"slug.actor.spawnSrc":  fnActorSpawnSrc(),
 			"slug.actor.terminate": fnActorTerminate(),
 		}
 		for k, v := range foreign.GetForeignFunctions() {

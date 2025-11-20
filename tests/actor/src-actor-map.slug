@@ -1,0 +1,18 @@
+var {*} = import(
+	"slug.test",
+	"slug.actor",
+);
+
+// 
+// `spawnSrc` allows a string to be compiled and executed in a secure environment
+// 
+var srcActor = spawnSrc("""
+a + b;
+""");
+
+// 
+// map messages to the src actor are bound to to variables by their key in its
+// execution environment.
+//
+srcActor /> send({a: 10, b: 15})
+receive(100) /> assertEqual(25);

@@ -13,6 +13,10 @@ import (
 	"time"
 )
 
+const (
+	ProgramArgs = "args"
+)
+
 type SlugProgramActor struct {
 	Config  util.Configuration
 	Mailbox chan SlugActorMessage
@@ -107,7 +111,7 @@ func (r *SlugProgramActor) evaluateMessagePayload(ctx *kernel.ActCtx, payload sv
 	for i, arg := range payload.Args {
 		objects[i] = &object.String{Value: arg}
 	}
-	env.Define("args", &object.List{Elements: objects}, false, false)
+	env.Define(ProgramArgs, &object.List{Elements: objects}, false, false)
 
 	env.Path = payload.Path
 	env.ModuleFqn = payload.Name

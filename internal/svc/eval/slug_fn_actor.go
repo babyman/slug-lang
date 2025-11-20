@@ -1,11 +1,16 @@
 package eval
 
 import (
+	"bytes"
+	"fmt"
 	"log/slog"
 	"slug/internal/dec64"
 	"slug/internal/foreign"
 	"slug/internal/kernel"
 	"slug/internal/object"
+	"slug/internal/svc"
+	"slug/internal/svc/lexer"
+	"slug/internal/svc/parser"
 )
 
 func fnActorSelf() *object.Foreign {
@@ -45,6 +50,78 @@ func fnActorSpawn() *object.Foreign {
 	}
 }
 
+func fnActorSpawnSrc() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) < 1 && len(args) > 2 {
+				return ctx.NewError("wrong number of arguments. got=%d, want=1 or 2", len(args))
+			}
+
+			// Expect a slug string value as per `foreign spawnSrc = fn(@str src)`
+			srcObj, ok := args[0].(*object.String)
+			if !ok {
+				return ctx.NewError("argument to `spawnSrc` must be STRING, got=%s", args[0].Type())
+			}
+
+			var allowedImports []string
+			if len(args) == 2 {
+				importList, ok := args[1].(*object.List)
+				if !ok {
+					return ctx.NewError("second argument to `spawnSrc` must be ARRAY, got=%s", args[1].Type())
+				}
+				for _, imp := range importList.Elements {
+					if strObj, ok := imp.(*object.String); ok {
+						allowedImports = append(allowedImports, strObj.Value)
+					} else {
+						return ctx.NewError("import list must contain only strings, got=%s", imp.Type())
+					}
+				}
+			}
+
+			src := srcObj.Value
+
+			lexId, _ := ctx.ActCtx().K.ActorByName(svc.LexerService)
+			parseId, _ := ctx.ActCtx().K.ActorByName(svc.ParserService)
+
+			lex, err := ctx.ActCtx().SendSync(lexId, lexer.LexString{Sourcecode: src})
+			if err != nil {
+				slog.Error("Failed to lex src",
+					slog.Any("error", err))
+				return ctx.NewError("failed to lex source: %s", err.Error())
+			}
+
+			tokens := lex.Payload.(lexer.LexedTokens).Tokens
+			slog.Debug("Lexed module",
+				slog.Any("tokens", tokens))
+
+			parse, err := ctx.ActCtx().SendSync(parseId, parser.ParseTokens{Sourcecode: src, Tokens: tokens})
+			if err != nil {
+				slog.Error("Failed to parse source",
+					slog.Any("error", err))
+				return ctx.NewError("failed to parse source: %s", err.Error())
+			}
+
+			ast := parse.Payload.(parser.ParsedAst).Program
+			errors := parse.Payload.(parser.ParsedAst).Errors
+			if len(errors) > 0 {
+				var out bytes.Buffer
+				for _, msg := range errors {
+					out.WriteString(fmt.Sprintf("\t%s\n", msg))
+				}
+				return ctx.NewError("parser errors: %s", out.String())
+			}
+
+			actor := NewSlugSandboxActor(ctx.GetConfiguration(), src, ast, allowedImports)
+			pid, err := ctx.ActCtx().SpawnChild("slug-sandbox-actor", Operations, actor.Run)
+			if err != nil {
+				return ctx.NewError("failed to spawn actor: %v", err)
+			}
+
+			return &object.Number{Value: dec64.FromInt64(int64(pid))}
+		},
+	}
+}
+
 func fnActorSend() *object.Foreign {
 	return &object.Foreign{
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
@@ -62,9 +139,9 @@ func fnActorSend() *object.Foreign {
 			msg := SlugActorMessage{
 				Msg: args[1],
 			}
-			//println("sending: ", msg.Msg.Inspect(), " to: ", pid)
+
 			err := ctx.ActCtx().SendAsync(pid, msg)
-			//println("sent: ", msg.Msg.Inspect(), " to: ", pid)
+
 			if err != nil {
 				return ctx.NewError("failed to send message: %v", err)
 			}
@@ -115,7 +192,19 @@ func fnActorTerminate() *object.Foreign {
 	return &object.Foreign{
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
-			slog.Error("ACT: Terminating actor NOT IMPLEMENTED YET")
+			if len(args) < 1 || len(args) > 2 {
+				return ctx.NewError("wrong number of arguments. got=%d, want=1..2", len(args))
+			}
+
+			pidObj, ok := args[0].(*object.Number)
+			if !ok {
+				return ctx.NewError("first argument to `terminate` must be NUMBER, got=%s", args[0].Type())
+			}
+
+			ctx.ActCtx().SendAsync(
+				kernel.ActorID(pidObj.Value.ToInt64()),
+				kernel.Exit{Reason: "actor terminated by user request"},
+			)
 
 			return ctx.Nil()
 		},

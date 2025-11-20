@@ -5,7 +5,6 @@ import (
 	"slug/internal/dec64"
 	"slug/internal/object"
 	"slug/internal/svc"
-	"strings"
 	"unicode/utf8"
 )
 
@@ -23,7 +22,7 @@ func fnBuiltinImport() *object.Foreign {
 				if arg.Type() != object.STRING_OBJ {
 					return ctx.NewError("argument %d to import must be a string", i)
 				}
-				module, err := ctx.LoadModule(strings.Split(arg.Inspect(), "."))
+				module, err := ctx.LoadModule(arg.Inspect())
 				if err != nil {
 					return ctx.NewError(err.Error())
 				}
