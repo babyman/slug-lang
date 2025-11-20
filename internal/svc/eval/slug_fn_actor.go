@@ -36,7 +36,7 @@ func fnActorSpawn() *object.Foreign {
 			}
 
 			actor := NewSlugFunctionActor(ctx.GetConfiguration(), fun)
-			pid, err := ctx.ActCtx().SpawnChild("slug-actor", Operations, actor.Run)
+			pid, err := ctx.ActCtx().SpawnChild("<anon>", Operations, actor.Run)
 			if err != nil {
 				return ctx.NewError("failed to spawn actor: %v", err)
 			}
@@ -112,7 +112,7 @@ func fnActorSpawnSrc() *object.Foreign {
 			}
 
 			actor := NewSlugSandboxActor(ctx.GetConfiguration(), src, ast, allowedImports)
-			pid, err := ctx.ActCtx().SpawnChild("slug-sandbox-actor", Operations, actor.Run)
+			pid, err := ctx.ActCtx().SpawnChild("<sb-anon>", Operations, actor.Run)
 			if err != nil {
 				return ctx.NewError("failed to spawn actor: %v", err)
 			}
@@ -207,6 +207,82 @@ func fnActorTerminate() *object.Foreign {
 			)
 
 			return ctx.Nil()
+		},
+	}
+}
+
+func fnActorRegister() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+
+			if len(args) != 2 {
+				return ctx.NewError("wrong number of arguments. got=%d, want=2", len(args))
+			}
+
+			pidObj, ok := args[0].(*object.Number)
+			if !ok {
+				return ctx.NewError("first argument to `register` must be NUMBER, got=%s", args[0].Type())
+			}
+
+			nameObj, ok := args[1].(*object.String)
+			if !ok {
+				return ctx.NewError("second argument to `register` must be STRING, got=%s", args[1].Type())
+			}
+
+			pid := kernel.ActorID(pidObj.Value.ToInt64())
+			ctx.ActCtx().K.Register(slugNamespace+nameObj.Value, pid)
+			return &object.Number{Value: dec64.FromInt64(int64(pid))}
+		},
+	}
+}
+
+func fnActorUnregister() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return ctx.NewError("wrong number of arguments. got=%d, want=1", len(args))
+			}
+
+			nameObj, ok := args[0].(*object.String)
+			if !ok {
+				return ctx.NewError("argument to `unregister` must be STRING, got=%s", args[0].Type())
+			}
+
+			pid := ctx.ActCtx().K.Unregister(slugNamespace + nameObj.Value)
+			return &object.Number{Value: dec64.FromInt64(int64(pid))}
+		},
+	}
+}
+
+func fnActorRegistered() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			names := ctx.ActCtx().K.Registered()
+			elements := make([]object.Object, 0)
+			for _, name := range names {
+				if len(name) > 5 && name[:5] == slugNamespace {
+					elements = append(elements, &object.String{Value: name[5:]})
+				}
+			}
+			return &object.List{Elements: elements}
+		},
+	}
+}
+
+func fnActorLookup() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return ctx.NewError("wrong number of arguments. got=%d, want=1", len(args))
+			}
+
+			nameObj, ok := args[0].(*object.String)
+			if !ok {
+				return ctx.NewError("argument to `lookup` must be STRING, got=%s", args[0].Type())
+			}
+
+			pid := ctx.ActCtx().K.Lookup(slugNamespace + nameObj.Value)
+			return &object.Number{Value: dec64.FromInt64(int64(pid))}
 		},
 	}
 }

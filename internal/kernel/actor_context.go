@@ -21,6 +21,10 @@ type IKernel interface {
 	SendInternal(from ActorID, to ActorID, payload any, respCh chan Message) error
 	RegisterCleanup(id ActorID, msg Message)
 	SpawnChild(parent ActorID, name string, ops OpRights, handler Handler) (ActorID, error)
+	Register(name string, pid ActorID)
+	Unregister(name string) ActorID
+	Registered() []string
+	Lookup(name string) ActorID
 }
 
 func (c *ActCtx) RegisterCleanup(msg Message) {

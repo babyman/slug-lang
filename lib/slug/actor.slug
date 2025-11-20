@@ -8,6 +8,28 @@ foreign spawnSrc = fn(@str src, @list allowedImports = []); // -> pid
 
 
 @export
+var spawnFn = fn(@fun f, ...args) {
+	val replyTo = self();
+	spawn(fn() {
+		match receive() {
+			[...args] => send(replyTo, f(...args));
+			arg => send(replyTo, f(arg));
+		}
+		recur();
+	});
+}
+
+
+@export
+var spawnWorker = fn(@fun f, ...args) {
+	val replyTo = self();
+	spawn(fn() {
+		send(replyTo, f(...args));
+	});
+}
+
+
+@export
 foreign self = fn(); // -> pid
 
 
@@ -24,10 +46,23 @@ foreign terminate = fn(@num pid);
 
 
 @export
-var spawnFn = fn(@fun f, ...args) {
-	val replyTo = self();
-	spawn(fn() {
-		send(replyTo, f(...args));
-	});
+foreign register = fn(@num pid, @str name); // -> pid
+
+
+@export
+foreign unregister = fn(@str name); // -> pid
+
+
+@export
+var registerReplace = fn(@num pid, @str name) { // -> pid
+	unregister(name) /> terminate;
+	pid /> register(name);
 }
+
+@export
+foreign registered = fn(); // -> list of name
+
+
+@export
+foreign lookup = fn(@str name); // -> pid
 

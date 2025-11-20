@@ -164,8 +164,8 @@ func main() {
 
 	_ = k.GrantCap(evalID, evalID, rwx, nil)
 	_ = k.GrantCap(evalID, lexerID, rwx, nil)
-	_ = k.GrantCap(evalID, parserID, rwx, nil)
 	_ = k.GrantCap(evalID, modsID, r, nil)
+	_ = k.GrantCap(evalID, parserID, rwx, nil)
 	_ = k.GrantCap(evalID, soutID, w, nil)
 
 	_ = k.GrantCap(replID, evalID, x, nil)

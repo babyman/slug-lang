@@ -24,12 +24,16 @@ func lookupForeign(name string) (*object.Foreign, bool) {
 func getForeignFunctions() map[string]*object.Foreign {
 	if foreignFunctions == nil {
 		foreignFunctions = map[string]*object.Foreign{
-			"slug.actor.receive":   fnActorReceive(),
-			"slug.actor.self":      fnActorSelf(),
-			"slug.actor.send":      fnActorSend(),
-			"slug.actor.spawn":     fnActorSpawn(),
-			"slug.actor.spawnSrc":  fnActorSpawnSrc(),
-			"slug.actor.terminate": fnActorTerminate(),
+			"slug.actor.lookup":     fnActorLookup(),
+			"slug.actor.receive":    fnActorReceive(),
+			"slug.actor.register":   fnActorRegister(),
+			"slug.actor.registered": fnActorRegistered(),
+			"slug.actor.self":       fnActorSelf(),
+			"slug.actor.send":       fnActorSend(),
+			"slug.actor.spawn":      fnActorSpawn(),
+			"slug.actor.spawnSrc":   fnActorSpawnSrc(),
+			"slug.actor.terminate":  fnActorTerminate(),
+			"slug.actor.unregister": fnActorUnregister(),
 		}
 		for k, v := range foreign.GetForeignFunctions() {
 			foreignFunctions[k] = v

@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	ProgramArgs = "args"
+	ProgramArgs   = "args"
+	slugNamespace = "slug:"
 )
 
 type SlugProgramActor struct {

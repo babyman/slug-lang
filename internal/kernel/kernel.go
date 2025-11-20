@@ -104,6 +104,38 @@ func (k *Kernel) RegisterActor(name string, handler Handler) ActorID {
 	return id
 }
 
+func (k *Kernel) Register(name string, pid ActorID) {
+	k.Mu.Lock()
+	defer k.Mu.Unlock()
+	if _, ok := k.Actors[pid]; ok {
+		k.NameIdx[name] = pid
+	}
+}
+
+func (k *Kernel) Unregister(name string) ActorID {
+	k.Mu.Lock()
+	defer k.Mu.Unlock()
+	id := k.NameIdx[name]
+	delete(k.NameIdx, name)
+	return id
+}
+
+func (k *Kernel) Registered() []string {
+	k.Mu.RLock()
+	defer k.Mu.RUnlock()
+	var result []string
+	for k, _ := range k.NameIdx {
+		result = append(result, k)
+	}
+	return result
+}
+
+func (k *Kernel) Lookup(name string) ActorID {
+	k.Mu.RLock()
+	defer k.Mu.RUnlock()
+	return k.NameIdx[name]
+}
+
 func (k *Kernel) SpawnChild(parent ActorID, name string, ops OpRights, handler Handler) (ActorID, error) {
 
 	k.Mu.Lock()
