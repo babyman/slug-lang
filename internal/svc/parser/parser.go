@@ -68,6 +68,7 @@ type (
 
 type Parser struct {
 	tokenizer   lexer.Tokenizer
+	Path        string
 	src         string // source code here
 	errors      []string
 	pendingTags []*ast.Tag
@@ -79,9 +80,10 @@ type Parser struct {
 	infixParseFns  map[token.TokenType]infixParseFn
 }
 
-func New(l lexer.Tokenizer, source string) *Parser {
+func New(l lexer.Tokenizer, path, source string) *Parser {
 	p := &Parser{
 		tokenizer: l,
+		Path:      path,
 		src:       source,
 		errors:    []string{},
 	}
@@ -177,11 +179,8 @@ func (p *Parser) addErrorAt(pos int, message string, args ...interface{}) {
 	// Build the error message in the new format
 	var errorMsg bytes.Buffer
 
-	// Line 1: ParseError message
 	errorMsg.WriteString(fmt.Sprintf("\nParseError: %s\n", m))
-
-	// Line 2: File location (assuming "main.slug" as the filename)
-	errorMsg.WriteString(fmt.Sprintf("    --> main.slug:%d:%d\n", line, col))
+	errorMsg.WriteString(fmt.Sprintf("    --> %s:%d:%d\n", p.Path, line, col))
 
 	// Get context lines (2 lines before, the error line, and potentially lines after)
 	lines := util.GetContextLines(p.src, line, col, pos)

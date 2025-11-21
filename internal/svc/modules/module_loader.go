@@ -84,7 +84,11 @@ func lexAndParseModule(
 		slog.Any("path", module.Path),
 		slog.Any("tokens", tokens))
 
-	parse, err := ctx.SendSync(parseId, parser.ParseTokens{Sourcecode: module.Src, Tokens: tokens})
+	parse, err := ctx.SendSync(parseId, parser.ParseTokens{
+		Path:       module.Path,
+		Sourcecode: module.Src,
+		Tokens:     tokens,
+	})
 	if err != nil {
 		slog.Warn("Failed to parse source",
 			slog.Any("error", err))

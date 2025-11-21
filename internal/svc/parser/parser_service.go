@@ -10,6 +10,7 @@ import (
 )
 
 type ParseTokens struct {
+	Path       string
 	Sourcecode string
 	Tokens     []token.Token
 }
@@ -65,7 +66,7 @@ func parseHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	fwdMsg := svc.UnpackFwd(msg)
 	switch payload := fwdMsg.Payload.(type) {
 	case ParseTokens:
-		p := New(NewTokenSliceProvider(payload.Tokens), payload.Sourcecode)
+		p := New(NewTokenSliceProvider(payload.Tokens), payload.Path, payload.Sourcecode)
 		program := p.ParseProgram()
 
 		slog.Debug("Parsed program", slog.Any("program-ast", program))

@@ -94,7 +94,11 @@ func fnActorSpawnSrc() *object.Foreign {
 			slog.Debug("Lexed module",
 				slog.Any("tokens", tokens))
 
-			parse, err := ctx.ActCtx().SendSync(parseId, parser.ParseTokens{Sourcecode: src, Tokens: tokens})
+			parse, err := ctx.ActCtx().SendSync(parseId, parser.ParseTokens{
+				Sourcecode: src,
+				Path:       "src-actor",
+				Tokens:     tokens,
+			})
 			if err != nil {
 				slog.Error("Failed to parse source",
 					slog.Any("error", err))
@@ -112,7 +116,7 @@ func fnActorSpawnSrc() *object.Foreign {
 			}
 
 			actor := NewSlugSandboxActor(ctx.GetConfiguration(), src, ast, allowedImports)
-			pid, err := ctx.ActCtx().SpawnChild("<sb-anon>", Operations, actor.Run)
+			pid, err := ctx.ActCtx().SpawnChild("<src-anon>", Operations, actor.Run)
 			if err != nil {
 				return ctx.NewError("failed to spawn actor: %v", err)
 			}

@@ -29,7 +29,7 @@ func (r *Repl) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSig
 
 		tokens := lex.Payload.(lexer.LexedTokens).Tokens
 
-		parse, err := ctx.SendSync(parseId, parser.ParseTokens{Sourcecode: payload.Src, Tokens: tokens})
+		parse, err := ctx.SendSync(parseId, parser.ParseTokens{Sourcecode: payload.Src, Path: "repl", Tokens: tokens})
 		if err != nil {
 			slog.Warn("Failed to parse file", slog.Any("error", err))
 			svc.Reply(ctx, fwdMsg, RsEvalResp{Error: err})
