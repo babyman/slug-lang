@@ -1,0 +1,465 @@
+var {*} = import(
+	"slug.string",
+	"slug.std",
+	"slug.list",
+);
+
+// ===========================
+// Public API
+// ===========================
+
+@testWith(
+	["hello"], "\"hello\"",
+	[42], "42",
+	[true], "true",
+	[false], "false",
+	[nil], "null",
+	[[1, 2, 3]], "[1,2,3]",
+	[{"name": "Alice", "age": 30}], "{\"age\":30,\"name\":\"Alice\"}",
+)
+@export
+var encode = fn(v) {
+	match (type(v)) {
+		"STRING"  => encodeString(v);
+		"NUMBER"  => encodeNumber(v);
+		"BOOLEAN" => encodeBool(v);
+		"NIL"     => "null";
+		"LIST"    => encodeList(v);
+		"MAP"     => encodeObject(v);
+		_ => error("json: unsupported type for encode: " + type(v));
+	}
+}
+
+@testWith(
+	["hello"], "\"hello\"",
+	[42], "42",
+	[true], "true",
+	[false], "false",
+	[nil], "null",
+	[[1, 2, 3]], "[1,2,3]",
+	[{"name": "Alice"}], "{\"name\":\"Alice\"}",
+)
+@export
+var stringify = fn(v) {
+	encode(v)
+}
+
+@testWith(
+	[{"name": "Alice", "age": 30}, 2], "{\n  \"age\": 30,\n  \"name\": \"Alice\"\n}",
+	[[1, 2, 3], 4], "[\n    1,\n    2,\n    3\n]",
+	["hello", 2], "\"hello\"",
+)
+@export
+var pretty = fn(v, @num indent = 2) {
+	prettyPrint(v, indent, 0)
+}
+
+@testWith(
+	["\"hello\""], "hello",
+	["42"], 42,
+	["true"], true,
+	["false"], false,
+	["null"], nil,
+	["[1,2,3]"], [1, 2, 3],
+	["{\"name\":\"Alice\",\"age\":30}"], {"name": "Alice", "age": 30},
+)
+@export
+var decode = fn(@str jsonStr) {
+	var tokens = tokenize(jsonStr, 0, len(jsonStr), []);
+	var result = parseValue(tokens, 0);
+	result.value
+}
+
+@testWith(
+	["\"hello\""], "hello",
+	["42"], 42,
+	["true"], true,
+	["false"], false,
+	["null"], nil,
+	["[1,2,3]"], [1, 2, 3],
+	["{\"name\":\"Alice\"}"], {"name": "Alice"},
+)
+@export
+var parse = fn(@str jsonStr) {
+	decode(jsonStr)
+}
+
+// ===========================
+// Encoding Helpers
+// ===========================
+
+var encodeString = fn(@str s) {
+	var escaped = s /> replaceAll("\\", "\\\\")
+		/> replaceAll("\"", "\\\"")
+		/> replaceAll("\n", "\\n")
+		/> replaceAll("\r", "\\r")
+		/> replaceAll("\t", "\\t")
+		/> replaceAll("\b", "\\b")
+		/> replaceAll("\f", "\\f");
+	"\"" + escaped + "\""
+}
+
+var encodeNumber = fn(@num n) {
+	toString(n)
+}
+
+var encodeBool = fn(@bool b) {
+	if (b) { "true"; } else { "false"; }
+}
+
+var encodeList = fn(@list lst) {
+	"[" + encodeListItems(lst, "") + "]"
+}
+
+var encodeListItems = fn(@list lst, @str acc) {
+	match lst {
+		[] => acc;
+		[h] => acc + encode(h);
+		[h, ...t] => encodeListItems(t, acc + encode(h) + ",");
+	}
+}
+
+var encodeObject = fn(@map m) {
+	var keys = m /> keys /> sort;
+	"{" + encodeObjectPairs(keys, m, "") + "}"
+}
+
+var encodeObjectPairs = fn(@list keys, @map m, @str acc) {
+	match keys {
+		[] => acc;
+		[k] => {
+			if (type(k) != "STRING") {
+				error("json: map keys must be strings, got: " + type(k));
+			} else {
+				acc + encodeString(k) + ":" + encode(m[k]);
+			}
+		}
+		[k, ...rest] => {
+			if (type(k) != "STRING") {
+				error("json: map keys must be strings, got: " + type(k));
+			} else {
+				encodeObjectPairs(rest, m, acc + encodeString(k) + ":" + encode(m[k]) + ",");
+			}
+		}
+	}
+}
+
+// ===========================
+// Pretty Printing
+// ===========================
+
+var prettyPrint = fn(v, @num indent, @num depth) {
+	match (type(v)) {
+		"STRING"  => encodeString(v);
+		"NUMBER"  => encodeNumber(v);
+		"BOOLEAN" => encodeBool(v);
+		"NIL"     => "null";
+		"LIST"    => prettyList(v, indent, depth);
+		"MAP"     => prettyObject(v, indent, depth);
+		_ => error("json: unsupported type for pretty: " + type(v))
+	}
+}
+
+var prettyList = fn(@list lst, @num indent, @num depth) {
+	if (len(lst) == 0) {
+		"[]"
+	} else {
+		var innerIndent = makeIndent(indent, depth + 1);
+		var outerIndent = makeIndent(indent, depth);
+		"[\n" + prettyListItems(lst, indent, depth + 1, innerIndent, "") + "\n" + outerIndent + "]"
+	}
+}
+
+var prettyListItems = fn(@list lst, @num indent, @num depth, @str indentStr, @str acc) {
+	match lst {
+		[] => acc;
+		[h] => acc + indentStr + prettyPrint(h, indent, depth);
+		[h, ...t] => prettyListItems(t, indent, depth, indentStr, acc + indentStr + prettyPrint(h, indent, depth) + ",\n");
+	}
+}
+
+var prettyObject = fn(@map m, @num indent, @num depth) {
+	var keys = m /> keys /> sort;
+	if (len(keys) == 0) {
+		"{}"
+	} else {
+		var innerIndent = makeIndent(indent, depth + 1);
+		var outerIndent = makeIndent(indent, depth);
+		"{\n" + prettyObjectPairs(keys, m, indent, depth + 1, innerIndent, "") + "\n" + outerIndent + "}"
+	}
+}
+
+var prettyObjectPairs = fn(@list keys, @map m, @num indent, @num depth, @str indentStr, @str acc) {
+	match keys {
+		[] => acc;
+		[k] => {
+			if (type(k) != "STRING") {
+				error("json: map keys must be strings, got: " + type(k));
+			} else {
+				acc + indentStr + encodeString(k) + ": " + prettyPrint(m[k], indent, depth);
+			}
+		}
+		[k, ...rest] => {
+			if (type(k) != "STRING") {
+				error("json: map keys must be strings, got: " + type(k));
+			} else {
+				prettyObjectPairs(rest, m, indent, depth, indentStr,
+					acc + indentStr + encodeString(k) + ": " + prettyPrint(m[k], indent, depth) + ",\n");
+			}
+		}
+	}
+}
+
+var makeIndent = fn(@num spaces, @num depth) {
+	" " * spaces * depth
+}
+
+// ===========================
+// Tokenizer
+// ===========================
+
+var tokenize = fn(@str s, @num i, @num n, @list tokens) {
+	if (i >= n) {
+		tokens
+	} else {
+		var c = s[i];
+
+		if (isWhitespace(c)) {
+			tokenize(s, i + 1, n, tokens)
+		} else if (c == "{") {
+			tokenize(s, i + 1, n, tokens :+ {"type": "lbrace"})
+		} else if (c == "}") {
+			tokenize(s, i + 1, n, tokens :+ {"type": "rbrace"})
+		} else if (c == "[") {
+			tokenize(s, i + 1, n, tokens :+ {"type": "lbracket"})
+		} else if (c == "]") {
+			tokenize(s, i + 1, n, tokens :+ {"type": "rbracket"})
+		} else if (c == ":") {
+			tokenize(s, i + 1, n, tokens :+ {"type": "colon"})
+		} else if (c == ",") {
+			tokenize(s, i + 1, n, tokens :+ {"type": "comma"})
+		} else if (c == "\"") {
+			var result = parseStringToken(s, i + 1, n, "");
+			tokenize(s, result.nextIdx, n, tokens :+ {"type": "string", "value": result.value})
+		} else if (c == "t") {
+			if (i + 4 <= n && s[i:i+4] == "true") {
+				tokenize(s, i + 4, n, tokens :+ {"type": "true"})
+			} else {
+				error("json: invalid token at position " + str(i))
+			}
+		} else if (c == "f") {
+			if (i + 5 <= n && s[i:i+5] == "false") {
+				tokenize(s, i + 5, n, tokens :+ {"type": "false"})
+			} else {
+				error("json: invalid token at position " + str(i))
+			}
+		} else if (c == "n") {
+			if (i + 4 <= n && s[i:i+4] == "null") {
+				tokenize(s, i + 4, n, tokens :+ {"type": "null"})
+			} else {
+				error("json: invalid token at position " + str(i))
+			}
+		} else if (isDigit(c) || c == "-") {
+			var result = parseNumberToken(s, i, n);
+			tokenize(s, result.nextIdx, n, tokens :+ {"type": "number", "value": result.value})
+		} else {
+			error("json: unexpected character '" + c + "' at position " + str(i))
+		}
+	}
+}
+
+var error = fn(@str msg) {
+	throw JsonError({msg: msg})
+}
+
+var isWhitespace = fn(@str c) {
+	c == " " || c == "\n" || c == "\r" || c == "\t"
+}
+
+var isDigit = fn(@str c) {
+	c >= "0" && c <= "9"
+}
+
+var parseStringToken = fn(@str s, @num i, @num n, @str acc) {
+	if (i >= n) {
+		error("json: unterminated string")
+	} else {
+		var c = s[i];
+
+		if (c == "\"") {
+			{"value": acc, "nextIdx": i + 1}
+		} else if (c == "\\") {
+			if (i + 1 >= n) {
+				error("json: unterminated escape sequence")
+			} else {
+				var nextChar = s[i + 1];
+				var unescaped = match nextChar {
+					"\"" => "\"";
+					"\\" => "\\";
+					"/" => "/";
+					"b" => "\b";
+					"f" => "\f";
+					"n" => "\n";
+					"r" => "\r";
+					"t" => "\t";
+					_ => error("json: invalid escape sequence \\" + nextChar)
+				};
+				parseStringToken(s, i + 2, n, acc + unescaped)
+			}
+		} else {
+			parseStringToken(s, i + 1, n, acc + c)
+		}
+	}
+}
+
+var parseNumberToken = fn(@str s, @num i, @num n) {
+	var j = i;
+
+	// Handle negative sign
+	if (j < n && s[j] == "-") {
+		j = j + 1;
+	}
+
+	// Parse integer part
+	if (j >= n || !isDigit(s[j])) {
+		error("json: invalid number at position " + str(i))
+	} else {
+		// Skip digits
+		j = skipDigits(s, j, n);
+
+		// Parse decimal part if present
+		if (j < n && s[j] == ".") {
+			j = j + 1;
+			if (j >= n || !isDigit(s[j])) {
+				error("json: invalid number, expected digit after decimal point")
+			} else {
+				j = skipDigits(s, j, n);
+			}
+		}
+
+		// Parse exponent if present
+		if (j < n && (s[j] == "e" || s[j] == "E")) {
+			j = j + 1;
+			if (j < n && (s[j] == "+" || s[j] == "-")) {
+				j = j + 1;
+			}
+			if (j >= n || !isDigit(s[j])) {
+				error("json: invalid number, expected digit in exponent")
+			} else {
+				j = skipDigits(s, j, n);
+			}
+		}
+
+		var numStr = s[i:j];
+		{"value": toNumber(numStr), "nextIdx": j}
+	}
+}
+
+var skipDigits = fn(@str s, @num i, @num n) {
+	if (i >= n || !isDigit(s[i])) {
+		i
+	} else {
+		skipDigits(s, i + 1, n)
+	}
+}
+
+// ===========================
+// Parser
+// ===========================
+
+var parseValue = fn(@list tokens, @num idx) {
+	if (idx >= len(tokens)) {
+		error("json: unexpected end of input")
+	} else {
+		var token = tokens[idx];
+		var tokenType = token["type"];
+
+		if (tokenType == "string") {
+			{"value": token["value"], "nextIdx": idx + 1}
+		} else if (tokenType == "number") {
+			{"value": token["value"], "nextIdx": idx + 1}
+		} else if (tokenType == "true") {
+			{"value": true, "nextIdx": idx + 1}
+		} else if (tokenType == "false") {
+			{"value": false, "nextIdx": idx + 1}
+		} else if (tokenType == "null") {
+			{"value": nil, "nextIdx": idx + 1}
+		} else if (tokenType == "lbracket") {
+			parseArray(tokens, idx + 1, [])
+		} else if (tokenType == "lbrace") {
+			parseObject(tokens, idx + 1, {})
+		} else {
+			error("json: unexpected token " + tokenType + " at position " + str(idx))
+		}
+	}
+}
+
+var parseArray = fn(@list tokens, @num idx, @list acc) {
+	if (idx >= len(tokens)) {
+		error("json: unexpected end of array")
+	} else {
+		var token = tokens[idx];
+
+		if (token["type"] == "rbracket") {
+			{"value": acc, "nextIdx": idx + 1}
+		} else {
+			var result = parseValue(tokens, idx);
+			var newAcc = acc :+ result.value;
+			var nextIdx = result.nextIdx;
+
+			if (nextIdx >= len(tokens)) {
+				error("json: unexpected end of array")
+			} else {
+				var nextToken = tokens[nextIdx];
+
+				if (nextToken["type"] == "comma") {
+					parseArray(tokens, nextIdx + 1, newAcc)
+				} else if (nextToken["type"] == "rbracket") {
+					{"value": newAcc, "nextIdx": nextIdx + 1}
+				} else {
+					error("json: expected comma or ] in array")
+				}
+			}
+		}
+	}
+}
+
+
+var parseObject = fn(@list tokens, @num idx, @map acc) {
+	if (idx >= len(tokens)) {
+		error("json: unexpected end of object")
+	} else {
+		var token = tokens[idx];
+
+		if (token["type"] == "rbrace") {
+			{"value": acc, "nextIdx": idx + 1}
+		} else if (token["type"] == "string") {
+			var key = token["value"];
+			var nextIdx = idx + 1;
+
+			if (nextIdx >= len(tokens) || tokens[nextIdx]["type"] != "colon") {
+				error("json: expected colon after object key")
+			} else {
+				var result = parseValue(tokens, nextIdx + 1);
+				var newAcc = acc /> put(key, result.value);
+				var afterValueIdx = result.nextIdx;
+
+				if (afterValueIdx >= len(tokens)) {
+					error("json: unexpected end of object")
+				} else {
+					var nextToken = tokens[afterValueIdx];
+
+					if (nextToken["type"] == "comma") {
+						parseObject(tokens, afterValueIdx + 1, newAcc)
+					} else if (nextToken["type"] == "rbrace") {
+						{"value": newAcc, "nextIdx": afterValueIdx + 1}
+					} else {
+						error("json: expected comma or } in object")
+					}
+				}
+			}
+		} else {
+			error("json: expected string key or } in object")
+		}
+	}
+}
