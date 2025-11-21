@@ -264,7 +264,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 				// Ensure the spread value is a list
 				list, ok := spreadValue.(*object.List)
 				if !ok {
-					return e.newErrorWithPos(spreadExpr.Token.Position, "spread operator can only be used on lists, got %s", spreadValue.Type())
+					return e.newErrorfWithPos(spreadExpr.Token.Position, "spread operator can only be used on lists, got %s", spreadValue.Type())
 				}
 
 				// Append all elements of the list to args
@@ -309,7 +309,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 
 				list, ok := spreadValue.(*object.List)
 				if !ok {
-					return e.newErrorWithPos(spreadExpr.Token.Position, "spread operator can only be used on lists, got %s", spreadValue.Type())
+					return e.newErrorfWithPos(spreadExpr.Token.Position, "spread operator can only be used on lists, got %s", spreadValue.Type())
 				}
 				args = append(args, list.Elements...)
 			} else {
@@ -659,7 +659,7 @@ func (e *Evaluator) evalShortCircuitInfixExpression(left object.Object, node *as
 		return FALSE
 
 	default:
-		return e.newErrorWithPos(node.Token.Position, "unknown operator for short-circuit evaluation: %s", node.Operator)
+		return e.newErrorfWithPos(node.Token.Position, "unknown operator for short-circuit evaluation: %s", node.Operator)
 	}
 }
 
@@ -971,14 +971,18 @@ func (e *Evaluator) isTruthy(obj object.Object) bool {
 }
 
 func (e *Evaluator) NewError(format string, a ...interface{}) *object.Error {
-	return e.newErrorWithPos(0, format, a...)
+	return e.newErrorfWithPos(0, format, a...)
 }
 
-func (e *Evaluator) newErrorWithPos(pos int, format string, a ...interface{}) *object.Error {
+func (e *Evaluator) newErrorfWithPos(pos int, format string, a ...interface{}) *object.Error {
+	m := fmt.Sprintf(format, a...)
+	return e.newErrorWithPos(pos, m)
+}
+
+func (e *Evaluator) newErrorWithPos(pos int, m string) *object.Error {
 	env := e.CurrentEnv()
 
 	line, col := util.GetLineAndColumn(env.Src, pos)
-	m := fmt.Sprintf(format, a...)
 
 	var errorMsg bytes.Buffer
 	errorMsg.WriteString(fmt.Sprintf("\nError: %s\n", m))
@@ -1133,7 +1137,7 @@ func (e *Evaluator) evalMapLiteral(
 
 		mapKey, ok := key.(object.Hashable)
 		if !ok {
-			return e.newErrorWithPos(node.Token.Position, "unusable as map key: %s", key.Type())
+			return e.newErrorfWithPos(node.Token.Position, "unusable as map key: %s", key.Type())
 		}
 
 		value := e.Eval(valueNode)
@@ -1183,7 +1187,7 @@ func (e *Evaluator) evalMatchCase(matchValue object.Object, matchCase *ast.Match
 		// Match the case's pattern against the matchValue
 		matched, err = e.patternMatches(matchCase.Pattern, matchValue, false, false, false)
 		if err != nil {
-			return e.newErrorWithPos(matchCase.Token.Position, "pattern match error: %s", err.Error()), true
+			return e.newErrorfWithPos(matchCase.Token.Position, "pattern match error: %s", err.Error()), true
 		}
 	} else {
 		// Valueless match condition
@@ -1635,7 +1639,7 @@ func (e *Evaluator) evalThrowStatement(node *ast.ThrowStatement) object.Object {
 		return val
 	}
 	if val.Type() != object.MAP_OBJ {
-		return e.newErrorWithPos(node.Token.Position, "throw argument must be a Map, got %s", val.Type())
+		return e.newErrorfWithPos(node.Token.Position, "throw argument must be a Map, got %s", val.Type())
 	}
 	env := e.CurrentEnv()
 	return &object.RuntimeError{
@@ -1861,7 +1865,7 @@ func (e *Evaluator) evalForeignFunctionDeclaration(ff *ast.ForeignFunctionDeclar
 		}
 		return NIL
 	}
-	return e.newErrorWithPos(ff.Token.Position, "unknown foreign function %s", fqn)
+	return e.newErrorfWithPos(ff.Token.Position, "unknown foreign function %s", fqn)
 }
 
 func (e *Evaluator) evalDefer(deferStmt *ast.DeferStatement) object.Object {
