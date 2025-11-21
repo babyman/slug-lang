@@ -9,6 +9,7 @@ import (
 	"slug/internal/dec64"
 	"slug/internal/svc/lexer"
 	"slug/internal/token"
+	"slug/internal/util"
 )
 
 const (
@@ -154,11 +155,13 @@ func (p *Parser) peekTokenIs(t token.TokenType) bool {
 	return p.peekToken.Type == t
 }
 
+func (p *Parser) noPrefixParseFnError(t token.TokenType) {
+	// Line and column are extracted using the position of the current token.
+	p.addError("no prefix parse function for '%s' found", t)
+}
+
 func (p *Parser) addError(message string, args ...interface{}) {
-	line, col := GetLineAndColumn(p.src, p.curToken.Position)
-	m := fmt.Sprintf(message, args...)
-	msg := fmt.Sprintf("[%3d:%2d] %s", line, col, m)
-	p.errors = append(p.errors, msg)
+	p.addErrorAt(p.curToken.Position, message, args...)
 }
 
 func (p *Parser) peekError(t token.TokenType) {
@@ -166,17 +169,25 @@ func (p *Parser) peekError(t token.TokenType) {
 	p.addErrorAt(p.peekToken.Position, "expected next token to be %s, got %s instead", t, p.peekToken.Type)
 }
 
-func (p *Parser) noPrefixParseFnError(t token.TokenType) {
-	// Line and column are extracted using the position of the current token.
-	p.addError("no prefix parse function for %s found", t)
-}
-
 // addErrorAt reports an error at the given absolute position in the source.
 func (p *Parser) addErrorAt(pos int, message string, args ...interface{}) {
-	line, col := GetLineAndColumn(p.src, pos)
+	line, col := util.GetLineAndColumn(p.src, pos)
 	m := fmt.Sprintf(message, args...)
-	msg := fmt.Sprintf("[%3d:%2d] %s", line, col, m)
-	p.errors = append(p.errors, msg)
+
+	// Build the error message in the new format
+	var errorMsg bytes.Buffer
+
+	// Line 1: ParseError message
+	errorMsg.WriteString(fmt.Sprintf("\nParseError: %s\n", m))
+
+	// Line 2: File location (assuming "main.slug" as the filename)
+	errorMsg.WriteString(fmt.Sprintf("    --> main.slug:%d:%d\n", line, col))
+
+	// Get context lines (2 lines before, the error line, and potentially lines after)
+	lines := util.GetContextLines(p.src, line, col, pos)
+	errorMsg.WriteString(lines)
+
+	p.errors = append(p.errors, errorMsg.String())
 }
 
 // Update `expectPeek` to include line and column context when a peek error happens
@@ -1524,24 +1535,6 @@ func (p *Parser) parseTag() *ast.Tag {
 	}
 
 	return annotation
-}
-
-// todo put this in a utils file
-func GetLineAndColumn(src string, pos int) (line int, column int) {
-	line = 1
-	column = 1
-	for i, char := range src {
-		if i == pos {
-			break
-		}
-		if char == '\n' {
-			line++
-			column = 1
-		} else {
-			column++
-		}
-	}
-	return
 }
 
 // validateRecurUsage ensures that all `recur` expressions inside a function

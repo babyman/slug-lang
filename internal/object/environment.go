@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slug/internal/ast"
-	"slug/internal/svc/parser"
+	"slug/internal/util"
 )
 
 // NewEnclosedEnvironment initializes an environment with a parent and optional stack frame.
@@ -185,13 +185,13 @@ func (e *Environment) Assign(name string, val Object) (Object, error) {
 
 func (e *Environment) GatherStackTrace(frame *StackFrame) []StackFrame {
 	var trace []StackFrame
-	line, col := parser.GetLineAndColumn(e.Src, frame.Position)
+	line, col := util.GetLineAndColumn(e.Src, frame.Position)
 	frame.Line = line
 	frame.Col = col
 	trace = append([]StackFrame{*frame}, trace...)
 	for e := e; e != nil; e = e.Outer {
 		if e.StackInfo != nil {
-			line, col := parser.GetLineAndColumn(e.Src, e.StackInfo.Position)
+			line, col := util.GetLineAndColumn(e.Src, e.StackInfo.Position)
 			e.StackInfo.Line = line
 			e.StackInfo.Col = col
 			trace = append([]StackFrame{*e.StackInfo}, trace...) // Prepend to maintain call order
