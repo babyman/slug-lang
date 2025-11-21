@@ -53,7 +53,7 @@ func (s *SlugFunctionActor) Run(ctx *kernel.ActCtx, msg kernel.Message) kernel.H
 				Config:       s.Config,
 				Ctx:          ctx,
 			}
-			out := e.ApplyFunction("<anon>", s.Function, args)
+			out := e.ApplyFunction(0, "<anon>", s.Function, args)
 
 			slog.Debug("function result",
 				slog.Any("result", out.Inspect()))

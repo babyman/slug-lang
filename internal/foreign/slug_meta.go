@@ -179,7 +179,7 @@ func fnMetaRebindScopeTags() *object.Foreign {
 				return ctx.NewError("second argument must be a supplier function")
 			} else {
 				supplier = func(name string, value object.Object, args object.Object) object.Object {
-					return ctx.ApplyFunction("<annon>", fn, []object.Object{
+					return ctx.ApplyFunction(0, "<annon>", fn, []object.Object{
 						&object.String{Value: name},
 						value,
 						args,
@@ -280,7 +280,7 @@ func fnMetaWithEnv() *object.Foreign {
 								Env:         composed,
 								HasTailCall: fn.HasTailCall,
 							}
-							return callCtx.ApplyFunction("<withEnv>", cloned, callArgs)
+							return callCtx.ApplyFunction(0, "<withEnv>", cloned, callArgs)
 						},
 					}
 					wrapped.Functions[sig] = adapter

@@ -295,7 +295,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			slog.Any("function", node.Token.Literal),
 			slog.Any("argument-count", len(args)))
 		// For non-tail calls, invoke the function directly
-		return e.ApplyFunction(node.Token.Literal, function, args)
+		return e.ApplyFunction(node.Token.Position, node.Token.Literal, function, args)
 
 	case *ast.RecurExpression:
 		// Evaluate arguments (respecting spread, same as call)
@@ -386,7 +386,7 @@ func (e *Evaluator) evalProgram(program *ast.Program) object.Object {
 
 		for {
 			if returnVal, ok := result.(*object.TailCall); ok {
-				result = e.ApplyFunction(returnVal.FnName, returnVal.Function, returnVal.Arguments)
+				result = e.ApplyFunction(0, returnVal.FnName, returnVal.Function, returnVal.Arguments)
 				//println("tail call", result.Type())
 			} else if returnVal, ok := result.(*object.ReturnValue); ok {
 				rv, ok := returnVal.Value.(*object.TailCall)
@@ -436,7 +436,13 @@ func (e *Evaluator) LoadModule(modName string) (*object.Module, error) {
 	if err != nil {
 		return nil, err
 	}
-	module := reply.Payload.(modules.LoadModuleResult).Module
+
+	result := reply.Payload.(modules.LoadModuleResult)
+	if result.Module == nil {
+		return nil, result.Error
+	}
+
+	module := result.Module
 
 	if module.Env != nil {
 		slog.Debug("return previously loaded module",
@@ -980,6 +986,11 @@ func (e *Evaluator) newErrorfWithPos(pos int, format string, a ...interface{}) *
 }
 
 func (e *Evaluator) newErrorWithPos(pos int, m string) *object.Error {
+
+	if pos == 0 {
+		return &object.Error{Message: m}
+	}
+
 	env := e.CurrentEnv()
 
 	line, col := util.GetLineAndColumn(env.Src, pos)
@@ -1022,13 +1033,13 @@ func (e *Evaluator) evalExpressions(
 	return result
 }
 
-func (e *Evaluator) ApplyFunction(fnName string, fnObj object.Object, args []object.Object) object.Object {
+func (e *Evaluator) ApplyFunction(pos int, fnName string, fnObj object.Object, args []object.Object) object.Object {
 	switch fn := fnObj.(type) {
 	case *object.FunctionGroup:
 
 		f, ok := fn.DispatchToFunction(fnName, args)
 		if ok {
-			return e.ApplyFunction(fnName, f, args)
+			return e.ApplyFunction(pos, fnName, f, args)
 		} else {
 			return f
 		}
@@ -1049,7 +1060,7 @@ func (e *Evaluator) ApplyFunction(fnName string, fnObj object.Object, args []obj
 
 		for {
 			if returnVal, ok := result.(*object.TailCall); ok {
-				result = e.ApplyFunction(fnName, returnVal.Function, returnVal.Arguments)
+				result = e.ApplyFunction(pos, fnName, returnVal.Function, returnVal.Arguments)
 			} else if returnVal, ok := result.(*object.ReturnValue); ok {
 				result = returnVal.Value
 			} else {
@@ -1064,7 +1075,8 @@ func (e *Evaluator) ApplyFunction(fnName string, fnObj object.Object, args []obj
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					result = e.newErrorf("error calling foreign function '%s'", fn.Name)
+					println(r.(error).Error())
+					result = e.newErrorfWithPos(pos, "error calling foreign function '%s'", fn.Name)
 				}
 			}()
 			result = fn.Fn(e, args...)
@@ -1073,9 +1085,9 @@ func (e *Evaluator) ApplyFunction(fnName string, fnObj object.Object, args []obj
 
 	default:
 		if fn == nil {
-			return e.newErrorf("no function found!")
+			return e.newErrorWithPos(pos, "no function found!")
 		}
-		return e.newErrorf("not a function: %s", fn.Type())
+		return e.newErrorfWithPos(pos, "not a function: %s", fn.Type())
 	}
 }
 

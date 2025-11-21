@@ -30,11 +30,11 @@ func fnListSortWithComparator() *object.Foreign {
 			var call func(args []object.Object) object.Object
 			if okFg {
 				call = func(args []object.Object) object.Object {
-					return ctx.ApplyFunction("", compFnGroup, args)
+					return ctx.ApplyFunction(0, "", compFnGroup, args)
 				}
 			} else {
 				call = func(args []object.Object) object.Object {
-					return ctx.ApplyFunction("", compFn, args)
+					return ctx.ApplyFunction(0, "", compFn, args)
 				}
 			}
 
