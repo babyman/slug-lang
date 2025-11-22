@@ -59,40 +59,29 @@ func GetContextLines(src string, errorLine, errorCol, errorPos int) string {
 
 		if i == errorLine {
 			// Error line with arrow
-			result.WriteString(fmt.Sprintf("  >  %2d | %s\n", lineNum, lineContent))
-			result.WriteString(fmt.Sprintf("        %s^ unexpected here",
-				repeatString(" ", calculateIndent(lineContent, errorCol))))
+			margin := fmt.Sprintf("  >  %3d | ", lineNum)
+			result.WriteString(fmt.Sprintf("%s%s\n", margin, lineContent))
+			result.WriteString(fmt.Sprintf("%s^ unexpected here",
+				replaceVisibleWithSpaces(margin+lineContent[:errorCol-1])))
 		} else {
 			// Context line
-			result.WriteString(fmt.Sprintf("     %2d | %s\n", lineNum, lineContent))
+			result.WriteString(fmt.Sprintf("     %3d | %s\n", lineNum, lineContent))
 		}
 	}
 
 	return result.String()
 }
 
-// Calculate proper column position accounting for tabs
-func calculateIndent(lineContent string, errorCol int) int {
-	indent := 0
-	for i := 0; i < len(lineContent) && i < errorCol-1; i++ {
-		if lineContent[i] == '\t' {
-			indent += 8 - (indent % 8)
+// replaceVisibleWithSpaces replaces all non-whitespace characters with spaces
+// while preserving tabs for correct alignment.
+func replaceVisibleWithSpaces(s string) string {
+	var buf bytes.Buffer
+	for _, c := range s {
+		if c == '\t' {
+			buf.WriteRune('\t')
 		} else {
-			indent++
+			buf.WriteRune(' ')
 		}
 	}
-	return indent
-}
-
-// repeatString returns a string consisting of count repetitions of s
-func repeatString(s string, count int) string {
-	if count <= 0 {
-		return ""
-	}
-	result := make([]byte, len(s)*count)
-	bp := 0
-	for i := 0; i < count; i++ {
-		bp += copy(result[bp:], s)
-	}
-	return string(result)
+	return buf.String()
 }
