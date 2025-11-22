@@ -35,22 +35,27 @@ var {*} = import(
 // @test - Marks a function as a test case that takes no parameters
 // @testWith - Allows test inputs and expected outputs to be specified
 //
-var TEST_WITH_TAG = "@testWith";
-var TEST_TAG = "@test";
+val TEST_WITH_TAG = "@testWith";
+val TEST_TAG = "@test";
+
+val FAIL = "\033[31;1m";
+val PASS = "\033[32m";
+val RESET = "\033[0m";
+
 var timer = delta(clock);
 
 var runTestFn = fn(f, name, stats) {
 	try {
 		f();
-		println("  [\033[32mPASS\033[0m] {{name}}()");
+		println("  [{{PASS}}PASS{{RESET}}] {{name}}()");
 	} catch err {
 		{type:"AssertionError", msg} => {
 			stats = stats /> compute("fail", fn(k, v) { v + 1});
-			println("  [\033[31mFAIL\033[0m] {{name}}(): {{msg}}")
+			println("  [{{FAIL}}FAIL{{RESET}}] {{name}}(): {{msg}}")
 		}
 		{type} => {
 			stats = stats /> compute("error", fn(k, v) { v + 1});
-			println("  [\033[31mERROR\033[0m] {{name}}() threw {{type}}")
+			println("  [{{FAIL}}ERROR{{RESET}}] {{name}}() threw {{type}}")
 		}
 	}
 	stats /> compute("run", fn(k, v) { v + 1});
@@ -63,18 +68,18 @@ var runTests = fn(f, name, args, stats) {
 			try {
 				val out = f(...params);
 				match out /> type() {
-					t if t == LIST_TYPE && out /> equals(expected) => println("  [\033[32mPASS\033[0m] {{name}}({{params}}) == {{out}}");
-					t if t == MAP_TYPE && out /> equals(expected) => println("  [\033[32mPASS\033[0m] {{name}}({{params}}) == {{out}}");
-					_ if out == expected => println("  [\033[32mPASS\033[0m] {{name}}({{params}}) == {{out}}");
+					t if t == LIST_TYPE && out /> equals(expected) => println("  [{{PASS}}PASS{{RESET}}] {{name}}({{params}}) == {{out}}");
+					t if t == MAP_TYPE && out /> equals(expected) => println("  [{{PASS}}PASS{{RESET}}] {{name}}({{params}}) == {{out}}");
+					_ if out == expected => println("  [{{PASS}}PASS{{RESET}}] {{name}}({{params}}) == {{out}}");
 					_ => {
 						stats = stats /> compute("fail", fn(k, v) { v + 1});
-						println("  [\033[31mFAIL\033[0m] {{name}}({{params}}) == {{out}} expected {{expected}}");
+						println("  [{{FAIL}}FAIL{{RESET}}] {{name}}({{params}}) == {{out}} expected {{expected}}");
 					}
 				}
 			} catch err {
 				{type} => {
 					stats = stats /> compute("error", fn(k, v) { v + 1});
-					println("  [\033[31mERROR\033[0m] {{name}}({{params}}) == threw {{type}} expected {{expected}}")
+					println("  [{{FAIL}}ERROR{{RESET}}] {{name}}({{params}}) == threw {{type}} expected {{expected}}")
 				}
 			}
 			stats = stats /> compute("run", fn(k, v) { v + 1});
@@ -106,6 +111,22 @@ var testRunner = fn(module, stats) {
 }
 
 var renderResult = fn(stats) {
+	if ( stats.fail > 0 || stats.error > 0 ) {
+"""
+{{FAIL}}
+*******************************************************************************
+** 
+** Results:
+** 
+** Tests run: {{stats.run}}, Failures: {{stats.fail}}, Errors: {{stats.error}}
+** 
+** Total time {{timer()}}ms
+** 
+*******************************************************************************
+{{RESET}}
+"""
+
+		} else {
 """
 
 Results:
@@ -115,6 +136,7 @@ Tests run: {{stats.run}}, Failures: {{stats.fail}}, Errors: {{stats.error}}
 Total time {{timer()}}ms
 
 """
+		}
 }
 
 var run = fn(stats, ...modules) {
