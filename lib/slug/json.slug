@@ -31,20 +31,6 @@ var encode = fn(v) {
 }
 
 @testWith(
-	["hello"], "\"hello\"",
-	[42], "42",
-	[true], "true",
-	[false], "false",
-	[nil], "null",
-	[[1, 2, 3]], "[1,2,3]",
-	[{"name": "Alice"}], "{\"name\":\"Alice\"}",
-)
-@export
-var stringify = fn(v) {
-	encode(v)
-}
-
-@testWith(
 	[{"name": "Alice", "age": 30}, 2], "{\n  \"age\": 30,\n  \"name\": \"Alice\"\n}",
 	[[1, 2, 3], 4], "[\n    1,\n    2,\n    3\n]",
 	["hello", 2], "\"hello\"",
@@ -67,21 +53,12 @@ var pretty = fn(v, @num indent = 2) {
 var decode = fn(@str jsonStr) {
 	var tokens = tokenize(jsonStr, 0, len(jsonStr), []);
 	var result = parseValue(tokens, 0);
-	result.value
-}
 
-@testWith(
-	["\"hello\""], "hello",
-	["42"], 42,
-	["true"], true,
-	["false"], false,
-	["null"], nil,
-	["[1,2,3]"], [1, 2, 3],
-	["{\"name\":\"Alice\"}"], {"name": "Alice"},
-)
-@export
-var parse = fn(@str jsonStr) {
-	decode(jsonStr)
+	if (result.nextIdx < len(tokens)) {
+		error("json: unexpected token at position " + result.nextIdx)
+	}
+
+	result.value
 }
 
 // ===========================
@@ -245,25 +222,25 @@ var tokenize = fn(@str s, @num i, @num n, @list tokens) {
 			if (i + 4 <= n && s[i:i+4] == "true") {
 				tokenize(s, i + 4, n, tokens :+ {"type": "true"})
 			} else {
-				error("json: invalid token at position " + str(i))
+				error("json: invalid token at position " + i)
 			}
 		} else if (c == "f") {
 			if (i + 5 <= n && s[i:i+5] == "false") {
 				tokenize(s, i + 5, n, tokens :+ {"type": "false"})
 			} else {
-				error("json: invalid token at position " + str(i))
+				error("json: invalid token at position " + i)
 			}
 		} else if (c == "n") {
 			if (i + 4 <= n && s[i:i+4] == "null") {
 				tokenize(s, i + 4, n, tokens :+ {"type": "null"})
 			} else {
-				error("json: invalid token at position " + str(i))
+				error("json: invalid token at position " + i)
 			}
 		} else if (isDigit(c) || c == "-") {
 			var result = parseNumberToken(s, i, n);
 			tokenize(s, result.nextIdx, n, tokens :+ {"type": "number", "value": result.value})
 		} else {
-			error("json: unexpected character '" + c + "' at position " + str(i))
+			error("json: unexpected character '" + c + "' at position " + i)
 		}
 	}
 }
@@ -322,11 +299,16 @@ var parseNumberToken = fn(@str s, @num i, @num n) {
 
 	// Parse integer part
 	if (j >= n || !isDigit(s[j])) {
-		error("json: invalid number at position " + str(i))
+		error("json: invalid number at position " + i)
 	} else {
-		// Skip digits
-		j = skipDigits(s, j, n);
-
+		if (s[j] == "0") {
+			j = j + 1;
+			if (j < n && isDigit(s[j])) {
+				error("json: invalid number, leading zeros are not allowed at position " + i)
+			}
+		} else {
+			j = skipDigits(s, j, n);
+		}
 		// Parse decimal part if present
 		if (j < n && s[j] == ".") {
 			j = j + 1;
@@ -385,23 +367,27 @@ var parseValue = fn(@list tokens, @num idx) {
 		} else if (tokenType == "null") {
 			{"value": nil, "nextIdx": idx + 1}
 		} else if (tokenType == "lbracket") {
-			parseArray(tokens, idx + 1, [])
+			parseArray(tokens, idx + 1, [], false)
 		} else if (tokenType == "lbrace") {
-			parseObject(tokens, idx + 1, {})
+			parseObject(tokens, idx + 1, {}, false)
 		} else {
-			error("json: unexpected token " + tokenType + " at position " + str(idx))
+			error("json: unexpected token " + tokenType + " at position " + idx)
 		}
 	}
 }
 
-var parseArray = fn(@list tokens, @num idx, @list acc) {
+var parseArray = fn(@list tokens, @num idx, @list acc, @bool afterComma) {
 	if (idx >= len(tokens)) {
 		error("json: unexpected end of array")
 	} else {
 		var token = tokens[idx];
 
 		if (token["type"] == "rbracket") {
-			{"value": acc, "nextIdx": idx + 1}
+			if (afterComma) {
+				error("json: trailing comma not allowed in array")
+			} else {
+				{"value": acc, "nextIdx": idx + 1}
+			}
 		} else {
 			var result = parseValue(tokens, idx);
 			var newAcc = acc :+ result.value;
@@ -413,7 +399,7 @@ var parseArray = fn(@list tokens, @num idx, @list acc) {
 				var nextToken = tokens[nextIdx];
 
 				if (nextToken["type"] == "comma") {
-					parseArray(tokens, nextIdx + 1, newAcc)
+					parseArray(tokens, nextIdx + 1, newAcc, true)
 				} else if (nextToken["type"] == "rbracket") {
 					{"value": newAcc, "nextIdx": nextIdx + 1}
 				} else {
@@ -425,14 +411,18 @@ var parseArray = fn(@list tokens, @num idx, @list acc) {
 }
 
 
-var parseObject = fn(@list tokens, @num idx, @map acc) {
+var parseObject = fn(@list tokens, @num idx, @map acc, @bool afterComma) {
 	if (idx >= len(tokens)) {
 		error("json: unexpected end of object")
 	} else {
 		var token = tokens[idx];
 
 		if (token["type"] == "rbrace") {
-			{"value": acc, "nextIdx": idx + 1}
+			if (afterComma) {
+				error("json: trailing comma not allowed in object")
+			} else {
+				{"value": acc, "nextIdx": idx + 1}
+			}
 		} else if (token["type"] == "string") {
 			var key = token["value"];
 			var nextIdx = idx + 1;
@@ -450,7 +440,7 @@ var parseObject = fn(@list tokens, @num idx, @map acc) {
 					var nextToken = tokens[afterValueIdx];
 
 					if (nextToken["type"] == "comma") {
-						parseObject(tokens, afterValueIdx + 1, newAcc)
+						parseObject(tokens, afterValueIdx + 1, newAcc, true)
 					} else if (nextToken["type"] == "rbrace") {
 						{"value": newAcc, "nextIdx": afterValueIdx + 1}
 					} else {

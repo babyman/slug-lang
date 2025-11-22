@@ -1,0 +1,105 @@
+var {*} = import(
+    "slug.std",
+    "slug.actor",
+    "slug.time",
+    "slug.test",
+    "slug.math",
+    "slug.log"
+);
+
+
+// [Root Supervisor]
+// │
+// ├── HttpServer Actor
+// │   └── [RequestHandler Supervisors]
+// │        ├── RequestHandler Actor (for req #1)
+// │        └── RequestHandler Actor (for req #2)
+// │
+// ├── Router Actor
+// │
+// ├── Controller Actors
+// │   ├── HomeController
+// │   └── TodoController
+// │
+// └── Background Supervisor
+//      └── EmailWorker Actor
+
+
+// val root =
+// spawn(Root Supervisor)
+//     .supervise(spawn(HttpServer Actor)
+//         .supervise(spawn(RequestHandler Supervisors))
+//     .supervise(spawn(Router Actor))
+//     .supervise(spawn(Controller Actors)
+//         .supervise(
+//             register(spawn(HomeController), "home"),
+//             register(spawn(TodoController), "todo"))
+//         )
+//     .supervise(spawn(Background Supervisor))
+//         .supervise(spawn(EmailWorker Actor))
+
+var p = fn(v, msg) {
+    logInfo("{{msg}}, {{v}}");
+    v
+}
+
+var super = fn() {
+    match receive() {
+        m => {
+            logWarn("supervisor {{self()}} recieved: {{m.tag}}")
+            var mailboxId = m.from
+                 /> bindActor(m["fn"], ...m.args)
+                 /> supervisedBy(self())
+                 /> send(...m.mailbox)
+            logWarn("supervisor {{self()}} recieved:{{m.tag}}replacement mailbox added {{mailboxId}}");
+            super();
+        }
+    }
+}
+
+
+var printer = fn(arg) {
+    match receive() {
+        "EXIT" => {
+            logError("actor {{arg}} {{self()}} (supervisor {{supervisor()}}) exiting");
+            "I QUIT!";
+        }
+        "THROW" => {
+            logError("actor {{arg}} {{self()}} (supervisor {{supervisor()}}) erroring!");
+            throw AnError();
+        }
+        {tag} => {
+            logInfo("actor {{arg}} {{self()}} (supervisor {{supervisor()}}): {{tag}}");
+            printer(arg);
+        }
+    }
+}
+
+
+configureLogging("info");
+
+logInfo("Starting %s", "SLUG!")
+
+var s = mailbox() /> bindActor(super) /> p("super");
+var mailbox = mailbox() /> p("actor");
+
+mailbox /> bindActor(printer, "Slug")
+     /> supervisedBy(s)
+     /> register("printers")
+     /> send({tag:"0 hi"})
+     /> send("THROW")
+    //  /> send("EXIT")
+     /> send({tag:"1 'ello"})
+    //  /> send({tag:"1 hello"}, {tag:"2 hello"}, {tag:"3 hello"}, {tag:"4 hello"});
+
+     /> send({tag:"1 hello"}, {tag:"2 hello"}, {tag:"3 hello"}, {tag:"4 hello"},
+        {tag:"5 hello"}, {tag:"6 hello"}, {tag:"7 hello"}, {tag:"8 hello"},
+        {tag:"9 hello"}, {tag:"10 hello"}, {tag:"11 hello"}, {tag:"12 hello"},
+        {tag:"13 hello"}, {tag:"14 hello"}, {tag:"15 hello"}, {tag:"16 hello"},
+        {tag:"17 hello"});
+
+500 /> sleep();
+
+
+
+

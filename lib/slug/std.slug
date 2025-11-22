@@ -282,6 +282,18 @@ var equals = fn(@list a, @list b, @num idx = 0) {
 }
 
 @testWith(
+	[1, 2], false,
+	[1, 1], true,
+	["1", "2"], false,
+	["1", "1"], true,
+	[true, true], true,
+	[false, true], false,
+)
+var equals = fn(v1, v2) {
+	v1 == v2
+}
+
+@testWith(
 	[nil, nil], false,
 	[{}, nil], false,
 	[nil, {}], false,
@@ -298,7 +310,7 @@ var equals = fn(@map m1, @map m2) {
 	var check = fn(ks) {
 		match ks {
 			[] => true;
-			[k, ...t] if m1[k] == m2[k] => check(t);
+			[k, ...t] if equals(m1[k], m2[k]) => check(t);
 			_ => false
 		}
 	}
