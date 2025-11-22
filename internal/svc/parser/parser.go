@@ -255,7 +255,7 @@ func (p *Parser) parseVarStatement() ast.Expression {
 
 	if !(p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.LBRACKET) ||
 		p.peekTokenIs(token.LBRACE) || p.peekTokenIs(token.MATCH_KEYS_EXACT)) {
-		p.addError("expected identifier, list, or map literal after 'var'")
+		p.addErrorAt(p.curToken.Position, "expected identifier, list, or map literal after 'var'")
 		return nil
 	}
 
@@ -289,7 +289,7 @@ func (p *Parser) parseValStatement() ast.Expression {
 	}
 
 	if !(p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.LBRACKET) || p.peekTokenIs(token.LBRACE)) {
-		p.addError("expected identifier, list, or map literal after 'val'")
+		p.addErrorAt(p.curToken.Position, "expected identifier, list, or map literal after 'val'")
 		return nil
 	}
 
@@ -397,7 +397,7 @@ func (p *Parser) parseNumberLiteral() ast.Expression {
 		// Decode hex digits (after the 0x/0X prefix)
 		bytesVal, err := hex.DecodeString(p.curToken.Literal[2:])
 		if err != nil {
-			p.addError("could not parse %q as hex number", p.curToken.Literal)
+			p.addErrorAt(p.curToken.Position, "could not parse %q as hex number", p.curToken.Literal)
 			return nil
 		}
 		// Convert the resulting bytes into an unsigned integer (big-endian)
@@ -412,7 +412,7 @@ func (p *Parser) parseNumberLiteral() ast.Expression {
 
 	value, err := dec64.FromString(p.curToken.Literal)
 	if err != nil {
-		p.addError("could not parse %q as number", p.curToken.Literal)
+		p.addErrorAt(p.curToken.Position, "could not parse %q as number", p.curToken.Literal)
 		return nil
 	}
 
@@ -431,7 +431,7 @@ func (p *Parser) parseBytesLiteral() ast.Expression {
 	} else {
 		value, err := hex.DecodeString(p.curToken.Literal)
 		if err != nil {
-			p.addError("could not parse %q as bytes", p.curToken.Literal)
+			p.addErrorAt(p.curToken.Position, "could not parse %q as bytes", p.curToken.Literal)
 			return nil
 		}
 		lit.Value = value
@@ -498,12 +498,12 @@ func (p *Parser) parseMatchExpression() ast.Expression {
 		p.nextToken()
 		match.Value = p.parseExpression(LOWEST)
 	} else {
-		p.addError("match expression must be followed by an expression")
+		p.addErrorAt(match.Token.Position, "match expression must be followed by an expression")
 		return nil
 	}
 
 	if !p.expectPeek(token.LBRACE) {
-		p.addError("'{' expected after match expression")
+		p.addErrorAt(match.Token.Position, "'{' expected after match expression")
 		return nil
 	}
 
@@ -705,7 +705,7 @@ func (p *Parser) parseMapPattern() *ast.MapPattern {
 		readSpread := p.curTokenIs(token.ELLIPSIS)
 		if readSpread {
 			if mapPattern.Exact {
-				p.addError("spread not allowed in exact match")
+				p.addErrorAt(p.curToken.Position, "spread not allowed in exact match")
 				return nil
 			} else {
 				value := p.parseMatchPattern()
@@ -765,7 +765,7 @@ func (p *Parser) parseMapPattern() *ast.MapPattern {
 func (p *Parser) parseMapPatternPair(hp *ast.MapPattern) bool {
 	// For map patterns, keys are always identifiers
 	if !p.curTokenIs(token.IDENT) {
-		p.addError("expected identifier as map pattern key, got %s", p.curToken.Type)
+		p.addErrorAt(p.curToken.Position, "expected identifier as map pattern key, got %s", p.curToken.Type)
 		return false
 	}
 
@@ -1072,7 +1072,7 @@ func (p *Parser) parseCallChainExpression(left ast.Expression) ast.Expression {
 
 	right := p.parseExpression(precedence)
 	if right == nil {
-		p.addError("expected function after '/>'")
+		p.addErrorAt(p.curToken.Position, "expected function after '/>'")
 		return nil
 	}
 
@@ -1092,7 +1092,7 @@ func (p *Parser) parseCallChainExpression(left ast.Expression) ast.Expression {
 
 func (p *Parser) parseDotIdentifierToIndexExpression(left ast.Expression) ast.Expression {
 	if !p.expectPeek(token.IDENT) {
-		p.addError("expected identifier after '.', got %s instead", p.peekToken.Type)
+		p.addErrorAt(p.curToken.Position, "expected identifier after '.', got %s instead", p.peekToken.Type)
 		return nil
 	}
 
@@ -1387,7 +1387,12 @@ func (p *Parser) parseTryCatchStatement() *ast.TryCatchStatement {
 	stmt.CatchToken = p.curToken
 
 	// this seems hacky, i wonder if it's idiomatic Go...
-	expression := p.parseMatchExpression().(*ast.MatchExpression)
+	v := p.parseMatchExpression()
+	if v == nil {
+		p.addErrorAt(stmt.CatchToken.Position, "expected match expression after 'catch'")
+		return nil
+	}
+	expression := v.(*ast.MatchExpression)
 
 	// add a default case to the CatchBlock expression to rethrow value
 	// todo: maybe we can check for the default case already in the expression?
@@ -1521,7 +1526,7 @@ func (p *Parser) parseTag() *ast.Tag {
 
 	// Expect identifier for the annotation name
 	if !p.curTokenIs(token.IDENT) {
-		p.addError("expected annotation name after '@', got %s", p.curToken.Literal)
+		p.addErrorAt(p.curToken.Position, "expected annotation name after '@', got %s", p.curToken.Literal)
 		return nil
 	}
 	annotation.Name = "@" + p.curToken.Literal

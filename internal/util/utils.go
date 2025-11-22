@@ -60,8 +60,8 @@ func GetContextLines(src string, errorLine, errorCol, errorPos int) string {
 		if i == errorLine {
 			// Error line with arrow
 			result.WriteString(fmt.Sprintf("  >  %2d | %s\n", lineNum, lineContent))
-			result.WriteString(fmt.Sprintf("          %s^ unexpected here",
-				repeatString(" ", errorCol-1)))
+			result.WriteString(fmt.Sprintf("        %s^ unexpected here",
+				repeatString(" ", calculateIndent(lineContent, errorCol))))
 		} else {
 			// Context line
 			result.WriteString(fmt.Sprintf("     %2d | %s\n", lineNum, lineContent))
@@ -69,6 +69,19 @@ func GetContextLines(src string, errorLine, errorCol, errorPos int) string {
 	}
 
 	return result.String()
+}
+
+// Calculate proper column position accounting for tabs
+func calculateIndent(lineContent string, errorCol int) int {
+	indent := 0
+	for i := 0; i < len(lineContent) && i < errorCol-1; i++ {
+		if lineContent[i] == '\t' {
+			indent += 8 - (indent % 8)
+		} else {
+			indent++
+		}
+	}
+	return indent
 }
 
 // repeatString returns a string consisting of count repetitions of s
