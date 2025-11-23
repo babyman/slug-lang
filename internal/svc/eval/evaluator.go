@@ -1748,7 +1748,11 @@ func (e *Evaluator) evalSliceExpression(node *ast.SliceExpression) object.Object
 
 func (e *Evaluator) evalListIndexExpression(list, index object.Object) object.Object {
 	listObject := list.(*object.List)
-	idx := index.(*object.Number).Value.ToInt64()
+	num, ok := index.(*object.Number)
+	if !ok {
+		return e.newErrorf("index operator not supported: %s", index.Type())
+	}
+	idx := num.Value.ToInt64()
 	max := int64(len(listObject.Elements) - 1)
 
 	if idx < 0 {
