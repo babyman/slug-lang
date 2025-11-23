@@ -22,34 +22,37 @@ var assertFalse = fn(a, msg = nil) {
 
 
 @export
-var assertEqual = fn(a, b, msg = nil) {
-    if ( a != b ) {
+var assertEqual = fn(value, expected, msg = nil) {
+    if ( value != expected ) {
         if ( !msg ) {
-            msg = "'{{a}}' is not equal to '{{b}}'";
+            msg = "'{{value}}' is not equal to '{{expected}}'";
         }
         throw AssertionError({msg: msg});
     }
+    value
 }
 
 
 @export
-var assertEqual = fn(@list a, @list b, msg = nil) {
-    if ( !(a == b || equals(a, b)) ) {
+var assertEqual = fn(@list value, @list expected, msg = nil) {
+    if ( !(value == expected || equals(value, expected)) ) {
         if ( !msg ) {
-            msg = "List '{{a}}' is not equal to '{{b}}'";
+            msg = "List '{{value}}' is not equal to '{{expected}}'";
         }
         throw AssertionError({msg: msg});
     }
+    value
 }
 
 @export
-var assertEqual = fn(@map a, @map b, msg = nil) {
-    if ( !(a == b || equals(a, b)) ) {
+var assertEqual = fn(@map value, @map expected, msg = nil) {
+    if ( !(value == expected || equals(value, expected)) ) {
         if ( !msg ) {
-            msg = "Map '{{a}}' is not equal to '{{b}}'";
+            msg = "Map '{{value}}' is not equal to '{{expected}}'";
         }
         throw AssertionError({msg: msg});
     }
+    value
 }
 
 

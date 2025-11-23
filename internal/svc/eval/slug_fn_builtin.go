@@ -91,6 +91,9 @@ func fnBuiltinPrint() *object.Foreign {
 				}
 			}
 			svc.SendStdOut(ctx.ActCtx(), out.String())
+			if len(args) > 0 {
+				return args[0]
+			}
 			return ctx.Nil()
 		},
 	}
@@ -109,6 +112,9 @@ func fnBuiltinPrintLn() *object.Foreign {
 				}
 			}
 			svc.SendStdOut(ctx.ActCtx(), out.String())
+			if len(args) > 0 {
+				return args[0]
+			}
 			return ctx.Nil()
 		},
 	}
