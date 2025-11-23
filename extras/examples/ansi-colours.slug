@@ -2,41 +2,81 @@
 
 var {*} = import(
 	"slug.std",
+	"slug.list",
+	"slug.string",
+	"slug.term.colours"
 );
 
-var sample = fn(i){ "\033[{{i}}m{{i}}\033[0m" }
+val colourNames = ["Black", "Red", "Green", "Yellow", "Blue", "Magenta", "Cyan", "White", ];
 
-var style  = fn(style, str){ "\033[{{style}}m{{str}}\033[0m" }
+var pad = fn(s) {
+	s /> padRight(" ", 16)
+}
+
+var vgaOut = fn(s, n) {
+	match n {
+		15, 51, 87, 123, 159, 195, 231, 255 => println(s + reset);
+		_ => print(s + reset);
+	}
+}
 
 """
 
-The ANSI escape sequences used here belong to the 'Select Graphic Rendition' subset. They follow the format \033[XXXm, where XXX represents one or more semicolon-separated parameters (e.g., 1;31 for bold red).
+This is a terminal colour example using the "slug.term.colours" library:
+
+Standard 4 and 8 bit (bright) colours:
 
 """ /> println
 
-range(30, 38)
-	/> map(fn(i) { println( sample(i) + "\t" + sample(i + 10) + "\t" + sample(i + 60) + "\t" + sample(i + 70)) })
+println(
+	"Colour" /> pad,
+	"BgColour" /> pad,
+	"BrightColour" /> pad,
+	"BgBrightColour" /> pad,
+)
 
-"""
-\033[0m
-\\033[0m                          - Reset all attributes
-\\033[2K                          - Clear Line
-\\033[<L>;<C>H or \\033[<L>;<C>f   - Put the cursor at line L and column C.
-\\033[<N>A                        - Move the cursor up N lines
-\\033[<N>B                        - Move the cursor down N lines
-\\033[<N>C                        - Move the cursor forward N columns
-\\033[<N>D                        - Move the cursor backward N columns
+colourNames /> map(fn(k) {
+	var name = k /> pad
+	println(
+		Colour[k] + name + reset,
+		BgColour[k] + name + reset,
+		BrightColour[k] + name + reset,
+		BgBrightColour[k] + name + reset,
+	)
+})
 
-\\033[2J                          - Clear the screen, move to (0,0)
-\\033[K                           - Erase to end of line
-\\033[s                           - Save cursor position
-\\033[u                           - Restore cursor position
+println("""
 
-\\033[4m                          - Underline on
-\\033[24m                         - Underline off
+Effects:
 
-\\033[1m                          - Bold on
-\\033[21m                         - Bold off
-""" /> println
+""")
 
-// \\033[4m                          - {{ style("4", "Underline on") }}
+"This is Bold!" /> effectBold /> println
+"This is Dim!" /> effectDim /> println
+"This is Underline!" /> effectUnderline /> println
+"This is Blink!" /> effectBlink /> println
+"This is Reverse!" /> effectReverse /> println
+"This is Hidden!" /> effectHide /> println
+
+println("""
+
+VGA colours:
+
+""")
+
+range(0, 256) /> map(fn(n) {
+	n /> toString /> padRight(" ", 4) /> vga(n) /> vgaOut(n)
+})
+
+println("""
+
+VGA Background colours:
+
+""")
+
+range(0, 256) /> map(fn(n) {
+	n /> toString /> padRight(" ", 4) /> bgVga(n) /> vgaOut(n)
+})
+
+""
+
