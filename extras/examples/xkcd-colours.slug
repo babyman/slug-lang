@@ -1,0 +1,24 @@
+#!/usr/bin/env slug
+
+var {*} = import(
+	"slug.std",
+	"slug.list",
+	"slug.string",
+	"slug.term.colour",
+	"slug.xkcd.colours",
+);
+
+""
+
+println("""
+
+XKCD colours:
+
+""")
+
+XkcdColourIndex /> keys /> sort /> map(fn(n) {
+	n /> xkcd(n) /> print(reset)
+})
+
+""
+

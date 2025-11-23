@@ -179,7 +179,7 @@ func (p *Parser) addErrorAt(pos int, message string, args ...interface{}) {
 	errorMsg.WriteString(fmt.Sprintf("    --> %s:%d:%d\n", p.Path, line, col))
 
 	// Get context lines (2 lines before, the error line, and potentially lines after)
-	lines := util.GetContextLines(p.src, line, col, pos)
+	lines := util.GetContextLines(p.src, line, col)
 	errorMsg.WriteString(lines)
 
 	p.errors = append(p.errors, errorMsg.String())

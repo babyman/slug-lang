@@ -3,6 +3,8 @@ var {*} = import(
 	"slug.string",
 	"slug.list",
 	"slug.sys",
+	"slug.bytes",
+	"slug.xkcd.colours",
 );
 
 ///
@@ -170,7 +172,7 @@ var buildEffects = fn(styles) {
 @export var effectReverse = fn(str) { str /> wrapWith(Styles.reverse) }
 @export var effectHide = fn(str) { str /> wrapWith(Styles.hide) }
 
-// vga support
+// vga support (0 - 254)
 // -----------
 var vgaStyle = fn(code) { [38, 5, code] }
 var vgaBgStyle = fn(code) { [48, 5, code] }
@@ -187,3 +189,22 @@ var rgbBgStyle = fn(r, g, b) { [48, 2, r, g, b] }
 @export var bgRgbCode = fn(r, g, b) { rgbBgStyle(r, g, b) /> ansiCode }
 @export var rgb = fn(str, r, g, b) { str /> wrapWith( rgbStyle(r, g, b) )}
 @export var bgRgb = fn(str, r, g, b) { str /> wrapWith( rgbBgStyle(r, g, b) )}
+
+// hex support (e.g. #fe7b7c)
+// -----------
+var hexStyle = fn(code) { code[1:] /> hexStrToBytes /> bytesToNumbers /> fn(v) { rgbStyle(...v) } }
+var hexBgStyle = fn(code) { code[1:] /> hexStrToBytes /> bytesToNumbers /> fn(v) { rgbBgStyle(...v) } }
+@export var hexCode = fn(code) { code /> hexStyle /> ansiCode }
+@export var bgHexCode = fn(code) { code /> hexBgStyle /> ansiCode }
+@export var hex = fn(str, code) { str /> wrapWith( hexStyle(code) )}
+@export var bgHex = fn(str, code) { str /> wrapWith( hexBgStyle(code) )}
+
+// xkcd color survey support (see https://xkcd.com/color/rgb/)
+// -----------
+var xkcdStyle = fn(name) { XkcdColourIndex[name] /> hexStyle }
+var xkcdBgStyle = fn(name) { XkcdColourIndex[name] /> hexBgStyle }
+@export var xkcdCode = fn(name) { name /> xkcdStyle /> ansiCode }
+@export var bgXkcdCode = fn(name) { name /> xkcdBgStyle /> ansiCode }
+@export var xkcd = fn(str, name) { str /> wrapWith( xkcdStyle(name) )}
+@export var bgXkcd = fn(str, name) { str /> wrapWith( xkcdBgStyle(name) )}
+

@@ -18,6 +18,7 @@ foreign bytesToStr = fn(@bytes b)
 @testWith(
     [""], 0x"",
     ["68656c6c6f20736c7567"], 0x"68656c6c6f20736c7567",
+    ["a8ff04"], 0x"a8ff04",
 )
 @export
 foreign hexStrToBytes = fn(@str hex)
@@ -57,5 +58,17 @@ var repeat = fn(@bytes b, @num count, @bytes acc = 0x"") {
         acc
     } else {
         repeat(b, count - 1, acc + b)
+    }
+}
+
+@testWith(
+    [0x"a8ff04"], [168, 255, 4],
+)
+@export
+var bytesToNumbers = fn(@bytes b, i = 0, acc = []) {
+    if ( len(b) == i ) {
+        acc
+    } else {
+        recur(b, i + 1, acc :+ b[i])
     }
 }

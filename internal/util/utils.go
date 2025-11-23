@@ -23,7 +23,7 @@ func GetLineAndColumn(src string, pos int) (line int, column int) {
 }
 
 // GetContextLines extracts and formats context lines around an error position
-func GetContextLines(src string, errorLine, errorCol, errorPos int) string {
+func GetContextLines(src string, errorLine, errorCol int) string {
 	var result bytes.Buffer
 
 	// Split source into lines

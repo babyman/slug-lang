@@ -13,6 +13,10 @@ import (
 	"slug/internal/svc/resolver"
 )
 
+const (
+	MaxErrorsToShow = 8
+)
+
 type ModuleLoader struct {
 	DebugAST bool
 	Module   *object.Module
@@ -126,7 +130,11 @@ func lexAndParseModule(
 		var out bytes.Buffer
 		out.WriteString("Woops! Looks like we slid into some slimy slug trouble here!\n")
 		out.WriteString("Parser errors:\n")
-		for _, msg := range errors {
+		displayCount := len(errors)
+		if displayCount > MaxErrorsToShow {
+			displayCount = MaxErrorsToShow
+		}
+		for _, msg := range errors[:displayCount] {
 			out.WriteString(fmt.Sprintf("\t%s\n", msg))
 		}
 		return nil, fmt.Errorf("%s\n", out.String())

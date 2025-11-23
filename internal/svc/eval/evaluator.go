@@ -999,7 +999,7 @@ func (e *Evaluator) newErrorWithPos(pos int, m string) *object.Error {
 	errorMsg.WriteString(fmt.Sprintf("\nError: %s\n", m))
 	errorMsg.WriteString(fmt.Sprintf("    --> %s:%d:%d\n", env.Path, line, col))
 
-	lines := util.GetContextLines(env.Src, line, col, pos)
+	lines := util.GetContextLines(env.Src, line, col)
 	errorMsg.WriteString(lines)
 
 	return &object.Error{Message: errorMsg.String()}

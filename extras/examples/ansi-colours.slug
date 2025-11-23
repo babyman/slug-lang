@@ -4,7 +4,7 @@ var {*} = import(
 	"slug.std",
 	"slug.list",
 	"slug.string",
-	"slug.term.colour"
+	"slug.term.colour",
 );
 
 val colourNames = ["Black", "Red", "Green", "Yellow", "Blue", "Magenta", "Cyan", "White", ];
