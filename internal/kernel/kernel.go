@@ -191,7 +191,7 @@ func (k *Kernel) runActor(a *Actor) {
 	for msg := range a.inbox {
 		if exit, ok := msg.Payload.(Exit); ok {
 			k.cleanupActor(a, exit.Reason)
-			slog.Error("actor exiting",
+			slog.Info("actor exiting",
 				slog.Any("actor-id", a.Id),
 				slog.String("actor-name", a.Name),
 				slog.String("reason", exit.Reason))

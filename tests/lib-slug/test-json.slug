@@ -1,0 +1,184 @@
+var {*} = import(
+	"slug.std",
+	"slug.sys",
+	"slug.json",
+	"slug.test",
+)
+
+
+var jsonObject = """
+{
+    "name": "Evan",
+    "active": true,
+    "roles": ["admin", "user"],
+    "profile": {
+        "age": 38,
+        "preferences": {
+            "colors": ["red", "green"],
+            "darkMode": false
+        }
+    }
+}
+"""
+
+var decodeTests = [
+	// numbers
+	["1e10", 10000000000],
+	["-3E5", -300000],
+	["1e-5", 1e-5],
+]
+
+var bidirectionalTests = [
+	["true", true],
+	["false", false],
+	["null", nil],
+
+	// numbers
+	["42", 42],
+	["-42", -42],
+	["3.14159", 3.14159],
+	["0", 0],
+	["1", 1],
+	["-1", -1],
+	["1234567890", 1234567890],
+	["0.5", 0.5],
+	["-0.5", -0.5],
+	["10", 10.0],
+	["0.0001", 0.0001],
+	["6.022e23", 6.022e23],
+
+	// strings
+	["\"\"", ""],
+	["\" \"", " "],
+	["\"hello\"", "hello"],
+	["\"hello slug\"", "hello slug"],
+	["\"line\\nbreak\"", "line\nbreak"],
+	["\"tab\\tindent\"", "tab\tindent"],
+	["\"quote: \\\"hello\\\"\"", "quote: \"hello\""],
+	["\"backslash: \\\\\"", "backslash: \\"],
+	["\"escaped solidus: \\\/ \"", "escaped solidus: \/ "],
+	// ["\"unicode: \u0041\", "unicode: \u0041"]",
+	// ["surrogate: \uD834\uDD1E, "surrogate: \uD834\uDD1E"]",
+
+	// lists
+	["[]", []],
+	["[1]", [1]],
+	["[1,2,3]", [1,2,3]],
+	["[true,false,null]", [true, false, nil]],
+	["[[[]]]", [[[]]]],
+	["[1,[2,[3,[4]]]]", [1, [2, [3, [4]]]]],
+	["[[[[[[[[42]]]]]]]]", [[[[[[[[42]]]]]]]]],
+
+	// objects
+	[ "{}", {}],
+	[ "{\"a\":1}", {"a": 1}],
+	[ "{\"a\":1,\"b\":2}", {"a":1, "b":2}],
+	[ "{\"nested\":{\"x\":10}}", {"nested": {"x": 10}}],
+	[ "{\"list\":[1,2,3]}", {"list": [1, 2, 3]}],
+	[ "{\"mix\":{\"a\":[1,{\"b\":\"c\"}]}}", {"mix": {"a": [1, {"b": "c"}]}}],
+	[ "{\"a\":{\"b\":{\"c\":{\"d\":{\"e\":123}}}}}", {"a": {"b": {"c": {"d": {"e": 123}}}}}],
+	[ "{\"age\":30,\"name\":\"Alice\"}", {"name": "Alice", "age": 30}],
+
+
+	// Empty vs Non-empty Edge Cases
+	["{\"emptyString\":\"\"}", {"emptyString": ""}],
+	["{\"emptyList\":[]}", {"emptyList": []}],
+	["{\"emptyObj\":{}}", {"emptyObj": {}}],
+	["[\"\",{},[]]", ["", {}, []]],
+
+	// Large / Stress Values
+	["\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+	["[1,2,3,4,5,6,7,8,9,10]", [1,2,3,4,5,6,7,8,9,10]],
+	["[[[1,2,3],[4,5,6]],[[7,8,9],[10,11,12]]]", [[[1,2,3],[4,5,6]],[[7,8,9],[10,11,12]]]],
+]
+
+var invalidJson = [
+	"{unquoted: 1}",
+	"{\"a\":1,}",
+	"{,\"a\":1}",
+	"{\"a\":1 \"b\":2}",
+	"{\"a\":1,, \"b\":2}",
+	"[1,2,]",
+	"[,1,2]",
+	"[1,,2]",
+	"00",
+	"01",
+	"-.1",
+	"+.1",
+	"1.",
+	".5",
+	"1e",
+	"1e-",
+	"1e+",
+	"\"",
+	"\"hello",
+	"\"hello\\",
+	// "\"\\uZZZZ\"",
+	// "\"\\uD800\"",         // lone high surrogate
+	// "\"\\uDD00\"",         // lone low surrogate
+	"{\"a\":1 \"b\":2}",
+	"[1 2 3]",
+	"{\"a\":1} extra",
+	"true false",
+	"{]",
+	"[}",
+]
+
+var count = 0;
+var failed = 0;
+
+println("");
+println("running JSON test suite");
+println("=======================");
+
+count = count + 1;
+
+jsonObject
+	/> decode
+	/> fn(v) { v.profile.preferences.darkMode }
+	/> assertEqual(false)
+
+var applyTest = fn(in, @fun f, out, @str err) {
+	count = count + 1;
+	try {
+		in /> f /> assertEqual(out);
+
+	} catch err {
+		{msg, ...} => {
+			failed = failed + 1;
+			println("{{count}}. {{err}} FAILED: {{msg}}");
+		}
+	}
+}
+
+decodeTests + bidirectionalTests
+	/> map(fn(m) { applyTest(m[0], decode, m[1], "DECODE") })
+
+bidirectionalTests
+	/> map(fn(m) { applyTest(m[1], encode, m[0], "ENCODE") })
+
+println("");
+println("running error tests");
+println("===================");
+
+invalidJson
+	/> map(fn(j) {
+		count = count + 1;
+		try {
+			var out = j /> decode;
+			failed = failed + 1;
+			println("{{count}}. FAILED: Should have thrown an exception: {{j}} => {{out}}");
+		} catch err {
+			{msg, ...} => {
+				// println("{{count}}. PASSED: {{msg}}");
+			}
+		}
+	})
+
+println("Test executed: {{count}} / failed {{failed}}")
+
+if(failed > 0) {
+	exit(1)
+} else {
+	exit(0)
+}

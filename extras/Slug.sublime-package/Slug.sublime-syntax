@@ -174,7 +174,7 @@ contexts:
       scope: string.quoted.double.slug
 
   list:
-    - meta_scope: meta.structure.list.slug
+    - meta_scope: meta.structure.list-test-test.slug
     - match: \]
       scope: punctuation.section.brackets.end.slug
       pop: true

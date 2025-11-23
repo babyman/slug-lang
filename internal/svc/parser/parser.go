@@ -159,11 +159,7 @@ func (p *Parser) peekTokenIs(t token.TokenType) bool {
 
 func (p *Parser) noPrefixParseFnError(t token.TokenType) {
 	// Line and column are extracted using the position of the current token.
-	p.addError("no prefix parse function for '%s' found", t)
-}
-
-func (p *Parser) addError(message string, args ...interface{}) {
-	p.addErrorAt(p.curToken.Position, message, args...)
+	p.addErrorAt(p.curToken.Position, "no prefix parse function for '%s' found", t)
 }
 
 func (p *Parser) peekError(t token.TokenType) {
