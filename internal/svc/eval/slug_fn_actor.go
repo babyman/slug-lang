@@ -234,7 +234,15 @@ func fnActorRegister() *object.Foreign {
 			}
 
 			pid := kernel.ActorID(pidObj.Value.ToInt64())
-			ctx.ActCtx().K.Register(slugNamespace+nameObj.Value, pid)
+
+			actorName := slugNamespace + nameObj.Value
+
+			_, exists := ctx.ActCtx().K.ActorByName(actorName)
+			if exists {
+				return ctx.NewError("actor already registered: %s", actorName)
+			}
+
+			ctx.ActCtx().K.Register(actorName, pid)
 			return &object.Number{Value: dec64.FromInt64(int64(pid))}
 		},
 	}
