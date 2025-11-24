@@ -137,6 +137,9 @@ func lexAndParseModule(
 		for _, msg := range errors[:displayCount] {
 			out.WriteString(fmt.Sprintf("\t%s\n", msg))
 		}
+		if displayCount < len(errors) {
+			out.WriteString(fmt.Sprintf("\n...and %d more!\n", len(errors)-displayCount))
+		}
 		return nil, fmt.Errorf("%s\n", out.String())
 	}
 
