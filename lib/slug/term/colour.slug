@@ -64,7 +64,7 @@ var ansiCode = fn(...i) {
 @testWith(
 	["s",[31,1]], "\033[31;1ms\033[0m",
 )
-var wrapWith = fn(str, ...s) {
+var wrapWith = fn(@str str, ...s) {
 	ansiCode(...s) + str + reset
 }
 
@@ -72,7 +72,7 @@ var wrapWith = fn(str, ...s) {
 	["red",""], "red",
 	["red","bg"], "bgRed",
 )
-var styleName = fn(base, style) {
+var styleName = fn(@str base, @str style) {
 	if ( len(style) > 0 ) {
 		style + toUpper(base[0]) + base[1:]
 	} else {
@@ -102,7 +102,7 @@ var buildStyles = fn() {
 		})
 }
 
-var buildCodes = fn(styles, style = "") {
+var buildCodes = fn(@map styles, @str style = "") {
 	var codeMap = {
 		Off: ansiCode(styles.reset),
 	}
@@ -113,7 +113,7 @@ var buildCodes = fn(styles, style = "") {
 			})
 }
 
-var buildEffects = fn(styles) {
+var buildEffects = fn(@map styles) {
 	var effectMap = {
 		Off: ansiCode(styles.reset),
 	}
@@ -140,86 +140,86 @@ var buildEffects = fn(styles) {
 
 // text colour
 // -----------
-@export var black = fn(str) { str /> wrapWith(Styles.black) }
-@export var red = fn(str) { str /> wrapWith(Styles.red) }
-@export var green = fn(str) { str /> wrapWith(Styles.green) }
-@export var yellow = fn(str) { str /> wrapWith(Styles.yellow) }
-@export var blue = fn(str) { str /> wrapWith(Styles.blue) }
-@export var magenta = fn(str) { str /> wrapWith(Styles.magenta) }
-@export var cyan = fn(str) { str /> wrapWith(Styles.cyan) }
-@export var white = fn(str) { str /> wrapWith(Styles.white) }
+@export var black = fn(@str str) { str /> wrapWith(Styles.black) }
+@export var red = fn(@str str) { str /> wrapWith(Styles.red) }
+@export var green = fn(@str str) { str /> wrapWith(Styles.green) }
+@export var yellow = fn(@str str) { str /> wrapWith(Styles.yellow) }
+@export var blue = fn(@str str) { str /> wrapWith(Styles.blue) }
+@export var magenta = fn(@str str) { str /> wrapWith(Styles.magenta) }
+@export var cyan = fn(@str str) { str /> wrapWith(Styles.cyan) }
+@export var white = fn(@str str) { str /> wrapWith(Styles.white) }
 
-@export var brightBlack = fn(str) { str /> wrapWith(Styles.brightBlack) }
-@export var brightRed = fn(str) { str /> wrapWith(Styles.brightRed) }
-@export var brightGreen = fn(str) { str /> wrapWith(Styles.brightGreen) }
-@export var brightYellow = fn(str) { str /> wrapWith(Styles.brightYellow) }
-@export var brightBlue = fn(str) { str /> wrapWith(Styles.brightBlue) }
-@export var brightMagenta = fn(str) { str /> wrapWith(Styles.brightMagenta) }
-@export var brightCyan = fn(str) { str /> wrapWith(Styles.brightCyan) }
-@export var brightWhite = fn(str) { str /> wrapWith(Styles.brightWhite) }
+@export var brightBlack = fn(@str str) { str /> wrapWith(Styles.brightBlack) }
+@export var brightRed = fn(@str str) { str /> wrapWith(Styles.brightRed) }
+@export var brightGreen = fn(@str str) { str /> wrapWith(Styles.brightGreen) }
+@export var brightYellow = fn(@str str) { str /> wrapWith(Styles.brightYellow) }
+@export var brightBlue = fn(@str str) { str /> wrapWith(Styles.brightBlue) }
+@export var brightMagenta = fn(@str str) { str /> wrapWith(Styles.brightMagenta) }
+@export var brightCyan = fn(@str str) { str /> wrapWith(Styles.brightCyan) }
+@export var brightWhite = fn(@str str) { str /> wrapWith(Styles.brightWhite) }
 
 // backgrounds
 // -----------
-@export var bgBlack = fn(str) { str /> wrapWith(Styles.bgBlack) }
-@export var bgRed = fn(str) { str /> wrapWith(Styles.bgRed) }
-@export var bgGreen = fn(str) { str /> wrapWith(Styles.bgGreen) }
-@export var bgYellow = fn(str) { str /> wrapWith(Styles.bgYellow) }
-@export var bgBlue = fn(str) { str /> wrapWith(Styles.bgBlue) }
-@export var bgMagenta = fn(str) { str /> wrapWith(Styles.bgMagenta) }
-@export var bgCyan = fn(str) { str /> wrapWith(Styles.bgCyan) }
-@export var bgWhite = fn(str) { str /> wrapWith(Styles.bgWhite) }
+@export var bgBlack = fn(@str str) { str /> wrapWith(Styles.bgBlack) }
+@export var bgRed = fn(@str str) { str /> wrapWith(Styles.bgRed) }
+@export var bgGreen = fn(@str str) { str /> wrapWith(Styles.bgGreen) }
+@export var bgYellow = fn(@str str) { str /> wrapWith(Styles.bgYellow) }
+@export var bgBlue = fn(@str str) { str /> wrapWith(Styles.bgBlue) }
+@export var bgMagenta = fn(@str str) { str /> wrapWith(Styles.bgMagenta) }
+@export var bgCyan = fn(@str str) { str /> wrapWith(Styles.bgCyan) }
+@export var bgWhite = fn(@str str) { str /> wrapWith(Styles.bgWhite) }
 
-@export var bgBrightBlack = fn(str) { str /> wrapWith(Styles.bgBrightBlack) }
-@export var bgBrightRed = fn(str) { str /> wrapWith(Styles.bgBrightRed) }
-@export var bgBrightGreen = fn(str) { str /> wrapWith(Styles.bgBrightGreen) }
-@export var bgBrightYellow = fn(str) { str /> wrapWith(Styles.bgBrightYellow) }
-@export var bgBrightBlue = fn(str) { str /> wrapWith(Styles.bgBrightBlue) }
-@export var bgBrightMagenta = fn(str) { str /> wrapWith(Styles.bgBrightMagenta) }
-@export var bgBrightCyan = fn(str) { str /> wrapWith(Styles.bgBrightCyan) }
-@export var bgBrightWhite = fn(str) { str /> wrapWith(Styles.bgBrightWhite) }
+@export var bgBrightBlack = fn(@str str) { str /> wrapWith(Styles.bgBrightBlack) }
+@export var bgBrightRed = fn(@str str) { str /> wrapWith(Styles.bgBrightRed) }
+@export var bgBrightGreen = fn(@str str) { str /> wrapWith(Styles.bgBrightGreen) }
+@export var bgBrightYellow = fn(@str str) { str /> wrapWith(Styles.bgBrightYellow) }
+@export var bgBrightBlue = fn(@str str) { str /> wrapWith(Styles.bgBrightBlue) }
+@export var bgBrightMagenta = fn(@str str) { str /> wrapWith(Styles.bgBrightMagenta) }
+@export var bgBrightCyan = fn(@str str) { str /> wrapWith(Styles.bgBrightCyan) }
+@export var bgBrightWhite = fn(@str str) { str /> wrapWith(Styles.bgBrightWhite) }
 
 // effects
 // -----------
-@export var effectBold = fn(str) { str /> wrapWith(Styles.bold) }
-@export var effectDim = fn(str) { str /> wrapWith(Styles.dim) }
-@export var effectUnderline = fn(str) { str /> wrapWith(Styles.underline) }
-@export var effectBlink = fn(str) { str /> wrapWith(Styles.blink) }
-@export var effectReverse = fn(str) { str /> wrapWith(Styles.reverse) }
-@export var effectHide = fn(str) { str /> wrapWith(Styles.hide) }
+@export var effectBold = fn(@str str) { str /> wrapWith(Styles.bold) }
+@export var effectDim = fn(@str str) { str /> wrapWith(Styles.dim) }
+@export var effectUnderline = fn(@str str) { str /> wrapWith(Styles.underline) }
+@export var effectBlink = fn(@str str) { str /> wrapWith(Styles.blink) }
+@export var effectReverse = fn(@str str) { str /> wrapWith(Styles.reverse) }
+@export var effectHide = fn(@str str) { str /> wrapWith(Styles.hide) }
 
 // vga support (0 - 254)
 // -----------
 var vgaStyle = fn(code) { [38, 5, code] }
 var vgaBgStyle = fn(code) { [48, 5, code] }
-@export var vgaCode = fn(code) { code /> vgaStyle /> ansiCode }
-@export var bgVgaCode = fn(code) { code /> vgaBgStyle /> ansiCode }
-@export var vga = fn(str, code) { str /> wrapWith( vgaStyle(code) )}
-@export var bgVga = fn(str, code) { str /> wrapWith( vgaBgStyle(code) )}
+@export var vgaCode = fn(@num code) { code /> vgaStyle /> ansiCode }
+@export var bgVgaCode = fn(@num code) { code /> vgaBgStyle /> ansiCode }
+@export var vga = fn(@str str, @num code) { str /> wrapWith( vgaStyle(code) )}
+@export var bgVga = fn(@str str, @num code) { str /> wrapWith( vgaBgStyle(code) )}
 
 // rgb support
 // -----------
-var rgbStyle = fn(r, g, b) { [38, 2, r, g, b] }
-var rgbBgStyle = fn(r, g, b) { [48, 2, r, g, b] }
-@export var rgbCode = fn(r, g, b) { rgbStyle(r, g, b) /> ansiCode }
-@export var bgRgbCode = fn(r, g, b) { rgbBgStyle(r, g, b) /> ansiCode }
-@export var rgb = fn(str, r, g, b) { str /> wrapWith( rgbStyle(r, g, b) )}
-@export var bgRgb = fn(str, r, g, b) { str /> wrapWith( rgbBgStyle(r, g, b) )}
+var rgbStyle = fn(@num r, @num g, @num b) { [38, 2, r, g, b] }
+var rgbBgStyle = fn(@num r, @num g, @num b) { [48, 2, r, g, b] }
+@export var rgbCode = fn(@num r, @num g, @num b) { rgbStyle(r, g, b) /> ansiCode }
+@export var bgRgbCode = fn(@num r, @num g, @num b) { rgbBgStyle(r, g, b) /> ansiCode }
+@export var rgb = fn(@str str, @num r, @num g, @num b) { str /> wrapWith( rgbStyle(r, g, b) )}
+@export var bgRgb = fn(@str str, @num r, @num g, @num b) { str /> wrapWith( rgbBgStyle(r, g, b) )}
 
 // hex support (e.g. #fe7b7c)
 // -----------
-var hexStyle = fn(code) { code[1:] /> hexStrToBytes /> bytesToNumbers /> fn(v) { rgbStyle(...v) } }
-var hexBgStyle = fn(code) { code[1:] /> hexStrToBytes /> bytesToNumbers /> fn(v) { rgbBgStyle(...v) } }
-@export var hexCode = fn(code) { code /> hexStyle /> ansiCode }
-@export var bgHexCode = fn(code) { code /> hexBgStyle /> ansiCode }
-@export var hex = fn(str, code) { str /> wrapWith( hexStyle(code) )}
-@export var bgHex = fn(str, code) { str /> wrapWith( hexBgStyle(code) )}
+var hexStyle = fn(@str code) { code[1:] /> hexStrToBytes /> bytesToNumbers /> fn(v) { rgbStyle(...v) } }
+var hexBgStyle = fn(@str code) { code[1:] /> hexStrToBytes /> bytesToNumbers /> fn(v) { rgbBgStyle(...v) } }
+@export var hexCode = fn(@str code) { code /> hexStyle /> ansiCode }
+@export var bgHexCode = fn(@str code) { code /> hexBgStyle /> ansiCode }
+@export var hex = fn(@str str, @str code) { str /> wrapWith( hexStyle(code) )}
+@export var bgHex = fn(@str str, @str code) { str /> wrapWith( hexBgStyle(code) )}
 
 // xkcd color survey support (see https://xkcd.com/color/rgb/)
 // -----------
-var xkcdStyle = fn(name) { XkcdColourIndex[name] /> hexStyle }
-var xkcdBgStyle = fn(name) { XkcdColourIndex[name] /> hexBgStyle }
-@export var xkcdCode = fn(name) { name /> xkcdStyle /> ansiCode }
-@export var bgXkcdCode = fn(name) { name /> xkcdBgStyle /> ansiCode }
-@export var xkcd = fn(str, name) { str /> wrapWith( xkcdStyle(name) )}
-@export var bgXkcd = fn(str, name) { str /> wrapWith( xkcdBgStyle(name) )}
+var xkcdStyle = fn(@str name) { XkcdColourIndex[name] /> hexStyle }
+var xkcdBgStyle = fn(@str name) { XkcdColourIndex[name] /> hexBgStyle }
+@export var xkcdCode = fn(@str name) { name /> xkcdStyle /> ansiCode }
+@export var bgXkcdCode = fn(@str name) { name /> xkcdBgStyle /> ansiCode }
+@export var xkcd = fn(@str str, @str name) { str /> wrapWith( xkcdStyle(name) )}
+@export var bgXkcd = fn(@str str, @str name) { str /> wrapWith( xkcdBgStyle(name) )}
 
