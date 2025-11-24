@@ -84,7 +84,7 @@ var runTests = fn(f, name, args, stats) {
 				}
 			}
 			stats = stats /> compute("run", fn(k, v) { v + 1});
-			runTests(f, name, t, stats);
+			recur(f, name, t, stats);
 		}
 	}
 }

@@ -4,7 +4,7 @@ var {*} = import(
 
 var searchList = fn(vals, result, f, idx = 0) {
 	if(len(vals) > idx) {
-		searchList(vals, f(vals[idx], result), f, idx + 1)
+		recur(vals, f(vals[idx], result), f, idx + 1)
 	} else {
 		result
 	}

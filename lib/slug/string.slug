@@ -111,7 +111,7 @@ var split = fn(@str str, @str delimiter, @num max = -1, @num count = 1, @list st
 	match str /> indexOf(delimiter) {
 		n if n >= 0 && (max < 0 || count < max) => {
 			val i = n + delimiter /> len();
-			split(str[i:], delimiter, max, count + 1, strs :+ str[:n]);
+			recur(str[i:], delimiter, max, count + 1, strs :+ str[:n]);
 		}
 		_ => strs :+ str;
 	}
@@ -127,8 +127,8 @@ var join = fn(strs, @str delimiter, @str str = nil) {
 	match strs {
 		[] if str == nil => "";
 		[] => str;
-		[h, ...t] if str == nil => join(t, delimiter, h);
-		[h, ...t] => join(t, delimiter, str + delimiter + h);
+		[h, ...t] if str == nil => recur(t, delimiter, h);
+		[h, ...t] => recur(t, delimiter, str + delimiter + h);
 	}
 }
 
@@ -152,7 +152,7 @@ var padRight = fn(@str str, @str with, @num length) {
 	if (length <= len(str)) {
 		str
 	} else {
-		padRight(str + with, with, length)
+		recur(str + with, with, length)
 	}
 }
 
@@ -161,7 +161,7 @@ var padLeft = fn(@str str, @str with, @num length) {
 	if (length <= len(str)) {
 		str
 	} else {
-		padLeft(with + str, with, length)
+		recur(with + str, with, length)
 	}
 }
 

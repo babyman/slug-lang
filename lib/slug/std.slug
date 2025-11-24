@@ -100,7 +100,7 @@ var compute = fn(@map map, key, f) {
 @export
 var map = fn(@list vs, f, acc = []) {
 	match vs {
-		[h, ...t] => map(t, f, acc :+ h /> f());
+		[h, ...t] => recur(t, f, acc :+ h /> f());
 		[] => acc;
 	}
 }
@@ -111,8 +111,8 @@ var map = fn(@list vs, f, acc = []) {
 @export
 var filter = fn(@list vs, f, acc = []) {
 	match vs {
-		[h, ...t] if h /> f() => filter(t, f, acc :+ h);
-		[h, ...t] => filter(t, f, acc);
+		[h, ...t] if h /> f() => recur(t, f, acc :+ h);
+		[h, ...t] => recur(t, f, acc);
 		[] => acc;
 	}
 }
@@ -125,7 +125,7 @@ var filter = fn(@list vs, f, acc = []) {
 @export
 var reduce = fn(@list vs, v, f) {
 	match vs {
-		[h, ...t] => reduce(t, f(v, h), f);
+		[h, ...t] => recur(t, f(v, h), f);
 		[] => v;
 	}
 }
@@ -141,7 +141,7 @@ var reduce = fn(@list vs, v, f) {
 var range = fn(@num start, @num end, @num step = 1, @list acc = []) {
 	if ((start < end && step > 0)
 		|| (start > end && step < 0)) {
-		range(start + step, end, step, acc :+ start)
+		recur(start + step, end, step, acc :+ start)
 	} else {
 		acc
 	}
@@ -183,7 +183,7 @@ var zip = fn(@list lst1, @list lst2, acc = []) {
 	if (len(lst1) == 0 || len(lst2) == 0) {
 		acc
 	} else {
-		zip(lst1[1:], lst2[1:], acc :+ [lst1[0], lst2[0]])
+		recur(lst1[1:], lst2[1:], acc :+ [lst1[0], lst2[0]])
 	}
 }
 
@@ -275,7 +275,7 @@ var equals = fn(@list a, @list b, @num idx = 0) {
     } else if(type(a[idx]) == MAP_TYPE && type(b[idx]) == MAP_TYPE ) {
         equals(a[idx], b[idx]) && equals(a, b, idx + 1);
     } else if(a[idx] == b[idx]) {
-        equals(a, b, idx + 1);
+        recur(a, b, idx + 1);
     } else {
         false;
     }

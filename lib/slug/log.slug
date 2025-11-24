@@ -31,7 +31,7 @@ var logger = fn() {
                 printf("%s [ %s ] %s", fmtClock(l.time, "2006-01-02 15:04:05.000"), tag, msg);
             }
     }
-    logger();
+    recur();
 }
 
 // create a mailbox and bind the logging function to it

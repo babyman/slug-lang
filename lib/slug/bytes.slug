@@ -53,11 +53,10 @@ foreign base64Encode = fn(@bytes b)
 )
 @export
 var repeat = fn(@bytes b, @num count, @bytes acc = 0x"") {
-
     if ( count == 0 ) {
         acc
     } else {
-        repeat(b, count - 1, acc + b)
+        recur(b, count - 1, acc + b)
     }
 }
 

@@ -92,7 +92,7 @@ var encodeListItems = fn(@list lst, @str acc) {
 	match lst {
 		[] => acc;
 		[h] => acc + encode(h);
-		[h, ...t] => encodeListItems(t, acc + encode(h) + ",");
+		[h, ...t] => recur(t, acc + encode(h) + ",");
 	}
 }
 
@@ -115,7 +115,7 @@ var encodeObjectPairs = fn(@list keys, @map m, @str acc) {
 			if (type(k) != "STRING") {
 				error("json: map keys must be strings, got: " + type(k));
 			} else {
-				encodeObjectPairs(rest, m, acc + encodeString(k) + ":" + encode(m[k]) + ",");
+				recur(rest, m, acc + encodeString(k) + ":" + encode(m[k]) + ",");
 			}
 		}
 	}
@@ -151,7 +151,7 @@ var prettyListItems = fn(@list lst, @num indent, @num depth, @str indentStr, @st
 	match lst {
 		[] => acc;
 		[h] => acc + indentStr + prettyPrint(h, indent, depth);
-		[h, ...t] => prettyListItems(t, indent, depth, indentStr, acc + indentStr + prettyPrint(h, indent, depth) + ",\n");
+		[h, ...t] => recur(t, indent, depth, indentStr, acc + indentStr + prettyPrint(h, indent, depth) + ",\n");
 	}
 }
 
@@ -180,7 +180,7 @@ var prettyObjectPairs = fn(@list keys, @map m, @num indent, @num depth, @str ind
 			if (type(k) != "STRING") {
 				error("json: map keys must be strings, got: " + type(k));
 			} else {
-				prettyObjectPairs(rest, m, indent, depth, indentStr,
+				recur(rest, m, indent, depth, indentStr,
 					acc + indentStr + encodeString(k) + ": " + prettyPrint(m[k], indent, depth) + ",\n");
 			}
 		}
@@ -202,43 +202,43 @@ var tokenize = fn(@str s, @num i, @num n, @list tokens) {
 		var c = s[i];
 
 		if (isWhitespace(c)) {
-			tokenize(s, i + 1, n, tokens)
+			recur(s, i + 1, n, tokens)
 		} else if (c == "{") {
-			tokenize(s, i + 1, n, tokens :+ {"type": "lbrace"})
+			recur(s, i + 1, n, tokens :+ {"type": "lbrace"})
 		} else if (c == "}") {
-			tokenize(s, i + 1, n, tokens :+ {"type": "rbrace"})
+			recur(s, i + 1, n, tokens :+ {"type": "rbrace"})
 		} else if (c == "[") {
-			tokenize(s, i + 1, n, tokens :+ {"type": "lbracket"})
+			recur(s, i + 1, n, tokens :+ {"type": "lbracket"})
 		} else if (c == "]") {
-			tokenize(s, i + 1, n, tokens :+ {"type": "rbracket"})
+			recur(s, i + 1, n, tokens :+ {"type": "rbracket"})
 		} else if (c == ":") {
-			tokenize(s, i + 1, n, tokens :+ {"type": "colon"})
+			recur(s, i + 1, n, tokens :+ {"type": "colon"})
 		} else if (c == ",") {
-			tokenize(s, i + 1, n, tokens :+ {"type": "comma"})
+			recur(s, i + 1, n, tokens :+ {"type": "comma"})
 		} else if (c == "\"") {
 			var result = parseStringToken(s, i + 1, n, "");
-			tokenize(s, result.nextIdx, n, tokens :+ {"type": "string", "value": result.value})
+			recur(s, result.nextIdx, n, tokens :+ {"type": "string", "value": result.value})
 		} else if (c == "t") {
 			if (i + 4 <= n && s[i:i+4] == "true") {
-				tokenize(s, i + 4, n, tokens :+ {"type": "true"})
+				recur(s, i + 4, n, tokens :+ {"type": "true"})
 			} else {
 				error("json: invalid token at position " + i)
 			}
 		} else if (c == "f") {
 			if (i + 5 <= n && s[i:i+5] == "false") {
-				tokenize(s, i + 5, n, tokens :+ {"type": "false"})
+				recur(s, i + 5, n, tokens :+ {"type": "false"})
 			} else {
 				error("json: invalid token at position " + i)
 			}
 		} else if (c == "n") {
 			if (i + 4 <= n && s[i:i+4] == "null") {
-				tokenize(s, i + 4, n, tokens :+ {"type": "null"})
+				recur(s, i + 4, n, tokens :+ {"type": "null"})
 			} else {
 				error("json: invalid token at position " + i)
 			}
 		} else if (isDigit(c) || c == "-") {
 			var result = parseNumberToken(s, i, n);
-			tokenize(s, result.nextIdx, n, tokens :+ {"type": "number", "value": result.value})
+			recur(s, result.nextIdx, n, tokens :+ {"type": "number", "value": result.value})
 		} else {
 			error("json: unexpected character '" + c + "' at position " + i)
 		}
@@ -281,10 +281,10 @@ var parseStringToken = fn(@str s, @num i, @num n, @str acc) {
 					"t" => "\t";
 					_ => error("json: invalid escape sequence \\" + nextChar)
 				};
-				parseStringToken(s, i + 2, n, acc + unescaped)
+				recur(s, i + 2, n, acc + unescaped)
 			}
 		} else {
-			parseStringToken(s, i + 1, n, acc + c)
+			recur(s, i + 1, n, acc + c)
 		}
 	}
 }
@@ -341,7 +341,7 @@ var skipDigits = fn(@str s, @num i, @num n) {
 	if (i >= n || !isDigit(s[i])) {
 		i
 	} else {
-		skipDigits(s, i + 1, n)
+		recur(s, i + 1, n)
 	}
 }
 
@@ -399,7 +399,7 @@ var parseArray = fn(@list tokens, @num idx, @list acc, @bool afterComma) {
 				var nextToken = tokens[nextIdx];
 
 				if (nextToken["type"] == "comma") {
-					parseArray(tokens, nextIdx + 1, newAcc, true)
+					recur(tokens, nextIdx + 1, newAcc, true)
 				} else if (nextToken["type"] == "rbracket") {
 					{"value": newAcc, "nextIdx": nextIdx + 1}
 				} else {
@@ -440,7 +440,7 @@ var parseObject = fn(@list tokens, @num idx, @map acc, @bool afterComma) {
 					var nextToken = tokens[afterValueIdx];
 
 					if (nextToken["type"] == "comma") {
-						parseObject(tokens, afterValueIdx + 1, newAcc, true)
+						recur(tokens, afterValueIdx + 1, newAcc, true)
 					} else if (nextToken["type"] == "rbrace") {
 						{"value": newAcc, "nextIdx": afterValueIdx + 1}
 					} else {

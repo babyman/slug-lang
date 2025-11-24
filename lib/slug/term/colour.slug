@@ -11,7 +11,7 @@ var {*} = import(
 /// a terminal colours library inspired by the python `colorist` library found here
 /// https://jakob-bagterp.github.io/colorist-for-python/.
 ///
-/// See also the wikibedia page https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
+/// See also the wikipedia page https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
 ///
 
 val effectNames = ["bold", "dim", "underline", "blink", "reverse", "hide", ];
@@ -40,6 +40,10 @@ var checkTerminal = fn() {
 	}
 }
 
+@testWith(
+	[[31,1]], "31;1",
+	[[0]], "0",
+)
 var combine = fn(@list i, acc = "") {
 	match i {
 		[] => acc;
@@ -48,13 +52,32 @@ var combine = fn(@list i, acc = "") {
 	}
 }
 
+@testWith(
+	[[31,1]], "\033[31;1m",
+	[[0]], "\033[0m",
+)
 var ansiCode = fn(...i) {
 	var s = i /> flatten /> combine
 	"\033[{{s}}m"
 }
 
+@testWith(
+	["s",[31,1]], "\033[31;1ms\033[0m",
+)
 var wrapWith = fn(str, ...s) {
 	ansiCode(...s) + str + reset
+}
+
+@testWith(
+	["red",""], "red",
+	["red","bg"], "bgRed",
+)
+var styleName = fn(base, style) {
+	if ( len(style) > 0 ) {
+		style + toUpper(base[0]) + base[1:]
+	} else {
+		base
+	}
 }
 
 var buildStyles = fn() {
@@ -77,14 +100,6 @@ var buildStyles = fn() {
 				/> put(brightPrefix + part, [b[1] + brightMod])
 				/> put(bgBrightPrefix + part, [b[1] + bgBrightMod])
 		})
-}
-
-var styleName = fn(base, style) {
-	if ( len(style) > 0 ) {
-		style + toUpper(base[0]) + base[1:]
-	} else {
-		base
-	}
 }
 
 var buildCodes = fn(styles, style = "") {
