@@ -462,11 +462,16 @@ func (e *Evaluator) LoadModule(modName string) (*object.Module, error) {
 	slog.Debug("load module",
 		slog.Any("module-name", module.Name))
 	e.PushEnv(moduleEnv)
-	e.Eval(module.Program)
+	out := e.Eval(module.Program)
 	e.PopEnv()
 	slog.Info("Module loaded",
 		slog.Any("module-name", module.Name),
 		slog.Any("environment-size", len(module.Env.Bindings)))
+
+	if e.isError(out) {
+		o := out.(*object.Error)
+		return nil, errors.New(o.Message)
+	}
 
 	// Import the module into the current environment
 	return module, nil
