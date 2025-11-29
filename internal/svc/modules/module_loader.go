@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	MaxErrorsToShow = 8
+	MaxErrorsToShow = 5
 )
 
 type ModuleLoader struct {
