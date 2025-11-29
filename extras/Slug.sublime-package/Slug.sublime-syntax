@@ -42,7 +42,7 @@ contexts:
     # Include destructuring patterns
     - match: \b(var|val)\s+(\[|\{)
       captures:
-        1: keyword.control.slug
+        1: storage.type.slug
       push: destructuring_pattern
 
     # Keywords
