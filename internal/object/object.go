@@ -3,6 +3,7 @@ package object
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"log/slog"
@@ -339,7 +340,7 @@ func (fg *FunctionGroup) SetTag(tag string, params List) {
 		}
 	}
 }
-func (fg *FunctionGroup) DispatchToFunction(fnName string, args []Object) (Object, bool) {
+func (fg *FunctionGroup) DispatchToFunction(fnName string, args []Object) (Object, error) {
 	slog.Debug("dispatching to function group",
 		slog.Any("group-size", len(fg.Functions)),
 		slog.Any("parameter-count", len(args)))
@@ -378,7 +379,7 @@ func (fg *FunctionGroup) DispatchToFunction(fnName string, args []Object) (Objec
 		slog.Debug("best match: %s",
 			slog.Any("match", bestMatch.Inspect()))
 		//fmt.Printf("-----\nbest match: %s, best max %d, score: %d\n\n", bestMatch.Inspect(), bestMax, bestScore)
-		return bestMatch, true
+		return bestMatch, nil
 	} else {
 		slog.Debug("no match found",
 			slog.Any("parameter-count", n))
@@ -394,8 +395,8 @@ func (fg *FunctionGroup) DispatchToFunction(fnName string, args []Object) (Objec
 	if fnName == "" {
 		fnName = "<anonymous>"
 	}
-	err := fmt.Sprintf("No suitable function called %s(%s) found to dispatch", fnName, a.String())
-	return &Error{Message: err}, false
+	err := fmt.Sprintf("No suitable function (%s) found to dispatch", a.String())
+	return &Error{Message: err}, errors.New(err)
 }
 
 func evaluateFunctionMatch(params []*ast.FunctionParameter, args []Object) int {

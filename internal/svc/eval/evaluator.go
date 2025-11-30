@@ -355,7 +355,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 		if e.isError(index) {
 			return index
 		}
-		return e.evalIndexExpression(left, index)
+		return e.evalIndexExpression(node.Token.Position, left, index)
 
 	case *ast.SliceExpression:
 		return e.evalSliceExpression(node)
@@ -1042,11 +1042,11 @@ func (e *Evaluator) ApplyFunction(pos int, fnName string, fnObj object.Object, a
 	switch fn := fnObj.(type) {
 	case *object.FunctionGroup:
 
-		f, ok := fn.DispatchToFunction(fnName, args)
-		if ok {
-			return e.ApplyFunction(pos, fnName, f, args)
+		f, err := fn.DispatchToFunction(fnName, args)
+		if err != nil {
+			return e.newErrorfWithPos(pos, "error calling function '%s': %s", fnName, err.Error())
 		} else {
-			return f
+			return e.ApplyFunction(pos, fnName, f, args)
 		}
 
 	case *object.Function:
@@ -1634,12 +1634,12 @@ func (e *Evaluator) objectsEqual(a, b object.Object) bool {
 	return false
 }
 
-func (e *Evaluator) evalMapIndexExpression(obj, index object.Object) object.Object {
+func (e *Evaluator) evalMapIndexExpression(pos int, obj, index object.Object) object.Object {
 	mapObj := obj.(*object.Map)
 
 	key, ok := index.(object.Hashable)
 	if !ok {
-		return e.newErrorf("unusable as map key: %s", index.Type())
+		return e.newErrorfWithPos(pos, "unusable as map key: %s", index.Type())
 	}
 
 	pair, ok := mapObj.Pairs[key.MapKey()]
@@ -1698,7 +1698,7 @@ func (e *Evaluator) evalTryCatchStatement(node *ast.TryCatchStatement) object.Ob
 	return e.evalMatchExpression(catchMatch)
 }
 
-func (e *Evaluator) evalIndexExpression(left, index object.Object) object.Object {
+func (e *Evaluator) evalIndexExpression(pos int, left, index object.Object) object.Object {
 
 	switch {
 	case left.Type() == object.STRING_OBJ:
@@ -1707,16 +1707,16 @@ func (e *Evaluator) evalIndexExpression(left, index object.Object) object.Object
 				return e.evalStringSlice(str.Value, slice)
 			}
 		}
-		return e.evalStringIndexExpression(left, index)
+		return e.evalStringIndexExpression(pos, left, index)
 	case left.Type() == object.LIST_OBJ && index.Type() == object.NUMBER_OBJ:
-		return e.evalListIndexExpression(left, index)
+		return e.evalListIndexExpression(pos, left, index)
 	case left.Type() == object.LIST_OBJ:
 		if slice, ok := index.(*object.Slice); ok {
 			if arr, ok := left.(*object.List); ok {
 				return e.evalListSlice(arr.Elements, slice)
 			}
 		}
-		return e.evalListIndexExpression(left, index)
+		return e.evalListIndexExpression(pos, left, index)
 	case left.Type() == object.BYTE_OBJ:
 		if slice, ok := index.(*object.Slice); ok {
 			if arr, ok := left.(*object.Bytes); ok {
@@ -1725,9 +1725,9 @@ func (e *Evaluator) evalIndexExpression(left, index object.Object) object.Object
 		}
 		return e.evalByteIndexExpression(left, index)
 	case left.Type() == object.MAP_OBJ:
-		return e.evalMapIndexExpression(left, index)
+		return e.evalMapIndexExpression(pos, left, index)
 	default:
-		return e.newErrorf("index operator not supported: %s", left.Type())
+		return e.newErrorfWithPos(pos, "index operator not supported: %s", left.Type())
 	}
 }
 
@@ -1751,7 +1751,7 @@ func (e *Evaluator) evalSliceExpression(node *ast.SliceExpression) object.Object
 	}
 }
 
-func (e *Evaluator) evalListIndexExpression(list, index object.Object) object.Object {
+func (e *Evaluator) evalListIndexExpression(pos int, list, index object.Object) object.Object {
 	listObject := list.(*object.List)
 	num, ok := index.(*object.Number)
 	if !ok {
@@ -1787,9 +1787,15 @@ func (e *Evaluator) evalByteIndexExpression(list, index object.Object) object.Ob
 	return &object.Number{Value: dec64.FromInt(int(bytesObject.Value[idx]))}
 }
 
-func (e *Evaluator) evalStringIndexExpression(str, index object.Object) object.Object {
+func (e *Evaluator) evalStringIndexExpression(pos int, str, index object.Object) object.Object {
 	stringObject := str.(*object.String)
-	idx := index.(*object.Number).Value.ToInt64()
+	num, ok := index.(*object.Number)
+
+	if !ok {
+		return e.newErrorfWithPos(pos, "index operator not supported: %s", index.Type())
+	}
+	idx := num.Value.ToInt64()
+
 	runes := []rune(stringObject.Value)
 	max := int64(len(runes) - 1)
 

@@ -30,8 +30,8 @@ func fnActorSpawn() *object.Foreign {
 			}
 
 			objects := args[1:]
-			fun, ok := foreign.ToFunctionArgument(args[0], objects)
-			if !ok {
+			fun, err := foreign.ToFunctionArgument(args[0], objects)
+			if err != nil {
 				return ctx.NewError("first argument to `spawn` must be FUNCTION, got=%s", args[0].Type())
 			}
 
