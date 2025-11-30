@@ -1,3 +1,6 @@
+var {*} = import(
+    "slug.std",
+);
 
 // readFile reads entire file content as a string
 // Parameters:
@@ -118,5 +121,22 @@ var readLines = fn(@num file, lines = []) {
 	match file /> readLine() {
 		nil => lines
 		str => recur(file, lines :+ str[:-1]) // -1 to trim the newline
+	}
+}
+
+@export
+var listFilesRecursive = fn(@list path, @fun filter = fn(s) {true}, acc = []) {
+	match path {
+		[] => acc;
+		[h, ...t] => {
+			if (h /> isDir) {
+				var files = ls(h) /> map(fn(v) {h + "/" + v})
+				recur(t + files, filter, acc)
+			} else if (h /> filter) {
+				recur(t, filter, acc :+ h)
+			} else {
+				recur(t, filter, acc)
+			}
+		}
 	}
 }
