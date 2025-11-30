@@ -173,13 +173,16 @@ func (r *ResolveWorker) slugLibPath(moduleName string, moduleRelativePath string
 func calculateModulePath(filename string, rootPath string) (string, []string, error) {
 
 	isSource, _ := isSourceFile(filename)
-	modulePath := ""
+	absFilePath, _ := filepath.Abs(filename)
 	absRootPath, _ := filepath.Abs(rootPath)
+	modulePath := ""
 
 	if isSource {
-		modulePath = filename
+		if rootPath == "." {
+			rootPath = absFilePath
+		}
+		modulePath, _ = filepath.Rel(absRootPath, absFilePath)
 	} else {
-		absFilePath, _ := filepath.Abs(filename)
 		modulePath, _ = filepath.Rel(absRootPath, absFilePath)
 	}
 
