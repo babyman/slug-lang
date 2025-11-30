@@ -43,8 +43,9 @@ var (
 	help      bool
 	version   bool
 	// logging
-	logLevel string
-	logFile  string
+	logLevel  string
+	logFile   string
+	logSource bool
 	// config vars
 	rootPath string
 	debugAST bool
@@ -62,6 +63,7 @@ func init() {
 	// log config
 	flag.StringVar(&logLevel, "log-level", "NONE", "Log level: trace, debug, info, warn, error, none")
 	flag.StringVar(&logFile, "log-file", "", "Log file path (if not set, logs to stderr)")
+	flag.BoolVar(&logSource, "log-source", false, "Include the source file name in log messages")
 }
 
 func main() {
@@ -70,7 +72,7 @@ func main() {
 
 	// Creates a new Logger that uses a JSONHandler to write to standard output
 	loggerOptions := &slog.HandlerOptions{
-		AddSource: false,
+		AddSource: logSource,
 		Level:     logLevelFromString(logLevel),
 	}
 	logWriter := configureLogWriter()
