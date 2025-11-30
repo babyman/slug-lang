@@ -26,7 +26,7 @@ test:
 		echo "Running tests for $$file"; \
 		go run ./cmd/app/main.go -log-level none --root ./tests $$file || exit 1; \
 	done
-	go run ./cmd/app/main.go -log-level none test \
+	go run ./cmd/app/main.go -log-level error test \
 			slug.html slug.list slug.map slug.math slug.regex slug.std slug.string slug.time \
 			slug.csv slug.crypto slug.bytes slug.json slug.term.colour \
 			|| exit 1
