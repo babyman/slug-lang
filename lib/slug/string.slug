@@ -21,6 +21,21 @@ foreign trim = fn(@str str);
 foreign indexOf = fn(@str str, @str seq, @num index = 0);
 
 @testWith(
+	["hello slug", "l"], 7,
+	["hello slug", "h"], 0,
+	["hello slug", "g"], 9,
+)
+@export
+var lastIndexOf = fn(@str str, @str seq, @num index = 0, prev = -1) {
+	var i = indexOf(str, seq, index)
+	if ( i == -1) {
+		prev
+	} else {
+		recur(str, seq, i + 1, i);
+	}
+}
+
+@testWith(
 	[nil], nil,
 	[""], "",
 	["slug"], "SLUG",
