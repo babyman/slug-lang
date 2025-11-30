@@ -1,0 +1,9 @@
+var {*} = import(
+    "slug.test",
+);
+
+var fruitPrices = { durian: 150 };
+
+"durian price: {{fruitPrices["durian"]}}"
+    /> println
+    /> assertEqual("durian price: 150")
