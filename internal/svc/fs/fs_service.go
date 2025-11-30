@@ -1,6 +1,8 @@
 package fs
 
 import (
+	"fmt"
+	"log/slog"
 	"os"
 	"reflect"
 	"slug/internal/kernel"
@@ -64,11 +66,19 @@ func (fs *FsWorker) readHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.H
 	switch payload := fwdMsg.Payload.(type) {
 	case Read:
 		path := payload.Path
-		data, err := os.ReadFile(path)
-		if err != nil {
-			svc.Reply(ctx, fwdMsg, ReadResp{Err: err})
+		_, err := os.Stat(path)
+		if os.IsNotExist(err) {
+			slog.Warn("File not found", slog.Any("path", path))
+			svc.Reply(ctx, fwdMsg, ReadResp{Err: fmt.Errorf("file not found: %s", path)})
 		} else {
-			svc.Reply(ctx, fwdMsg, ReadResp{Data: string(data)})
+			data, err := os.ReadFile(path)
+			if err != nil {
+				slog.Warn("Failed to read file", slog.Any("path", path), slog.Any("error", err))
+				svc.Reply(ctx, fwdMsg, ReadResp{Err: err})
+			} else {
+				slog.Debug("Read file", slog.Any("path", path))
+				svc.Reply(ctx, fwdMsg, ReadResp{Data: string(data)})
+			}
 		}
 	}
 	return kernel.Terminate{}

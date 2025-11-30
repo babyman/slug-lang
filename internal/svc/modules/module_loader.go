@@ -56,6 +56,10 @@ func (ml *ModuleLoader) loadModule(ctx *kernel.ActCtx, pathParts []string) (*obj
 
 	modData, _ := resResult.Payload.(resolver.ResolvedResult)
 
+	if modData.Error != nil {
+		return nil, modData.Error
+	}
+
 	return lexAndParseModule(ctx, modData, ml.DebugAST)
 }
 
@@ -84,7 +88,7 @@ func lexAndParseModule(
 	}
 
 	tokens := lex.Payload.(lexer.LexedTokens).Tokens
-	slog.Debug("Lexed module %s, got %v",
+	slog.Debug("Lexed module",
 		slog.Any("path", module.Path),
 		slog.Any("tokens", tokens))
 
@@ -101,7 +105,7 @@ func lexAndParseModule(
 
 	ast := parse.Payload.(parser.ParsedAst).Program
 	errors := parse.Payload.(parser.ParsedAst).Errors
-	slog.Debug("Compiled %s, got %v",
+	slog.Debug("Compiled",
 		slog.Any("path", module.Path),
 		slog.Any("ast", ast))
 

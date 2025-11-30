@@ -35,5 +35,9 @@ func (fl *FileLoader) loadFile(ctx *kernel.ActCtx, msg kernel.Message, payload L
 
 	modData, _ := resResult.Payload.(resolver.ResolvedResult)
 
+	if modData.Error != nil {
+		return nil, modData.Error
+	}
+
 	return lexAndParseModule(ctx, modData, fl.DebugAST)
 }

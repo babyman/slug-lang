@@ -127,18 +127,26 @@ func (r *ResolveWorker) resolveModule(ctx *kernel.ActCtx, rootPath string, pathP
 	if readResp.Err != nil {
 		libPath, err := r.slugLibPath(moduleName, moduleRelativePath)
 		if err != nil {
+			slog.Info("Failed to calculate library path", slog.Any("error", err))
 			return "", "", "", err
 		}
 
 		fsResponse, err = ctx.SendSync(fsId, fs.Read{Path: libPath})
 		if err != nil {
+			slog.Info("Failed to read library file", slog.String("lib-path", libPath), slog.Any("error", err))
 			return "", "", "", fmt.Errorf("error reading module (%s / %s) '%s': %s", modulePath, libPath, moduleName, err)
 		} else {
 			modulePath = libPath
 			readResp = fsResponse.Payload.(fs.ReadResp)
 		}
+	} else {
+		slog.Info("Loaded module from source", slog.Any("path", modulePath))
 	}
 
+	slog.Debug("Read module",
+		slog.Any("path", modulePath),
+		slog.Any("data-len", len(readResp.Data)),
+		slog.Any("err", readResp.Err))
 	return moduleName, modulePath, readResp.Data, readResp.Err
 }
 
