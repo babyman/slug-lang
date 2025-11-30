@@ -52,11 +52,12 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.meta.rebindScopeTags":  fnMetaRebindScopeTags(),
 		"slug.meta.withEnv":          fnMetaWithEnv(),
 
-		"slug.regex.matches":       fnRegexMatches(),
-		"slug.regex.split":         fnRegexSplit(),
 		"slug.regex.findAll":       fnRegexFindAll(),
 		"slug.regex.findAllGroups": fnRegexFindAllGroups(),
+		"slug.regex.indexOf":       fnRegexIndexOf(),
+		"slug.regex.matches":       fnRegexMatches(),
 		"slug.regex.replaceAll":    fnRegexReplaceAll(),
+		"slug.regex.split":         fnRegexSplit(),
 
 		"slug.std.type":        fnStdType(),
 		"slug.std.isDefined":   fnStdIsDefined(),

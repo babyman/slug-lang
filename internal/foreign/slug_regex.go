@@ -2,6 +2,7 @@ package foreign
 
 import (
 	"regexp"
+	"slug/internal/dec64"
 	"slug/internal/object"
 )
 
@@ -29,6 +30,52 @@ func fnRegexMatches() *object.Foreign {
 			}
 
 			return ctx.NativeBoolToBooleanObject(matches)
+		},
+	}
+}
+
+func fnRegexIndexOf() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) < 2 || len(args) > 3 {
+				return ctx.NewError("wrong number of arguments. got=%d, want=2 or 3",
+					len(args))
+			}
+
+			str, err := unpackString(args[0], "str")
+			if err != nil {
+				return ctx.NewError(err.Error())
+			}
+
+			pattern, err := unpackString(args[1], "pattern")
+			if err != nil {
+				return ctx.NewError(err.Error())
+			}
+
+			re, err := regexp.Compile(pattern)
+			if err != nil {
+				return ctx.NewError(err.Error())
+			}
+
+			startIndex := 0
+			if len(args) == 3 {
+				if args[2].Type() != object.NUMBER_OBJ {
+					return ctx.NewError("third argument must be a number, got %s", args[2].Type())
+				}
+				startIndex = args[2].(*object.Number).Value.ToInt()
+				if startIndex < 0 {
+					startIndex = 0
+				}
+			}
+
+			loc := re.FindStringIndex(str[startIndex:])
+			if loc == nil {
+				return ctx.Nil()
+			}
+
+			left := &object.Number{Value: dec64.FromInt(loc[0] + startIndex)}
+			right := &object.Number{Value: dec64.FromInt(loc[1] + startIndex)}
+			return &object.List{Elements: []object.Object{left, right}}
 		},
 	}
 }
@@ -106,8 +153,8 @@ func fnRegexFindAll() *object.Foreign {
 func fnRegexFindAllGroups() *object.Foreign {
 	return &object.Foreign{
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
-			if len(args) != 2 {
-				return ctx.NewError("wrong number of arguments. got=%d, want=2",
+			if len(args) < 2 || len(args) > 3 {
+				return ctx.NewError("wrong number of arguments. got=%d, want=2..3",
 					len(args))
 			}
 
