@@ -7,6 +7,10 @@
 foreign matches = fn(@str str, @str pattern);
 
 
+@export
+foreign indexOf = fn(@str str, @str pattern, @num index = 0); // return nil or list [left, right]
+
+
 @testWith(
     ["1|2|3", "\|"], ["1", "2", "3"]
 )
