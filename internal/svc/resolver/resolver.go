@@ -87,6 +87,18 @@ func (r *ResolveWorker) resolveFileHandler(ctx *kernel.ActCtx, msg kernel.Messag
 	payload, _ := fwdMsg.Payload.(ResolveFile)
 
 	newRootPath, modulePathParts, err := calculateModulePath(payload.Path, r.RootPath)
+
+	if err != nil {
+		slog.Error("Failed to calculate module path",
+			slog.Any("path", payload.Path),
+			slog.Any("root-path", r.RootPath),
+			slog.Any("error", err))
+		svc.Reply(ctx, fwdMsg, ResolvedResult{
+			Error: err,
+		})
+		return kernel.Terminate{}
+	}
+
 	name, path, data, err := r.resolveModule(ctx, newRootPath, modulePathParts)
 
 	svc.Reply(ctx, fwdMsg, ResolvedResult{
@@ -105,7 +117,7 @@ func (r *ResolveWorker) resolveModule(ctx *kernel.ActCtx, rootPath string, pathP
 
 	moduleName := strings.Join(pathParts, ".")
 
-	slog.Info("Loading module",
+	slog.Info("Resolving module",
 		slog.Any("moduleName", moduleName),
 		slog.Any("pathParts", pathParts),
 		slog.Any("rootPath", rootPath))
@@ -160,43 +172,26 @@ func (r *ResolveWorker) slugLibPath(moduleName string, moduleRelativePath string
 
 func calculateModulePath(filename string, rootPath string) (string, []string, error) {
 
-	// Check if file exists and is not a directory
-	isSource, err := isSourceFile(filename)
-	if err != nil {
-		return "", nil, err
-	}
+	isSource, _ := isSourceFile(filename)
+	modulePath := ""
+	absRootPath, _ := filepath.Abs(rootPath)
 
-	if rootPath == "." && isSource {
-		rootPath = filepath.Dir(filename)
-	}
-
-	// Calculate the module path relative to root path
-	absFilePath, err := filepath.Abs(filename)
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to get absolute path for '%s': %v", filename, err)
-	}
-
-	absRootPath, err := filepath.Abs(rootPath)
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to get absolute path for root '%s': %v", rootPath, err)
-	}
-
-	if !isSource {
-		absFilePath = absRootPath
-	}
-
-	modulePath, err := filepath.Rel(absRootPath, absFilePath)
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to calculate relative path: %v", err)
-	}
-	if !isSource {
+	if isSource {
 		modulePath = filename
+	} else {
+		absFilePath, _ := filepath.Abs(filename)
+		modulePath, _ = filepath.Rel(absRootPath, absFilePath)
 	}
 
-	// Remove .slug extension if present
 	modulePath = strings.TrimSuffix(modulePath, ".slug")
-
 	modulePathParts := strings.Split(modulePath, string(filepath.Separator))
+
+	slog.Info("Module path calculated from filename",
+		slog.Any("path", modulePath),
+		slog.Any("filename", filename),
+		slog.Any("abs-root-path", absRootPath),
+		slog.Any("parts", modulePathParts))
+
 	return absRootPath, modulePathParts, nil
 }
 

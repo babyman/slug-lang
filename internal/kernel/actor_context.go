@@ -57,7 +57,13 @@ func (c *ActCtx) SendFuture(to ActorID, payload any) (*future.Future[Message], e
 
 // SendSync sends and waits for a single reply.
 func (c *ActCtx) SendSync(to ActorID, payload any) (Message, error) {
-	return c.SendSyncWithTimeout(to, payload, defaultSendTimeout)
+	response, err := c.SendSyncWithTimeout(to, payload, defaultSendTimeout)
+	if err != nil {
+		slog.Error("error sending message",
+			slog.Any("error", err))
+		return Message{}, err
+	}
+	return response, err
 }
 
 func (c *ActCtx) SendSyncWithTimeout(to ActorID, payload any, timeout time.Duration) (Message, error) {

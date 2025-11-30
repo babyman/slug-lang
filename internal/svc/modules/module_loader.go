@@ -57,6 +57,9 @@ func (ml *ModuleLoader) loadModule(ctx *kernel.ActCtx, pathParts []string) (*obj
 	modData, _ := resResult.Payload.(resolver.ResolvedResult)
 
 	if modData.Error != nil {
+		slog.Error("Failed to resolve module",
+			slog.Any("path", pathParts),
+			slog.Any("error", err))
 		return nil, modData.Error
 	}
 

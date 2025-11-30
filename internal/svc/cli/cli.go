@@ -33,20 +33,12 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 	modsID, _ := ctx.K.ActorByName(svc.ModuleService)
 	evalId, _ := ctx.K.ActorByName(svc.EvalService)
 
-	modReply, err := ctx.SendSync(modsID, modules.LoadFile{
+	modReply, _ := ctx.SendSync(modsID, modules.LoadFile{
 		Path: filename,
 		Args: args,
 	})
-	if err != nil {
-		slog.Error("module load error",
-			slog.Any("filename", filename),
-			slog.Any("error", err))
-		return nil
-	}
-	loadResult, ok := modReply.Payload.(modules.LoadModuleResult)
-	if !ok {
-		return nil
-	}
+
+	loadResult, _ := modReply.Payload.(modules.LoadModuleResult)
 	if loadResult.Error != nil {
 		svc.SendStdOut(ctx, loadResult.Error.Error())
 		ctx.SendSync(kernelID, kernel.RequestShutdown{ExitCode: 1})
@@ -70,6 +62,9 @@ func (cli *Cli) handleCommandlineArguments(ctx *kernel.ActCtx, kernelID kernel.A
 	}
 
 	result, err, ok := future.AwaitTimeout(TenYears) // 10 years
+	if !ok {
+		slog.Error("Timeout waiting for evaluation, should never happen!")
+	}
 	p := result.Payload.(svc.EvaluateResult)
 
 	if p.Error != nil {
