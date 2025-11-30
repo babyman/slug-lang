@@ -1,10 +1,12 @@
+///
+/// the slug standard library
+///
+
 var {*} = import(
 	"slug.string"
 );
 
-//
-// the slug standard library
-// -------------------------
+/// Constant for NIL_TYPE, `type`
 @export val NIL_TYPE = "NIL";
 @export val BOOLEAN_TYPE = "BOOLEAN";
 @export val NUMBER_TYPE = "NUMBER";
@@ -15,7 +17,7 @@ var {*} = import(
 @export val FUNCTION_TYPE = "FUNCTION";
 
 
-// return a string value indicating the type of `val`
+/// return a string value indicating the type of `val`
 @testWith(
 	[nil], NIL_TYPE,
 	[true], BOOLEAN_TYPE,
@@ -30,12 +32,13 @@ var {*} = import(
 @export
 foreign type = fn(val);
 
+/// Determine if a variable is defined in the current scope.
 @testWith(
 	["type"], true,
 	["__not_defined__"], false
 )
 @export
-foreign isDefined = fn(@str val);
+foreign isDefined = fn(@str varName);
 
 @export
 foreign printf = fn(@str str, ...args);
