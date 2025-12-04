@@ -56,14 +56,15 @@ func (s *SlugSandboxActor) Run(ctx *kernel.ActCtx, msg kernel.Message) kernel.Ha
 			AllowedImports: s.AllowedImports,
 			Ctx:            ctx,
 		}
-		e.PushEnv(env)
-		defer e.PopEnv()
 
 		slog.Info(" ---- begin ----")
 		defer slog.Info(" ---- done ----")
 
 		// Evaluate the program within the provided environment
+		e.PushEnv(env)
 		v := e.Eval(s.Program)
+		e.PopEnv(v)
+
 		ctx.SendAsync(msg.From, SlugActorMessage{Msg: v})
 		return kernel.Continue{}
 

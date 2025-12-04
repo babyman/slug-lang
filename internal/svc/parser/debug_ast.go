@@ -278,14 +278,6 @@ func WalkAST(node ast.Node) interface{} {
 			"2.value": WalkAST(n.Value),
 		}
 
-	case *ast.TryCatchStatement:
-		return map[string]interface{}{
-			"0.type":       "TryCatchStatement",
-			"1.token":      n.TokenLiteral(),
-			"2.tryBlock":   WalkAST(n.TryBlock),
-			"3.catchBlock": WalkAST(n.CatchBlock),
-		}
-
 	case *ast.ValExpression:
 		return map[string]interface{}{
 			"0.type":     "ValExpression",

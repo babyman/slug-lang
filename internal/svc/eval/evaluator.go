@@ -81,16 +81,25 @@ func (e *Evaluator) CurrentEnv() *object.Environment {
 	return e.envStack[len(e.envStack)-1]
 }
 
-func (e *Evaluator) PopEnv() {
+func (e *Evaluator) PopEnv(result object.Object) object.Object {
 	if len(e.envStack) == 0 {
 		panic("Attempted to pop from an empty environment stack")
 	}
-	e.CurrentEnv().ExecuteDeferred(func(stmt ast.Statement) {
-		e.Eval(stmt)
-	})
+
+	// Define equality function for payload comparison
+	eqFunc := func(a, b object.Object) bool {
+		return e.objectsEqual(a, b)
+	}
+
+	finalResult := e.CurrentEnv().ExecuteDeferred(result, func(stmt ast.Statement) object.Object {
+		return e.Eval(stmt)
+	}, eqFunc)
+
 	e.envStack = e.envStack[:len(e.envStack)-1]
 	slog.Debug("pop stack frame",
 		slog.Int("stack-size", len(e.envStack)))
+
+	return finalResult
 }
 
 // Helpers for tracking the current function (for `recur`)
@@ -280,6 +289,15 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 
 		// If this is a tail call, wrap it in a TailCall object instead of evaluating
 		if node.IsTailCall {
+			// If we have active defers in the current frame, execute them now.
+			// We pass 'nil' as result because if we reached this point, the current
+			// function execution is considered successful up to the tail call.
+			eqFunc := func(a, b object.Object) bool { return e.objectsEqual(a, b) }
+
+			e.CurrentEnv().ExecuteDeferred(nil, func(stmt ast.Statement) object.Object {
+				return e.Eval(stmt)
+			}, eqFunc)
+
 			slog.Debug("Tail call",
 				slog.Any("function", node.Token.Literal),
 				slog.Any("argument-count", len(args)))
@@ -332,6 +350,12 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			slog.Any("function", fnName),
 			slog.Any("argument-count", len(args)))
 
+		// Execute active defers before the tail call.
+		eqFunc := func(a, b object.Object) bool { return e.objectsEqual(a, b) }
+		e.CurrentEnv().ExecuteDeferred(nil, func(stmt ast.Statement) object.Object {
+			return e.Eval(stmt)
+		}, eqFunc)
+
 		// Map directly to TailCall for the current function
 		return &object.TailCall{
 			FnName:    fnName,
@@ -365,9 +389,6 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 
 	case *ast.ThrowStatement:
 		return e.evalThrowStatement(node)
-
-	case *ast.TryCatchStatement:
-		return e.evalTryCatchStatement(node)
 
 	case *ast.DeferStatement:
 		return e.evalDefer(node)
@@ -463,7 +484,7 @@ func (e *Evaluator) LoadModule(modName string) (*object.Module, error) {
 		slog.Any("module-name", module.Name))
 	e.PushEnv(moduleEnv)
 	out := e.Eval(module.Program)
-	e.PopEnv()
+	out = e.PopEnv(out)
 	slog.Info("Module loaded",
 		slog.Any("module-name", module.Name),
 		slog.Any("environment-size", len(module.Env.Bindings)))
@@ -485,7 +506,7 @@ func (e *Evaluator) mapIdentifiersToStrings(identifiers []*ast.Identifier) []str
 	return parts
 }
 
-func (e *Evaluator) evalBlockStatement(block *ast.BlockStatement) object.Object {
+func (e *Evaluator) evalBlockStatement(block *ast.BlockStatement) (result object.Object) {
 	// Create a new environment with an associated stack frame
 	//println("block")
 	blockEnv := object.NewEnclosedEnvironment(e.CurrentEnv(), &object.StackFrame{
@@ -494,10 +515,8 @@ func (e *Evaluator) evalBlockStatement(block *ast.BlockStatement) object.Object 
 		Position: block.Token.Position,
 	})
 	e.PushEnv(blockEnv)
-	defer e.PopEnv()
-
-	// Variable to store the result of the evaluation
-	var result object.Object
+	result = NIL
+	defer func() { result = e.PopEnv(result) }()
 
 	for _, statement := range block.Statements {
 
@@ -1061,7 +1080,7 @@ func (e *Evaluator) ApplyFunction(pos int, fnName string, fnObj object.Object, a
 		// Evaluate function body
 		result := e.Eval(fn.Body)
 
-		e.PopEnv()
+		result = e.PopEnv(result)
 
 		for {
 			if returnVal, ok := result.(*object.TailCall); ok {
@@ -1192,19 +1211,21 @@ func (e *Evaluator) evalMatchExpression(node *ast.MatchExpression) object.Object
 	return NIL
 }
 
-func (e *Evaluator) evalMatchCase(matchValue object.Object, matchCase *ast.MatchCase) (object.Object, bool) {
+func (e *Evaluator) evalMatchCase(matchValue object.Object, matchCase *ast.MatchCase) (result object.Object, matched bool) {
 	patternEnv := object.NewEnclosedEnvironment(e.CurrentEnv(), nil)
 	e.PushEnv(patternEnv)
-	defer e.PopEnv()
+	result = nil
+	defer func() { result = e.PopEnv(result) }()
 
 	// Match against the provided value or evaluate the condition
-	matched := false
+	matched = false
 	var err error
 	if matchValue != nil {
 		// Match the case's pattern against the matchValue
 		matched, err = e.patternMatches(matchCase.Pattern, matchValue, false, false, false)
 		if err != nil {
-			return e.newErrorfWithPos(matchCase.Token.Position, "pattern match error: %s", err.Error()), true
+			result = e.newErrorfWithPos(matchCase.Token.Position, "pattern match error: %s", err.Error())
+			return result, true
 		}
 	} else {
 		// Valueless match condition
@@ -1215,14 +1236,16 @@ func (e *Evaluator) evalMatchCase(matchValue object.Object, matchCase *ast.Match
 	if matched && matchCase.Guard != nil {
 		guardResult := e.Eval(matchCase.Guard)
 		if e.isError(guardResult) {
-			return guardResult, true
+			result = guardResult
+			return result, true
 		}
 		matched = e.isTruthy(guardResult)
 	}
 
 	// If the pattern matched, evaluate the body
 	if matched {
-		return e.Eval(matchCase.Body), true
+		result = e.Eval(matchCase.Body)
+		return result, true
 	}
 	return nil, false
 }
@@ -1272,7 +1295,7 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 			encEnv := object.NewEnclosedEnvironment(env, nil)
 			e.PushEnv(encEnv)
 			matched, err := e.patternMatches(subPattern, value, isConstant, isExport, isImport)
-			e.PopEnv()
+			e.PopEnv(nil)
 			if err != nil {
 				return false, err
 			}
@@ -1330,7 +1353,7 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 		// scoped environment to capture the match bindings, these will be copied to the parent env on success
 		scoped := object.NewEnclosedEnvironment(env, nil)
 		e.PushEnv(scoped)
-		defer e.PopEnv()
+		defer func() { e.PopEnv(nil) }() // Pattern matches shouldn't produce errors via defer usually
 
 		// Check if all required fields are present
 		for key, subPattern := range p.Pairs {
@@ -1444,12 +1467,14 @@ func (e *Evaluator) patternMatchesList(
 		if spread, isSpread := elemPattern.(*ast.SpreadPattern); isSpread {
 			matched, err := e.patternMatches(spread, &object.List{Elements: list.Elements[i:]}, isConstant, isExport, isImport)
 			if err != nil || !matched {
+				e.PopEnv(nil)
 				return false, err
 			}
 			break
 		} else {
 			matched, err := e.patternMatches(elemPattern, list.Elements[i], isConstant, isExport, isImport)
 			if err != nil || !matched {
+				e.PopEnv(nil)
 				return false, err
 			}
 		}
@@ -1460,16 +1485,18 @@ func (e *Evaluator) patternMatchesList(
 		value, _ := scoped.Get(name)
 		if binding.IsMutable {
 			if _, err := env.Define(name, value, isExport, isImport); err != nil {
+				e.PopEnv(nil)
 				return false, err
 			}
 		} else {
 			if _, err := env.DefineConstant(name, value, isExport, isImport); err != nil {
+				e.PopEnv(nil)
 				return false, err
 			}
 		}
 	}
 
-	e.PopEnv()
+	e.PopEnv(nil)
 
 	return true, nil
 }
@@ -1503,12 +1530,14 @@ func (e *Evaluator) patternMatchesBytes(
 		if spread, isSpread := elemPattern.(*ast.SpreadPattern); isSpread {
 			matched, err := e.patternMatches(spread, &object.Bytes{Value: bytes.Value[i:]}, isConstant, isExport, isImport)
 			if err != nil || !matched {
+				e.PopEnv(nil)
 				return false, err
 			}
 			break
 		} else {
 			matched, err := e.patternMatches(elemPattern, &object.Number{Value: dec64.FromInt(int(bytes.Value[i]))}, isConstant, isExport, isImport)
 			if err != nil || !matched {
+				e.PopEnv(nil)
 				return false, err
 			}
 		}
@@ -1519,16 +1548,18 @@ func (e *Evaluator) patternMatchesBytes(
 		value, _ := scoped.Get(name)
 		if binding.IsMutable {
 			if _, err := env.Define(name, value, isExport, isImport); err != nil {
+				e.PopEnv(nil)
 				return false, err
 			}
 		} else {
 			if _, err := env.DefineConstant(name, value, isExport, isImport); err != nil {
+				e.PopEnv(nil)
 				return false, err
 			}
 		}
 	}
 
-	e.PopEnv()
+	e.PopEnv(nil)
 
 	return true, nil
 }
@@ -1655,9 +1686,6 @@ func (e *Evaluator) evalThrowStatement(node *ast.ThrowStatement) object.Object {
 	if e.isError(val) {
 		return val
 	}
-	if val.Type() != object.MAP_OBJ {
-		return e.newErrorfWithPos(node.Token.Position, "throw argument must be a Map, got %s", val.Type())
-	}
 	env := e.CurrentEnv()
 	return &object.RuntimeError{
 		Payload: val,
@@ -1667,35 +1695,6 @@ func (e *Evaluator) evalThrowStatement(node *ast.ThrowStatement) object.Object {
 			Position: node.Token.Position,
 		}),
 	}
-}
-
-func (e *Evaluator) evalTryCatchStatement(node *ast.TryCatchStatement) object.Object {
-	// Execute the try block
-	tryResult := e.Eval(node.TryBlock)
-
-	err, isRuntimeError := tryResult.(*object.RuntimeError)
-
-	// If there's no error, return the result of the try block
-	if !isRuntimeError {
-		return tryResult
-	}
-
-	// Match the error Payload against catch block patterns
-	catchMatch := node.CatchBlock
-
-	// Otherwise, handle the error (it must be a RuntimeError)
-	env := e.CurrentEnv()
-	catchEnv := object.NewEnclosedEnvironment(env, nil)
-	e.PushEnv(catchEnv)
-	defer e.PopEnv()
-
-	// bind the error payload to the catch pattern
-	_, bindError := catchEnv.Define(catchMatch.Value.String(), err.Payload, false, false)
-	if bindError != nil {
-		return e.newErrorWithPos(node.Token.Position, bindError.Error())
-	}
-
-	return e.evalMatchExpression(catchMatch)
 }
 
 func (e *Evaluator) evalIndexExpression(pos int, left, index object.Object) object.Object {
@@ -1755,7 +1754,7 @@ func (e *Evaluator) evalListIndexExpression(pos int, list, index object.Object) 
 	listObject := list.(*object.List)
 	num, ok := index.(*object.Number)
 	if !ok {
-		return e.newErrorf("index operator not supported: %s", index.Type())
+		return e.newErrorfWithPos(pos, "index operator not supported: %s", index.Type())
 	}
 	idx := num.Value.ToInt64()
 	max := int64(len(listObject.Elements) - 1)
@@ -1897,7 +1896,7 @@ func (e *Evaluator) evalForeignFunctionDeclaration(ff *ast.ForeignFunctionDeclar
 
 func (e *Evaluator) evalDefer(deferStmt *ast.DeferStatement) object.Object {
 	// Register the defer statement into the environment's defer stack
-	e.CurrentEnv().RegisterDefer(deferStmt.Call)
+	e.CurrentEnv().RegisterDefer(deferStmt)
 	return nil // Defer statements do not produce a direct result
 }
 

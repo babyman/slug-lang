@@ -225,8 +225,6 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseNotImplemented()
 	case token.DEFER:
 		return p.parseDeferStatement()
-	case token.TRY:
-		return p.parseTryCatchStatement()
 	case token.THROW:
 		return p.parseThrowStatement()
 	case token.AT:
@@ -920,7 +918,7 @@ func (p *Parser) parseFunctionLiteral() ast.Expression {
 	lit.Body = p.parseBlockStatement()
 
 	// Analyze function body for tail calls
-	setTailCallFlags(lit)
+	p.setTailCallFlags(lit)
 
 	// Validate that all `recur` occurrences are in tail position
 	p.validateRecurUsage(lit)
@@ -929,37 +927,49 @@ func (p *Parser) parseFunctionLiteral() ast.Expression {
 }
 
 // setTailCallFlags analyzes a function literal and marks call expressions in tail position
-func setTailCallFlags(fn *ast.FunctionLiteral) {
+func (p *Parser) setTailCallFlags(fn *ast.FunctionLiteral) {
 	if fn.Body == nil || len(fn.Body.Statements) == 0 {
 		return
 	}
 
 	// Check for tail calls in the function body
-	hasTailCall := checkTailCallsInBlock(fn.Body)
+	hasTailCall := p.checkTailCallsInBlock(fn.Body)
 	fn.HasTailCall = hasTailCall
 }
 
 // checkTailCallsInBlock checks for tail calls in a block statement
-func checkTailCallsInBlock(block *ast.BlockStatement) bool {
-	if len(block.Statements) == 0 {
+func (p *Parser) checkTailCallsInBlock(block *ast.BlockStatement) bool {
+	if block == nil || len(block.Statements) == 0 {
 		return false
 	}
 
+	// Check if this block introduces any defers
+	//blockDefer := false
+	//for _, stmt := range block.Statements {
+	//	if _, ok := stmt.(*ast.DeferStatement); ok {
+	//		blockDefer = true
+	//		break
+	//	}
+	//}
+
+	// If either the enclosing scope or this block has a defer, we are in a deferred state
+	//isDeferred := hasActiveDefer || blockDefer
+
 	// Only the last statement in a block can contain a tail call
 	lastStmt := block.Statements[len(block.Statements)-1]
-	return checkTailCallsInStatement(lastStmt)
+	return p.checkTailCallsInStatement(lastStmt)
 }
 
 // checkTailCallsInStatement checks for tail calls in a statement
-func checkTailCallsInStatement(stmt ast.Statement) bool {
+func (p *Parser) checkTailCallsInStatement(stmt ast.Statement) bool {
 	switch s := stmt.(type) {
 	case *ast.ReturnStatement:
 		// In a return statement, the returned expression might be a tail call
-		return markTailCall(s.ReturnValue)
+		return p.markTailCall(s.ReturnValue)
 
 	case *ast.ExpressionStatement:
 		// In an expression statement at the end of a block, the expression might be a tail call
-		return markTailCall(s.Expression)
+		return p.markTailCall(s.Expression)
 
 	default:
 		return false
@@ -967,7 +977,7 @@ func checkTailCallsInStatement(stmt ast.Statement) bool {
 }
 
 // markTailCall marks call expressions as tail calls and returns whether a tail call was found
-func markTailCall(expr ast.Expression) bool {
+func (p *Parser) markTailCall(expr ast.Expression) bool {
 	if expr == nil {
 		return false
 	}
@@ -985,10 +995,10 @@ func markTailCall(expr ast.Expression) bool {
 
 	case *ast.IfExpression:
 		// An if expression has tail calls if both branches have tail calls in their final statements
-		thenHasTail := checkTailCallsInBlock(e.ThenBranch)
+		thenHasTail := p.checkTailCallsInBlock(e.ThenBranch)
 		elseHasTail := false
 		if e.ElseBranch != nil {
-			elseHasTail = checkTailCallsInBlock(e.ElseBranch)
+			elseHasTail = p.checkTailCallsInBlock(e.ElseBranch)
 		}
 		return thenHasTail || elseHasTail
 
@@ -996,7 +1006,7 @@ func markTailCall(expr ast.Expression) bool {
 		// A match expression has tail calls if any of its cases have tail calls
 		hasAnyTailCall := false
 		for _, matchCase := range e.Cases {
-			if matchCase.Body != nil && checkTailCallsInBlock(matchCase.Body) {
+			if matchCase.Body != nil && p.checkTailCallsInBlock(matchCase.Body) {
 				hasAnyTailCall = true
 			}
 		}
@@ -1367,79 +1377,14 @@ func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
 	p.infixParseFns[tokenType] = fn
 }
 
-func (p *Parser) parseTryCatchStatement() *ast.TryCatchStatement {
-	stmt := &ast.TryCatchStatement{Token: p.curToken}
-
-	// Parse the try block
-	if !p.expectPeek(token.LBRACE) {
-		return nil
-	}
-	stmt.TryBlock = p.parseBlockStatement()
-
-	// Parse the catch block
-	if !p.expectPeek(token.CATCH) {
-		return nil
-	}
-	stmt.CatchToken = p.curToken
-
-	// this seems hacky, i wonder if it's idiomatic Go...
-	v := p.parseMatchExpression()
-	if v == nil {
-		p.addErrorAt(stmt.CatchToken.Position, "expected match expression after 'catch'")
-		return nil
-	}
-	expression := v.(*ast.MatchExpression)
-
-	// add a default case to the CatchBlock expression to rethrow value
-	// todo: maybe we can check for the default case already in the expression?
-	expression.Cases = append(expression.Cases, &ast.MatchCase{
-		Token:   p.curToken,
-		Pattern: &ast.SpreadPattern{Token: p.curToken},
-		Body: &ast.BlockStatement{
-			Token: p.curToken,
-			Statements: []ast.Statement{
-				&ast.ThrowStatement{
-					Token: p.curToken,
-					Value: expression.Value,
-				},
-			},
-		},
-	})
-	stmt.CatchBlock = expression
-
-	return stmt
-}
-
 func (p *Parser) parseThrowStatement() *ast.ThrowStatement {
 	throw := &ast.ThrowStatement{Token: p.curToken}
 
 	// Advance to the expression after `throw`
 	p.nextToken()
-	ident := p.parseIdentifier()
+	ident := p.parseExpression(LOWEST)
 
-	if !p.expectPeek(token.LPAREN) {
-		return nil
-	}
-	var ef *ast.MapLiteral = nil
-	if p.peekTokenIs(token.LBRACE) {
-		p.nextToken() // consume RPAREN
-		ef = p.parseMapLiteral().(*ast.MapLiteral)
-	}
-	if !p.expectPeek(token.RPAREN) {
-		return nil
-	}
-	if ef == nil {
-		pairs := make(map[ast.Expression]ast.Expression)
-		pairs[&ast.StringLiteral{Token: p.curToken, Value: "type"}] = &ast.StringLiteral{Token: p.curToken, Value: ident.String()}
-
-		throw.Value = &ast.MapLiteral{
-			Token: p.curToken,
-			Pairs: pairs,
-		}
-	} else {
-		ef.Pairs[&ast.StringLiteral{Token: p.curToken, Value: "type"}] = &ast.StringLiteral{Token: p.curToken, Value: ident.String()}
-		throw.Value = ef
-	}
+	throw.Value = ident
 
 	if p.peekTokenIs(token.SEMICOLON) {
 		p.nextToken()
@@ -1504,8 +1449,33 @@ func (p *Parser) parseForeignFunctionDeclaration() *ast.ForeignFunctionDeclarati
 }
 
 func (p *Parser) parseDeferStatement() *ast.DeferStatement {
-	stmt := &ast.DeferStatement{Token: p.curToken} // Current token is 'defer'
+	stmt := &ast.DeferStatement{Token: p.curToken, Mode: ast.DeferAlways} // Current token is 'defer'
 	p.nextToken()
+
+	if p.curTokenIs(token.ONSUCCESS) {
+		stmt.Mode = ast.DeferOnSuccess
+		p.nextToken()
+	} else if p.curTokenIs(token.ONERROR) {
+		stmt.Mode = ast.DeferOnError
+		p.nextToken()
+
+		if p.curTokenIs(token.LPAREN) {
+			p.nextToken() // Consume '('
+
+			if !p.curTokenIs(token.IDENT) {
+				p.addErrorAt(p.curToken.Position, "expected identifier for error variable")
+				return nil
+			}
+			stmt.ErrorName = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+			p.nextToken() // Consume identifier
+
+			if !p.curTokenIs(token.RPAREN) {
+				p.addErrorAt(p.curToken.Position, "expected closing parenthesis")
+				return nil
+			}
+			p.nextToken() // Consume ')'
+		}
+	}
 
 	if p.curTokenIs(token.LBRACE) {
 		stmt.Call = p.parseBlockStatement()

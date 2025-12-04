@@ -1,5 +1,6 @@
 var {*} = import(
-    "slug.std"
+	"slug.std",
+	"slug.test",
 );
 
 //
@@ -7,20 +8,17 @@ var {*} = import(
 // --------------------------
 
 var f1 = fn() {
-    try {
-        println("  before throw")
-        throw ConnectionError({msg: "Failed to connect"});
-        println("  after throw")
-    } catch err {
-        {type: "ConnectionError", msg, ...} => println("    Connection failed: " + msg);
-        {type: "FileError", ...} => println("    File error");
-        // no default case required to re-throw
-    }
+	defer onerror(err) {
+		"new return value"
+	}
+	println("  before throw")
+	throw "Failed to connect";
+	println("  after throw")
 }
 
 println("before call");
 
-f1();
+f1() /> assertEqual("new return value");
 
 println("after call");
 

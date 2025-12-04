@@ -30,8 +30,8 @@ type Environment struct {
 	Src        string
 	Path       string
 	ModuleFqn  string
-	StackInfo  *StackFrame     // Optional stack frame information
-	deferStack []ast.Statement // Stack for deferred statements
+	StackInfo  *StackFrame           // Optional stack frame information
+	deferStack []*ast.DeferStatement // Stack for deferred statements
 }
 
 type Binding struct {
@@ -207,17 +207,120 @@ func reverse(slice []StackFrame) []StackFrame {
 	return slice
 }
 
-func (e *Environment) RegisterDefer(deferStmt ast.Statement) {
+func (e *Environment) RegisterDefer(deferStmt *ast.DeferStatement) {
 	slog.Debug("Stashing deferred block",
 		slog.Any("deferred-statement", deferStmt))
 	e.deferStack = append(e.deferStack, deferStmt)
 }
 
-func (e *Environment) ExecuteDeferred(evalFunc func(stmt ast.Statement)) {
+// ExecuteDeferred runs deferred statements.
+// It takes the current result of the block/function and returns the final result.
+// If a deferred statement recovers or throws, the returned object will reflect that.
+func (e *Environment) ExecuteDeferred(result Object, evalFunc func(stmt ast.Statement) Object, eqFunc func(Object, Object) bool) Object {
 	defer func() { e.deferStack = nil }() // Always clear defer stack
-	for i := len(e.deferStack) - 1; i >= 0; i-- {
-		evalFunc(e.deferStack[i]) // Execute each deferred statement
-		slog.Debug("Executing deferred block",
-			slog.Any("deferred-statement", e.deferStack[i]))
+
+	if e.deferStack == nil || len(e.deferStack) == 0 {
+		return result
 	}
+	slog.Debug("Deferred execution starting",
+		slog.Any("pre-result", result))
+	currentResult := result
+
+	for i := len(e.deferStack) - 1; i >= 0; i-- {
+		ds := e.deferStack[i]
+
+		// 1. Analyze current state
+		isError := false
+		var errorPayload Object
+		var activeRuntimeErr *RuntimeError
+
+		if currentResult != nil {
+			if rtErr, ok := currentResult.(*RuntimeError); ok {
+				isError = true
+				activeRuntimeErr = rtErr
+				errorPayload = rtErr.Payload
+			} else if _, ok := currentResult.(*Error); ok {
+				// Internal/Native errors are also errors
+				isError = true
+				errorPayload = currentResult
+			}
+		}
+
+		// 2. Determine if handler should run
+		shouldRun := false
+		switch ds.Mode {
+		case ast.DeferAlways:
+			shouldRun = true
+		case ast.DeferOnSuccess:
+			shouldRun = !isError
+		case ast.DeferOnError:
+			shouldRun = isError
+		}
+
+		if shouldRun {
+			if isError && ds.Mode == ast.DeferOnError && ds.ErrorName != nil {
+				// Force bind the error variable in the current environment
+				e.Bindings[ds.ErrorName.Value] = &Binding{
+					Value:     errorPayload,
+					IsMutable: false,
+					Meta:      Meta{},
+				}
+			}
+
+			// 3. Execute the deferred block
+			deferResult := evalFunc(ds.Call)
+
+			slog.Debug("Executed deferred block",
+				slog.Any("is-error", isError),
+				slog.Any("block", ds.Call.String()),
+				slog.Any("defer-result", deferResult.Inspect()),
+			)
+
+			// 4. Handle the result of the deferred block
+			// If the block returned a RuntimeError (threw), we chain or replace.
+			if newRtErr, ok := deferResult.(*RuntimeError); ok {
+				// Scenario 3: Throwing new value (Chain)
+				// If the user re-threw the EXACT SAME object, we keep it (Rethrow identity)
+				if activeRuntimeErr != nil && newRtErr == activeRuntimeErr {
+					currentResult = activeRuntimeErr
+				} else {
+					// New error, chain it if we had a previous error
+					if activeRuntimeErr != nil {
+						newRtErr.Cause = activeRuntimeErr
+					}
+					currentResult = newRtErr
+				}
+				continue
+			}
+
+			// Check for ReturnValue wrapper (Explicit Return)
+			// This distinguishes `return x` (explicit) from `x` (implicit block result)
+			if isError && ds.Mode == ast.DeferOnError {
+				if retVal, ok := deferResult.(*ReturnValue); ok {
+					val := retVal.Value
+					// We are in error state.
+					// Scenario 2: Rethrowing (returning the same payload)
+					// If value == errorPayload, treat as rethrow -> keep current error.
+					if eqFunc(val, errorPayload) {
+						// Rethrow: keep propagating the original RuntimeError
+						currentResult = activeRuntimeErr
+					} else {
+						// Scenario 1: Recovering
+						// Explicit return of a different value -> Recover
+						currentResult = val
+					}
+				} else if eqFunc(deferResult, errorPayload) {
+					// Rethrow: keep propagating the original RuntimeError
+					currentResult = activeRuntimeErr
+				} else {
+					currentResult = deferResult
+				}
+			}
+		}
+	}
+
+	slog.Debug("Deferred execution complete",
+		slog.Any("result", currentResult))
+
+	return currentResult
 }

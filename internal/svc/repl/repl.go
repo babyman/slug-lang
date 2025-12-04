@@ -35,7 +35,7 @@ func Start(in io.Reader, out io.Writer) {
 		e := eval.Evaluator{}
 		e.PushEnv(object.NewEnvironment())
 		evaluated := e.Eval(program)
-		e.PopEnv()
+		e.PopEnv(evaluated)
 
 		if evaluated != nil {
 			io.WriteString(out, evaluated.Inspect())

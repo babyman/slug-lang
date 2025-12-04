@@ -139,16 +139,16 @@ jsonObject
 	/> assertEqual(false)
 
 var applyTest = fn(in, @fun f, out, @str err) {
-	count = count + 1;
-	try {
-		in /> f /> assertEqual(out);
-
-	} catch err {
-		{msg, ...} => {
-			failed = failed + 1;
-			println("{{count}}. {{err}} FAILED: {{msg}}");
+	defer onerror(err) {
+		match err {
+			{msg, ...} => {
+				failed = failed + 1;
+				println("{{count}}. {{err}} FAILED: {{msg}}");
+			}
 		}
 	}
+	count = count + 1;
+	in /> f /> assertEqual(out);
 }
 
 decodeTests + bidirectionalTests
@@ -163,16 +163,13 @@ println("===================");
 
 invalidJson
 	/> map(fn(j) {
-		count = count + 1;
-		try {
-			var out = j /> decode;
-			failed = failed + 1;
-			println("{{count}}. FAILED: Should have thrown an exception: {{j}} => {{out}}");
-		} catch err {
-			{msg, ...} => {
-				// println("{{count}}. PASSED: {{msg}}");
-			}
+		defer onerror(err) {
+			// on error return nil
 		}
+		count = count + 1;
+		var out = j /> decode;
+		failed = failed + 1;
+		println("{{count}}. FAILED: Should have thrown an error: {{j}} => {{out}}");
 	})
 
 println("Test executed: {{count}} / failed {{failed}}")

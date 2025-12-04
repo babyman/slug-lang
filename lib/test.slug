@@ -45,18 +45,41 @@ val Reset = reset;
 
 var timer = delta(clock);
 
+
 var runTestFn = fn(f, name, stats) {
-	try {
-		f();
-		println("  [{{Pass}}PASS{{Reset}}] {{name}}()");
-	} catch err {
-		{type:"AssertionError", msg} => {
+	defer onerror(err) {
+		match err {
+			{type:"AssertionError", msg} => {
+				println("  [{{Fail}}FAIL{{Reset}}] {{name}}(): {{msg}}")
+				stats /> compute("fail", fn(k, v) { v + 1});
+			}
+			{type} => {
+				println("  [{{Fail}}ERROR{{Reset}}] {{name}}() threw {{type}}")
+				stats /> compute("error", fn(k, v) { v + 1});
+			}
+		} /> compute("run", fn(k, v) { v + 1});
+	}
+
+	f();
+	println("  [{{Pass}}PASS{{Reset}}] {{name}}()");
+	stats /> compute("run", fn(k, v) { v + 1});
+}
+
+var runTest = fn(f, name, params, expected, stats) {
+	defer onerror(err) {
+		println("  [{{Fail}}ERROR{{Reset}}] {{name}}({{params}}) == threw {{type}} expected {{expected}}")
+		stats /> compute("error", fn(k, v) { v + 1}) /> compute("run", fn(k, v) { v + 1});
+	}
+
+	val out = f(...params);
+
+	match out /> type() {
+		t if t == LIST_TYPE && out /> equals(expected) => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}");
+		t if t == MAP_TYPE && out /> equals(expected) => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}");
+		_ if out == expected => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}");
+		_ => {
 			stats = stats /> compute("fail", fn(k, v) { v + 1});
-			println("  [{{Fail}}FAIL{{Reset}}] {{name}}(): {{msg}}")
-		}
-		{type} => {
-			stats = stats /> compute("error", fn(k, v) { v + 1});
-			println("  [{{Fail}}ERROR{{Reset}}] {{name}}() threw {{type}}")
+			println("  [{{Fail}}FAIL{{Reset}}] {{name}}({{params}}) == {{out}} expected {{expected}}");
 		}
 	}
 	stats /> compute("run", fn(k, v) { v + 1});
@@ -66,25 +89,7 @@ var runTests = fn(f, name, args, stats) {
 	match args {
 		[] => stats;
 		[params, expected, ...t] => {
-			try {
-				val out = f(...params);
-				match out /> type() {
-					t if t == LIST_TYPE && out /> equals(expected) => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}");
-					t if t == MAP_TYPE && out /> equals(expected) => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}");
-					_ if out == expected => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}");
-					_ => {
-						stats = stats /> compute("fail", fn(k, v) { v + 1});
-						println("  [{{Fail}}FAIL{{Reset}}] {{name}}({{params}}) == {{out}} expected {{expected}}");
-					}
-				}
-			} catch err {
-				{type} => {
-					stats = stats /> compute("error", fn(k, v) { v + 1});
-					println("  [{{Fail}}ERROR{{Reset}}] {{name}}({{params}}) == threw {{type}} expected {{expected}}")
-				}
-			}
-			stats = stats /> compute("run", fn(k, v) { v + 1});
-			recur(f, name, t, stats);
+			recur(f, name, t, runTest(f, name, params, expected, stats));
 		}
 	}
 }

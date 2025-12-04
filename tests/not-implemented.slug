@@ -6,9 +6,16 @@ var {*} = import(
 // this will throw a runtime error when encountered during execution.
 // ------------------------------------------------------------------
 
-try {
-    ???;
-} catch err {
-    {type:"NotImplementedError", ...} => nil;
+if (true) {
+    
+    defer onerror(err) {
+        if(err.type == "NotImplementedError") {
+            nil
+        } else {
+            err
+        }
+    }
+
+    ???
 }
 

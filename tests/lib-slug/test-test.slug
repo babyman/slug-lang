@@ -23,17 +23,30 @@ assertEqual(1, 1);
 assertEqual(1, 1, "with a message");
 
 
-try {
-	assert(false);
-	throw AnError();
-} catch err {
-	{type:"AssertionError", ...} => nil;
+var assertTest = fn() {
+    defer onerror(err) {
+        if( err.type == "AssertionError" ) {
+            nil // expect assertion error, not "AnError"
+        } else {
+            err
+        }
+    }
+    assert(false);
+    throw {type: "AnError"};
 }
 
-
-try {
-	assertEqual(1, "str");
-	throw AnError();
-} catch err {
-	{type:"AssertionError", ...} => nil;
+var assertEqualTest = fn() {
+    defer onerror(err) {
+        if( err.type == "AssertionError" ) {
+            nil // expect assertion error, not "AnError"
+        } else {
+            err
+        }
+    }
+    assertEqual(1, 2);
+    throw {type: "AnError"};
 }
+
+assertTest()
+assertEqualTest()
+

@@ -8,7 +8,7 @@ var assert = fn(a, msg = nil) {
         if ( !msg ) {
             msg = "{{a}} ({{a /> type()}}) is not true";
         }
-        throw AssertionError({msg: msg});
+        throw {type: "AssertionError", msg: msg}
     }
 }
 
@@ -27,7 +27,7 @@ var assertEqual = fn(value, expected, msg = nil) {
         if ( !msg ) {
             msg = "'{{value}}' is not equal to '{{expected}}'";
         }
-        throw AssertionError({msg: msg});
+        throw {type: "AssertionError", msg: msg}
     }
     value
 }
@@ -39,7 +39,7 @@ var assertEqual = fn(@list value, @list expected, msg = nil) {
         if ( !msg ) {
             msg = "List '{{value}}' is not equal to '{{expected}}'";
         }
-        throw AssertionError({msg: msg});
+        throw {type: "AssertionError", msg: msg}
     }
     value
 }
@@ -50,7 +50,7 @@ var assertEqual = fn(@map value, @map expected, msg = nil) {
         if ( !msg ) {
             msg = "Map '{{value}}' is not equal to '{{expected}}'";
         }
-        throw AssertionError({msg: msg});
+        throw {type: "AssertionError", msg: msg}
     }
     value
 }
@@ -61,5 +61,5 @@ var fail = fn(msg = nil) {
     if ( !msg ) {
         msg = "Test failed!";
     }
-    throw AssertionError({msg: msg});
+    throw {type: "AssertionError", msg: msg}
 }

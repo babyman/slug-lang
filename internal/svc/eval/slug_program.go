@@ -131,12 +131,14 @@ func (r *SlugProgramActor) evaluateMessagePayload(ctx *kernel.ActCtx, payload sv
 		SlugReceiver: r,
 		Ctx:          ctx,
 	}
-	e.PushEnv(env)
-	defer e.PopEnv()
 
 	slog.Info(" ---- begin ----")
 	defer slog.Info(" ---- done ----")
 
 	// Evaluate the program within the provided environment
-	return e.Eval(module.Program)
+	e.PushEnv(env)
+	result := e.Eval(module.Program)
+	e.PopEnv(result)
+
+	return result
 }

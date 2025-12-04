@@ -70,22 +70,22 @@ const (
 	RBRACKET = "]"
 
 	// Keywords
-	FOREIGN  = "FOREIGN"
-	FUNCTION = "FUNCTION"
-	VAL      = "VAL"
-	VAR      = "VAR"
-	TRUE     = "TRUE"
-	FALSE    = "FALSE"
-	IF       = "IF"
-	ELSE     = "ELSE"
-	RETURN   = "RETURN"
-	RECUR    = "RECUR"
-	NIL      = "NIL"
-	TRY      = "TRY"
-	CATCH    = "CATCH"
-	THROW    = "THROW"
-	DEFER    = "DEFER"
-	MATCH    = "MATCH"
+	FOREIGN   = "FOREIGN"
+	FUNCTION  = "FUNCTION"
+	VAL       = "VAL"
+	VAR       = "VAR"
+	TRUE      = "TRUE"
+	FALSE     = "FALSE"
+	IF        = "IF"
+	ELSE      = "ELSE"
+	RETURN    = "RETURN"
+	RECUR     = "RECUR"
+	NIL       = "NIL"
+	THROW     = "THROW"
+	DEFER     = "DEFER"
+	ONSUCCESS = "ONSUCCESS"
+	ONERROR   = "ONERROR"
+	MATCH     = "MATCH"
 )
 
 type Token struct {
@@ -114,10 +114,10 @@ var keywords = map[string]TokenType{
 	"recur":  RECUR,
 
 	// error handling
-	"try":   TRY,
-	"catch": CATCH,
-	"throw": THROW,
-	"defer": DEFER,
+	"throw":     THROW,
+	"defer":     DEFER,
+	"onsuccess": ONSUCCESS,
+	"onerror":   ONERROR,
 }
 
 func LookupIdent(ident string) TokenType {

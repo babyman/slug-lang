@@ -731,29 +731,6 @@ func (ts *ThrowStatement) String() string {
 	return out.String()
 }
 
-type TryCatchStatement struct {
-	Token      token.Token      // The 'try' token
-	TryBlock   *BlockStatement  // Code to try
-	CatchToken token.Token      // The 'catch' token
-	CatchBlock *MatchExpression // Code to execute on error
-}
-
-func (tcs *TryCatchStatement) statementNode()       {}
-func (tcs *TryCatchStatement) TokenLiteral() string { return tcs.Token.Literal }
-func (tcs *TryCatchStatement) String() string {
-	var out bytes.Buffer
-	out.WriteString("try ")
-	out.WriteString(tcs.TryBlock.String())
-	out.WriteString(" catch (")
-	// todo string
-	//if tcs.CatchIdent != nil {
-	//	out.WriteString(tcs.CatchIdent.String())
-	//}
-	out.WriteString(") ")
-	//out.WriteString(tcs.CatchBlock.String())
-	return out.String()
-}
-
 type NotImplemented struct {
 	Token token.Token // The ??? token
 }
@@ -762,9 +739,19 @@ func (ni *NotImplemented) expressionNode()      {}
 func (ni *NotImplemented) TokenLiteral() string { return ni.Token.Literal }
 func (ni *NotImplemented) String() string       { return ni.Token.Literal }
 
+type DeferMode int
+
+const (
+	DeferAlways DeferMode = iota
+	DeferOnSuccess
+	DeferOnError
+)
+
 type DeferStatement struct {
-	Token token.Token // The 'defer' token
-	Call  Statement   // Expression or block to execute later
+	Token     token.Token // The 'defer' token
+	Call      Statement   // Expression or block to execute later
+	Mode      DeferMode
+	ErrorName *Identifier // Only set if Mode == DeferOnError
 }
 
 func (ds *DeferStatement) statementNode()       {}
@@ -772,6 +759,18 @@ func (ds *DeferStatement) TokenLiteral() string { return ds.Token.Literal }
 func (ds *DeferStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString("defer ")
+	switch ds.Mode {
+	case DeferOnSuccess:
+		out.WriteString("onsuccess ")
+	case DeferOnError:
+		out.WriteString("onerror")
+		if ds.ErrorName != nil {
+			out.WriteString("(")
+			out.WriteString(ds.ErrorName.String())
+			out.WriteString(")")
+		}
+		out.WriteString(" ")
+	}
 	out.WriteString(ds.Call.String())
 	return out.String()
 }
