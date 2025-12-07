@@ -1474,6 +1474,9 @@ func (p *Parser) parseDeferStatement() *ast.DeferStatement {
 				return nil
 			}
 			p.nextToken() // Consume ')'
+		} else {
+			p.addErrorAt(p.curToken.Position, "expected '(' after 'onerror'")
+			return nil
 		}
 	}
 
