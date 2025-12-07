@@ -119,3 +119,44 @@ func fnBuiltinPrintLn() *object.Foreign {
 		},
 	}
 }
+
+func fnBuiltinStacktrace() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			// stacktrace(err) must take exactly one argument
+			if len(args) != 1 {
+				return ctx.NewError("wrong number of arguments to `stacktrace`, got=%d, want=1", len(args))
+			}
+			arg := args[0]
+
+			// Case 1: The argument itself is a RuntimeError (from `throw`)
+			if errObj, ok := arg.(*object.RuntimeError); ok {
+				return &object.String{Value: object.RenderStacktrace(errObj)}
+			}
+
+			// Case 2: The argument is the *payload* bound in a defer-on-error handler.
+			// We don't know the variable name, so we search bindings for a RuntimeError
+			// whose Payload is the same object as `arg`.
+			env := ctx.CurrentEnv()
+
+			for e := env; e != nil; e = e.Outer {
+				for _, binding := range e.Bindings {
+					if binding != nil && binding.Err != nil {
+						rtErr := binding.Err
+						if rtErr != nil && rtErr.Payload == arg {
+							return &object.String{Value: object.RenderStacktrace(rtErr)}
+						}
+					}
+				}
+			}
+
+			// Case 3: The argument is some other error type or not associated with a RuntimeError.
+			switch arg.(type) {
+			case *object.Error:
+				return ctx.NewError("no runtime stacktrace available for this error value; it is not a RuntimeError")
+			default:
+				return ctx.NewError("no runtime stacktrace associated with the provided value")
+			}
+		},
+	}
+}

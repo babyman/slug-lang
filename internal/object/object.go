@@ -563,7 +563,8 @@ func (re *RuntimeError) Inspect() string {
 	out.WriteString(re.Payload.Inspect())
 	out.WriteString("\nStack trace:")
 	for _, frame := range re.StackTrace {
-		out.WriteString(fmt.Sprintf("\n at [%3d:%2d] %-8s - %s", frame.Line, frame.Col, frame.Function, frame.File))
+		l, c := util.GetLineAndColumn(frame.Src, frame.Position)
+		out.WriteString(fmt.Sprintf("\n at [%3d:%2d] %-8s - %s", l, c, frame.Function, frame.File))
 	}
 	if re.Cause != nil {
 		out.WriteString("\nCaused by: ")
@@ -575,9 +576,8 @@ func (re *RuntimeError) Inspect() string {
 type StackFrame struct {
 	Function string
 	File     string
+	Src      string
 	Position int
-	Line     int // lazy populated line number
-	Col      int // lazy populated column number
 }
 
 type Slice struct {

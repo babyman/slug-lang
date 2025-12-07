@@ -42,6 +42,7 @@ type Evaluator struct {
 
 	envStack []*object.Environment // Environment stack encapsulated in an evaluator struct
 	// callStack keeps track of the current function for things like `recur`
+	// todo: fixme: this is a stack that will grow and eventually fail in a tailcall scenario.
 	callStack []struct {
 		FnName string
 		FnObj  object.Object
@@ -289,15 +290,6 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 
 		// If this is a tail call, wrap it in a TailCall object instead of evaluating
 		if node.IsTailCall {
-			// If we have active defers in the current frame, execute them now.
-			// We pass 'nil' as result because if we reached this point, the current
-			// function execution is considered successful up to the tail call.
-			eqFunc := func(a, b object.Object) bool { return e.objectsEqual(a, b) }
-
-			e.CurrentEnv().ExecuteDeferred(nil, func(stmt ast.Statement) object.Object {
-				return e.Eval(stmt)
-			}, eqFunc)
-
 			slog.Debug("Tail call",
 				slog.Any("function", node.Token.Literal),
 				slog.Any("argument-count", len(args)))
@@ -349,12 +341,6 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 		slog.Debug("Tail recur",
 			slog.Any("function", fnName),
 			slog.Any("argument-count", len(args)))
-
-		// Execute active defers before the tail call.
-		eqFunc := func(a, b object.Object) bool { return e.objectsEqual(a, b) }
-		e.CurrentEnv().ExecuteDeferred(nil, func(stmt ast.Statement) object.Object {
-			return e.Eval(stmt)
-		}, eqFunc)
 
 		// Map directly to TailCall for the current function
 		return &object.TailCall{
@@ -1692,6 +1678,7 @@ func (e *Evaluator) evalThrowStatement(node *ast.ThrowStatement) object.Object {
 		StackTrace: env.GatherStackTrace(&object.StackFrame{
 			Function: "throw",
 			File:     env.Path,
+			Src:      env.Src,
 			Position: node.Token.Position,
 		}),
 	}

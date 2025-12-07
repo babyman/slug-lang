@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"slug/internal/ast"
-	"slug/internal/util"
 )
 
 // NewEnclosedEnvironment initializes an environment with a parent and optional stack frame.
@@ -36,6 +35,7 @@ type Environment struct {
 
 type Binding struct {
 	Value Object // can be a FunctionGroup
+	Err   *RuntimeError
 	Meta  Meta
 	//MetaIndex map[string]Meta // todo add metadata for function group functions
 	IsMutable bool
@@ -185,16 +185,16 @@ func (e *Environment) Assign(name string, val Object) (Object, error) {
 
 func (e *Environment) GatherStackTrace(frame *StackFrame) []StackFrame {
 	var trace []StackFrame
-	line, col := util.GetLineAndColumn(e.Src, frame.Position)
-	frame.Line = line
-	frame.Col = col
 	trace = append([]StackFrame{*frame}, trace...)
-	for e := e; e != nil; e = e.Outer {
-		if e.StackInfo != nil {
-			line, col := util.GetLineAndColumn(e.Src, e.StackInfo.Position)
-			e.StackInfo.Line = line
-			e.StackInfo.Col = col
-			trace = append([]StackFrame{*e.StackInfo}, trace...) // Prepend to maintain call order
+	for env := e; env != nil; env = env.Outer {
+		if env.StackInfo != nil {
+			sf := StackFrame{
+				Src:      env.Src,
+				File:     env.Path,
+				Position: env.StackInfo.Position,
+				Function: env.StackInfo.Function,
+			}
+			trace = append([]StackFrame{sf}, trace...) // Prepend to maintain call order
 		}
 	}
 	return reverse(trace)
@@ -262,6 +262,7 @@ func (e *Environment) ExecuteDeferred(result Object, evalFunc func(stmt ast.Stat
 				// Force bind the error variable in the current environment
 				e.Bindings[ds.ErrorName.Value] = &Binding{
 					Value:     errorPayload,
+					Err:       activeRuntimeErr,
 					IsMutable: false,
 					Meta:      Meta{},
 				}
