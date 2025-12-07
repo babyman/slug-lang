@@ -1675,13 +1675,34 @@ func (e *Evaluator) evalThrowStatement(node *ast.ThrowStatement) object.Object {
 	env := e.CurrentEnv()
 	return &object.RuntimeError{
 		Payload: val,
-		StackTrace: env.GatherStackTrace(&object.StackFrame{
+		StackTrace: e.GatherStackTrace(&object.StackFrame{
 			Function: "throw",
 			File:     env.Path,
 			Src:      env.Src,
 			Position: node.Token.Position,
 		}),
 	}
+}
+
+func (e *Evaluator) GatherStackTrace(frame *object.StackFrame) []object.StackFrame {
+	var trace []object.StackFrame
+	if frame != nil {
+		trace = append(trace, *frame)
+	}
+	// Walk the envStack from top (current) to bottom
+	for i := len(e.envStack) - 1; i >= 0; i-- {
+		env := e.envStack[i]
+		if env.StackInfo != nil {
+			sf := object.StackFrame{
+				Src:      env.Src,
+				File:     env.Path,
+				Position: env.StackInfo.Position,
+				Function: env.StackInfo.Function,
+			}
+			trace = append(trace, sf)
+		}
+	}
+	return trace // Already in correct order (most recent first)
 }
 
 func (e *Evaluator) evalIndexExpression(pos int, left, index object.Object) object.Object {

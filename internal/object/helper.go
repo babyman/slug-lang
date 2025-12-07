@@ -14,9 +14,11 @@ func RenderStacktrace(rtErr *RuntimeError) string {
 	if len(rtErr.StackTrace) > 0 {
 		l, c := util.GetLineAndColumn(rtErr.StackTrace[0].Src, rtErr.StackTrace[0].Position)
 		buf.WriteString(util.GetContextLines(rtErr.StackTrace[0].Src, l, c))
-		buf.WriteString("\n\n")
+		buf.WriteString("\n")
 	}
 
+	// Start with the payload itself
+	fmt.Fprintf(&buf, "Stack trace: %s", rtErr.Payload.Inspect())
 	buf.WriteString(formatRuntimeErrorStack(rtErr))
 
 	return buf.String()
@@ -26,24 +28,14 @@ func RenderStacktrace(rtErr *RuntimeError) string {
 func formatRuntimeErrorStack(rtErr *RuntimeError) string {
 	var buf bytes.Buffer
 
-	// Start with the payload itself
-	buf.WriteString("Stack trace:\n")
-
 	for _, frame := range rtErr.StackTrace {
 		l, c := util.GetLineAndColumn(frame.Src, frame.Position)
-		fmt.Fprintf(
-			&buf,
-			"  at %s (%s:%d:%d)\n",
-			frame.Function,
-			frame.File,
-			l,
-			c,
-		)
+		fmt.Fprintf(&buf, "\n  at [%3d:%3d] %-8s - %s", l, c, frame.Function, frame.File)
 	}
 
 	// Optionally include chained causes
 	if rtErr.Cause != nil {
-		buf.WriteString("Caused by:\n")
+		fmt.Fprintf(&buf, "\nCaused by: %s", rtErr.Cause.Payload.Inspect())
 		buf.WriteString(formatRuntimeErrorStack(rtErr.Cause))
 	}
 

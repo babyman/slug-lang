@@ -183,30 +183,6 @@ func (e *Environment) Assign(name string, val Object) (Object, error) {
 	return nil, fmt.Errorf("failed to assign to '%s': not defined in any accessible scope", name)
 }
 
-func (e *Environment) GatherStackTrace(frame *StackFrame) []StackFrame {
-	var trace []StackFrame
-	trace = append([]StackFrame{*frame}, trace...)
-	for env := e; env != nil; env = env.Outer {
-		if env.StackInfo != nil {
-			sf := StackFrame{
-				Src:      env.Src,
-				File:     env.Path,
-				Position: env.StackInfo.Position,
-				Function: env.StackInfo.Function,
-			}
-			trace = append([]StackFrame{sf}, trace...) // Prepend to maintain call order
-		}
-	}
-	return reverse(trace)
-}
-
-func reverse(slice []StackFrame) []StackFrame {
-	for i, j := 0, len(slice)-1; i < j; i, j = i+1, j-1 {
-		slice[i], slice[j] = slice[j], slice[i]
-	}
-	return slice
-}
-
 func (e *Environment) RegisterDefer(deferStmt *ast.DeferStatement) {
 	slog.Debug("Stashing deferred block",
 		slog.Any("deferred-statement", deferStmt))
