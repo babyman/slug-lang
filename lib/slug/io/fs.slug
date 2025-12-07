@@ -118,9 +118,9 @@ foreign closeFile = fn(@num handle)
 
 @export
 var readLines = fn(@num file, lines = []) {
-	match file /> readLine() {
+	match file /> readLine {
 		nil => lines
-		str => recur(file, lines :+ str[:-1]) // -1 to trim the newline
+		str => readLines(file, lines :+ str[:-1]) // -1 to trim the newline
 	}
 }
 

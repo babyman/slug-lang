@@ -498,6 +498,7 @@ func (e *Evaluator) evalBlockStatement(block *ast.BlockStatement) (result object
 	blockEnv := object.NewEnclosedEnvironment(e.CurrentEnv(), &object.StackFrame{
 		Function: "block",
 		File:     e.CurrentEnv().Path,
+		Src:      e.CurrentEnv().Src,
 		Position: block.Token.Position,
 	})
 	e.PushEnv(blockEnv)
@@ -1106,9 +1107,10 @@ func (e *Evaluator) extendFunctionEnv(
 	args []object.Object,
 ) *object.Environment {
 	env := object.NewEnclosedEnvironment(fn.Env, &object.StackFrame{
-		Function: "call", // String representation of the function
+		Function: "call: " + e.callStack[len(e.callStack)-1].FnName,
 		File:     fn.Env.Path,
 		Position: fn.Body.Token.Position,
+		Src:      fn.Env.Src,
 	})
 	numArgs := len(args)
 
@@ -1684,22 +1686,22 @@ func (e *Evaluator) evalThrowStatement(node *ast.ThrowStatement) object.Object {
 	}
 }
 
-func (e *Evaluator) GatherStackTrace(frame *object.StackFrame) []object.StackFrame {
-	var trace []object.StackFrame
+func (e *Evaluator) GatherStackTrace(frame *object.StackFrame) []*object.StackFrame {
+	var trace []*object.StackFrame
 	if frame != nil {
-		trace = append(trace, *frame)
+		trace = append(trace, frame)
 	}
 	// Walk the envStack from top (current) to bottom
 	for i := len(e.envStack) - 1; i >= 0; i-- {
 		env := e.envStack[i]
 		if env.StackInfo != nil {
-			sf := object.StackFrame{
-				Src:      env.Src,
-				File:     env.Path,
-				Position: env.StackInfo.Position,
-				Function: env.StackInfo.Function,
-			}
-			trace = append(trace, sf)
+			//sf := object.StackFrame{
+			//	Src:      env.Src,
+			//	File:     env.Path,
+			//	Position: env.StackInfo.Position,
+			//	Function: env.StackInfo.Function,
+			//}
+			trace = append(trace, env.StackInfo)
 		}
 	}
 	return trace // Already in correct order (most recent first)

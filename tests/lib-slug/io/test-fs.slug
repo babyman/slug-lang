@@ -4,7 +4,7 @@ var {*} = import(
     "slug.test"
 );
 
-var filename = "test.txt";
+var filename = "__slug_test.txt";
 var hello = "Hello Slug!\n";
 var goodbye = "Goodbye Slug!\n";
 
@@ -45,8 +45,11 @@ fileAppend /> closeFile()
 var fileIn = filename /> openFile(READ_MODE)
 defer filename /> rm()
 defer fileIn /> closeFile()
+//defer fileIn /> println("<<<< file defer")
 
-fileIn /> readLines() /> len() /> assertEqual(2);
+//fileIn /> println("<<<< file about to read")
+fileIn /> readLines /> len /> assertEqual(2);
+//fileIn /> println("<<<< file reading");
 
 // ls
 // ---------

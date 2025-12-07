@@ -35,7 +35,7 @@ func formatRuntimeErrorStack(rtErr *RuntimeError) string {
 
 	// Optionally include chained causes
 	if rtErr.Cause != nil {
-		fmt.Fprintf(&buf, "\nCaused by: %s", rtErr.Cause.Payload.Inspect())
+		fmt.Fprintf(&buf, "\n\nCaused by: %s", rtErr.Cause.Payload.Inspect())
 		buf.WriteString(formatRuntimeErrorStack(rtErr.Cause))
 	}
 

@@ -552,25 +552,13 @@ func (m *Map) SetTag(tag string, params List) {
 
 type RuntimeError struct {
 	Payload    Object        // The error payload (must be a Map object)
-	StackTrace []StackFrame  // Stack frames for error propagation
+	StackTrace []*StackFrame // Stack frames for error propagation
 	Cause      *RuntimeError // The error that caused this error (for chaining)
 }
 
 func (re *RuntimeError) Type() ObjectType { return ERROR_OBJ }
 func (re *RuntimeError) Inspect() string {
-	var out bytes.Buffer
-	out.WriteString("RuntimeError: ")
-	out.WriteString(re.Payload.Inspect())
-	out.WriteString("\nStack trace:")
-	for _, frame := range re.StackTrace {
-		l, c := util.GetLineAndColumn(frame.Src, frame.Position)
-		out.WriteString(fmt.Sprintf("\n at [%3d:%2d] %-8s - %s", l, c, frame.Function, frame.File))
-	}
-	if re.Cause != nil {
-		out.WriteString("\nCaused by: ")
-		out.WriteString(re.Cause.Inspect())
-	}
-	return out.String()
+	return RenderStacktrace(re)
 }
 
 type StackFrame struct {
