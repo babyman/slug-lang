@@ -18,7 +18,7 @@ func RenderStacktrace(rtErr *RuntimeError) string {
 	}
 
 	// Start with the payload itself
-	fmt.Fprintf(&buf, "Stack trace: %s", rtErr.Payload.Inspect())
+	fmt.Fprintf(&buf, "Stacktrace: %s", rtErr.Payload.Inspect())
 	buf.WriteString(formatRuntimeErrorStack(rtErr))
 
 	return buf.String()

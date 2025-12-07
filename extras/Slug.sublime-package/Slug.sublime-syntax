@@ -54,7 +54,7 @@ contexts:
     - match: \b(nil)\b
       scope: constant.language.nil.slug
 
-    - match: \b(fn|foreign|match|defer)\b
+    - match: \b(fn|foreign|match)\b
       scope: keyword.control.slug
     - match: \b(if)\b
       scope: keyword.control.conditional.if.slug
@@ -64,15 +64,13 @@ contexts:
       scope: keyword.control.flow.slug
     - match: \b(return)\b
       scope: keyword.control.flow.return.slug
-    - match: \b(try)\b
-      scope: keyword.control.exception.try.slug
-    - match: \b(catch)\b
-      scope: keyword.control.exception.catch.slug
     - match: \b(throw)\b
       scope: keyword.control.flow.throw.slug
+    - match: \b(defer|onsuccess|onerror)\b
+      scope: keyword.control.flow.defer.slug
 
     # Built-in functions
-    - match: \b(len|import|print|println)\b
+    - match: \b(len|import|print|println|stacktrace)\b
       scope: support.function.builtin.slug
 
     # Function calls
@@ -174,7 +172,7 @@ contexts:
       scope: string.quoted.double.slug
 
   list:
-    - meta_scope: meta.structure.list-test-test.slug
+    - meta_scope: meta.structure.list.slug
     - match: \]
       scope: punctuation.section.brackets.end.slug
       pop: true
