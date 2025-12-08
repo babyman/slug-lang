@@ -2,6 +2,22 @@ var {*} = import(
     "slug.std"
 );
 
+/// runSafe executes f() and returns a map:
+///   {"ok": value} on normal return
+///   {"error": thrownValue, "trace": stacktrace(thrownValue)} on throw
+///
+/// Implementation uses `defer onerror` to intercept thrown payload.
+@export
+var runSafe = fn(@fun f) {
+    defer onerror(err) {
+        # capture the thrown value and the captured stacktrace via built-in
+        { error: err, trace: stacktrace(err) }
+    }
+    var v = f()
+    { ok: v }
+}
+
+
 @export
 var assert = fn(a, msg = nil) {
     if ( a /> type() == BOOLEAN_TYPE && !a ) {

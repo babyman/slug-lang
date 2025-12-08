@@ -115,7 +115,7 @@ var readValue = fn(@str arg, @map opts) {
 var readValue = fn(@list args, @map opts) {
 	match args {
 		nil, [] => nil;
-		[h, ...t] => recur(h, opts) /> ifNil(fn() {readValue(t, opts)})
+		[h, ...t] => readValue(h, opts) /> ifNil(fn() {readValue(t, opts)})
 	}
 }
 

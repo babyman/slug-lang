@@ -13,6 +13,8 @@ var sayHi = fn(args) {
 //
 // if args is defined we have commandline params
 //
-if(args) {
+if(isDefined("args")) {
     args /> sayHi /> println;
+} else {
+    sayHi(nil) /> println;
 }

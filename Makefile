@@ -24,12 +24,11 @@ test:
 	go test ./... || exit 1
 	@for file in $(shell find ./tests -name "*.slug" | sort); do \
 		echo "Running tests for $$file"; \
-		go run ./cmd/app/main.go -log-level none --root ./tests $$file || exit 1; \
+		go run ./cmd/app/main.go -log-level error --root ./tests $$file || exit 1; \
 	done
 	go run ./cmd/app/main.go -log-level error test \
-			slug.html slug.list slug.map slug.math slug.regex slug.std slug.string slug.time \
-			slug.csv slug.crypto slug.bytes slug.json slug.term.colour \
-			|| exit 1
+		$(shell find './lib' -name "*.slug" | sed -e 's/\.\/lib\///' -e 's/\//./g' -e 's/\.slug//' | sort) \
+		$(shell find './test-suites' -name "*.slug" | sort) || exit 1
 
 lc: clean
 	cloc  --exclude-dir=.idea --read-lang-def=slug_cloc_definition.txt .
