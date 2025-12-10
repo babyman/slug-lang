@@ -14,6 +14,8 @@ assert(1 == 1, "with a message");
 
 true /> assertTrue();
 
+true /> ok;
+
 false /> assertFalse();
 
 
@@ -51,6 +53,25 @@ var assertEqualTest = fn() {
 assertTest()
 assertEqualTest()
 
+var confirmAssertFail = fn(f) {
+    runSafe(f)
+        /> fn(err) {err.error}
+        /> isAssertError()
+        /> ok
+}
+
+//
+// test nil / not null assertions
+//
+nil /> assertNil
+
+confirmAssertFail(fn() { 1 /> assertNil })
+
+1 /> assertNotNil
+
+confirmAssertFail(fn() { nil /> assertNotNil })
+
+
 //
 // test runSafe
 //
@@ -61,25 +82,20 @@ runSafe(fn(){ throw 1 }) /> fn(err) {err.error} /> assertEqual(1)
 //
 // test assert throws
 //
-assertThrows(fn(){ throw 1 }, 1) /> assertTrue
+assertThrows(fn(){ throw 1 }, 1) /> ok
 
 // use runSafe to trap the assertion error when assertThrows fails because no error is triggered
-runSafe(fn() { assertThrows(fn() { 1 }, 1)} )
-    /> fn(err) {err.error.type}
-    /> assertEqual("AssertionError")
+confirmAssertFail(fn() { assertThrows(fn() { 1 }, 1)} )
 
-runSafe(fn() { assertThrows(fn() { throw 1 }, 2)} )
-    /> fn(err) {err.error.type}
-    /> assertEqual("AssertionError")
+confirmAssertFail(fn() { assertThrows(fn() { throw 1 }, 2)} )
 
 
-assertErrorType(fn(){ throw 1 }, NUMBER_TYPE) /> assertTrue
+//
+// test assert throws type
+//
+assertErrorType(fn(){ throw 1 }, NUMBER_TYPE) /> ok
 
-runSafe(fn() { assertErrorType(fn() { 1 }, NUMBER_TYPE)} )
-    /> fn(err) {err.error.type}
-    /> assertEqual("AssertionError")
+confirmAssertFail(fn() { assertErrorType(fn() { 1 }, NUMBER_TYPE)} )
 
-runSafe(fn() { assertErrorType(fn() { throw 1 }, STRING_TYPE)} )
-    /> fn(err) {err.error.type}
-    /> assertEqual("AssertionError")
+confirmAssertFail(fn() { assertErrorType(fn() { throw 1 }, STRING_TYPE)} )
 

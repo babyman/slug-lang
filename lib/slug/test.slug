@@ -17,6 +17,11 @@ var runSafe = fn(@fun f) {
 }
 
 @export
+var isAssertError = fn(v) {
+    v /> type() == MAP_TYPE && v.type == "AssertionError"
+}
+
+@export
 var assertThrows = fn(@fun f, expected, @str msg = nil) {
     var r = runSafe(f)
     if (r.error == expected) {
@@ -68,12 +73,18 @@ var assertFalse = fn(a, msg = nil) {
     assert( !a, msg);
 }
 
-
 @export
 var assertEqual = fn(value, expected, msg = nil) {
-    if ( value != expected ) {
-        if ( !msg ) {
-            msg = "'{{value}}' is not equal to '{{expected}}'";
+    var t = value /> type()
+
+    var same =
+        (t == LIST_TYPE   && equals(value, expected)) ||
+        (t == MAP_TYPE    && equals(value, expected)) ||
+        (value == expected)
+
+    if (!same) {
+        if (!msg) {
+            msg = "'{{value}}' is not equal to '{{expected}}'"
         }
         throw {type: "AssertionError", msg: msg}
     }
@@ -82,10 +93,10 @@ var assertEqual = fn(value, expected, msg = nil) {
 
 
 @export
-var assertEqual = fn(@list value, @list expected, msg = nil) {
-    if ( !(value == expected || equals(value, expected)) ) {
-        if ( !msg ) {
-            msg = "List '{{value}}' is not equal to '{{expected}}'";
+var assertNotEqual = fn(value, expected, msg = nil) {
+    if (value == expected || equals(value, expected)) {
+        if (!msg) {
+            msg = "Expected '{{value}}' to NOT equal '{{expected}}'"
         }
         throw {type: "AssertionError", msg: msg}
     }
@@ -93,16 +104,24 @@ var assertEqual = fn(@list value, @list expected, msg = nil) {
 }
 
 @export
-var assertEqual = fn(@map value, @map expected, msg = nil) {
-    if ( !(value == expected || equals(value, expected)) ) {
-        if ( !msg ) {
-            msg = "Map '{{value}}' is not equal to '{{expected}}'";
+var assertNil = fn(value, msg = nil) {
+    if (value != nil) {
+        if (!msg) {
+            msg = "Expected nil but got '{{value}}'"
         }
         throw {type: "AssertionError", msg: msg}
     }
-    value
 }
 
+@export
+var assertNotNil = fn(value, msg = nil) {
+    if (value == nil) {
+        if (!msg) {
+            msg = "Expected non-nil"
+        }
+        throw {type: "AssertionError", msg: msg}
+    }
+}
 
 @export
 var fail = fn(msg = nil) {
@@ -111,3 +130,8 @@ var fail = fn(msg = nil) {
     }
     throw {type: "AssertionError", msg: msg}
 }
+
+@export var eq = assertEqual
+@export var throws = assertThrows
+@export var ok = assertTrue
+@export var not = assertFalse
