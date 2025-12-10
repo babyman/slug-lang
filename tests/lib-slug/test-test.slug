@@ -1,5 +1,6 @@
 var {*} = import(
-    "slug.test"
+    "slug.std",
+    "slug.test",
 );
 
 //
@@ -49,4 +50,36 @@ var assertEqualTest = fn() {
 
 assertTest()
 assertEqualTest()
+
+//
+// test runSafe
+//
+runSafe(fn(){ 1 }) /> assertEqual({ok:1})
+
+runSafe(fn(){ throw 1 }) /> fn(err) {err.error} /> assertEqual(1)
+
+//
+// test assert throws
+//
+assertThrows(fn(){ throw 1 }, 1) /> assertTrue
+
+// use runSafe to trap the assertion error when assertThrows fails because no error is triggered
+runSafe(fn() { assertThrows(fn() { 1 }, 1)} )
+    /> fn(err) {err.error.type}
+    /> assertEqual("AssertionError")
+
+runSafe(fn() { assertThrows(fn() { throw 1 }, 2)} )
+    /> fn(err) {err.error.type}
+    /> assertEqual("AssertionError")
+
+
+assertErrorType(fn(){ throw 1 }, NUMBER_TYPE) /> assertTrue
+
+runSafe(fn() { assertErrorType(fn() { 1 }, NUMBER_TYPE)} )
+    /> fn(err) {err.error.type}
+    /> assertEqual("AssertionError")
+
+runSafe(fn() { assertErrorType(fn() { throw 1 }, STRING_TYPE)} )
+    /> fn(err) {err.error.type}
+    /> assertEqual("AssertionError")
 

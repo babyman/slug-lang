@@ -10,13 +10,45 @@ var {*} = import(
 @export
 var runSafe = fn(@fun f) {
     defer onerror(err) {
-        # capture the thrown value and the captured stacktrace via built-in
         { error: err, trace: stacktrace(err) }
     }
     var v = f()
     { ok: v }
 }
 
+@export
+var assertThrows = fn(@fun f, expected, @str msg = nil) {
+    var r = runSafe(f)
+    if (r.error == expected) {
+        true
+    } else {
+        if ( !msg ) {
+            if ( r.error ) {
+                msg = "Caught error '{{ r.error }}' is not equal to '{{expected}}'";
+            } else {
+                msg = "No error was thrown";
+            }
+        }
+        throw {type: "AssertionError", msg: msg}
+    }
+}
+
+@export
+var assertErrorType = fn(@fun f, @str expected, @str msg = nil) {
+    var r = runSafe(f)
+    if (r.error /> type() == expected) {
+        true
+    } else {
+        if ( !msg ) {
+            if ( r.error ) {
+                msg = "Caught error of type '{{ r.error /> type() }}' type is not equal to '{{expected}}'";
+            } else {
+                msg = "No error was thrown";
+            }
+        }
+        throw {type: "AssertionError", msg: msg}
+    }
+}
 
 @export
 var assert = fn(a, msg = nil) {

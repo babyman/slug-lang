@@ -67,7 +67,7 @@ var runTestFn = fn(f, name, stats) {
 
 var runTest = fn(f, name, params, expected, stats) {
 	defer onerror(err) {
-		println("  [{{Fail}}ERROR{{Reset}}] {{name}}({{params}}) == threw {{type}} expected {{expected}}")
+		println("  [{{Fail}}ERROR{{Reset}}] {{name}}({{params}}) == threw '{{err}}' expected '{{expected}}'")
 		stats /> compute("error", fn(k, v) { v + 1}) /> compute("run", fn(k, v) { v + 1});
 	}
 
@@ -79,7 +79,7 @@ var runTest = fn(f, name, params, expected, stats) {
 		_ if out == expected => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}");
 		_ => {
 			stats = stats /> compute("fail", fn(k, v) { v + 1});
-			println("  [{{Fail}}FAIL{{Reset}}] {{name}}({{params}}) == {{out}} expected {{expected}}");
+			println("  [{{Fail}}FAIL{{Reset}}] {{name}}({{params}}) == '{{out}}' expected '{{expected}}'");
 		}
 	}
 	stats /> compute("run", fn(k, v) { v + 1});
