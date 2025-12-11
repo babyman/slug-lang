@@ -102,7 +102,7 @@ var testRunner = fn(module, stats) {
 	println(module + ":")
 	var m = module /> searchModuleTags(TestWithTag, true)
 				/> union(module /> searchModuleTags(TestTag, true))
-	m /> keys() /> map(fn(k) {
+	m /> keys /> sort /> map(fn(k) {
 		var args = m[k] /> getTag(TestWithTag);
 		if(args) {
 			runTests(m[k], k, args, {run:0, fail:0, error:0});

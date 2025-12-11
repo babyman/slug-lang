@@ -87,14 +87,9 @@ func (e *Evaluator) PopEnv(result object.Object) object.Object {
 		panic("Attempted to pop from an empty environment stack")
 	}
 
-	// Define equality function for payload comparison
-	eqFunc := func(a, b object.Object) bool {
-		return e.objectsEqual(a, b)
-	}
-
 	finalResult := e.CurrentEnv().ExecuteDeferred(result, func(stmt ast.Statement) object.Object {
 		return e.Eval(stmt)
-	}, eqFunc)
+	})
 
 	e.envStack = e.envStack[:len(e.envStack)-1]
 	slog.Debug("pop stack frame",

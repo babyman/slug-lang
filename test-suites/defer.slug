@@ -67,7 +67,7 @@ var test4 = fn() {
     var x = []
     var f = fn() {
         defer onsuccess     x = x :+ "S"
-        defer onerror(err) {x = x :+ "E"; err}
+        defer onerror(err) {x = x :+ "E"; throw err}
         defer               x = x :+ "A"
         throw "nope"
     }
@@ -93,7 +93,7 @@ var test7 = fn() {
 @test
 var test8 = fn() {
     var f = fn() {
-        defer onerror(e) { e }  # explicit rethrow by returning same error
+        defer onerror(e) { throw e }  # explicit rethrow
         throw "bad"
     }
     var r = runSafe(f)
@@ -137,11 +137,11 @@ var test11 = fn() {
     var x = []
     var f = fn(err) {
         if (true) {
-            defer onerror(err) {x = x :+ "innerE"; err}
+            defer onerror(err) {x = x :+ "innerE"; throw err}
             defer onsuccess     x = x :+ "innerS"
             if(err) { throw "err" }
         }
-        defer onerror(err) {x = x :+ "outerE"; err}
+        defer onerror(err) {x = x :+ "outerE"; throw err}
         defer onsuccess     x = x :+ "outerS"
     }
     f(false)

@@ -192,7 +192,7 @@ func (e *Environment) RegisterDefer(deferStmt *ast.DeferStatement) {
 // ExecuteDeferred runs deferred statements.
 // It takes the current result of the block/function and returns the final result.
 // If a deferred statement recovers or throws, the returned object will reflect that.
-func (e *Environment) ExecuteDeferred(result Object, evalFunc func(stmt ast.Statement) Object, eqFunc func(Object, Object) bool) Object {
+func (e *Environment) ExecuteDeferred(result Object, evalFunc func(stmt ast.Statement) Object) Object {
 	defer func() { e.deferStack = nil }() // Always clear defer stack
 
 	if e.deferStack == nil || len(e.deferStack) == 0 {
@@ -256,17 +256,10 @@ func (e *Environment) ExecuteDeferred(result Object, evalFunc func(stmt ast.Stat
 			// 4. Handle the result of the deferred block
 			// If the block returned a RuntimeError (threw), we chain or replace.
 			if newRtErr, ok := deferResult.(*RuntimeError); ok {
-				// Scenario 3: Throwing new value (Chain)
-				// If the user re-threw the EXACT SAME object, we keep it (Rethrow identity)
-				if activeRuntimeErr != nil && newRtErr == activeRuntimeErr {
-					currentResult = activeRuntimeErr
-				} else {
-					// New error, chain it if we had a previous error
-					if activeRuntimeErr != nil {
-						newRtErr.Cause = activeRuntimeErr
-					}
-					currentResult = newRtErr
+				if activeRuntimeErr != nil {
+					newRtErr.Cause = activeRuntimeErr
 				}
+				currentResult = newRtErr
 				continue
 			}
 
@@ -275,20 +268,7 @@ func (e *Environment) ExecuteDeferred(result Object, evalFunc func(stmt ast.Stat
 			if isError && ds.Mode == ast.DeferOnError {
 				if retVal, ok := deferResult.(*ReturnValue); ok {
 					val := retVal.Value
-					// We are in error state.
-					// Scenario 2: Rethrowing (returning the same payload)
-					// If value == errorPayload, treat as rethrow -> keep current error.
-					if eqFunc(val, errorPayload) {
-						// Rethrow: keep propagating the original RuntimeError
-						currentResult = activeRuntimeErr
-					} else {
-						// Scenario 1: Recovering
-						// Explicit return of a different value -> Recover
-						currentResult = val
-					}
-				} else if eqFunc(deferResult, errorPayload) {
-					// Rethrow: keep propagating the original RuntimeError
-					currentResult = activeRuntimeErr
+					currentResult = val
 				} else {
 					currentResult = deferResult
 				}
