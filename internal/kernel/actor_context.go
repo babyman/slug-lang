@@ -3,6 +3,7 @@ package kernel
 import (
 	"fmt"
 	"log/slog"
+	"reflect"
 	"slug/internal/util/future"
 	"time"
 )
@@ -25,10 +26,15 @@ type IKernel interface {
 	Unregister(name string) ActorID
 	Registered() []string
 	Lookup(name string) ActorID
+	GrantChildAccess(granter ActorID, grantee ActorID, target ActorID, rights Rights, scope map[reflect.Type]any) (*Capability, error)
 }
 
 func (c *ActCtx) RegisterCleanup(msg Message) {
 	c.K.RegisterCleanup(c.Self, msg)
+}
+
+func (c *ActCtx) ForwardAsync(to ActorID, msg Message) error {
+	return c.K.SendInternal(msg.From, to, msg.Payload, msg.Resp)
 }
 
 // SendAsync fire-and-forgets.
@@ -87,4 +93,13 @@ func (c *ActCtx) SendSyncWithTimeout(to ActorID, payload any, timeout time.Durat
 func (c *ActCtx) SpawnChild(name string, ops OpRights, handler Handler) (ActorID, error) {
 
 	return c.K.SpawnChild(c.Self, name, ops, handler)
+}
+
+func (c *ActCtx) GrantChildAccess(
+	grantee ActorID,
+	target ActorID,
+	rights Rights,
+	scope map[reflect.Type]any) (*Capability, error) {
+
+	return c.K.GrantChildAccess(c.Self, grantee, target, rights, scope)
 }

@@ -140,7 +140,7 @@ func fnActorSend() *object.Foreign {
 			}
 
 			pid := kernel.ActorID(pidObj.Value.ToInt64())
-			msg := SlugActorMessage{
+			msg := svc.SlugActorMessage{
 				Msg: args[1],
 			}
 
@@ -183,7 +183,7 @@ func fnActorReceive() *object.Foreign {
 				slog.Any("actor-pid", ctx.ActCtx().Self))
 
 			switch m := message.(type) {
-			case SlugActorMessage:
+			case svc.SlugActorMessage:
 				return m.Msg
 			}
 
@@ -235,7 +235,7 @@ func fnActorRegister() *object.Foreign {
 
 			pid := kernel.ActorID(pidObj.Value.ToInt64())
 
-			actorName := slugNamespace + nameObj.Value
+			actorName := svc.SlugNamespace + nameObj.Value
 
 			_, exists := ctx.ActCtx().K.ActorByName(actorName)
 			if exists {
@@ -260,7 +260,7 @@ func fnActorUnregister() *object.Foreign {
 				return ctx.NewError("argument to `unregister` must be STRING, got=%s", args[0].Type())
 			}
 
-			pid := ctx.ActCtx().K.Unregister(slugNamespace + nameObj.Value)
+			pid := ctx.ActCtx().K.Unregister(svc.SlugNamespace + nameObj.Value)
 			return &object.Number{Value: dec64.FromInt64(int64(pid))}
 		},
 	}
@@ -272,7 +272,7 @@ func fnActorRegistered() *object.Foreign {
 			names := ctx.ActCtx().K.Registered()
 			elements := make([]object.Object, 0)
 			for _, name := range names {
-				if len(name) > 5 && name[:5] == slugNamespace {
+				if len(name) > 5 && name[:5] == svc.SlugNamespace {
 					elements = append(elements, &object.String{Value: name[5:]})
 				}
 			}
@@ -293,7 +293,7 @@ func fnActorLookup() *object.Foreign {
 				return ctx.NewError("argument to `lookup` must be STRING, got=%s", args[0].Type())
 			}
 
-			pid := ctx.ActCtx().K.Lookup(slugNamespace + nameObj.Value)
+			pid := ctx.ActCtx().K.Lookup(svc.SlugNamespace + nameObj.Value)
 			return &object.Number{Value: dec64.FromInt64(int64(pid))}
 		},
 	}

@@ -14,13 +14,12 @@ import (
 )
 
 const (
-	ProgramArgs   = "args"
-	slugNamespace = "slug:"
+	ProgramArgs = "args"
 )
 
 type SlugProgramActor struct {
 	Config  util.Configuration
-	Mailbox chan SlugActorMessage
+	Mailbox chan svc.SlugActorMessage
 	// internal state
 	started bool
 }
@@ -35,7 +34,7 @@ func (r *SlugProgramActor) WaitForMessage(timeout int64) (any, bool) {
 	case msg := <-r.Mailbox:
 		return msg, true
 	case <-time.After(time.Duration(timeout) * time.Millisecond):
-		return SlugActorMessage{}, false
+		return svc.SlugActorMessage{}, false
 	}
 }
 
@@ -72,7 +71,7 @@ func (r *SlugProgramActor) Run(ctx *kernel.ActCtx, msg kernel.Message) kernel.Ha
 
 		return kernel.Continue{}
 
-	case SlugActorMessage:
+	case svc.SlugActorMessage:
 		slog.Warn("received actor message", slog.Any("payload", payload.Msg))
 		r.Mailbox <- payload
 		return kernel.Continue{}

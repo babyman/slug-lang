@@ -4,13 +4,10 @@ import (
 	"log/slog"
 	"slug/internal/kernel"
 	"slug/internal/object"
+	"slug/internal/svc"
 	"slug/internal/util"
 	"time"
 )
-
-type SlugActorMessage struct {
-	Msg object.Object
-}
 
 type SlugStart struct {
 	Args []object.Object
@@ -21,7 +18,7 @@ type SlugFunctionDone struct{}
 type SlugFunctionActor struct {
 	Config   util.Configuration
 	Function *object.Function
-	Mailbox  chan SlugActorMessage
+	Mailbox  chan svc.SlugActorMessage
 
 	// internal state
 	started bool
@@ -31,7 +28,7 @@ func NewSlugFunctionActor(c util.Configuration, function *object.Function) *Slug
 	return &SlugFunctionActor{
 		Function: function,
 		Config:   c,
-		Mailbox:  make(chan SlugActorMessage),
+		Mailbox:  make(chan svc.SlugActorMessage),
 	}
 }
 
@@ -64,7 +61,7 @@ func (s *SlugFunctionActor) Run(ctx *kernel.ActCtx, msg kernel.Message) kernel.H
 
 		return kernel.Continue{}
 
-	case SlugActorMessage:
+	case svc.SlugActorMessage:
 		s.Mailbox <- payload
 		return kernel.Continue{}
 
@@ -88,6 +85,6 @@ func (s *SlugFunctionActor) WaitForMessage(timeout int64) (any, bool) {
 	case msg := <-s.Mailbox:
 		return msg, true
 	case <-time.After(time.Duration(timeout) * time.Millisecond):
-		return SlugActorMessage{}, false
+		return svc.SlugActorMessage{}, false
 	}
 }

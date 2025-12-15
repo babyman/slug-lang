@@ -18,6 +18,7 @@ import (
 	"slug/internal/svc/repl"
 	"slug/internal/svc/resolver"
 	"slug/internal/svc/sout"
+	"slug/internal/svc/sqlite"
 	"slug/internal/util"
 )
 
@@ -149,6 +150,10 @@ func main() {
 	replSvc := repl.NewReplService()
 	replID := k.RegisterService(svc.ReplService, repl.Operations, replSvc.Handler)
 
+	// SQLITE service
+	sqliteSvc := sqlite.Service{}
+	sqliteID := k.RegisterService(svc.SqliteService, sqlite.Operations, sqliteSvc.Handler)
+
 	// Cap grants
 	_ = k.GrantCap(kernelID, cliID, x, nil)
 
@@ -169,6 +174,9 @@ func main() {
 	_ = k.GrantCap(evalID, modsID, r, nil)
 	_ = k.GrantCap(evalID, parserID, rwx, nil)
 	_ = k.GrantCap(evalID, soutID, w, nil)
+	_ = k.GrantCap(evalID, sqliteID, rw, nil)
+
+	_ = k.GrantCap(sqliteID, evalID, x, nil)
 
 	_ = k.GrantCap(replID, evalID, x, nil)
 	_ = k.GrantCap(replID, lexerID, x, nil)

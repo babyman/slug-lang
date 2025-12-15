@@ -9,9 +9,9 @@ import (
 )
 
 var Operations = kernel.OpRights{
-	reflect.TypeOf(svc.EvaluateProgram{}): kernel.RightExec,
-	reflect.TypeOf(SlugActorMessage{}):    kernel.RightExec,
-	reflect.TypeOf(SlugFunctionDone{}):    kernel.RightExec,
+	reflect.TypeOf(svc.EvaluateProgram{}):  kernel.RightExec,
+	reflect.TypeOf(svc.SlugActorMessage{}): kernel.RightExec,
+	reflect.TypeOf(SlugFunctionDone{}):     kernel.RightExec,
 }
 
 type EvaluatorService struct {
@@ -23,7 +23,7 @@ func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kerne
 	case svc.EvaluateProgram:
 		worker := SlugProgramActor{
 			Config:  m.Config,
-			Mailbox: make(chan SlugActorMessage),
+			Mailbox: make(chan svc.SlugActorMessage),
 		}
 		workedId, _ := ctx.SpawnChild("run:"+payload.Name, Operations, worker.Run)
 		err := ctx.SendAsync(workedId, msg)

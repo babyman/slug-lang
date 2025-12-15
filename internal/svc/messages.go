@@ -2,17 +2,22 @@ package svc
 
 import (
 	"slug/internal/ast"
+	"slug/internal/object"
 )
 
-const SOutService = "sout"
-const ModuleService = "mods"
-const ResolverService = "resolver"
-const CliService = "cli"
-const FsService = "fs"
-const LexerService = "lexer"
-const ParserService = "parser"
-const EvalService = "eval"
-const ReplService = "repl"
+const (
+	SlugNamespace   = "slug:"
+	CliService      = "cli"
+	EvalService     = "eval"
+	FsService       = "fs"
+	LexerService    = "lexer"
+	ModuleService   = "mods"
+	ParserService   = "parser"
+	ReplService     = "repl"
+	ResolverService = "resolver"
+	SOutService     = "sout"
+	SqliteService   = SlugNamespace + "sqlite"
+)
 
 // SOut service messages
 // ====================
@@ -36,4 +41,8 @@ type EvaluateProgram struct {
 type EvaluateResult struct {
 	Result string
 	Error  error
+}
+
+type SlugActorMessage struct {
+	Msg object.Object
 }

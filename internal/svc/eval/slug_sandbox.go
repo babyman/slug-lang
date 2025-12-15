@@ -5,6 +5,7 @@ import (
 	"slug/internal/ast"
 	"slug/internal/kernel"
 	"slug/internal/object"
+	"slug/internal/svc"
 	"slug/internal/util"
 )
 
@@ -27,7 +28,7 @@ func NewSlugSandboxActor(c util.Configuration, src string, program *ast.Program,
 func (s *SlugSandboxActor) Run(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	switch payload := msg.Payload.(type) {
 
-	case SlugActorMessage:
+	case svc.SlugActorMessage:
 
 		// Start the environment
 		env := object.NewEnvironment()
@@ -65,7 +66,7 @@ func (s *SlugSandboxActor) Run(ctx *kernel.ActCtx, msg kernel.Message) kernel.Ha
 		v := e.Eval(s.Program)
 		e.PopEnv(v)
 
-		ctx.SendAsync(msg.From, SlugActorMessage{Msg: v})
+		ctx.SendAsync(msg.From, svc.SlugActorMessage{Msg: v})
 		return kernel.Continue{}
 
 	default:

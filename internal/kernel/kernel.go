@@ -348,6 +348,29 @@ func (k *Kernel) RegisterService(name string, ops OpRights, handler Handler) Act
 	return id
 }
 
+func (k *Kernel) GrantChildAccess(granter ActorID, grantee ActorID, target ActorID, rights Rights, scope map[reflect.Type]any) (*Capability, error) {
+	k.Mu.Lock()
+	defer k.Mu.Unlock()
+
+	// todo...
+	// granter can grant permission to its children
+	// and access to it's children
+	// but nothing that exceeds it's own permissions or those of the accessor
+
+	//// Verify that granter is the parent of target
+	//targetActor, ok := k.Actors[target]
+	//if !ok {
+	//	return nil, fmt.Errorf("target actor %d does not exist", target)
+	//}
+	//
+	//if targetActor.Parent != granter {
+	//	return nil, fmt.Errorf("granter actor %d is not the parent of target actor %d", granter, target)
+	//}
+
+	// Grant the capability
+	return k.createCapWithMuLock(grantee, target, rights, scope), nil
+}
+
 // GrantCap issues a capability from kernel to a specific actor.
 func (k *Kernel) GrantCap(from ActorID, target ActorID, rights Rights, scope map[reflect.Type]any) *Capability {
 	k.Mu.Lock()
@@ -409,15 +432,23 @@ func (k *Kernel) isPermitted(from ActorID, to ActorID, payload any) error {
 		} else {
 			k.Mu.RLock()
 			defer k.Mu.RUnlock()
-			if child, ok := k.Actors[to]; ok && child.Parent == from {
-				// parent has full rwx on child
-				return nil
+			if child, ok := k.Actors[to]; ok {
+				if child.Parent == from {
+					// parent has full rwx on child
+					return nil
+				}
+				slog.Error("E_POLICY: no defined Operation",
+					slog.Any("from", from),
+					slog.Any("to", to),
+					slog.Any("payload-type", reflect.TypeOf(payload).String()))
+				return fmt.Errorf("E_POLICY: no defined Operations for op %T from %d to target %d", payload, from, to)
+			} else {
+				slog.Error("E_POLICY: no actor for target",
+					slog.Any("from", from),
+					slog.Any("to", to),
+					slog.Any("payload-type", reflect.TypeOf(payload).String()))
+				return fmt.Errorf("E_POLICY: no actor found for op %T from %d to target %d", payload, from, to)
 			}
-			slog.Error("E_POLICY: no defined Operation",
-				slog.Any("from", from),
-				slog.Any("to", to),
-				slog.Any("payload-type", reflect.TypeOf(payload).String()))
-			return fmt.Errorf("E_POLICY: no defined Operations for op %T from %d to target %d", payload, from, to)
 		}
 	} else {
 		slog.Warn("E_POLICY: nil payload",
