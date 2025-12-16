@@ -25,9 +25,22 @@ type SlugProgramActor struct {
 }
 
 func (r *SlugProgramActor) WaitForMessage(timeout int64) (any, bool) {
-	if timeout <= 0 {
+	// Semantics:
+	//  - timeout < 0 => block forever
+	//  - timeout == 0 => poll (non-blocking)
+	//  - timeout > 0 => timeout milliseconds
+	if timeout < 0 {
 		msg := <-r.Mailbox
 		return msg, true
+	}
+
+	if timeout == 0 {
+		select {
+		case msg := <-r.Mailbox:
+			return msg, true
+		default:
+			return svc.SlugActorMessage{}, false
+		}
 	}
 
 	select {

@@ -76,9 +76,22 @@ func (s *SlugFunctionActor) Run(ctx *kernel.ActCtx, msg kernel.Message) kernel.H
 }
 
 func (s *SlugFunctionActor) WaitForMessage(timeout int64) (any, bool) {
-	if timeout <= 0 {
+	// Semantics:
+	//  - timeout < 0 => block forever
+	//  - timeout == 0 => poll (non-blocking)
+	//  - timeout > 0 => timeout milliseconds
+	if timeout < 0 {
 		msg := <-s.Mailbox
 		return msg, true
+	}
+
+	if timeout == 0 {
+		select {
+		case msg := <-s.Mailbox:
+			return msg, true
+		default:
+			return svc.SlugActorMessage{}, false
+		}
 	}
 
 	select {

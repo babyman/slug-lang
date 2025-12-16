@@ -4,6 +4,10 @@ foreign spawn = fn(@fun f, ...args); // -> pid
 
 
 @export
+foreign spawn = fn(); // -> pid
+
+
+@export
 foreign spawnSrc = fn(@str src, @list allowedImports = []); // -> pid
 
 
@@ -38,7 +42,11 @@ foreign send = fn(@num pid, msg); // -> pid
 
 
 @export
-foreign receive = fn(@num timeout_ms = 0); // -> msg | nil
+foreign receive = fn(@num timeout_ms = nil); // -> msg | nil
+
+
+@export
+foreign receiveFrom = fn(@num replyActor, @num timeout_ms = nil); // -> msg | nil
 
 
 @export

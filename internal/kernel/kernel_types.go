@@ -38,6 +38,7 @@ type Actor struct {
 	Id       ActorID
 	Name     string
 	Parent   ActorID // 0 if top-level
+	Passive  bool    // mailbox-only actor; no handler goroutine runs
 	inbox    chan Message
 	handler  Handler
 	children map[ActorID]bool      // track children

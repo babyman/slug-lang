@@ -22,6 +22,8 @@ type IKernel interface {
 	SendInternal(from ActorID, to ActorID, payload any, respCh chan Message) error
 	RegisterCleanup(id ActorID, msg Message)
 	SpawnChild(parent ActorID, name string, ops OpRights, handler Handler) (ActorID, error)
+	SpawnPassiveChild(parent ActorID, name string) (ActorID, error)
+	ReceiveFromPassive(parent ActorID, passive ActorID, timeout time.Duration) (any, bool, error)
 	Register(name string, pid ActorID)
 	Unregister(name string) ActorID
 	Registered() []string
@@ -91,8 +93,15 @@ func (c *ActCtx) SendSyncWithTimeout(to ActorID, payload any, timeout time.Durat
 }
 
 func (c *ActCtx) SpawnChild(name string, ops OpRights, handler Handler) (ActorID, error) {
-
 	return c.K.SpawnChild(c.Self, name, ops, handler)
+}
+
+func (c *ActCtx) SpawnPassiveChild(name string) (ActorID, error) {
+	return c.K.SpawnPassiveChild(c.Self, name)
+}
+
+func (c *ActCtx) ReceiveFromPassive(passive ActorID, timeout time.Duration) (any, bool, error) {
+	return c.K.ReceiveFromPassive(c.Self, passive, timeout)
 }
 
 func (c *ActCtx) GrantChildAccess(

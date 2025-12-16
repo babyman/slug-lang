@@ -186,6 +186,104 @@ func (k *Kernel) SpawnChild(parent ActorID, name string, ops OpRights, handler H
 	return id, nil
 }
 
+func (k *Kernel) SpawnPassiveChild(parent ActorID, name string) (ActorID, error) {
+	k.Mu.Lock()
+
+	id := ActorID(k.NextActorID)
+	k.NextActorID++
+
+	child := &Actor{
+		Id:       id,
+		Name:     name,
+		Parent:   parent,
+		Passive:  true,
+		inbox:    make(chan Message, ActorMailboxSize),
+		handler:  nil,
+		children: make(map[ActorID]bool),
+		Caps:     make(map[int64]*Capability),
+		Cleanup:  []Message{},
+	}
+
+	k.Actors[child.Id] = child
+
+	// register as child of parent
+	if parentAct, ok := k.Actors[parent]; ok {
+		parentAct.children[child.Id] = true
+
+		// Copy capabilities from parent to child
+		for _, c := range parentAct.Caps {
+			k.createCapWithMuLock(id, c.Target, c.Rights, c.Scope)
+		}
+
+		// Create capabilities for parent to child
+		k.createCapWithMuLock(parentAct.Id, child.Id, RightRead|RightWrite|RightExec, nil)
+
+		// Create capabilities for child to parent
+		k.createCapWithMuLock(child.Id, parentAct.Id, RightRead|RightWrite|RightExec, nil)
+
+		// Create capabilities for child to itself
+		k.createCapWithMuLock(child.Id, child.Id, RightRead|RightWrite|RightExec, nil)
+	}
+
+	k.Mu.Unlock()
+
+	slog.Info("Spawned passive child actor",
+		slog.Any("parent-id", parent),
+		slog.Any("child-id", id),
+		slog.Any("name", name))
+	return id, nil
+}
+
+func (k *Kernel) ReceiveFromPassive(parent ActorID, passive ActorID, timeout time.Duration) (any, bool, error) {
+	k.Mu.RLock()
+	a := k.Actors[passive]
+	k.Mu.RUnlock()
+
+	if a == nil {
+		return nil, false, fmt.Errorf("E_NO_SUCH: actor %d", passive)
+	}
+	if !a.Passive {
+		return nil, false, fmt.Errorf("E_NOT_PASSIVE: actor %d", passive)
+	}
+	if a.Parent != parent {
+		return nil, false, fmt.Errorf("E_POLICY: actor %d is not parent of %d", parent, passive)
+	}
+
+	// Timeout semantics:
+	//  - timeout < 0 => block forever
+	//  - timeout == 0 => poll (non-blocking)
+	//  - timeout > 0 => wait up to timeout
+	if timeout < 0 {
+		msg, ok := <-a.inbox
+		if !ok {
+			return nil, false, fmt.Errorf("E_NO_SUCH: actor %d", passive)
+		}
+		return msg.Payload, true, nil
+	}
+
+	if timeout == 0 {
+		select {
+		case msg, ok := <-a.inbox:
+			if !ok {
+				return nil, false, fmt.Errorf("E_NO_SUCH: actor %d", passive)
+			}
+			return msg.Payload, true, nil
+		default:
+			return nil, false, nil
+		}
+	}
+
+	select {
+	case msg, ok := <-a.inbox:
+		if !ok {
+			return nil, false, fmt.Errorf("E_NO_SUCH: actor %d", passive)
+		}
+		return msg.Payload, true, nil
+	case <-time.After(timeout):
+		return nil, false, nil
+	}
+}
+
 func (k *Kernel) runActor(a *Actor) {
 	ctx := &ActCtx{K: k, Self: a.Id}
 	for msg := range a.inbox {
@@ -241,7 +339,16 @@ func (k *Kernel) cleanupActor(a *Actor, reason string) {
 	// Kill children first
 	for childID := range a.children {
 		if child, ok := k.Actors[childID]; ok {
-			child.inbox <- Message{Payload: Exit{Reason: "parent terminated"}}
+			if child.Passive {
+				k.cleanupActor(child, "parent terminated")
+				continue
+			}
+			select {
+			case child.inbox <- Message{Payload: Exit{Reason: "parent terminated"}}:
+			default:
+				// if it's jammed, be a little ruthless; parent is exiting anyway
+				k.cleanupActor(child, "parent terminated (mailbox full)")
+			}
 		}
 	}
 
@@ -475,6 +582,16 @@ func (k *Kernel) SendInternal(from ActorID, to ActorID, payload any, resp chan M
 			slog.Any("to", to))
 		return errors.New("E_NO_SUCH: target actor")
 	}
+
+	// Passive actors do not run a handler loop, so they cannot process Exit.
+	// We interpret Exit as an immediate kernel-level cleanup.
+	if target.Passive {
+		if exit, ok := payload.(Exit); ok {
+			k.cleanupActor(target, exit.Reason)
+			return nil
+		}
+	}
+
 	msg := Message{From: from, To: to, Payload: payload, Resp: resp}
 	select {
 	case target.inbox <- msg:

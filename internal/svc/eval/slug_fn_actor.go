@@ -11,6 +11,7 @@ import (
 	"slug/internal/svc"
 	"slug/internal/svc/lexer"
 	"slug/internal/svc/parser"
+	"time"
 )
 
 func fnActorSelf() *object.Foreign {
@@ -25,10 +26,16 @@ func fnActorSelf() *object.Foreign {
 func fnActorSpawn() *object.Foreign {
 	return &object.Foreign{
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
-			if len(args) < 1 {
-				return ctx.NewError("wrong number of arguments. got=%d, want>=1", len(args))
+			// spawn() => passive actor (reply mailbox)
+			if len(args) == 0 {
+				pid, err := ctx.ActCtx().SpawnPassiveChild("<passive>")
+				if err != nil {
+					return ctx.NewError("failed to spawn passive actor: %v", err)
+				}
+				return &object.Number{Value: dec64.FromInt64(int64(pid))}
 			}
 
+			// spawn(fn, ...args) => active actor
 			objects := args[1:]
 			fun, err := foreign.ToFunctionArgument(args[0], objects)
 			if err != nil {
@@ -162,20 +169,30 @@ func fnActorReceive() *object.Foreign {
 			if len(args) > 1 {
 				return ctx.NewError("receive expects zero or one timeout argument")
 			}
-			var timeout int64 // No timeout by default
+
+			// Semantics:
+			//  - (no arg) => block forever
+			//  - nil / <0 => block forever
+			//  - 0 => poll
+			//  - >0 => timeout (ms)
+			var timeoutMs int64 = -1 // default: block forever
 			if len(args) == 1 {
-				if to, ok := args[0].(*object.Number); ok {
-					timeout = to.Value.ToInt64()
-				} else {
-					return ctx.NewError("timeout argument must be an integer")
+				switch t := args[0].(type) {
+				case *object.Nil:
+					timeoutMs = -1
+				case *object.Number:
+					timeoutMs = t.Value.ToInt64()
+				default:
+					return ctx.NewError("timeout argument must be NUMBER or nil, got=%s", args[0].Type())
 				}
 			}
 
 			slog.Warn("ACT: Waiting for message",
-				slog.Any("actor-pid", ctx.ActCtx().Self))
+				slog.Any("actor-pid", ctx.ActCtx().Self),
+				slog.Any("timeoutMs", timeoutMs))
 
-			message, b := ctx.WaitForMessage(timeout)
-			if !b {
+			message, ok := ctx.WaitForMessage(timeoutMs)
+			if !ok {
 				return ctx.Nil()
 			}
 
@@ -188,6 +205,58 @@ func fnActorReceive() *object.Foreign {
 			}
 
 			return ctx.Nil()
+		},
+	}
+}
+
+func fnActorReceiveFrom() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) < 1 || len(args) > 2 {
+				return ctx.NewError("receiveFrom expects 1 or 2 arguments: receiveFrom(replyPid, timeoutMs?)")
+			}
+
+			pidObj, ok := args[0].(*object.Number)
+			if !ok {
+				return ctx.NewError("first argument to `receiveFrom` must be NUMBER, got=%s", args[0].Type())
+			}
+			passive := kernel.ActorID(pidObj.Value.ToInt64())
+
+			// Semantics:
+			//  - (no timeout arg) => block forever
+			//  - nil / <0 => block forever
+			//  - 0 => poll
+			//  - >0 => timeout (ms)
+			timeout := time.Duration(-1) * time.Millisecond // default: block forever
+			if len(args) == 2 {
+				switch t := args[1].(type) {
+				case *object.Nil:
+					timeout = time.Duration(-1) * time.Millisecond
+				case *object.Number:
+					timeout = time.Duration(t.Value.ToInt64()) * time.Millisecond
+				default:
+					return ctx.NewError("timeout argument must be NUMBER or nil, got=%s", args[1].Type())
+				}
+			}
+
+			payload, okRecv, err := ctx.ActCtx().ReceiveFromPassive(passive, timeout)
+			if err != nil {
+				return ctx.NewError("%s", err.Error())
+			}
+			if !okRecv {
+				return ctx.Nil()
+			}
+
+			// Payload-only at Slug level: unwrap SlugActorMessage if that's what's delivered.
+			switch m := payload.(type) {
+			case svc.SlugActorMessage:
+				return m.Msg
+			default:
+				if obj, ok := payload.(object.Object); ok {
+					return obj
+				}
+				return ctx.NewError("receiveFrom got unsupported payload type: %T", payload)
+			}
 		},
 	}
 }
