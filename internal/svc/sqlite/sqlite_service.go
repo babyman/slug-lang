@@ -10,6 +10,9 @@ import (
 	"slug/internal/object"
 	"slug/internal/svc"
 	"slug/internal/svc/eval"
+	"strconv"
+	"strings"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -243,6 +246,11 @@ func execSuccessRows(rows *sql.Rows) svc.SlugActorMessage {
 		return errorResult(err)
 	}
 
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return errorResult(err)
+	}
+
 	var resultRows []*object.Map
 	for rows.Next() {
 		values := make([]any, len(columns))
@@ -257,14 +265,20 @@ func execSuccessRows(rows *sql.Rows) svc.SlugActorMessage {
 		rowMap := &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}
 		for i, col := range columns {
 			key := (&object.String{Value: col}).MapKey()
+
+			var ct *sql.ColumnType
+			if i < len(colTypes) {
+				ct = colTypes[i]
+			}
+
 			rowMap.Pairs[key] = object.MapPair{
 				Key:   &object.String{Value: col},
-				Value: &object.String{Value: fmt.Sprintf("%v", values[i])},
+				Value: sqlValueToSlugObject(values[i], ct),
 			}
 		}
 		resultRows = append(resultRows, rowMap)
 	}
-	// todo this can be more efficient?
+
 	listElements := make([]object.Object, len(resultRows))
 	for i, row := range resultRows {
 		listElements[i] = row
@@ -279,6 +293,46 @@ func execSuccessRows(rows *sql.Rows) svc.SlugActorMessage {
 		Value: &object.List{Elements: listElements},
 	}
 	return svc.SlugActorMessage{Msg: resultMap}
+}
+
+func sqlValueToSlugObject(v any, ct *sql.ColumnType) object.Object {
+	// nil -> nil
+	if v == nil {
+		return &object.Nil{}
+	}
+
+	switch x := v.(type) {
+	case int:
+		return &object.Number{Value: dec64.FromInt64(int64(x))}
+	case int64:
+		return &object.Number{Value: dec64.FromInt64(x)}
+	case float64:
+		// dec64 has no FromFloat, so round-trip through a stable string form.
+		s := strconv.FormatFloat(x, 'g', -1, 64)
+		if d, err := dec64.FromString(s); err == nil {
+			return &object.Number{Value: d}
+		}
+		return &object.String{Value: s}
+	case bool:
+		return &object.Boolean{Value: x}
+	case time.Time:
+		return &object.String{Value: x.Format(time.RFC3339Nano)}
+	case []byte:
+		// SQLite TEXT sometimes comes back as []byte depending on driver/decl type.
+		// Use declared type (when available) to choose String vs Bytes.
+		if ct != nil {
+			decl := strings.ToUpper(ct.DatabaseTypeName())
+			if decl == "TEXT" || strings.Contains(decl, "CHAR") || strings.Contains(decl, "CLOB") {
+				return &object.String{Value: string(x)}
+			}
+		}
+		return &object.Bytes{Value: x}
+	case string:
+		return &object.String{Value: x}
+	default:
+		// Fallback: preserve something usable rather than failing the whole query.
+		return &object.String{Value: fmt.Sprintf("%v", v)}
+	}
 }
 
 func errorResult(err error) svc.SlugActorMessage {
