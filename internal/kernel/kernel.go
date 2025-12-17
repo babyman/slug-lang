@@ -526,6 +526,21 @@ func (k *Kernel) hasCap(sender ActorID, target ActorID, want Rights) bool {
 
 func (k *Kernel) isPermitted(from ActorID, to ActorID, payload any) error {
 	if payload != nil {
+
+		// Passive mailbox policy: only parent or explicit RightWrite cap may send to passive actors.
+		k.Mu.RLock()
+		targetActor := k.Actors[to]
+		k.Mu.RUnlock()
+		if targetActor != nil && targetActor.Passive {
+			if targetActor.Parent == from || k.hasCap(from, to, RightWrite) {
+				return nil
+			}
+			slog.Error("E_POLICY: no permission to send to passive mailbox",
+				slog.Any("from", from),
+				slog.Any("to", to))
+			return fmt.Errorf("E_POLICY: no permission to send to passive mailbox %d from %d", to, from)
+		}
+
 		msgType := reflect.TypeOf(payload)
 		if rights, ok := k.resolveRights(to, msgType); ok {
 			if !k.hasCap(from, to, rights) {
@@ -568,11 +583,23 @@ func (k *Kernel) isPermitted(from ActorID, to ActorID, payload any) error {
 }
 
 // sendInternal enqueues a message, enforcing capability checks for service ops.
-func (k *Kernel) SendInternal(from ActorID, to ActorID, payload any, resp chan Message) error {
+func (k *Kernel) SendInternal(from ActorID, to ActorID, replyTo ActorID, payload any, resp chan Message) error {
+	// Implicit reply-to delegation:
+	// If replyTo is a passive child mailbox of `from`, allow `to` to write to it.
+	if replyTo != 0 {
+		k.Mu.Lock()
+		r := k.Actors[replyTo]
+		if r != nil && r.Passive && r.Parent == from {
+			k.createCapWithMuLock(to, replyTo, RightWrite, nil)
+		}
+		k.Mu.Unlock()
+	}
+
 	err := k.isPermitted(from, to, payload)
 	if err != nil {
 		return err
 	}
+
 	k.Mu.RLock()
 	target := k.Actors[to]
 	k.Mu.RUnlock()
@@ -592,7 +619,7 @@ func (k *Kernel) SendInternal(from ActorID, to ActorID, payload any, resp chan M
 		}
 	}
 
-	msg := Message{From: from, To: to, Payload: payload, Resp: resp}
+	msg := Message{From: from, To: to, ReplyTo: replyTo, Payload: payload, Resp: resp}
 	select {
 	case target.inbox <- msg:
 		if a := k.getActor(from); a != nil {
@@ -674,7 +701,7 @@ func (k *Kernel) broadcastMessage(kernelID ActorID, message any) {
 
 	for actorID := range recipients {
 		go func(id ActorID) {
-			if err := k.SendInternal(kernelID, id, message, nil); err != nil {
+			if err := k.SendInternal(kernelID, id, 0, message, nil); err != nil {
 				slog.Warn("Failed to send payload",
 					slog.Any("payload", message),
 					slog.Any("to", id),

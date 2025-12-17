@@ -137,26 +137,40 @@ func fnActorSend() *object.Foreign {
 	return &object.Foreign{
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
-			if len(args) != 2 {
-				return ctx.NewError("wrong number of arguments. got=%d, want=2", len(args))
+			if len(args) < 2 || len(args) > 3 {
+				return ctx.NewError("wrong number of arguments. got=%d, want=2..3", len(args))
 			}
 
 			pidObj, ok := args[0].(*object.Number)
 			if !ok {
 				return ctx.NewError("first argument to `send` must be NUMBER, got=%s", args[0].Type())
 			}
-
 			pid := kernel.ActorID(pidObj.Value.ToInt64())
-			msg := svc.SlugActorMessage{
-				Msg: args[1],
+
+			msg := svc.SlugActorMessage{Msg: args[1]}
+
+			var replyTo kernel.ActorID = 0
+			if len(args) == 3 {
+				switch r := args[2].(type) {
+				case *object.Nil:
+					replyTo = 0
+				case *object.Number:
+					replyTo = kernel.ActorID(r.Value.ToInt64())
+				default:
+					return ctx.NewError("third argument to `send` (replyTo) must be NUMBER or nil, got=%s", args[2].Type())
+				}
 			}
 
-			err := ctx.ActCtx().SendAsync(pid, msg)
+			var err error
+			if replyTo != 0 {
+				err = ctx.ActCtx().SendAsyncWithReplyTo(pid, replyTo, msg)
+			} else {
+				err = ctx.ActCtx().SendAsync(pid, msg)
+			}
 
 			if err != nil {
 				return ctx.NewError("failed to send message: %v", err)
 			}
-
 			return pidObj
 		},
 	}

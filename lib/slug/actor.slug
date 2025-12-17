@@ -38,7 +38,7 @@ foreign self = fn(); // -> pid
 
 
 @export
-foreign send = fn(@num pid, msg); // -> pid
+foreign send = fn(@num pid, msg, @num replyTo = nil); // -> pid
 
 
 @export

@@ -30,6 +30,7 @@ type Capability struct {
 type Message struct {
 	From    ActorID      `json:"from"`
 	To      ActorID      `json:"to"`
+	ReplyTo ActorID      `json:"replyTo,omitempty"` // optional passive reply mailbox (0 = none)
 	Payload any          `json:"payload,omitempty"`
 	Resp    chan Message `json:"-"` // optional synchronous reply channel
 }

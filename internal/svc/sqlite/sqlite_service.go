@@ -36,16 +36,18 @@ var (
 func (fs *Service) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	p, ok := msg.Payload.(svc.SlugActorMessage)
 	if !ok {
-		ctx.SendAsync(msg.From, errorStrResult("invalid message payload, string expected"))
+		ctx.SendAsync(msg.From, errorStrResult("invalid message payload, SlugActorMessage expected"))
 	} else {
+		to := replyTarget(msg)
 		m, ok := p.Msg.(*object.Map)
 		if !ok {
-			ctx.SendAsync(msg.From, errorStrResult("invalid message payload, map expected"))
+			ctx.SendAsync(to, errorStrResult("invalid message payload, map expected"))
 			return kernel.Continue{}
 		}
+
 		msgType, ok := m.Pairs[msgTypeKey]
 		if !ok {
-			ctx.SendAsync(msg.From, errorStrResult("invalid message payload"))
+			ctx.SendAsync(to, errorStrResult("invalid message payload"))
 			return kernel.Continue{}
 		}
 
@@ -54,18 +56,11 @@ func (fs *Service) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handle
 			conn := &Connection{}
 			connId, err := ctx.SpawnChild("sqlite-conn", Operations, conn.Handler)
 			if err != nil {
-				ctx.SendAsync(msg.From, errorResult(err))
+				ctx.SendAsync(to, errorResult(err))
 				return kernel.Continue{}
 			}
-			println("sqlite connect:", ctx.Self, msg.From, "->", connId)
 			ctx.GrantChildAccess(msg.From, connId, kernel.RightWrite, nil)
-			ctx.GrantChildAccess(connId, msg.From, kernel.RightExec, nil)
-			err = ctx.ForwardAsync(connId, msg)
-			// todo this actor should send the connection id back to the client
-			//ctx.SendAsync(msg.From, svc.SlugActorMessage{Msg: &object.Number{Value: dec64.FromInt64(int64(connId))}})
-			if err != nil {
-				ctx.SendAsync(msg.From, errorResult(err))
-			}
+			ctx.ForwardAsync(connId, msg)
 		}
 	}
 	return kernel.Continue{}
@@ -77,11 +72,13 @@ func (sc *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Han
 	if !ok {
 		svc.Reply(ctx, msg, kernel.UnknownOperation{})
 	} else {
+		to := replyTarget(msg)
 		m, ok := slugMsg.Msg.(*object.Map)
 		if !ok {
 			// log here
 			return kernel.Continue{}
 		}
+
 		msgType, ok := m.Pairs[msgTypeKey]
 		if !ok {
 			// log here
@@ -97,20 +94,17 @@ func (sc *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Han
 			}
 
 			connStr := m.Pairs[connectionStringKey]
-			println("sqlite connect", connStr.Value.Inspect())
 
 			var err error
 			sc.db, err = sql.Open("sqlite3", connStr.Value.Inspect())
 			if err != nil {
 				slog.Error("failed to open sqlite connection", slog.Any("error", err.Error()))
-				ctx.SendAsync(msg.From, errorResult(err))
+				ctx.SendAsync(to, errorResult(err))
 				return kernel.Terminate{
 					Reason: "Failed to open connection: " + err.Error(),
 				}
 			}
-			println("sqlite connected", msg.From, "->", ctx.Self, sc.db.Stats().OpenConnections, ctx.Self)
-			// todo this reply should be sent by the driver service for easier receipt
-			ctx.SendAsync(msg.From, svc.SlugActorMessage{Msg: &object.Number{
+			ctx.SendAsync(to, svc.SlugActorMessage{Msg: &object.Number{
 				Value: dec64.FromInt64(int64(ctx.Self)),
 			}})
 
@@ -120,7 +114,7 @@ func (sc *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Han
 			sqlStr := m.Pairs[sqlKey].Value.Inspect()
 			params, ok := extractParameters(m)
 			if !ok {
-				ctx.SendAsync(msg.From, errorStrResult("params must be a list"))
+				ctx.SendAsync(to, errorStrResult("params must be a list"))
 				return kernel.Continue{}
 			}
 
@@ -130,11 +124,11 @@ func (sc *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Han
 				rows, err = sc.db.Query(sqlStr, params...)
 			}
 			if err != nil {
-				ctx.SendAsync(msg.From, errorResult(err))
+				ctx.SendAsync(to, errorResult(err))
 				return kernel.Continue{}
 			}
 			defer rows.Close()
-			ctx.SendAsync(msg.From, execSuccessRows(rows))
+			ctx.SendAsync(to, execSuccessRows(rows))
 
 		case "exec":
 			var result sql.Result
@@ -142,7 +136,7 @@ func (sc *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Han
 			sqlStr := m.Pairs[sqlKey].Value.Inspect()
 			params, ok := extractParameters(m)
 			if !ok {
-				ctx.SendAsync(msg.From, errorStrResult("params must be a list"))
+				ctx.SendAsync(to, errorStrResult("params must be a list"))
 				return kernel.Continue{}
 			}
 
@@ -152,48 +146,48 @@ func (sc *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Han
 				result, err = sc.db.Exec(sqlStr, params...)
 			}
 			if err != nil {
-				ctx.SendAsync(msg.From, errorResult(err))
+				ctx.SendAsync(to, errorResult(err))
 			} else {
-				ctx.SendAsync(msg.From, execSuccessResult(result))
+				ctx.SendAsync(to, execSuccessResult(result))
 			}
 
 		case "begin":
 			if sc.tx != nil {
-				ctx.SendAsync(msg.From, errorStrResult("transaction already in progress"))
+				ctx.SendAsync(to, errorStrResult("transaction already in progress"))
 				return kernel.Continue{}
 			}
 			tx, err := sc.db.Begin()
 			if err != nil {
-				ctx.SendAsync(msg.From, errorResult(err))
+				ctx.SendAsync(to, errorResult(err))
 			} else {
 				sc.tx = tx
-				ctx.SendAsync(msg.From, success())
+				ctx.SendAsync(to, success())
 			}
 
 		case "commit":
 			if sc.tx == nil {
-				ctx.SendAsync(msg.From, errorStrResult("no transaction in progress"))
+				ctx.SendAsync(to, errorStrResult("no transaction in progress"))
 				return kernel.Continue{}
 			}
 			err := sc.tx.Commit()
 			sc.tx = nil
 			if err != nil {
-				ctx.SendAsync(msg.From, errorResult(err))
+				ctx.SendAsync(to, errorResult(err))
 			} else {
-				ctx.SendAsync(msg.From, success())
+				ctx.SendAsync(to, success())
 			}
 
 		case "rollback":
 			if sc.tx == nil {
-				ctx.SendAsync(msg.From, errorStrResult("no transaction in progress"))
+				ctx.SendAsync(to, errorStrResult("no transaction in progress"))
 				return kernel.Continue{}
 			}
 			err := sc.tx.Rollback()
 			sc.tx = nil
 			if err != nil {
-				ctx.SendAsync(msg.From, errorResult(err))
+				ctx.SendAsync(to, errorResult(err))
 			} else {
-				ctx.SendAsync(msg.From, success())
+				ctx.SendAsync(to, success())
 			}
 
 		case "close":
@@ -204,7 +198,7 @@ func (sc *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Han
 			if sc.db != nil {
 				sc.db.Close()
 			}
-			ctx.SendAsync(msg.From, success())
+			ctx.SendAsync(to, success())
 			return kernel.Terminate{
 				Reason: "Connection closed",
 			}
@@ -311,6 +305,15 @@ func errorStrResult(err string) svc.SlugActorMessage {
 		Value: &object.Error{Message: err},
 	}
 	return svc.SlugActorMessage{Msg: resultMap}
+}
+
+func replyTarget(msg kernel.Message) kernel.ActorID {
+
+	if msg.ReplyTo > 0 {
+		return msg.ReplyTo
+	}
+
+	return msg.From
 }
 
 func extractParameters(m *object.Map) ([]any, bool) {

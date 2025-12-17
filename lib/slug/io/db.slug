@@ -1,0 +1,53 @@
+var {*} = import(
+	"slug.actor",
+)
+
+@export val SQLITE_DRIVER = "sqlite";
+@export val MYSQL_DRIVER = "mysql";
+@export val POSTGRESQL_DRIVER = "postgresql";
+
+
+@export
+var connect = fn(@num replyTo, @str connectionString, @str driver) {
+    lookup(driver) /> send({type:"connect", connectionString:connectionString}, replyTo)
+    replyTo /> receiveFrom(1000)
+}
+
+
+@export
+var close = fn(@num connection, @num replyTo) {
+    connection /> send({type:"close"}, replyTo)
+	replyTo /> receiveFrom(1000)
+}
+
+
+@export
+var query = fn(@num connection, @num replyTo, @str sql, ...params) {
+    connection /> send({type: "query", sql: sql, params: params}, replyTo)
+    replyTo
+}
+
+
+@export
+var exec = fn(@num connection, @num replyTo, @str sql, ...params) {
+    connection /> send({type:"exec", sql: sql, params: params}, replyTo)
+    replyTo
+}
+
+
+@export
+var begin = fn(@num connection, @num replyTo) {
+    connection /> send({type:"begin"}, replyTo)
+}
+
+
+@export
+var commit = fn(@num connection, @num replyTo) {
+    connection /> send({type:"commit"}, replyTo)
+}
+
+
+@export
+var rollback = fn(@num connection, @num replyTo) {
+    connection /> send({type:"rollback"}, replyTo)
+}
