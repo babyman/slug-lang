@@ -586,11 +586,23 @@ func (k *Kernel) isPermitted(from ActorID, to ActorID, payload any) error {
 func (k *Kernel) SendInternal(from ActorID, to ActorID, replyTo ActorID, payload any, resp chan Message) error {
 	// Implicit reply-to delegation:
 	// If replyTo is a passive child mailbox of `from`, allow `to` to write to it.
+	// Avoid capability accumulation: only grant if `to` doesn't already have RightWrite on replyTo.
 	if replyTo != 0 {
 		k.Mu.Lock()
 		r := k.Actors[replyTo]
 		if r != nil && r.Passive && r.Parent == from {
-			k.createCapWithMuLock(to, replyTo, RightWrite, nil)
+			if toActor := k.Actors[to]; toActor != nil {
+				already := false
+				for _, c := range toActor.Caps {
+					if c.Target == replyTo && !c.Revoked.Load() && (c.Rights&RightWrite) == RightWrite {
+						already = true
+						break
+					}
+				}
+				if !already {
+					k.createCapWithMuLock(to, replyTo, RightWrite, nil)
+				}
+			}
 		}
 		k.Mu.Unlock()
 	}
