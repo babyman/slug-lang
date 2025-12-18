@@ -84,6 +84,11 @@ func (k *Kernel) RegisterCleanup(id ActorID, msg Message) {
 func (k *Kernel) RegisterActor(name string, handler Handler) ActorID {
 	k.Mu.Lock()
 	id := ActorID(k.NextActorID)
+
+	slog.Info("Registering actor",
+		slog.Any("id", id),
+		slog.String("name", name))
+
 	k.NextActorID++
 	act := &Actor{
 		Id:       id,

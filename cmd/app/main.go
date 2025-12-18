@@ -14,6 +14,7 @@ import (
 	"slug/internal/svc/fs"
 	"slug/internal/svc/lexer"
 	"slug/internal/svc/modules"
+	"slug/internal/svc/mysql"
 	"slug/internal/svc/parser"
 	"slug/internal/svc/repl"
 	"slug/internal/svc/resolver"
@@ -154,6 +155,10 @@ func main() {
 	sqliteSvc := sqlite.Service{}
 	sqliteID := k.RegisterService(svc.SqliteService, sqlite.Operations, sqliteSvc.Handler)
 
+	// MySQL service
+	mysqlSvc := mysql.Service{}
+	mysqlID := k.RegisterService(svc.MysqlService, mysql.Operations, mysqlSvc.Handler)
+
 	// Cap grants
 	_ = k.GrantCap(kernelID, cliID, x, nil)
 
@@ -175,8 +180,11 @@ func main() {
 	_ = k.GrantCap(evalID, parserID, rwx, nil)
 	_ = k.GrantCap(evalID, soutID, w, nil)
 	_ = k.GrantCap(evalID, sqliteID, rw, nil)
+	_ = k.GrantCap(evalID, mysqlID, rw, nil)
 
 	_ = k.GrantCap(sqliteID, evalID, x, nil)
+
+	_ = k.GrantCap(mysqlID, evalID, x, nil)
 
 	_ = k.GrantCap(replID, evalID, x, nil)
 	_ = k.GrantCap(replID, lexerID, x, nil)

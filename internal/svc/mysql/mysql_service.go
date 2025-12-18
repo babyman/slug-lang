@@ -1,4 +1,4 @@
-package sqlite
+package mysql
 
 import (
 	"database/sql"
@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 var Operations = kernel.OpRights{
@@ -55,7 +55,7 @@ func (fs *Service) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handle
 		switch msgType.Value.Inspect() {
 		case "connect":
 			conn := &Connection{}
-			connId, err := ctx.SpawnChild("sqlite-conn", Operations, conn.Handler)
+			connId, err := ctx.SpawnChild("mysql-conn", Operations, conn.Handler)
 			if err != nil {
 				ctx.SendAsync(to, errorResult(err))
 				return kernel.Continue{}
@@ -70,7 +70,6 @@ func (fs *Service) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handle
 }
 
 func (sc *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
-
 	slugMsg, ok := msg.Payload.(svc.SlugActorMessage)
 	if !ok {
 		svc.Reply(ctx, msg, kernel.UnknownOperation{})
@@ -78,35 +77,38 @@ func (sc *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Han
 		to := replyTarget(msg)
 		m, ok := slugMsg.Msg.(*object.Map)
 		if !ok {
-			// log here
 			return kernel.Continue{}
 		}
 
 		msgType, ok := m.Pairs[msgTypeKey]
 		if !ok {
-			// log here
 			return kernel.Continue{}
 		}
 
 		switch msgType.Value.Inspect() {
 		case "connect":
-
 			if sc.db != nil {
-				slog.Warn("sqlite connection already established")
+				slog.Warn("mysql connection already established")
 				return kernel.Continue{}
 			}
 
 			connStr := m.Pairs[connectionStringKey]
 
 			var err error
-			sc.db, err = sql.Open("sqlite3", connStr.Value.Inspect())
+			sc.db, err = sql.Open("mysql", connStr.Value.Inspect())
 			if err != nil {
-				slog.Error("failed to open sqlite connection", slog.Any("error", err.Error()))
+				slog.Error("failed to open mysql connection", slog.Any("error", err.Error()))
 				ctx.SendAsync(to, errorResult(err))
 				return kernel.Terminate{
 					Reason: "Failed to open connection: " + err.Error(),
 				}
 			}
+			// Test the connection
+			if err := sc.db.Ping(); err != nil {
+				ctx.SendAsync(to, errorResult(err))
+				return kernel.Terminate{Reason: "Ping failed"}
+			}
+
 			ctx.SendAsync(to, svc.SlugActorMessage{Msg: &object.Number{
 				Value: dec64.FromInt64(int64(ctx.Self)),
 			}})
@@ -296,7 +298,6 @@ func execSuccessRows(rows *sql.Rows) svc.SlugActorMessage {
 }
 
 func sqlValueToSlugObject(v any, ct *sql.ColumnType) object.Object {
-	// nil -> nil
 	if v == nil {
 		return &object.Nil{}
 	}
@@ -307,7 +308,6 @@ func sqlValueToSlugObject(v any, ct *sql.ColumnType) object.Object {
 	case int64:
 		return &object.Number{Value: dec64.FromInt64(x)}
 	case float64:
-		// dec64 has no FromFloat, so round-trip through a stable string form.
 		s := strconv.FormatFloat(x, 'g', -1, 64)
 		if d, err := dec64.FromString(s); err == nil {
 			return &object.Number{Value: d}
@@ -318,11 +318,16 @@ func sqlValueToSlugObject(v any, ct *sql.ColumnType) object.Object {
 	case time.Time:
 		return &object.String{Value: x.Format(time.RFC3339Nano)}
 	case []byte:
-		// SQLite TEXT sometimes comes back as []byte depending on driver/decl type.
-		// Use declared type (when available) to choose String vs Bytes.
 		if ct != nil {
 			decl := strings.ToUpper(ct.DatabaseTypeName())
-			if decl == "TEXT" || strings.Contains(decl, "CHAR") || strings.Contains(decl, "CLOB") {
+			// MySQL drivers often return DECIMAL and BIT as []byte
+			if decl == "DECIMAL" || decl == "NEWDECIMAL" {
+				if d, err := dec64.FromString(string(x)); err == nil {
+					return &object.Number{Value: d}
+				}
+				return &object.String{Value: string(x)}
+			}
+			if strings.Contains(decl, "CHAR") || strings.Contains(decl, "TEXT") || strings.Contains(decl, "VARCHAR") {
 				return &object.String{Value: string(x)}
 			}
 		}
@@ -330,7 +335,6 @@ func sqlValueToSlugObject(v any, ct *sql.ColumnType) object.Object {
 	case string:
 		return &object.String{Value: x}
 	default:
-		// Fallback: preserve something usable rather than failing the whole query.
 		return &object.String{Value: fmt.Sprintf("%v", v)}
 	}
 }
@@ -362,19 +366,19 @@ func errorStrResult(err string) svc.SlugActorMessage {
 }
 
 func replyTarget(msg kernel.Message) kernel.ActorID {
-
 	if msg.ReplyTo > 0 {
 		return msg.ReplyTo
 	}
-
 	return msg.From
 }
 
 func extractParameters(m *object.Map) ([]any, bool) {
+	paramsObj, ok := m.Pairs[paramsKey]
+	if !ok {
+		return []any{}, true
+	}
 
-	paramsObj := m.Pairs[paramsKey].Value
-
-	paramsList, ok := paramsObj.(*object.List)
+	paramsList, ok := paramsObj.Value.(*object.List)
 	if !ok {
 		return nil, false
 	}

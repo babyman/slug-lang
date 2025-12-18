@@ -17,6 +17,7 @@ const (
 	ResolverService = "resolver"
 	SOutService     = "sout"
 	SqliteService   = SlugNamespace + "sqlite"
+	MysqlService    = SlugNamespace + "mysql"
 )
 
 // SOut service messages
