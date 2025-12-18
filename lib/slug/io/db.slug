@@ -4,7 +4,7 @@ var {*} = import(
 
 @export val SQLITE_DRIVER = "sqlite";
 @export val MYSQL_DRIVER = "mysql";
-@export val POSTGRESQL_DRIVER = "postgresql";
+// @export val POSTGRESQL_DRIVER = "postgresql";
 
 
 @export
