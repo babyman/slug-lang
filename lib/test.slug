@@ -74,8 +74,8 @@ var runTest = fn(f, name, params, expected, stats) {
 	val out = f(...params);
 
 	match out /> type() {
-		t if t == LIST_TYPE && out /> equals(expected) => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}");
-		t if t == MAP_TYPE && out /> equals(expected) => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}");
+		^LIST_TYPE if out /> equals(expected) => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}");
+		^MAP_TYPE if out /> equals(expected) => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}");
 		_ if out == expected => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}");
 		_ => {
 			stats = stats /> compute("fail", fn(k, v) { v + 1});
