@@ -629,6 +629,29 @@ func (ip *IdentifierPattern) patternNode()         {}
 func (ip *IdentifierPattern) TokenLiteral() string { return ip.Token.Literal }
 func (ip *IdentifierPattern) String() string       { return ip.Value.String() }
 
+// PinnedIdentifierPattern for matching against an existing identifier from an enclosing scope
+// Syntax: ^name
+// Semantics:
+//   - name must already exist in the enclosing lexical scope (outside pattern bindings)
+//   - the pattern matches iff matchedValue == env[name]
+//   - it does NOT bind
+type PinnedIdentifierPattern struct {
+	Token token.Token // the '^' token
+	Value *Identifier // the pinned identifier name
+}
+
+func (pp *PinnedIdentifierPattern) expressionNode()      {}
+func (pp *PinnedIdentifierPattern) patternNode()         {}
+func (pp *PinnedIdentifierPattern) TokenLiteral() string { return pp.Token.Literal }
+func (pp *PinnedIdentifierPattern) String() string {
+	var out bytes.Buffer
+	out.WriteString("^")
+	if pp.Value != nil {
+		out.WriteString(pp.Value.String())
+	}
+	return out.String()
+}
+
 // MultiPattern for matching against multiple patterns
 type MultiPattern struct {
 	Token    token.Token

@@ -588,6 +588,20 @@ func (p *Parser) parseMatchPattern() ast.MatchPattern {
 			pattern.Value = nil
 		}
 		return &pattern
+
+	case token.BITWISE_XOR:
+		// Pinned identifier pattern: ^name
+		// Restriction: atomic only (must be IDENT, no expressions)
+		if !p.peekTokenIs(token.IDENT) {
+			p.addErrorAt(p.curToken.Position, "pinned identifier must be followed by an identifier (e.g. ^name)")
+			return nil
+		}
+		p.nextToken() // consume IDENT
+		return &ast.PinnedIdentifierPattern{
+			Token: p.curToken, // NOTE: after nextToken(), curToken is IDENT; keep '^' position? If you prefer caret position, store separately.
+			Value: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
+		}
+
 	case token.IDENT:
 		return &ast.IdentifierPattern{
 			Token: p.curToken,
@@ -613,28 +627,97 @@ func (p *Parser) parseMatchPattern() ast.MatchPattern {
 }
 
 func (p *Parser) parseMultiPattern() ast.MatchPattern {
+	// Multi-pattern: comma-separated list of patterns.
+	//
+	// Important restriction:
+	// Alternatives must be NON-BINDING, otherwise this becomes ambiguous (which alternative bound what?).
+	// So we allow literals, pinned identifiers, wildcards, and destructuring patterns that themselves don't bind.
+	//
+	// This enables: `nil, [] => ...` and `0, ^p1, ^p2, 3 => ...`
 
-	expr := p.parseExpression(LOWEST)
+	startTok := p.curToken
 
-	multiPattern := &ast.MultiPattern{
-		Token:    p.curToken,
-		Patterns: []ast.MatchPattern{&ast.LiteralPattern{Token: p.curToken, Value: expr}},
+	var isNonBinding func(mp ast.MatchPattern) bool
+	isNonBinding = func(mp ast.MatchPattern) bool {
+		switch pt := mp.(type) {
+		case *ast.WildcardPattern:
+			return true
+		case *ast.LiteralPattern:
+			return true
+		case *ast.PinnedIdentifierPattern:
+			return true
+
+		case *ast.IdentifierPattern:
+			// `x` would bind; disallow in multi-pattern alternatives
+			return false
+
+		case *ast.SpreadPattern:
+			// `...t` would bind; disallow
+			// (If you later want to allow bare `...` without binding, this is where you’d permit pt.Value == nil.)
+			return false
+
+		case *ast.ListPattern:
+			for _, el := range pt.Elements {
+				if !isNonBinding(el) {
+					return false
+				}
+			}
+			return true
+
+		case *ast.MapPattern:
+			for _, sub := range pt.Pairs {
+				if !isNonBinding(sub) {
+					return false
+				}
+			}
+			return true
+
+		case *ast.MultiPattern:
+			// Nested multi-pattern is not expected here; treat as invalid to keep grammar simple.
+			return false
+
+		default:
+			return false
+		}
 	}
 
-	// Check for additional literal patterns separated by commas
+	parseAlt := func() ast.MatchPattern {
+		alt := p.parseMatchPattern()
+		if alt == nil {
+			return nil
+		}
+		if !isNonBinding(alt) {
+			p.addErrorAt(p.curToken.Position, "multi-pattern alternatives must not introduce bindings (use literals, ^pinned identifiers, or non-binding destructuring like [])")
+			return nil
+		}
+		return alt
+	}
+
+	first := parseAlt()
+	if first == nil {
+		return nil
+	}
+
+	multi := &ast.MultiPattern{
+		Token:    startTok,
+		Patterns: []ast.MatchPattern{first},
+	}
+
 	for p.peekTokenIs(token.COMMA) {
 		p.nextToken() // consume comma
-		p.nextToken() // move to next literal
-		expr = p.parseExpression(LOWEST)
-		multiPattern.Patterns = append(multiPattern.Patterns, &ast.LiteralPattern{Token: p.curToken, Value: expr})
+		p.nextToken() // move to next alternative
+
+		next := parseAlt()
+		if next == nil {
+			return nil
+		}
+		multi.Patterns = append(multi.Patterns, next)
 	}
 
-	// If only one pattern, return as LiteralPattern
-	if len(multiPattern.Patterns) == 1 {
-		return multiPattern.Patterns[0]
+	if len(multi.Patterns) == 1 {
+		return multi.Patterns[0]
 	}
-
-	return multiPattern
+	return multi
 }
 
 func (p *Parser) parseListPattern() ast.MatchPattern {
@@ -651,6 +734,12 @@ func (p *Parser) parseListPattern() ast.MatchPattern {
 	for !p.curTokenIs(token.RBRACKET) {
 		element := p.parseMatchPattern()
 		if element == nil {
+			return nil
+		}
+
+		// Enforce: `...` must remain the final element in list patterns
+		if _, isSpread := element.(*ast.SpreadPattern); isSpread && !p.peekTokenIs(token.RBRACKET) {
+			p.addErrorAt(p.curToken.Position, "spread (...) must be the final element in a list pattern")
 			return nil
 		}
 

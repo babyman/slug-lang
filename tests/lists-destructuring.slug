@@ -9,6 +9,10 @@ var emptyList = []
 // ensure that match vars shadow outer scope
 var h1 = "shadowed";
 
+var value1 = "v1"
+var notValue1 = "--not v1--"
+
+
 
 // match non-empty list
 // --------------------
@@ -62,7 +66,7 @@ match list {
 }
 
 match list {
-    ["--not h1--", h2, ...] => fail();
+    ["--not v1--", h2, ...] => fail();
     _ => true;
 }
 
@@ -106,4 +110,33 @@ match emptyList {
 match emptyList {
     [...] => true;
     _ => fail();
+}
+
+
+// match with guard clause
+// -----------------------
+match list {
+    [h1, h2, ...] if h1 == "v1" => h2 /> assertEqual("v2");
+    _ => fail();
+}
+
+
+// match with guard clause using variable
+// --------------------------------------
+match list {
+    [h1, h2, ...] if h1 == value1 => h2 /> assertEqual("v2");
+    _ => fail();
+}
+
+
+// match with pinned (^) variable
+// ------------------------------
+match list {
+    [^value1, h2, ...] => h2 /> assertEqual("v2");
+    _ => fail();
+}
+
+match list {
+    [^notValue1, h2, ...] => fail();
+    _ => true;
 }

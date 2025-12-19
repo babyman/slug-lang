@@ -150,7 +150,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			return variable
 		}
 		isExported := hasExportTag(node.Tags)
-		if _, err := e.patternMatches(node.Pattern, variable, false, isExported, false); err != nil {
+		if _, err := e.patternMatches(node.Pattern, variable, false, isExported, false, e.CurrentEnv()); err != nil {
 			return e.newErrorWithPos(node.Token.Position, err.Error())
 		}
 		return e.applyTagsIfPresent(node.Tags, variable)
@@ -161,7 +161,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			return value
 		}
 		isExported := hasExportTag(node.Tags)
-		if _, err := e.patternMatches(node.Pattern, value, true, isExported, false); err != nil {
+		if _, err := e.patternMatches(node.Pattern, value, true, isExported, false, e.CurrentEnv()); err != nil {
 			return e.newErrorWithPos(node.Token.Position, err.Error())
 		}
 		return e.applyTagsIfPresent(node.Tags, value)
@@ -1200,12 +1200,15 @@ func (e *Evaluator) evalMatchCase(matchValue object.Object, matchCase *ast.Match
 	result = nil
 	defer func() { result = e.PopEnv(result) }()
 
+	// Pinning always refers to the identifier in the enclosing lexical scope (outside the pattern env).
+	pinEnv := patternEnv.Outer
+
 	// Match against the provided value or evaluate the condition
 	matched = false
 	var err error
 	if matchValue != nil {
 		// Match the case's pattern against the matchValue
-		matched, err = e.patternMatches(matchCase.Pattern, matchValue, false, false, false)
+		matched, err = e.patternMatches(matchCase.Pattern, matchValue, false, false, false, pinEnv)
 		if err != nil {
 			result = e.newErrorfWithPos(matchCase.Token.Position, "pattern match error: %s", err.Error())
 			return result, true
@@ -1233,13 +1236,32 @@ func (e *Evaluator) evalMatchCase(matchValue object.Object, matchCase *ast.Match
 	return nil, false
 }
 
-// e.patternMatches checks if a value matches a pattern and binds variables
-func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object, isConstant bool, isExport bool, isImport bool) (bool, error) {
+// e.patternMatches checks if a value matches a pattern and binds variables.
+// pinEnv is the environment used for resolving pinned identifiers (^name); it must not include pattern bindings.
+func (e *Evaluator) patternMatches(
+	pattern ast.MatchPattern,
+	value object.Object,
+	isConstant bool,
+	isExport bool,
+	isImport bool,
+	pinEnv *object.Environment,
+) (bool, error) {
 	env := e.CurrentEnv()
 	switch p := pattern.(type) {
 	case *ast.WildcardPattern:
 		// Wildcard matches anything
 		return true, nil
+
+	case *ast.PinnedIdentifierPattern:
+		// Resolve before bindings; never bind; cannot be shadowed by pattern bindings.
+		if pinEnv == nil {
+			return false, fmt.Errorf("internal error: no enclosing environment for pinned identifier ^%s", p.Value.Value)
+		}
+		expected, ok := pinEnv.Get(p.Value.Value)
+		if !ok {
+			return false, fmt.Errorf("pinned identifier is undefined: %s", p.Value.Value)
+		}
+		return e.objectsEqual(expected, value), nil
 
 	case *ast.SpreadPattern:
 		// SpreadPattern matches anything
@@ -1277,7 +1299,7 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 		for _, subPattern := range p.Patterns {
 			encEnv := object.NewEnclosedEnvironment(env, nil)
 			e.PushEnv(encEnv)
-			matched, err := e.patternMatches(subPattern, value, isConstant, isExport, isImport)
+			matched, err := e.patternMatches(subPattern, value, isConstant, isExport, isImport, pinEnv)
 			e.PopEnv(nil)
 			if err != nil {
 				return false, err
@@ -1292,9 +1314,9 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 		// Check if the value is an list
 		switch v := value.(type) {
 		case *object.List:
-			return e.patternMatchesList(env, p, v, isConstant, isExport, isImport)
+			return e.patternMatchesList(env, p, v, isConstant, isExport, isImport, pinEnv)
 		case *object.Bytes:
-			return e.patternMatchesBytes(env, p, v, isConstant, isExport, isImport)
+			return e.patternMatchesBytes(env, p, v, isConstant, isExport, isImport, pinEnv)
 		default:
 			return false, nil
 		}
@@ -1355,7 +1377,7 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 			}
 
 			// Check if value matches subpattern
-			matched, err := e.patternMatches(subPattern, pair.Value, isConstant, isExport, isImport)
+			matched, err := e.patternMatches(subPattern, pair.Value, isConstant, isExport, isImport, pinEnv)
 			if !matched || err != nil {
 				return false, err
 			}
@@ -1371,7 +1393,7 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 			if ok {
 				if len(usedKeys) >= len(mapObj.Pairs) {
 					// map is empty
-					_, err := e.patternMatches(pair, &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}, isConstant, isExport, isImport)
+					_, err := e.patternMatches(pair, &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}, isConstant, isExport, isImport, pinEnv)
 					if err != nil {
 						return false, err
 					}
@@ -1389,11 +1411,10 @@ func (e *Evaluator) patternMatches(pattern ast.MatchPattern, value object.Object
 							copiedPairs[mapKey] = pair
 						}
 					}
-					_, err := e.patternMatches(pair, &object.Map{Pairs: copiedPairs}, isConstant, isExport, isImport)
+					_, err := e.patternMatches(pair, &object.Map{Pairs: copiedPairs}, isConstant, isExport, isImport, pinEnv)
 					if err != nil {
 						return false, err
 					}
-
 				}
 			}
 		}
@@ -1428,6 +1449,7 @@ func (e *Evaluator) patternMatchesList(
 	isConstant bool,
 	isExport bool,
 	isImport bool,
+	pinEnv *object.Environment,
 ) (bool, error) {
 
 	// Empty list pattern matches empty list
@@ -1448,14 +1470,14 @@ func (e *Evaluator) patternMatchesList(
 
 	for i, elemPattern := range listPattern.Elements {
 		if spread, isSpread := elemPattern.(*ast.SpreadPattern); isSpread {
-			matched, err := e.patternMatches(spread, &object.List{Elements: list.Elements[i:]}, isConstant, isExport, isImport)
+			matched, err := e.patternMatches(spread, &object.List{Elements: list.Elements[i:]}, isConstant, isExport, isImport, pinEnv)
 			if err != nil || !matched {
 				e.PopEnv(nil)
 				return false, err
 			}
 			break
 		} else {
-			matched, err := e.patternMatches(elemPattern, list.Elements[i], isConstant, isExport, isImport)
+			matched, err := e.patternMatches(elemPattern, list.Elements[i], isConstant, isExport, isImport, pinEnv)
 			if err != nil || !matched {
 				e.PopEnv(nil)
 				return false, err
@@ -1491,6 +1513,7 @@ func (e *Evaluator) patternMatchesBytes(
 	isConstant bool,
 	isExport bool,
 	isImport bool,
+	pinEnv *object.Environment,
 ) (bool, error) {
 
 	// Empty bytes pattern matches empty bytes
@@ -1511,14 +1534,14 @@ func (e *Evaluator) patternMatchesBytes(
 
 	for i, elemPattern := range listPattern.Elements {
 		if spread, isSpread := elemPattern.(*ast.SpreadPattern); isSpread {
-			matched, err := e.patternMatches(spread, &object.Bytes{Value: bytes.Value[i:]}, isConstant, isExport, isImport)
+			matched, err := e.patternMatches(spread, &object.Bytes{Value: bytes.Value[i:]}, isConstant, isExport, isImport, pinEnv)
 			if err != nil || !matched {
 				e.PopEnv(nil)
 				return false, err
 			}
 			break
 		} else {
-			matched, err := e.patternMatches(elemPattern, &object.Number{Value: dec64.FromInt(int(bytes.Value[i]))}, isConstant, isExport, isImport)
+			matched, err := e.patternMatches(elemPattern, &object.Number{Value: dec64.FromInt(int(bytes.Value[i]))}, isConstant, isExport, isImport, pinEnv)
 			if err != nil || !matched {
 				e.PopEnv(nil)
 				return false, err
