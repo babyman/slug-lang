@@ -1,0 +1,40 @@
+var {*} = import(
+    "slug.std",
+    "slug.test",
+    "slug.actor",
+)
+
+@test
+var parent_whenSendingReplyActorMsg_thenReceiveBackInOrder = fn() {
+    // given
+    var reply = spawn()
+    defer reply /> terminate
+
+    // when
+    reply /> send("hello") /> send("Slug");
+
+    // then
+    reply /> receiveFrom(100) /> assertEqual("hello")
+    reply /> receiveFrom(100) /> assertEqual("Slug")
+    reply /> receiveFrom(100) /> assertNil
+}
+
+@test
+var multipleReplyActors_whenSentMessages_thenReceiveBackInOrder = fn() {
+    // given
+    var reply1 = spawn()
+    defer reply1 /> terminate
+
+    var reply2 = spawn()
+    defer reply2 /> terminate
+
+    // when
+    reply1 /> send("hello") /> send("Slug");
+    reply2 /> send("goodbye") /> send("Slug");
+
+    // then
+    reply1 /> receiveFrom(100) /> assertEqual("hello")
+    reply2 /> receiveFrom(100) /> assertEqual("goodbye")
+    reply1 /> receiveFrom(100) /> assertEqual("Slug")
+    reply2 /> receiveFrom(100) /> assertEqual("Slug")
+}
