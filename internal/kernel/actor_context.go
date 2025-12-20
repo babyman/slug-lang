@@ -24,6 +24,8 @@ type IKernel interface {
 	SpawnChild(parent ActorID, name string, ops OpRights, handler Handler) (ActorID, error)
 	SpawnPassiveChild(parent ActorID, name string) (ActorID, error)
 	ReceiveFromPassive(parent ActorID, passive ActorID, timeout time.Duration) (any, bool, error)
+	MailboxLen(caller ActorID, target ActorID) (int, error)
+	MailboxCapacity(caller ActorID, target ActorID) (int, error)
 	Register(name string, pid ActorID)
 	Unregister(name string) ActorID
 	Registered() []string

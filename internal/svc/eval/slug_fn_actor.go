@@ -364,6 +364,56 @@ func fnActorRegistered() *object.Foreign {
 	}
 }
 
+func fnActorMailboxLen() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			var targetPid kernel.ActorID
+			if len(args) == 0 {
+				targetPid = ctx.ActCtx().Self
+			} else if len(args) == 1 {
+				pidObj, ok := args[0].(*object.Number)
+				if !ok {
+					return ctx.NewError("argument to `mailboxLen` must be NUMBER, got=%s", args[0].Type())
+				}
+				targetPid = kernel.ActorID(pidObj.Value.ToInt64())
+			} else {
+				return ctx.NewError("wrong number of arguments. got=%d, want=0 or 1", len(args))
+			}
+
+			length, err := ctx.ActCtx().K.MailboxLen(ctx.ActCtx().Self, targetPid)
+			if err != nil {
+				return ctx.NewError("%v", err)
+			}
+			return &object.Number{Value: dec64.FromInt64(int64(length))}
+		},
+	}
+}
+
+func fnActorMailboxCapacity() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			var targetPid kernel.ActorID
+			if len(args) == 0 {
+				targetPid = ctx.ActCtx().Self
+			} else if len(args) == 1 {
+				pidObj, ok := args[0].(*object.Number)
+				if !ok {
+					return ctx.NewError("argument to `mailboxCapacity` must be NUMBER, got=%s", args[0].Type())
+				}
+				targetPid = kernel.ActorID(pidObj.Value.ToInt64())
+			} else {
+				return ctx.NewError("wrong number of arguments. got=%d, want=0 or 1", len(args))
+			}
+
+			capacity, err := ctx.ActCtx().K.MailboxCapacity(ctx.ActCtx().Self, targetPid)
+			if err != nil {
+				return ctx.NewError("%v", err)
+			}
+			return &object.Number{Value: dec64.FromInt64(int64(capacity))}
+		},
+	}
+}
+
 func fnActorLookup() *object.Foreign {
 	return &object.Foreign{
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {

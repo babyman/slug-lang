@@ -81,10 +81,31 @@ var registerReplace = fn(@num pid, @str name) { // -> pid
 	pid /> register(name);
 }
 
+
 @export
 foreign registered = fn(); // -> list of name
 
 
 @export
 foreign lookup = fn(@str name); // -> pid
+
+
+/// maximum mailbox size (e.g. 64)
+@export
+foreign mailboxCapacity = fn();
+
+
+/// maximum mailbox size (e.g. 64)
+@export
+foreign mailboxCapacity = fn(@num pid);
+
+
+/// current number of queued messages
+@export
+foreign mailboxLen = fn();
+
+
+/// current number of queued messages
+@export
+foreign mailboxLen = fn(@num pid);
 

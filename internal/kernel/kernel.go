@@ -80,6 +80,36 @@ func (k *Kernel) RegisterCleanup(id ActorID, msg Message) {
 	}
 }
 
+func (k *Kernel) MailboxLen(caller ActorID, target ActorID) (int, error) {
+	k.Mu.RLock()
+	defer k.Mu.RUnlock()
+
+	if caller != target && !k.hasCapWithMuLock(caller, target, RightRead) {
+		return 0, fmt.Errorf("E_POLICY: no read permission for actor %d", target)
+	}
+
+	a, ok := k.Actors[target]
+	if !ok {
+		return 0, fmt.Errorf("E_NO_SUCH: actor %d", target)
+	}
+	return len(a.inbox), nil
+}
+
+func (k *Kernel) MailboxCapacity(caller ActorID, target ActorID) (int, error) {
+	k.Mu.RLock()
+	defer k.Mu.RUnlock()
+
+	if caller != target && !k.hasCapWithMuLock(caller, target, RightRead) {
+		return 0, fmt.Errorf("E_POLICY: no read permission for actor %d", target)
+	}
+
+	a, ok := k.Actors[target]
+	if !ok {
+		return 0, fmt.Errorf("E_NO_SUCH: actor %d", target)
+	}
+	return cap(a.inbox), nil
+}
+
 // RegisterActor wires an actor into the kernel.
 func (k *Kernel) RegisterActor(name string, handler Handler) ActorID {
 	k.Mu.Lock()
@@ -516,8 +546,12 @@ func (k *Kernel) resolveRights(target ActorID, op reflect.Type) (Rights, bool) {
 // hasCap checks if sender owns a non-revoked cap to target with required Operations.
 func (k *Kernel) hasCap(sender ActorID, target ActorID, want Rights) bool {
 	k.Mu.RLock()
+	defer k.Mu.RUnlock()
+	return k.hasCapWithMuLock(sender, target, want)
+}
+
+func (k *Kernel) hasCapWithMuLock(sender ActorID, target ActorID, want Rights) bool {
 	a := k.Actors[sender]
-	k.Mu.RUnlock()
 	if a == nil {
 		return false
 	}
