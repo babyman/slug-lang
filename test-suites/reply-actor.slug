@@ -38,3 +38,38 @@ var multipleReplyActors_whenSentMessages_thenReceiveBackInOrder = fn() {
     reply1 /> receiveFrom(100) /> assertEqual("Slug")
     reply2 /> receiveFrom(100) /> assertEqual("Slug")
 }
+
+@test
+var mailbox_hasCapacityAndLength = fn() {
+    mailboxCapacity() /> assertEqual(64)
+    mailboxLen() /> assertEqual(0)
+}
+
+
+@test
+var mailbox_hasCapacityAndLength_accessToChildren = fn() {
+    // given
+    var reply = spawn()
+    defer reply /> terminate
+
+    // then
+    reply /> mailboxCapacity /> assertEqual(64)
+    reply /> mailboxLen /> assertEqual(0)
+}
+
+
+@test
+var mailbox_len_reflectsQueuedMessages = fn() {
+    // given
+    var reply = spawn()
+    defer reply /> terminate
+
+    // when
+    reply /> send("hello") /> send("Slug");
+
+    // then
+    reply /> mailboxLen /> assertEqual(2)
+}
+
+
+
