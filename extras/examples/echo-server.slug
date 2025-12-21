@@ -30,12 +30,10 @@ var serverLoop = fn(count = 1) {
 
 	if(msg != "bye") {
 		recur(count + 1)
+	} else {
+		"Server loop exited"
 	}
 }
 
 serverLoop()
-
-"Server loop exited"
-
-
 
