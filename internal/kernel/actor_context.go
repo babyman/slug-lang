@@ -33,6 +33,14 @@ type IKernel interface {
 	GrantChildAccess(granter ActorID, grantee ActorID, target ActorID, rights Rights, scope map[reflect.Type]any) (*Capability, error)
 }
 
+func (c *ActCtx) MailboxLen(target ActorID) (int, error) {
+	return c.K.MailboxLen(c.Self, target)
+}
+
+func (c *ActCtx) MailboxCapacity(target ActorID) (int, error) {
+	return c.K.MailboxCapacity(c.Self, target)
+}
+
 func (c *ActCtx) RegisterCleanup(msg Message) {
 	c.K.RegisterCleanup(c.Self, msg)
 }

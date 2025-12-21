@@ -84,7 +84,7 @@ func (k *Kernel) MailboxLen(caller ActorID, target ActorID) (int, error) {
 	k.Mu.RLock()
 	defer k.Mu.RUnlock()
 
-	if caller != target && !k.hasCapWithMuLock(caller, target, RightRead) {
+	if caller != target && !(k.hasCapWithMuLock(caller, target, RightWrite) || k.hasCapWithMuLock(caller, target, RightRead)) {
 		return 0, fmt.Errorf("E_POLICY: no read permission for actor %d", target)
 	}
 
@@ -99,7 +99,7 @@ func (k *Kernel) MailboxCapacity(caller ActorID, target ActorID) (int, error) {
 	k.Mu.RLock()
 	defer k.Mu.RUnlock()
 
-	if caller != target && !k.hasCapWithMuLock(caller, target, RightRead) {
+	if caller != target && !(k.hasCapWithMuLock(caller, target, RightWrite) || k.hasCapWithMuLock(caller, target, RightRead)) {
 		return 0, fmt.Errorf("E_POLICY: no read permission for actor %d", target)
 	}
 

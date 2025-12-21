@@ -1,0 +1,56 @@
+var {*} = import(
+	"slug.std",
+	"slug.bytes",
+	"slug.actor",
+	"slug.io.tcp",
+);
+
+var reply = spawn()
+defer reply /> terminate
+
+var listener = bind(reply, "127.0.0.1", 8080)
+defer listener /> close(reply) /> println("<<< listener closed")
+
+println("Server listening on 127.0.0.1:8080", listener);
+
+var readLoop = fn(connection, replyActor, acc = 0x""){
+	match replyActor /> receiveFrom(100) {
+		{type:"data", bytes, remainingCredits} => {
+				if (remainingCredits == 0) {
+					println("adding credits, remainingCredits: ", remainingCredits, acc)
+					connection /> credit(replyActor, 1)
+				}
+				recur(connection, replyActor, acc + bytes)
+			}
+		{type:"error", msg} => throw msg;
+		{type:"eof"} => acc;
+		_ => acc;
+	}
+}
+
+var serverLoop = fn(count = 1) {
+	var connectionMailbox = spawn()
+	defer connectionMailbox /> terminate /> println("<<< connectionMailbox {{count}} closed", connectionMailbox)
+
+	var connection = listener
+		/> accept(connectionMailbox) 
+		/> receiveFrom(nil)
+	defer connection /> close(connectionMailbox) /> println("<<< connection {{count}} closed", connection)
+
+	var msg = connection /> subscribe(connectionMailbox, 4, 1)
+		/> readLoop(connectionMailbox)
+		/> then(fn(v) { v /> bytesToStr })
+		/> println("<<< connection {{count}} received message", connection)
+
+	connection /> write(connectionMailbox, msg)
+		/> receiveFrom(1000)
+
+	if(msg != "bye") {
+		recur(count + 1)
+	} else {
+		"Server loop exited"
+	}
+}
+
+serverLoop()
+
