@@ -25,7 +25,7 @@ func (m *EvaluatorService) Handler(ctx *kernel.ActCtx, msg kernel.Message) kerne
 			Config:  m.Config,
 			Mailbox: make(chan svc.SlugActorMessage),
 		}
-		workedId, _ := ctx.SpawnChild("run:"+payload.Name, Operations, worker.Run)
+		workedId, _ := ctx.SpawnChild("program: "+payload.Name, Operations, worker.Run)
 		err := ctx.SendAsync(workedId, msg)
 		if err != nil {
 			slog.Error("error sending message",

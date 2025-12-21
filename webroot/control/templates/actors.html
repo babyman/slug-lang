@@ -2,6 +2,7 @@
     <thead>
     <tr>
         <th>Id</th>
+        <th>Parent</th>
         <th>Name</th>
         <th>CPU (μs)</th>
         <th>IPC In</th>
@@ -14,6 +15,11 @@
     {{ range . }}
     <tr>
         <td><a>{{ .ID }}</a></td>
+        {{ if eq .ParentID 0 }}
+        <td>-</td>
+        {{ else }}
+        <td><a>{{ .ParentID }}</a></td>
+        {{ end }}
         <td>{{ .Name }}</td>
         <td>{{ .CPUOps }}</td>
         <td>{{ .IPCIn }}</td>

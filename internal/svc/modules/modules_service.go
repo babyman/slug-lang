@@ -68,7 +68,7 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 			worker := ModuleLoader{
 				DebugAST: m.Config.DebugAST,
 			}
-			workedId, _ := ctx.SpawnChild("mods-load-wrk:"+moduleName, Operations, worker.loadModuleHandler)
+			workedId, _ := ctx.SpawnChild("module: "+moduleName, Operations, worker.loadModuleHandler)
 			m.moduleRegistry[moduleName] = workedId
 			err := ctx.SendAsync(workedId, msg)
 			if err != nil {

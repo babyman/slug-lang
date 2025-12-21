@@ -58,7 +58,7 @@ func (s *Service) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 		addr := m.Pairs[AddrKey].Value.Inspect()
 		port := m.Pairs[PortKey].Value.Inspect()
 		listener := &Listener{}
-		id, err := ctx.SpawnChild(fmt.Sprintf("tcp-listener (%s:%s)", addr, port), Operations, listener.Handler)
+		id, err := ctx.SpawnChild(fmt.Sprintf("tcp-listener: %s:%s", addr, port), Operations, listener.Handler)
 		if err != nil {
 			ctx.SendAsync(to, errorResult(err.Error()))
 			return kernel.Continue{}

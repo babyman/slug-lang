@@ -28,7 +28,7 @@ func fnActorSpawn() *object.Foreign {
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			// spawn() => passive actor (reply mailbox)
 			if len(args) == 0 {
-				pid, err := ctx.ActCtx().SpawnPassiveChild(fmt.Sprintf("<passive:%v>", int64(ctx.ActCtx().Self)))
+				pid, err := ctx.ActCtx().SpawnPassiveChild("<passive>")
 				if err != nil {
 					return ctx.NewError("failed to spawn passive actor: %v", err)
 				}
