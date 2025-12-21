@@ -331,7 +331,6 @@ func (k *Kernel) runActor(a *Actor) {
 			return
 		}
 
-		atomic.AddUint64(&a.IpcIn, 1)
 		start := time.Now()
 		sig := a.handler(ctx, msg)
 		atomic.AddUint64(&a.CpuOps, uint64(time.Since(start).Microseconds()))
@@ -624,7 +623,7 @@ func (k *Kernel) isPermitted(from ActorID, to ActorID, payload any) error {
 // sendInternal enqueues a message, enforcing capability checks for service ops.
 func (k *Kernel) SendInternal(from ActorID, to ActorID, replyTo ActorID, payload any, resp chan Message) error {
 	// Implicit reply-to delegation:
-	// If replyTo is a passive child mailbox of `from`, allow `to` to write to it.
+	// If replyTo is fromActor passive child mailbox of `from`, allow `to` to write to it.
 	// Avoid capability accumulation: only grant if `to` doesn't already have RightWrite on replyTo.
 	if replyTo != 0 {
 		k.Mu.Lock()
@@ -652,33 +651,34 @@ func (k *Kernel) SendInternal(from ActorID, to ActorID, replyTo ActorID, payload
 	}
 
 	k.Mu.RLock()
-	target := k.Actors[to]
+	toActor := k.Actors[to]
 	k.Mu.RUnlock()
-	if target == nil {
-		slog.Warn("E_NO_SUCH: target actor",
+	if toActor == nil {
+		slog.Warn("E_NO_SUCH: toActor actor",
 			slog.Any("from", from),
 			slog.Any("to", to))
-		return errors.New("E_NO_SUCH: target actor")
+		return errors.New("E_NO_SUCH: toActor actor")
 	}
 
-	// Passive actors do not run a handler loop, so they cannot process Exit.
+	// Passive actors do not run fromActor handler loop, so they cannot process Exit.
 	// We interpret Exit as an immediate kernel-level cleanup.
-	if target.Passive {
+	if toActor.Passive {
 		if exit, ok := payload.(Exit); ok {
-			k.cleanupActor(target, exit.Reason)
+			k.cleanupActor(toActor, exit.Reason)
 			return nil
 		}
 	}
 
 	msg := Message{From: from, To: to, ReplyTo: replyTo, Payload: payload, Resp: resp}
 	select {
-	case target.inbox <- msg:
-		if a := k.getActor(from); a != nil {
+	case toActor.inbox <- msg:
+		if fromActor := k.getActor(from); fromActor != nil {
 			slog.Info("Sent message",
 				slog.Any("from", from),
 				slog.Any("to", to),
 				slog.Any("payload-type", reflect.TypeOf(payload).String()))
-			atomic.AddUint64(&a.IpcOut, 1)
+			atomic.AddUint64(&fromActor.IpcOut, 1)
+			atomic.AddUint64(&toActor.IpcIn, 1)
 		} else {
 			slog.Warn("Failed to send message, to actor not found",
 				slog.Any("from", from),
@@ -687,10 +687,10 @@ func (k *Kernel) SendInternal(from ActorID, to ActorID, replyTo ActorID, payload
 		}
 		return nil
 	case <-time.After(fullMailboxTimeout):
-		slog.Warn("E_BUSY: target inbox full",
+		slog.Warn("E_BUSY: toActor inbox full",
 			slog.Any("from", from),
 			slog.Any("to", to))
-		return errors.New("E_BUSY: target inbox full")
+		return errors.New("E_BUSY: toActor inbox full")
 	}
 }
 
