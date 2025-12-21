@@ -10,7 +10,7 @@ import (
 	"slug/internal/kernel"
 	"slug/internal/object"
 	"slug/internal/svc"
-	"slug/internal/svc/sqlutil"
+	"slug/internal/svc/svcutil"
 )
 
 var Operations = kernel.OpRights{
@@ -19,12 +19,11 @@ var Operations = kernel.OpRights{
 
 // Common keys for the TCP messages
 var (
-	AddrKey      = (&object.String{Value: "addr"}).MapKey()
-	PortKey      = (&object.String{Value: "port"}).MapKey()
-	DataKey      = (&object.String{Value: "data"}).MapKey()
-	MaxKey       = (&object.String{Value: "max"}).MapKey()
-	CreditsKey   = (&object.String{Value: "credits"}).MapKey()
-	ChunkSizeKey = (&object.String{Value: "chunkSize"}).MapKey()
+	addrKey      = (&object.String{Value: "addr"}).MapKey()
+	portKey      = (&object.String{Value: "port"}).MapKey()
+	maxKey       = (&object.String{Value: "max"}).MapKey()
+	creditsKey   = (&object.String{Value: "credits"}).MapKey()
+	chunkSizeKey = (&object.String{Value: "chunkSize"}).MapKey()
 	statusKey    = (&object.String{Value: "status"}).MapKey()
 	reasonKey    = (&object.String{Value: "reason"}).MapKey()
 	dataKey      = (&object.String{Value: "data"}).MapKey()
@@ -56,27 +55,27 @@ func (s *Service) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 		return kernel.Continue{}
 	}
 
-	to := sqlutil.ReplyTarget(msg)
+	to := svcutil.ReplyTarget(msg)
 	m, ok := p.Msg.(*object.Map)
 	if !ok {
-		ctx.SendAsync(to, errorResult("map expected"))
+		ctx.SendAsync(to, svcutil.ErrorResult("map expected"))
 		return kernel.Continue{}
 	}
 
-	msgType, ok := m.Pairs[sqlutil.MsgTypeKey]
+	msgType, ok := m.Pairs[svcutil.MsgTypeKey]
 	if !ok {
-		ctx.SendAsync(to, errorResult("missing type"))
+		ctx.SendAsync(to, svcutil.ErrorResult("missing type"))
 		return kernel.Continue{}
 	}
 
 	switch msgType.Value.Inspect() {
 	case "bind":
-		addr := m.Pairs[AddrKey].Value.Inspect()
-		port := m.Pairs[PortKey].Value.Inspect()
+		addr := m.Pairs[addrKey].Value.Inspect()
+		port := m.Pairs[portKey].Value.Inspect()
 		listener := &Listener{}
 		id, err := ctx.SpawnChild(fmt.Sprintf("tcp-listener: %s:%s", addr, port), Operations, listener.Handler)
 		if err != nil {
-			ctx.SendAsync(to, errorResult(err.Error()))
+			ctx.SendAsync(to, svcutil.ErrorResult(err.Error()))
 			return kernel.Continue{}
 		}
 		ctx.GrantChildAccess(msg.From, id, kernel.RightWrite, nil)
@@ -86,7 +85,7 @@ func (s *Service) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 		conn := &Connection{}
 		id, err := ctx.SpawnChild("tcp-connection", Operations, conn.Handler)
 		if err != nil {
-			ctx.SendAsync(to, errorResult(err.Error()))
+			ctx.SendAsync(to, svcutil.ErrorResult(err.Error()))
 			return kernel.Continue{}
 		}
 		ctx.GrantChildAccess(msg.From, id, kernel.RightWrite, nil)
@@ -102,17 +101,17 @@ func (l *Listener) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handle
 		return kernel.Continue{}
 	}
 
-	to := sqlutil.ReplyTarget(msg)
+	to := svcutil.ReplyTarget(msg)
 	m, _ := p.Msg.(*object.Map)
-	msgType, _ := m.Pairs[sqlutil.MsgTypeKey]
+	msgType, _ := m.Pairs[svcutil.MsgTypeKey]
 
 	switch msgType.Value.Inspect() {
 	case "bind":
-		addr := m.Pairs[AddrKey].Value.Inspect()
-		port := m.Pairs[PortKey].Value.Inspect()
+		addr := m.Pairs[addrKey].Value.Inspect()
+		port := m.Pairs[portKey].Value.Inspect()
 		lst, err := net.Listen("tcp", net.JoinHostPort(addr, port))
 		if err != nil {
-			ctx.SendAsync(to, errorResult(err.Error()))
+			ctx.SendAsync(to, svcutil.ErrorResult(err.Error()))
 			return kernel.Terminate{Reason: err.Error()}
 		}
 		l.netListener = lst
@@ -122,12 +121,12 @@ func (l *Listener) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handle
 
 	case "accept":
 		if l.netListener == nil {
-			ctx.SendAsync(to, errorResult("not listening"))
+			ctx.SendAsync(to, svcutil.ErrorResult("not listening"))
 			return kernel.Continue{}
 		}
 		netConn, err := l.netListener.Accept()
 		if err != nil {
-			ctx.SendAsync(to, errorResult(err.Error()))
+			ctx.SendAsync(to, svcutil.ErrorResult(err.Error()))
 			return kernel.Continue{}
 		}
 
@@ -135,7 +134,7 @@ func (l *Listener) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handle
 		connId, err := ctx.SpawnChild("tcp-accepted", Operations, connActor.Handler)
 		if err != nil {
 			netConn.Close()
-			ctx.SendAsync(to, errorResult(err.Error()))
+			ctx.SendAsync(to, svcutil.ErrorResult(err.Error()))
 			return kernel.Continue{}
 		}
 		// message must be forwarded to the child actor to pass permissions
@@ -146,7 +145,7 @@ func (l *Listener) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handle
 		if l.netListener != nil {
 			l.netListener.Close()
 		}
-		ctx.SendAsync(to, closeResult(ctx.Self))
+		ctx.SendAsync(to, svcutil.CloseResult(ctx.Self))
 		return kernel.Terminate{Reason: "closed"}
 	}
 	return kernel.Continue{}
@@ -158,9 +157,9 @@ func (c *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Hand
 		return kernel.Continue{}
 	}
 
-	to := sqlutil.ReplyTarget(msg)
+	to := svcutil.ReplyTarget(msg)
 	m, _ := p.Msg.(*object.Map)
-	msgType, _ := m.Pairs[sqlutil.MsgTypeKey]
+	msgType, _ := m.Pairs[svcutil.MsgTypeKey]
 
 	slog.Debug("Message received",
 		slog.Any("type", msgType.Value.Inspect()),
@@ -178,11 +177,11 @@ func (c *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Hand
 		}})
 
 	case "connect":
-		addr := m.Pairs[AddrKey].Value.Inspect()
-		port := m.Pairs[PortKey].Value.Inspect()
+		addr := m.Pairs[addrKey].Value.Inspect()
+		port := m.Pairs[portKey].Value.Inspect()
 		conn, err := net.Dial("tcp", net.JoinHostPort(addr, port))
 		if err != nil {
-			ctx.SendAsync(to, errorResult(err.Error()))
+			ctx.SendAsync(to, svcutil.ErrorResult(err.Error()))
 			return kernel.Terminate{Reason: err.Error()}
 		}
 		c.netConn = conn
@@ -191,7 +190,7 @@ func (c *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Hand
 		}})
 
 	case "read":
-		maxVal, ok := m.Pairs[MaxKey]
+		maxVal, ok := m.Pairs[maxKey]
 		maxSize := 4096
 		if ok {
 			if n, ok := maxVal.Value.(*object.Number); ok {
@@ -205,16 +204,16 @@ func (c *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Hand
 			if err == io.EOF {
 				ctx.SendAsync(to, eofResult())
 			} else {
-				ctx.SendAsync(to, errorResult(err.Error()))
+				ctx.SendAsync(to, svcutil.ErrorResult(err.Error()))
 			}
 			return kernel.Continue{}
 		}
 		ctx.SendAsync(to, dataResult(buf[:n]))
 
 	case "write":
-		dataObj, ok := m.Pairs[DataKey]
+		dataObj, ok := m.Pairs[dataKey]
 		if !ok {
-			ctx.SendAsync(to, errorResult("missing data"))
+			ctx.SendAsync(to, svcutil.ErrorResult("missing data"))
 			return kernel.Continue{}
 		}
 
@@ -225,25 +224,25 @@ func (c *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Hand
 		case *object.Bytes:
 			raw = d.Value
 		default:
-			ctx.SendAsync(to, errorResult("string or bytes expected for write"))
+			ctx.SendAsync(to, svcutil.ErrorResult("string or bytes expected for write"))
 			return kernel.Continue{}
 		}
 
 		n, err := c.netConn.Write(raw)
 		if err != nil {
-			ctx.SendAsync(to, errorResult(err.Error()))
+			ctx.SendAsync(to, svcutil.ErrorResult(err.Error()))
 		} else {
 			ctx.SendAsync(to, writeResult(n))
 		}
 
 	case "subscribe":
-		credits := int(m.Pairs[CreditsKey].Value.(*object.Number).Value.ToInt64())
-		chunk := int(m.Pairs[ChunkSizeKey].Value.(*object.Number).Value.ToInt64())
+		credits := int(m.Pairs[creditsKey].Value.(*object.Number).Value.ToInt64())
+		chunk := int(m.Pairs[chunkSizeKey].Value.(*object.Number).Value.ToInt64())
 
 		// clamp credits to mailbox capacity
 		cap, err := ctx.MailboxCapacity(to)
 		if err != nil {
-			ctx.SendAsync(to, errorResult(err.Error()))
+			ctx.SendAsync(to, svcutil.ErrorResult(err.Error()))
 			return kernel.Continue{}
 		}
 		if credits > cap {
@@ -273,7 +272,7 @@ func (c *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Hand
 	case "credit":
 		if c.subscriber != nil {
 			wasEmpty := c.subscriber.credits <= 0
-			c.subscriber.credits += int(m.Pairs[CreditsKey].Value.(*object.Number).Value.ToInt64())
+			c.subscriber.credits += int(m.Pairs[creditsKey].Value.(*object.Number).Value.ToInt64())
 
 			// If we just moved from 0 to >0 credits, open the gate
 			if wasEmpty && c.subscriber.credits > 0 {
@@ -304,7 +303,7 @@ func (c *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Hand
 			c.subscriber = nil
 		} else if status == "error" {
 			reason := m.Pairs[reasonKey].Value.Inspect()
-			ctx.SendAsync(c.subscriber.reply, errorResult(reason))
+			ctx.SendAsync(c.subscriber.reply, svcutil.ErrorResult(reason))
 			c.subscriber = nil
 		} else {
 			data := m.Pairs[dataKey].Value.(*object.Bytes).Value
@@ -326,7 +325,7 @@ func (c *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Hand
 		if c.netConn != nil {
 			c.netConn.Close()
 		}
-		ctx.SendAsync(to, closeResult(ctx.Self))
+		ctx.SendAsync(to, svcutil.CloseResult(ctx.Self))
 		return kernel.Terminate{Reason: "closed"}
 	}
 	return kernel.Continue{}
@@ -351,62 +350,49 @@ func (c *Connection) networkPump(ctx *kernel.ActCtx, sub *streamSub) {
 		}
 	}
 }
-func errorResult(msg string) svc.SlugActorMessage {
-	resultMap := &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}
-	sqlutil.PutString(resultMap, "type", "error")
-	sqlutil.PutString(resultMap, "msg", msg)
-	return svc.SlugActorMessage{Msg: resultMap}
-}
 
 func dataResult(bytes []byte) svc.SlugActorMessage {
 	resultMap := &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}
-	sqlutil.PutString(resultMap, "type", "data")
-	sqlutil.PutObj(resultMap, "bytes", &object.Bytes{Value: bytes})
+	svcutil.PutString(resultMap, "type", "data")
+	svcutil.PutObj(resultMap, "bytes", &object.Bytes{Value: bytes})
 	return svc.SlugActorMessage{Msg: resultMap}
 }
 
 func dataStreamResult(bytes []byte, credits int) svc.SlugActorMessage {
 	resultMap := &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}
-	sqlutil.PutString(resultMap, "type", "data")
-	sqlutil.PutInt(resultMap, "remainingCredits", credits)
-	sqlutil.PutObj(resultMap, "bytes", &object.Bytes{Value: bytes})
+	svcutil.PutString(resultMap, "type", "data")
+	svcutil.PutInt(resultMap, "remainingCredits", credits)
+	svcutil.PutObj(resultMap, "bytes", &object.Bytes{Value: bytes})
 	return svc.SlugActorMessage{Msg: resultMap}
 }
 
 func eofResult() svc.SlugActorMessage {
 	resultMap := &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}
-	sqlutil.PutString(resultMap, "type", "eof")
+	svcutil.PutString(resultMap, "type", "eof")
 	return svc.SlugActorMessage{Msg: resultMap}
 }
 
 func pumpResult(err error, buf []byte, n int, credits int) svc.SlugActorMessage {
 	resultMap := &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}
-	sqlutil.PutString(resultMap, "type", "_data_ready")
+	svcutil.PutString(resultMap, "type", "_data_ready")
 	if err != nil {
 		if err == io.EOF {
-			sqlutil.PutString(resultMap, "status", "eof")
+			svcutil.PutString(resultMap, "status", "eof")
 		} else {
-			sqlutil.PutString(resultMap, "status", "error")
-			sqlutil.PutString(resultMap, "reason", err.Error())
+			svcutil.PutString(resultMap, "status", "error")
+			svcutil.PutString(resultMap, "reason", err.Error())
 		}
 	} else {
-		sqlutil.PutString(resultMap, "status", "ok")
-		sqlutil.PutObj(resultMap, "data", &object.Bytes{Value: buf[:n]})
-		sqlutil.PutInt(resultMap, "remaining", credits-1)
+		svcutil.PutString(resultMap, "status", "ok")
+		svcutil.PutObj(resultMap, "data", &object.Bytes{Value: buf[:n]})
+		svcutil.PutInt(resultMap, "remaining", credits-1)
 	}
 	return svc.SlugActorMessage{Msg: resultMap}
 }
 
 func writeResult(bytesWritten int) svc.SlugActorMessage {
 	resultMap := &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}
-	sqlutil.PutString(resultMap, "type", "write")
-	sqlutil.PutInt(resultMap, "written", bytesWritten)
-	return svc.SlugActorMessage{Msg: resultMap}
-}
-
-func closeResult(from kernel.ActorID) svc.SlugActorMessage {
-	resultMap := &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}
-	sqlutil.PutString(resultMap, "type", "closed")
-	sqlutil.PutInt(resultMap, "from", int(from))
+	svcutil.PutString(resultMap, "type", "write")
+	svcutil.PutInt(resultMap, "written", bytesWritten)
 	return svc.SlugActorMessage{Msg: resultMap}
 }

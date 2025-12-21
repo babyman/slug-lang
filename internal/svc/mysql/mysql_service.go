@@ -9,7 +9,7 @@ import (
 	"slug/internal/kernel"
 	"slug/internal/object"
 	"slug/internal/svc"
-	"slug/internal/svc/sqlutil"
+	"slug/internal/svc/svcutil"
 	"strconv"
 	"strings"
 	"time"
@@ -25,22 +25,22 @@ type Service struct {
 }
 
 type Connection struct {
-	state sqlutil.ConnectionState
+	state svcutil.ConnectionState
 }
 
 func (fs *Service) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
 	p, ok := msg.Payload.(svc.SlugActorMessage)
 	if ok {
-		to := sqlutil.ReplyTarget(msg)
+		to := svcutil.ReplyTarget(msg)
 		m, ok := p.Msg.(*object.Map)
 		if !ok {
-			ctx.SendAsync(to, sqlutil.ErrorStrResult("invalid message payload, map expected"))
+			ctx.SendAsync(to, svcutil.ErrorResult("invalid message payload, map expected"))
 			return kernel.Continue{}
 		}
 
-		msgType, ok := m.Pairs[sqlutil.MsgTypeKey]
+		msgType, ok := m.Pairs[svcutil.MsgTypeKey]
 		if !ok {
-			ctx.SendAsync(to, sqlutil.ErrorStrResult("invalid message payload"))
+			ctx.SendAsync(to, svcutil.ErrorResult("invalid message payload"))
 			return kernel.Continue{}
 		}
 
@@ -49,7 +49,7 @@ func (fs *Service) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handle
 			conn := &Connection{}
 			connId, err := ctx.SpawnChild("mysql-conn", Operations, conn.Handler)
 			if err != nil {
-				ctx.SendAsync(to, sqlutil.ErrorResult(err))
+				ctx.SendAsync(to, svcutil.ErrorResult(err.Error()))
 				return kernel.Continue{}
 			}
 			ctx.GrantChildAccess(msg.From, connId, kernel.RightWrite, nil)
@@ -67,19 +67,19 @@ func (sc *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Han
 		return kernel.Continue{}
 	}
 
-	to := sqlutil.ReplyTarget(msg)
+	to := svcutil.ReplyTarget(msg)
 	m, _ := slugMsg.Msg.(*object.Map)
-	msgType, _ := m.Pairs[sqlutil.MsgTypeKey]
+	msgType, _ := m.Pairs[svcutil.MsgTypeKey]
 
 	if msgType.Value.Inspect() == "connect" {
 		if sc.state.DB != nil {
 			return kernel.Continue{}
 		}
-		connStr := m.Pairs[sqlutil.ConnectionStringKey].Value.Inspect()
+		connStr := m.Pairs[svcutil.ConnectionStringKey].Value.Inspect()
 		db, err := sql.Open("mysql", connStr)
 		if err != nil {
 			slog.Error("failed to open mysql connection", slog.Any("error", err.Error()))
-			ctx.SendAsync(to, sqlutil.ErrorResult(err))
+			ctx.SendAsync(to, svcutil.ErrorResult(err.Error()))
 			return kernel.Terminate{
 				Reason: "Failed to open connection: " + err.Error(),
 			}
@@ -88,19 +88,20 @@ func (sc *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Han
 
 		// Test the connection
 		if err := sc.state.DB.Ping(); err != nil {
-			ctx.SendAsync(to, sqlutil.ErrorResult(err))
+			ctx.SendAsync(to, svcutil.ErrorResult(err.Error()))
 			return kernel.Terminate{Reason: "Ping failed"}
 		}
+
 		ctx.SendAsync(to, svc.SlugActorMessage{Msg: &object.Number{
 			Value: dec64.FromInt64(int64(ctx.Self)),
 		}})
 		return kernel.Continue{}
 	}
 
-	return sqlutil.HandleConnection(&sc.state, ctx, msg, MySQLTypeMapper)
+	return svcutil.HandleConnection(&sc.state, ctx, msg, TypeMapper)
 }
 
-func MySQLTypeMapper(v any, ct *sql.ColumnType) object.Object {
+func TypeMapper(v any, ct *sql.ColumnType) object.Object {
 	if v == nil {
 		return &object.Nil{}
 	}

@@ -1,9 +1,16 @@
-package sqlutil
+package svcutil
 
 import (
 	"slug/internal/dec64"
 	"slug/internal/object"
 	"slug/internal/svc/eval"
+)
+
+var (
+	MsgTypeKey          = (&object.String{Value: "type"}).MapKey()
+	SqlKey              = (&object.String{Value: "sql"}).MapKey()
+	ParamsKey           = (&object.String{Value: "params"}).MapKey()
+	ConnectionStringKey = (&object.String{Value: "connectionString"}).MapKey()
 )
 
 func PutObj(resultMap *object.Map, key string, val object.Object) {
