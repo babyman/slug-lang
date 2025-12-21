@@ -101,7 +101,7 @@ var compute = fn(@map map, key, f) {
 	[[1,2], fn(n) {n * 2}], [2,4]
 )
 @export
-var map = fn(@list vs, f, acc = []) {
+var map = fn(@list vs, @fun f, acc = []) {
 	match vs {
 		[h, ...t] => recur(t, f, acc :+ h /> f());
 		[] => acc;
@@ -123,7 +123,7 @@ var filter = fn(@list vs, f, acc = []) {
 @testWith(
 	[[], 0, fn(a,b) {a+b}], 0,
 	[[1,2,3], 0, fn(a,b) {a+b}], 6,
-	[[1,2,3], 9, fn(a,b) {a+b}], 15
+	[[1,2,3], 9, fn(a,b) {a+b}], 15,
 )
 @export
 var reduce = fn(@list vs, v, f) {
@@ -131,6 +131,15 @@ var reduce = fn(@list vs, v, f) {
 		[h, ...t] => recur(t, f(v, h), f);
 		[] => v;
 	}
+}
+
+@testWith(
+	[1, fn(v) {v*2}], 2,
+	[{n:"Slug"}, fn(v) {v.n}], "Slug",
+)
+@export
+var then = fn(m, @fun f) {
+	f(m)
 }
 
 @testWith(

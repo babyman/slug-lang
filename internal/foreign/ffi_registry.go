@@ -1,6 +1,7 @@
 package foreign
 
 import (
+	"fmt"
 	"slug/internal/object"
 )
 
@@ -22,13 +23,6 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.io.fs.closeFile":  fnIoFsCloseFile(),
 
 		"slug.io.http.request": fnIoHttpRequest(),
-
-		"slug.io.tcp.bind":    fnIoTcpBind(),
-		"slug.io.tcp.accept":  fnIoTcpAccept(),
-		"slug.io.tcp.connect": fnIoTcpConnect(),
-		"slug.io.tcp.read":    fnIoTcpRead(),
-		"slug.io.tcp.write":   fnIoTcpWrite(),
-		"slug.io.tcp.close":   fnIoTcpClose(),
 
 		"slug.bytes.strToBytes":    fnBytesStrToBytes(),
 		"slug.bytes.bytesToStr":    fnBytesBytesToStr(),
@@ -87,4 +81,22 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.time.clockNanos": fnTimeClockNanos(),
 		"slug.time.sleep":      fnTimeSleep(),
 	}
+}
+
+func unpackString(arg object.Object, argName string) (string, error) {
+
+	if arg.Type() != object.STRING_OBJ {
+		return "", fmt.Errorf("argument to `%s` must be a STRING, got=%s", argName, arg.Type())
+	}
+	value := arg.(*object.String)
+	return value.Value, nil
+}
+
+func unpackNumber(arg object.Object, argName string) (int64, error) {
+
+	if arg.Type() != object.NUMBER_OBJ {
+		return -1, fmt.Errorf("argument to `%s` must be a NUMBER, got=%s", argName, arg.Type())
+	}
+	value := arg.(*object.Number)
+	return value.Value.ToInt64(), nil
 }

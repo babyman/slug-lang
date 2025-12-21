@@ -18,6 +18,7 @@ const (
 	SOutService     = "sout"
 	SqliteService   = SlugNamespace + "sqlite"
 	MysqlService    = SlugNamespace + "mysql"
+	TcpService      = SlugNamespace + "tcp"
 )
 
 // SOut service messages

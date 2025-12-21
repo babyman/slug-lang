@@ -210,69 +210,17 @@ func ExecSuccessRows(rows *sql.Rows, driverMapping func(any, *sql.ColumnType) ob
 	return svc.SlugActorMessage{Msg: resultMap}
 }
 
-//func sqlValueToSlugObject(v any, ct *sql.ColumnType) object.Object {
-//	// nil -> nil
-//	if v == nil {
-//		return &object.Nil{}
-//	}
-//
-//	switch x := v.(type) {
-//	case int:
-//		return &object.Number{Value: dec64.FromInt64(int64(x))}
-//	case int64:
-//		return &object.Number{Value: dec64.FromInt64(x)}
-//	case float64:
-//		// dec64 has no FromFloat, so round-trip through a stable string form.
-//		s := strconv.FormatFloat(x, 'g', -1, 64)
-//		if d, err := dec64.FromString(s); err == nil {
-//			return &object.Number{Value: d}
-//		}
-//		return &object.String{Value: s}
-//	case bool:
-//		return &object.Boolean{Value: x}
-//	case time.Time:
-//		return &object.String{Value: x.Format(time.RFC3339Nano)}
-//	case []byte:
-//		// SQLite TEXT sometimes comes back as []byte depending on driver/decl type.
-//		// Use declared type (when available) to choose String vs Bytes.
-//		if ct != nil {
-//			decl := strings.ToUpper(ct.DatabaseTypeName())
-//			if decl == "TEXT" || strings.Contains(decl, "CHAR") || strings.Contains(decl, "CLOB") {
-//				return &object.String{Value: string(x)}
-//			}
-//		}
-//		return &object.Bytes{Value: x}
-//	case string:
-//		return &object.String{Value: x}
-//	default:
-//		// Fallback: preserve something usable rather than failing the whole query.
-//		return &object.String{Value: fmt.Sprintf("%v", v)}
-//	}
-//}
-
 func ErrorResult(err error) svc.SlugActorMessage {
 	resultMap := &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}
-	resultMap.Pairs[(&object.String{Value: "ok"}).MapKey()] = object.MapPair{
-		Key:   &object.String{Value: "ok"},
-		Value: eval.FALSE,
-	}
-	resultMap.Pairs[(&object.String{Value: "error"}).MapKey()] = object.MapPair{
-		Key:   &object.String{Value: "error"},
-		Value: &object.Error{Message: err.Error()},
-	}
+	PutBool(resultMap, "ok", false)
+	PutError(resultMap, "error", err)
 	return svc.SlugActorMessage{Msg: resultMap}
 }
 
 func ErrorStrResult(err string) svc.SlugActorMessage {
 	resultMap := &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}
-	resultMap.Pairs[(&object.String{Value: "ok"}).MapKey()] = object.MapPair{
-		Key:   &object.String{Value: "ok"},
-		Value: eval.FALSE,
-	}
-	resultMap.Pairs[(&object.String{Value: "error"}).MapKey()] = object.MapPair{
-		Key:   &object.String{Value: "error"},
-		Value: &object.Error{Message: err},
-	}
+	PutBool(resultMap, "ok", false)
+	PutString(resultMap, "error", err)
 	return svc.SlugActorMessage{Msg: resultMap}
 }
 

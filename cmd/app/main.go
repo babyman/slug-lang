@@ -20,6 +20,7 @@ import (
 	"slug/internal/svc/resolver"
 	"slug/internal/svc/sout"
 	"slug/internal/svc/sqlite"
+	"slug/internal/svc/tcp"
 	"slug/internal/util"
 )
 
@@ -159,6 +160,10 @@ func main() {
 	mysqlSvc := mysql.Service{}
 	mysqlID := k.RegisterService(svc.MysqlService, mysql.Operations, mysqlSvc.Handler)
 
+	// TCP service
+	tcpSvc := tcp.Service{}
+	tcpID := k.RegisterService(svc.TcpService, tcp.Operations, tcpSvc.Handler)
+
 	// Cap grants
 	_ = k.GrantCap(kernelID, cliID, x, nil)
 
@@ -179,12 +184,15 @@ func main() {
 	_ = k.GrantCap(evalID, modsID, r, nil)
 	_ = k.GrantCap(evalID, parserID, rwx, nil)
 	_ = k.GrantCap(evalID, soutID, w, nil)
-	_ = k.GrantCap(evalID, sqliteID, rw, nil)
-	_ = k.GrantCap(evalID, mysqlID, rw, nil)
+	_ = k.GrantCap(evalID, sqliteID, w, nil)
+	_ = k.GrantCap(evalID, mysqlID, w, nil)
+	_ = k.GrantCap(evalID, tcpID, w, nil)
 
 	_ = k.GrantCap(sqliteID, evalID, x, nil)
 
 	_ = k.GrantCap(mysqlID, evalID, x, nil)
+
+	_ = k.GrantCap(tcpID, evalID, x, nil)
 
 	_ = k.GrantCap(replID, evalID, x, nil)
 	_ = k.GrantCap(replID, lexerID, x, nil)

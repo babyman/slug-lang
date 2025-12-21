@@ -1,0 +1,41 @@
+var {*} = import(
+	"slug.std",
+	"slug.bytes",
+	"slug.actor",
+	"slug.io.tcp"
+);
+
+var reply = spawn()
+defer reply /> terminate
+
+var listener = bind(reply, "127.0.0.1", 8080)
+defer listener /> close(reply) /> println("<<< listener closed")
+
+println("Server listening on 127.0.0.1:8080", listener);
+
+var serverLoop = fn(count = 1) {
+	var connection = listener
+		/> accept(reply) 
+		/> receiveFrom(nil)
+	defer connection /> close(reply) /> println("<<< connection {{count}} closed", connection)
+
+	var msg = connection
+		/> read(reply)
+		/> receiveFrom(1000)
+		/> then(fn(v) { v.bytes /> bytesToStr })
+		/> println("<<< connection {{count}} received message", connection)
+
+	connection /> write(reply, msg)
+		/> receiveFrom(1000)
+
+	if(msg != "bye") {
+		recur(count + 1)
+	}
+}
+
+serverLoop()
+
+"Server loop exited"
+
+
+
