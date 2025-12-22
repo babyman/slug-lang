@@ -22,7 +22,6 @@ type SlugReceiver interface {
 type IKernel interface {
 	ActorByName(name string) (ActorID, bool)
 	SendInternal(from ActorID, to ActorID, replyTo ActorID, payload any, respCh chan Message) error
-	RegisterCleanup(id ActorID, msg Message)
 	SpawnChild(parent ActorID, name string, ops OpRights, handler Handler) (ActorID, error)
 	SpawnPassiveChild(parent ActorID, name string) (ActorID, error)
 	ReceiveFromPassive(parent ActorID, passive ActorID, timeout time.Duration) (any, bool, error)
@@ -41,10 +40,6 @@ func (c *ActCtx) MailboxLen(target ActorID) (int, error) {
 
 func (c *ActCtx) MailboxCapacity(target ActorID) (int, error) {
 	return c.K.MailboxCapacity(c.Self, target)
-}
-
-func (c *ActCtx) RegisterCleanup(msg Message) {
-	c.K.RegisterCleanup(c.Self, msg)
 }
 
 func (c *ActCtx) ForwardAsync(to ActorID, msg Message) error {

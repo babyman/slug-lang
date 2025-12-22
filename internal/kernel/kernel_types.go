@@ -47,7 +47,6 @@ type Actor struct {
 	cancel   context.CancelFunc
 	children map[ActorID]bool      // track children
 	Caps     map[int64]*Capability // by cap ID
-	Cleanup  []Message             // LIFO stack
 	// simple accounting
 	CpuOps uint64
 	IpcIn  uint64

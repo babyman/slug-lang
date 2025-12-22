@@ -71,15 +71,6 @@ func NewKernel() *Kernel {
 	return kernel
 }
 
-func (k *Kernel) RegisterCleanup(id ActorID, msg Message) {
-	k.Mu.Lock()
-	defer k.Mu.Unlock()
-	a, ok := k.Actors[id]
-	if ok {
-		a.Cleanup = append(a.Cleanup, msg)
-	}
-}
-
 func (k *Kernel) MailboxLen(caller ActorID, target ActorID) (int, error) {
 	k.Mu.RLock()
 	defer k.Mu.RUnlock()
@@ -130,7 +121,6 @@ func (k *Kernel) RegisterActor(name string, handler Handler) ActorID {
 		cancel:   cancel,
 		children: make(map[ActorID]bool),
 		Caps:     make(map[int64]*Capability),
-		Cleanup:  []Message{},
 	}
 	k.Actors[id] = act
 	if name != "" {
@@ -192,7 +182,6 @@ func (k *Kernel) SpawnChild(parent ActorID, name string, ops OpRights, handler H
 		cancel:   cancel,
 		children: make(map[ActorID]bool),
 		Caps:     make(map[int64]*Capability),
-		Cleanup:  []Message{},
 	}
 
 	k.Actors[child.Id] = child
@@ -245,7 +234,6 @@ func (k *Kernel) SpawnPassiveChild(parent ActorID, name string) (ActorID, error)
 		cancel:   cancel,
 		children: make(map[ActorID]bool),
 		Caps:     make(map[int64]*Capability),
-		Cleanup:  []Message{},
 	}
 
 	k.Actors[child.Id] = child
@@ -429,28 +417,6 @@ func (k *Kernel) cleanupActor(a *Actor, reason string) {
 	if a.Parent != 0 {
 		if parent, ok := k.Actors[a.Parent]; ok {
 			delete(parent.children, a.Id)
-		}
-	}
-
-	// Send cleanup messages in reverse order (LIFO)
-	for i := len(a.Cleanup) - 1; i >= 0; i-- {
-		cleanupMsg := a.Cleanup[i]
-		slog.Info("Sending cleanup message",
-			slog.Any("from", cleanupMsg.From),
-			slog.Any("to", cleanupMsg.To))
-		// Send cleanup message without capability checks since this is part of shutdown
-		if target := k.Actors[cleanupMsg.To]; target != nil {
-			select {
-			case target.inbox <- cleanupMsg:
-				// Message sent successfully
-			default:
-				// Target inbox full or closed, log and continue
-				slog.Warn("Failed to send cleanup message to actor, inbox full or closed",
-					slog.Any("to", cleanupMsg.To))
-			}
-		} else {
-			slog.Warn("Cleanup target actor not found",
-				slog.Any("to", cleanupMsg.To))
 		}
 	}
 
