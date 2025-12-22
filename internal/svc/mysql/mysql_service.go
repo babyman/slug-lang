@@ -62,15 +62,15 @@ func (fs *Service) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handle
 }
 
 func (sc *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
-	// Handle System Exit
-	if _, ok := msg.Payload.(kernel.Exit); ok {
+	// Handle Shutdown
+	if _, ok := msg.Payload.(kernel.Shutdown); ok {
 		if sc.state.Tx != nil {
 			sc.state.Tx.Rollback()
 		}
 		if sc.state.DB != nil {
 			sc.state.DB.Close()
 		}
-		return kernel.Terminate{Reason: "system exit"}
+		return kernel.Terminate{Reason: "shutdown"}
 	}
 
 	slugMsg, ok := msg.Payload.(svc.SlugActorMessage)

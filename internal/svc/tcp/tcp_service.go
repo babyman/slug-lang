@@ -96,12 +96,12 @@ func (s *Service) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 }
 
 func (l *Listener) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
-	// Handle System Exit
-	if _, ok := msg.Payload.(kernel.Exit); ok {
+	// Handle Shutdown
+	if _, ok := msg.Payload.(kernel.Shutdown); ok {
 		if l.netListener != nil {
 			l.netListener.Close()
 		}
-		return kernel.Terminate{Reason: "system exit"}
+		return kernel.Terminate{Reason: "shutdown"}
 	}
 
 	p, ok := msg.Payload.(svc.SlugActorMessage)
@@ -160,8 +160,8 @@ func (l *Listener) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handle
 }
 
 func (c *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
-	// Handle System Exit
-	if _, ok := msg.Payload.(kernel.Exit); ok {
+	// Handle Shutdown
+	if _, ok := msg.Payload.(kernel.Shutdown); ok {
 		if c.subscriber != nil {
 			close(c.subscriber.stopChan)
 			c.subscriber = nil
@@ -169,7 +169,7 @@ func (c *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Hand
 		if c.netConn != nil {
 			c.netConn.Close()
 		}
-		return kernel.Terminate{Reason: "system exit"}
+		return kernel.Terminate{Reason: "shutdown"}
 	}
 
 	p, ok := msg.Payload.(svc.SlugActorMessage)

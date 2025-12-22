@@ -370,7 +370,7 @@ func (k *Kernel) cleanupActor(a *Actor, reason string) {
 	// 1. If it's an active actor, try to tell it to shut down nicely first
 	if !a.Passive {
 		select {
-		case a.inbox <- Message{Payload: Exit{Reason: reason}}:
+		case a.inbox <- Message{Payload: Shutdown{Reason: reason}}:
 			// We successfully queued an exit message.
 			// In a more robust system, you might wait a few ms here
 			// to see if the goroutine exits on its own.

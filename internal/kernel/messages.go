@@ -27,16 +27,12 @@ type Broadcast struct {
 	Payload any
 }
 
+// Exit represents a message sent to an actor to terminate it, this is handled by the kernel.
 type Exit struct {
 	Reason string
 }
 
-type Kill struct {
-	Target ActorID
+// Shutdown represents a message passed to an actor to allow it to gracefully terminate.
+type Shutdown struct {
 	Reason string
-}
-
-type RegisterCleanup struct {
-	Target ActorID
-	Msg    Message
 }
