@@ -37,9 +37,9 @@ func HandleConnection(sc *ConnectionState, ctx *kernel.ActCtx, msg kernel.Messag
 		var rows *sql.Rows
 		var err error
 		if sc.Tx != nil {
-			rows, err = sc.Tx.Query(sqlStr, params...)
+			rows, err = sc.Tx.QueryContext(ctx.Context, sqlStr, params...)
 		} else {
-			rows, err = sc.DB.Query(sqlStr, params...)
+			rows, err = sc.DB.QueryContext(ctx.Context, sqlStr, params...)
 		}
 		if err != nil {
 			ctx.SendAsync(to, ErrorResult(err.Error()))
@@ -54,9 +54,9 @@ func HandleConnection(sc *ConnectionState, ctx *kernel.ActCtx, msg kernel.Messag
 		var result sql.Result
 		var err error
 		if sc.Tx != nil {
-			result, err = sc.Tx.Exec(sqlStr, params...)
+			result, err = sc.Tx.ExecContext(ctx.Context, sqlStr, params...)
 		} else {
-			result, err = sc.DB.Exec(sqlStr, params...)
+			result, err = sc.DB.ExecContext(ctx.Context, sqlStr, params...)
 		}
 		if err != nil {
 			ctx.SendAsync(to, ErrorResult(err.Error()))
@@ -71,7 +71,7 @@ func HandleConnection(sc *ConnectionState, ctx *kernel.ActCtx, msg kernel.Messag
 			ctx.SendAsync(to, ErrorResult("transaction already in progress"))
 			return kernel.Continue{}
 		}
-		tx, err := sc.DB.Begin()
+		tx, err := sc.DB.BeginTx(ctx.Context, nil)
 		if err != nil {
 			ctx.SendAsync(to, ErrorResult(err.Error()))
 		} else {

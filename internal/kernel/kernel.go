@@ -329,7 +329,7 @@ func (k *Kernel) ReceiveFromPassive(parent ActorID, passive ActorID, timeout tim
 }
 
 func (k *Kernel) runActor(a *Actor) {
-	ctx := &ActCtx{K: k, Self: a.Id}
+	ctx := &ActCtx{K: k, Self: a.Id, Context: a.ctx}
 	for {
 		select {
 		case <-a.ctx.Done():

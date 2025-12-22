@@ -96,6 +96,14 @@ func (s *Service) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 }
 
 func (l *Listener) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
+	// Handle System Exit
+	if _, ok := msg.Payload.(kernel.Exit); ok {
+		if l.netListener != nil {
+			l.netListener.Close()
+		}
+		return kernel.Terminate{Reason: "system exit"}
+	}
+
 	p, ok := msg.Payload.(svc.SlugActorMessage)
 	if !ok {
 		return kernel.Continue{}
@@ -152,6 +160,18 @@ func (l *Listener) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handle
 }
 
 func (c *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
+	// Handle System Exit
+	if _, ok := msg.Payload.(kernel.Exit); ok {
+		if c.subscriber != nil {
+			close(c.subscriber.stopChan)
+			c.subscriber = nil
+		}
+		if c.netConn != nil {
+			c.netConn.Close()
+		}
+		return kernel.Terminate{Reason: "system exit"}
+	}
+
 	p, ok := msg.Payload.(svc.SlugActorMessage)
 	if !ok {
 		return kernel.Continue{}
@@ -179,7 +199,8 @@ func (c *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Hand
 	case "connect":
 		addr := m.Pairs[addrKey].Value.Inspect()
 		port := m.Pairs[portKey].Value.Inspect()
-		conn, err := net.Dial("tcp", net.JoinHostPort(addr, port))
+		var dialer net.Dialer
+		conn, err := dialer.DialContext(ctx.Context, "tcp", net.JoinHostPort(addr, port))
 		if err != nil {
 			ctx.SendAsync(to, svcutil.ErrorResult(err.Error()))
 			return kernel.Terminate{Reason: err.Error()}
@@ -334,6 +355,8 @@ func (c *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Hand
 func (c *Connection) networkPump(ctx *kernel.ActCtx, sub *streamSub) {
 	for {
 		select {
+		case <-ctx.Context.Done(): // Stop if the actor is terminated
+			return
 		case <-sub.stopChan:
 			return
 		case <-sub.gate:

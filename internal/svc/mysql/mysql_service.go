@@ -62,6 +62,17 @@ func (fs *Service) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handle
 }
 
 func (sc *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
+	// Handle System Exit
+	if _, ok := msg.Payload.(kernel.Exit); ok {
+		if sc.state.Tx != nil {
+			sc.state.Tx.Rollback()
+		}
+		if sc.state.DB != nil {
+			sc.state.DB.Close()
+		}
+		return kernel.Terminate{Reason: "system exit"}
+	}
+
 	slugMsg, ok := msg.Payload.(svc.SlugActorMessage)
 	if !ok {
 		return kernel.Continue{}
@@ -87,7 +98,7 @@ func (sc *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Han
 		sc.state.DB = db
 
 		// Test the connection
-		if err := sc.state.DB.Ping(); err != nil {
+		if err := sc.state.DB.PingContext(ctx.Context); err != nil {
 			ctx.SendAsync(to, svcutil.ErrorResult(err.Error()))
 			return kernel.Terminate{Reason: "Ping failed"}
 		}

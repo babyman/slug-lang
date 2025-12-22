@@ -1,6 +1,7 @@
 package kernel
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"reflect"
@@ -9,8 +10,9 @@ import (
 )
 
 type ActCtx struct {
-	K    IKernel
-	Self ActorID
+	K       IKernel
+	Self    ActorID
+	Context context.Context
 }
 
 type SlugReceiver interface {
