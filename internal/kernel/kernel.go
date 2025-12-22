@@ -52,7 +52,7 @@ type Kernel struct {
 	NextActorID        int64
 	NextCapID          int64
 	Actors             map[ActorID]*Actor
-	NameIdx            map[string]ActorID // convenient lookup by Name
+	NameIdx            map[string]ActorID
 	OpsBySvc           map[ActorID]OpRights
 	PrivilegedServices map[string]PrivilegedService
 }
@@ -114,17 +114,20 @@ func (k *Kernel) MailboxCapacity(caller ActorID, target ActorID) (int, error) {
 func (k *Kernel) RegisterActor(name string, handler Handler) ActorID {
 	k.Mu.Lock()
 	id := ActorID(k.NextActorID)
+	k.NextActorID++
+	actCtx, cancel := context.WithCancel(context.Background())
 
 	slog.Info("Registering actor",
 		slog.Any("id", id),
 		slog.String("name", name))
 
-	k.NextActorID++
 	act := &Actor{
 		Id:       id,
 		Name:     name,
 		inbox:    make(chan Message, ActorMailboxSize),
 		handler:  handler,
+		ctx:      actCtx,
+		cancel:   cancel,
 		children: make(map[ActorID]bool),
 		Caps:     make(map[int64]*Capability),
 		Cleanup:  []Message{},
@@ -177,6 +180,7 @@ func (k *Kernel) SpawnChild(parent ActorID, name string, ops OpRights, handler H
 
 	id := ActorID(k.NextActorID)
 	k.NextActorID++
+	actCtx, cancel := context.WithCancel(context.Background())
 
 	child := &Actor{
 		Id:       id,
@@ -184,6 +188,8 @@ func (k *Kernel) SpawnChild(parent ActorID, name string, ops OpRights, handler H
 		Parent:   parent,
 		inbox:    make(chan Message, ActorMailboxSize),
 		handler:  handler,
+		ctx:      actCtx,
+		cancel:   cancel,
 		children: make(map[ActorID]bool),
 		Caps:     make(map[int64]*Capability),
 		Cleanup:  []Message{},
@@ -226,6 +232,7 @@ func (k *Kernel) SpawnPassiveChild(parent ActorID, name string) (ActorID, error)
 
 	id := ActorID(k.NextActorID)
 	k.NextActorID++
+	actCtx, cancel := context.WithCancel(context.Background())
 
 	child := &Actor{
 		Id:       id,
@@ -234,6 +241,8 @@ func (k *Kernel) SpawnPassiveChild(parent ActorID, name string) (ActorID, error)
 		Passive:  true,
 		inbox:    make(chan Message, ActorMailboxSize),
 		handler:  nil,
+		ctx:      actCtx,
+		cancel:   cancel,
 		children: make(map[ActorID]bool),
 		Caps:     make(map[int64]*Capability),
 		Cleanup:  []Message{},
@@ -321,43 +330,73 @@ func (k *Kernel) ReceiveFromPassive(parent ActorID, passive ActorID, timeout tim
 
 func (k *Kernel) runActor(a *Actor) {
 	ctx := &ActCtx{K: k, Self: a.Id}
-	for msg := range a.inbox {
-		if exit, ok := msg.Payload.(Exit); ok {
-			k.cleanupActor(a, exit.Reason)
-			slog.Info("actor exiting",
-				slog.Any("actor-id", a.Id),
-				slog.String("actor-name", a.Name),
-				slog.String("reason", exit.Reason))
+	for {
+		select {
+		case <-a.ctx.Done():
+			// The actor was cancelled externally (interrupted)
 			return
-		}
+		case msg, ok := <-a.inbox:
+			if !ok {
+				return
+			}
 
-		start := time.Now()
-		sig := a.handler(ctx, msg)
-		atomic.AddUint64(&a.CpuOps, uint64(time.Since(start).Microseconds()))
+			if exit, ok := msg.Payload.(Exit); ok {
+				k.cleanupActor(a, exit.Reason)
+				slog.Info("actor exiting",
+					slog.Any("actor-id", a.Id),
+					slog.String("actor-name", a.Name),
+					slog.String("reason", exit.Reason))
+				return
+			}
 
-		switch signal := sig.(type) {
-		case nil, Continue:
-			continue
-		case Terminate:
-			k.cleanupActor(a, signal.Reason)
-			slog.Info("actor terminating",
-				slog.Any("actor-id", a.Id),
-				slog.String("actor-name", a.Name),
-				slog.String("reason", signal.Reason))
-			return
-		case Restart:
-			k.cleanupActor(a, signal.Reason)
-			k.restartActor(a, signal)
-			return
-		case Error:
-			k.handleActorError(a, signal)
-			// could escalate, log, terminate, or ignore depending on policy
+			start := time.Now()
+			sig := a.handler(ctx, msg)
+			atomic.AddUint64(&a.CpuOps, uint64(time.Since(start).Microseconds()))
+
+			switch signal := sig.(type) {
+			case nil, Continue:
+				continue
+			case Terminate:
+				k.cleanupActor(a, signal.Reason)
+				slog.Info("actor terminating",
+					slog.Any("actor-id", a.Id),
+					slog.String("actor-name", a.Name),
+					slog.String("reason", signal.Reason))
+				return
+			case Restart:
+				k.cleanupActor(a, signal.Reason)
+				k.restartActor(a, signal)
+				return
+			case Error:
+				k.handleActorError(a, signal)
+				// could escalate, log, terminate, or ignore depending on policy
+			}
 		}
 	}
 }
 
 // cleanupActor removes the actor from kernel tracking and closes resources
 func (k *Kernel) cleanupActor(a *Actor, reason string) {
+	// 1. If it's an active actor, try to tell it to shut down nicely first
+	if !a.Passive {
+		select {
+		case a.inbox <- Message{Payload: Exit{Reason: reason}}:
+			// We successfully queued an exit message.
+			// In a more robust system, you might wait a few ms here
+			// to see if the goroutine exits on its own.
+		default:
+			// Inbox is full/blocked; we must force it.
+			if a.cancel != nil {
+				a.cancel()
+			}
+		}
+	} else {
+		// Passive actors have no goroutine, just cancel the context
+		if a.cancel != nil {
+			a.cancel()
+		}
+	}
+
 	k.Mu.Lock()
 	defer k.Mu.Unlock()
 

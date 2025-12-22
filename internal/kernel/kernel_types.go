@@ -1,6 +1,7 @@
 package kernel
 
 import (
+	"context"
 	"reflect"
 	"sync/atomic"
 )
@@ -42,6 +43,8 @@ type Actor struct {
 	Passive  bool    // mailbox-only actor; no handler goroutine runs
 	inbox    chan Message
 	handler  Handler
+	ctx      context.Context
+	cancel   context.CancelFunc
 	children map[ActorID]bool      // track children
 	Caps     map[int64]*Capability // by cap ID
 	Cleanup  []Message             // LIFO stack
