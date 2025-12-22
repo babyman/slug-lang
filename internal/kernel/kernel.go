@@ -55,6 +55,7 @@ type Kernel struct {
 	NameIdx            map[string]ActorID
 	OpsBySvc           map[ActorID]OpRights
 	PrivilegedServices map[string]PrivilegedService
+	CapIndex           map[ActorID]map[ActorID]map[int64]bool
 }
 
 func NewKernel() *Kernel {
@@ -64,6 +65,7 @@ func NewKernel() *Kernel {
 		NameIdx:            make(map[string]ActorID),
 		OpsBySvc:           make(map[ActorID]OpRights),
 		PrivilegedServices: make(map[string]PrivilegedService),
+		CapIndex:           make(map[ActorID]map[ActorID]map[int64]bool),
 	}
 
 	kernel.RegisterService(KernelService, Operations, kernel.handler)
@@ -400,16 +402,7 @@ func (k *Kernel) cleanupActor(a *Actor, reason string) {
 	// Kill children first
 	for childID := range a.children {
 		if child, ok := k.Actors[childID]; ok {
-			if child.Passive {
-				k.cleanupActor(child, "parent terminated")
-				continue
-			}
-			select {
-			case child.inbox <- Message{Payload: Exit{Reason: "parent terminated"}}:
-			default:
-				// if it's jammed, be a little ruthless; parent is exiting anyway
-				k.cleanupActor(child, "parent terminated (mailbox full)")
-			}
+			k.cleanupActor(child, "parent terminated")
 		}
 	}
 
@@ -431,10 +424,37 @@ func (k *Kernel) cleanupActor(a *Actor, reason string) {
 	// Remove from operations map if it's a service
 	delete(k.OpsBySvc, a.Id)
 
-	// Revoke all capabilities granted to this actor
-	// todo memory leak?
-	for _, cap := range a.Caps {
-		cap.Revoked.Store(true)
+	// 1. Revoke and remove capabilities held BY this actor
+	for capID, c := range a.Caps {
+		c.Revoked.Store(true)
+		// Remove from reverse index
+		if holders, ok := k.CapIndex[c.Target]; ok {
+			if caps, ok := holders[a.Id]; ok {
+				delete(caps, capID)
+				if len(caps) == 0 {
+					delete(holders, a.Id)
+				}
+			}
+			if len(holders) == 0 {
+				delete(k.CapIndex, c.Target)
+			}
+		}
+		delete(a.Caps, capID)
+	}
+
+	// 2. Revoke and remove capabilities held by OTHERS targeting this actor
+	if holders, ok := k.CapIndex[a.Id]; ok {
+		for holderID, caps := range holders {
+			if holder, ok := k.Actors[holderID]; ok {
+				for capID := range caps {
+					if c, ok := holder.Caps[capID]; ok {
+						c.Revoked.Store(true)
+						delete(holder.Caps, capID)
+					}
+				}
+			}
+		}
+		delete(k.CapIndex, a.Id)
 	}
 
 	// Close the inbox channel to prevent further messages
@@ -530,6 +550,16 @@ func (k *Kernel) createCapWithMuLock(from ActorID, target ActorID, rights Rights
 	capability := &Capability{ID: capID, Target: target, Rights: rights, Scope: scope}
 	if a, ok := k.Actors[from]; ok {
 		a.Caps[capID] = capability
+
+		// Update reverse index
+		if k.CapIndex[target] == nil {
+			k.CapIndex[target] = make(map[ActorID]map[int64]bool)
+		}
+		if k.CapIndex[target][from] == nil {
+			k.CapIndex[target][from] = make(map[int64]bool)
+		}
+		k.CapIndex[target][from][capID] = true
+
 		return capability
 	}
 	return nil
