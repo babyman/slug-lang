@@ -1033,16 +1033,13 @@ func (p *Parser) checkTailCallsInBlock(block *ast.BlockStatement) bool {
 	}
 
 	// Check if this block introduces any defers
-	//blockDefer := false
-	//for _, stmt := range block.Statements {
-	//	if _, ok := stmt.(*ast.DeferStatement); ok {
-	//		blockDefer = true
-	//		break
-	//	}
-	//}
-
-	// If either the enclosing scope or this block has a defer, we are in a deferred state
-	//isDeferred := hasActiveDefer || blockDefer
+	for _, stmt := range block.Statements {
+		if _, ok := stmt.(*ast.DeferStatement); ok {
+			// If the block has a defer, we cannot perform tail call optimization
+			// because the defer must run AFTER the call returns.
+			return false
+		}
+	}
 
 	// Only the last statement in a block can contain a tail call
 	lastStmt := block.Statements[len(block.Statements)-1]

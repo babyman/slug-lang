@@ -24,7 +24,7 @@ var {*} = import(
 # ---------- Tests ----------
 # 1. Basic defer executes on normal exit
 @test
-var test1 = fn() {
+var test01 = fn() {
     var x = []
     var f = fn() {
         defer x = x :+ "A"
@@ -36,7 +36,7 @@ var test1 = fn() {
 
 # 2. Defers run in LIFO order
 @test
-var test2 = fn() {
+var test02 = fn() {
     var x = []
     var f = fn() {
         defer x = x :+ 1
@@ -49,7 +49,7 @@ var test2 = fn() {
 
 # 3. onsuccess runs only on success
 @test
-var test3 = fn() {
+var test03 = fn() {
     var x = []
     var f = fn() {
         defer onsuccess     x = x :+ "S"
@@ -63,7 +63,7 @@ var test3 = fn() {
 
 # 4. onerror runs only on error
 @test
-var test4 = fn() {
+var test04 = fn() {
     var x = []
     var f = fn() {
         defer onsuccess     x = x :+ "S"
@@ -78,9 +78,25 @@ var test4 = fn() {
     assertEqual(x, ["A","E"], "Test 4 - onerror executed on throw")
 }
 
+# 5. defer called after nested function call
+@test
+var test05 = fn() {
+    var x = []
+    var fNested = fn() {
+        defer x = x :+ 2
+        x = x :+ 3
+    }
+    var f = fn() {
+        defer x = x :+ 1
+        fNested()
+    }
+    f()
+    assertEqual(x, [3, 2, 1], "Test 5 - nested defer called before caller defer: {{x}}")
+}
+
 # 7. onerror can convert an error into a normal value (swallow)
 @test
-var test7 = fn() {
+var test07 = fn() {
     var f = fn() {
         defer onerror(e) { 42 }   # convert error to normal result
         throw "bad"
@@ -91,7 +107,7 @@ var test7 = fn() {
 
 # 8. onerror rethrows same error (propagate)
 @test
-var test8 = fn() {
+var test08 = fn() {
     var f = fn() {
         defer onerror(e) { throw e }  # explicit rethrow
         throw "bad"
@@ -102,7 +118,7 @@ var test8 = fn() {
 
 # 9. onerror throws a new error (wrapping) -> chaining
 @test
-var test9 = fn() {
+var test09 = fn() {
     var f = fn() {
         defer onerror(e) { throw "wrapped" }
         throw "inner"
