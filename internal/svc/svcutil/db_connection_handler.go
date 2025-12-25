@@ -193,6 +193,6 @@ func queryResult(rows *sql.Rows, driverMapping func(any, *sql.ColumnType) object
 	resultMap := &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}
 	PutString(resultMap, "type", "query")
 	PutBool(resultMap, "ok", true)
-	PutObj(resultMap, "rows", &object.List{Elements: listElements})
+	PutList(resultMap, "rows", listElements)
 	return svc.SlugActorMessage{Msg: resultMap}
 }

@@ -6,19 +6,20 @@ import (
 )
 
 const (
-	SlugNamespace   = "slug:"
-	CliService      = "cli"
-	EvalService     = "evaluator"
-	FsService       = "filesystem"
-	LexerService    = "lexer"
-	ModuleService   = "module-loader"
-	ParserService   = "parser"
-	ReplService     = "repl"
-	ResolverService = "resolver"
-	SOutService     = "system-out"
-	SqliteService   = SlugNamespace + "sqlite"
-	MysqlService    = SlugNamespace + "mysql"
-	TcpService      = SlugNamespace + "tcp"
+	SlugNamespace     = "slug:"
+	CliService        = "cli"
+	EvalService       = "evaluator"
+	FsService         = "filesystem"
+	LexerService      = "lexer"
+	ModuleService     = "module-loader"
+	ParserService     = "parser"
+	ReplService       = "repl"
+	ResolverService   = "resolver"
+	SOutService       = "system-out"
+	SqliteService     = SlugNamespace + "sqlite"
+	MysqlService      = SlugNamespace + "mysql"
+	TcpService        = SlugNamespace + "tcp"
+	FileSystemService = SlugNamespace + "filesystem"
 )
 
 // SOut service messages

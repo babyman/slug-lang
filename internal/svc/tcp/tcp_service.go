@@ -21,12 +21,10 @@ var Operations = kernel.OpRights{
 var (
 	addrKey      = (&object.String{Value: "addr"}).MapKey()
 	portKey      = (&object.String{Value: "port"}).MapKey()
-	maxKey       = (&object.String{Value: "max"}).MapKey()
 	creditsKey   = (&object.String{Value: "credits"}).MapKey()
 	chunkSizeKey = (&object.String{Value: "chunkSize"}).MapKey()
 	statusKey    = (&object.String{Value: "status"}).MapKey()
 	reasonKey    = (&object.String{Value: "reason"}).MapKey()
-	dataKey      = (&object.String{Value: "data"}).MapKey()
 	remainingKey = (&object.String{Value: "remaining"}).MapKey()
 )
 
@@ -211,14 +209,7 @@ func (c *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Hand
 		}})
 
 	case "read":
-		maxVal, ok := m.Pairs[maxKey]
-		maxSize := 4096
-		if ok {
-			if n, ok := maxVal.Value.(*object.Number); ok {
-				maxSize = int(n.Value.ToInt64())
-			}
-		}
-
+		maxSize := svcutil.GetIntWithDefault(m, svcutil.MaxKey, 4096)
 		buf := make([]byte, maxSize)
 		n, err := c.netConn.Read(buf)
 		if err != nil {
@@ -232,7 +223,7 @@ func (c *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Hand
 		ctx.SendAsync(to, dataResult(buf[:n]))
 
 	case "write":
-		dataObj, ok := m.Pairs[dataKey]
+		dataObj, ok := m.Pairs[svcutil.DataKey]
 		if !ok {
 			ctx.SendAsync(to, svcutil.ErrorResult("missing data"))
 			return kernel.Continue{}
@@ -327,7 +318,7 @@ func (c *Connection) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Hand
 			ctx.SendAsync(c.subscriber.reply, svcutil.ErrorResult(reason))
 			c.subscriber = nil
 		} else {
-			data := m.Pairs[dataKey].Value.(*object.Bytes).Value
+			data := m.Pairs[svcutil.DataKey].Value.(*object.Bytes).Value
 			rem := int(m.Pairs[remainingKey].Value.(*object.Number).Value.ToInt64())
 			ctx.SendAsync(c.subscriber.reply, dataStreamResult(data, rem))
 		}
@@ -377,7 +368,7 @@ func (c *Connection) networkPump(ctx *kernel.ActCtx, sub *streamSub) {
 func dataResult(bytes []byte) svc.SlugActorMessage {
 	resultMap := &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}
 	svcutil.PutString(resultMap, "type", "data")
-	svcutil.PutObj(resultMap, "bytes", &object.Bytes{Value: bytes})
+	svcutil.PutBytes(resultMap, "bytes", bytes)
 	return svc.SlugActorMessage{Msg: resultMap}
 }
 
@@ -385,7 +376,7 @@ func dataStreamResult(bytes []byte, credits int) svc.SlugActorMessage {
 	resultMap := &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}
 	svcutil.PutString(resultMap, "type", "data")
 	svcutil.PutInt(resultMap, "remainingCredits", credits)
-	svcutil.PutObj(resultMap, "bytes", &object.Bytes{Value: bytes})
+	svcutil.PutBytes(resultMap, "bytes", bytes)
 	return svc.SlugActorMessage{Msg: resultMap}
 }
 
@@ -407,7 +398,7 @@ func pumpResult(err error, buf []byte, n int, credits int) svc.SlugActorMessage 
 		}
 	} else {
 		svcutil.PutString(resultMap, "status", "ok")
-		svcutil.PutObj(resultMap, "data", &object.Bytes{Value: buf[:n]})
+		svcutil.PutBytes(resultMap, "data", buf[:n])
 		svcutil.PutInt(resultMap, "remaining", credits-1)
 	}
 	return svc.SlugActorMessage{Msg: resultMap}

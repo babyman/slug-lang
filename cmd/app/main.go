@@ -11,6 +11,7 @@ import (
 	"slug/internal/svc"
 	"slug/internal/svc/cli"
 	"slug/internal/svc/eval"
+	"slug/internal/svc/filesystem"
 	"slug/internal/svc/fs"
 	"slug/internal/svc/lexer"
 	"slug/internal/svc/modules"
@@ -164,6 +165,10 @@ func main() {
 	tcpSvc := tcp.Service{}
 	tcpID := k.RegisterService(svc.TcpService, tcp.Operations, tcpSvc.Handler)
 
+	// FileSystem service
+	fileSysSvc := filesystem.Service{}
+	fileSysID := k.RegisterService(svc.FileSystemService, filesystem.Operations, fileSysSvc.Handler)
+
 	// Cap grants
 	_ = k.GrantCap(kernelID, cliID, x, nil)
 
@@ -187,12 +192,15 @@ func main() {
 	_ = k.GrantCap(evalID, sqliteID, w, nil)
 	_ = k.GrantCap(evalID, mysqlID, w, nil)
 	_ = k.GrantCap(evalID, tcpID, w, nil)
+	_ = k.GrantCap(evalID, fileSysID, w, nil)
 
 	_ = k.GrantCap(sqliteID, evalID, x, nil)
 
 	_ = k.GrantCap(mysqlID, evalID, x, nil)
 
 	_ = k.GrantCap(tcpID, evalID, x, nil)
+
+	_ = k.GrantCap(fileSysID, evalID, x, nil)
 
 	_ = k.GrantCap(replID, evalID, x, nil)
 	_ = k.GrantCap(replID, lexerID, x, nil)

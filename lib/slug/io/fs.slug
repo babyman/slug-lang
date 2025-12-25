@@ -1,32 +1,61 @@
 var {*} = import(
+    "slug.actor",
+    "slug.bytes",
     "slug.std",
 );
+
+@export val READ_MODE = "r";
+@export val WRITE_MODE = "w";
+@export val APPEND_MODE = "a";
+
+@export
+var readFileBytes = fn(@str path) {
+	sendFsSync({type: "readFile", path: path})
+}
 
 // readFile reads entire file content as a string
 // Parameters:
 //   path: path to the file to read
 // Returns:
 //   string content of file, or error if file cannot be read
+// @export
+// foreign readFile = fn(@str path);
 @export
-foreign readFile = fn(@str path);
+var readFile = fn(@str path) {
+	readFileBytes(path) /> bytesToStr
+}
 
 // writeFile writes string content to a file
 // Parameters:
 //   contents: string data to write
 //   path: path to file to write
 // Returns:
-//   nil on success, error if write fails
+//   the number of bytes written on success, error if write fails
 @export
-foreign writeFile = fn(@str contents, @str path);
+var writeFile = fn(@str contents, @str path) {
+	sendFsSync({type: "writeFile", path: path, data: contents})
+}
+
+@export
+var writeFile = fn(@bytes contents, @str path) {
+	sendFsSync({type: "writeFile", path: path, data: contents})
+}
 
 // appendFile appends string content to end of file
 // Parameters:
 //   contents: string data to append
 //   path: path to file to append to
 // Returns:
-//   nil on success, error if write fails
+//   the number of bytes written on success, error if write fails
 @export
-foreign appendFile = fn(@str contents, @str path);
+var appendFile = fn(@str contents, @str path) {
+	sendFsSync({type: "writeFile", mode: APPEND_MODE, path: path, data: contents})
+}
+
+@export
+var appendFile = fn(@bytes contents, @str path) {
+	sendFsSync({type: "writeFile", mode: APPEND_MODE, path: path, data: contents})
+}
 
 // info gets information about a file
 // Parameters:
@@ -34,7 +63,9 @@ foreign appendFile = fn(@str contents, @str path);
 // Returns:
 //   object containing file metadata
 @export
-foreign info = fn(@str path);
+var info = fn(@str path) {
+	sendFsSync({type: "info", path: path})
+}
 
 // exists checks if a file exists and is accessible
 // Parameters:
@@ -42,10 +73,14 @@ foreign info = fn(@str path);
 // Returns:
 //   true if file exists and is accessible, false otherwise
 @export
-foreign exists = fn(@str path);
+var exists = fn(@str path) {
+	sendFsSync({type: "exists", path: path})
+}
 
 @export
-foreign mkDirs = fn(... path);
+var mkDirs = fn(@str path) {
+	sendFsSync({type: "mkdirs", path: path})
+}
 
 // isDir checks if path points to a directory
 // Parameters:
@@ -53,7 +88,9 @@ foreign mkDirs = fn(... path);
 // Returns:
 //   true if path is a directory, false otherwise
 @export
-foreign isDir = fn(@str path);
+var isDir = fn(@str path) {
+	info(path).isDir
+}
 
 // ls lists contents of a directory (non-recursively)
 // Parameters:
@@ -61,7 +98,9 @@ foreign isDir = fn(@str path);
 // Returns:
 //   list of filenames in the directory
 @export
-foreign ls = fn(@str path);
+var ls = fn(@str path) {
+	sendFsSync({type: "ls", path: path})
+}
 
 // rm removes a file or empty directory
 // Parameters:
@@ -69,11 +108,9 @@ foreign ls = fn(@str path);
 // Returns:
 //   nil on success, error if removal fails
 @export
-foreign rm = fn(@str path);
-
-@export val READ_MODE = "r";
-@export val WRITE_MODE = "w";
-@export val APPEND_MODE = "a";
+var rm = fn(@str path) {
+	sendFsSync({type: "rm", path: path})
+}
 
 // openFile opens a file in specified mode
 // Parameters:
@@ -82,7 +119,10 @@ foreign rm = fn(@str path);
 // Returns:
 //   file handle number on success, error if open fails
 @export
-foreign openFile = fn(@str path, @str mode);
+var openFile = fn(@str path, @num replyTo, @str mode) {
+	lookup("filesystem") /> send({type:"open", path: path, mode: mode}, replyTo)
+	replyTo /> receiveFrom(1000)
+}
 
 // readLine reads the next line from an open file
 // Parameters:
@@ -90,7 +130,16 @@ foreign openFile = fn(@str path, @str mode);
 // Returns:
 //   string containing next line, or error if read fails
 @export
-foreign readLine = fn(@num handle);
+var readLine = fn(@num handle, @num replyTo) {
+	handle /> send({type: "readLine"}, replyTo)
+	replyTo
+}
+
+@export
+var read = fn(@num handle, @num replyTo, @num max = 4096) {
+	handle /> send({type: "read", max: max}, replyTo)
+	replyTo
+}
 
 // readBytes reads a fixed number of bytes from file
 // Parameters:
@@ -106,7 +155,16 @@ foreign readLine = fn(@num handle);
 // Returns:
 //   number of bytes written, or error if write fails
 @export
-foreign write = fn(@num handle, @str content);
+var write = fn(@num handle, @num replyTo, @str content) {
+	handle /> send({type: "write", data: content}, replyTo)
+	replyTo
+}
+
+@export
+var write = fn(@num handle, @num replyTo, @bytes content) {
+	handle /> send({type: "write", data: content}, replyTo)
+	replyTo
+}
 
 // closeFile closes an open file handle
 // Parameters:
@@ -114,13 +172,16 @@ foreign write = fn(@num handle, @str content);
 // Returns:
 //   nil on success, error if close fails
 @export
-foreign closeFile = fn(@num handle)
+var closeFile = fn(@num handle, @num replyTo) {
+	handle /> send({type:"close"}, replyTo)
+	replyTo /> receiveFrom(1000)
+}
 
 @export
-var readLines = fn(@num file, lines = []) {
-	match file /> readLine {
-		nil => lines
-		str => readLines(file, lines :+ str[:-1]) // -1 to trim the newline
+var readLines = fn(@num file, @num replyTo, lines = []) {
+	match file /> readLine(replyTo) /> receiveFrom(1000) {
+		{type: "eof"} => lines
+		{type: "readLine", line} => recur(file, replyTo, lines :+ line[:-1]) // -1 to trim the newline
 	}
 }
 
@@ -138,5 +199,28 @@ var listFilesRecursive = fn(@list path, @fun filter = fn(s) {true}, acc = []) {
 				recur(t, filter, acc)
 			}
 		}
+	}
+}
+
+
+
+var sendFsSync = fn(message) {
+	var replyTo = spawn()
+	defer replyTo /> terminate
+
+	lookup("filesystem") /> send(message, replyTo)
+	
+	match replyTo /> receiveFrom(1000) {
+		map if map.type == "info" => map;
+		{type:"readFile", bytes} => bytes;
+		{type:"readFile", text} => text;
+		{type:"exists", exists} => exists;
+		{type:"writeFile", written} => written;
+		{type:"ls", entries} => entries;
+		{type:"eof"} => nil;
+		{type:"mkdirs"} => true;
+		{type:"rm"} => true;
+		{type:"error", msg} => throw msg;
+		_ => throw "timeout";
 	}
 }

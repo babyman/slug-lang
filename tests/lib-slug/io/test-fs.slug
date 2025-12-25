@@ -1,7 +1,8 @@
 var {*} = import(
     "slug.io.fs",
     "slug.std",
-    "slug.test"
+    "slug.actor",
+    "slug.test",
 );
 
 var filename = "__slug_test.txt";
@@ -34,26 +35,41 @@ filename /> rm();
 
 // read / write / append file with handle
 // --------------------------------------
-var fileOut = filename /> openFile(WRITE_MODE)
-fileOut /> write(hello)
-fileOut /> closeFile()
 
-var fileAppend = filename /> openFile(APPEND_MODE)
-fileAppend /> write(goodbye)
-fileAppend /> closeFile()
+var withReplyActor = fn(@fun doWith) {
+    var reply = spawn()
+    defer reply /> terminate
+    doWith(reply)
+}
 
-var fileIn = filename /> openFile(READ_MODE)
-defer filename /> rm()
-defer fileIn /> closeFile()
-//defer fileIn /> println("<<<< file defer")
+withReplyActor(fn(reply) {
+    var fileOut = filename /> openFile(reply, WRITE_MODE)
+    fileOut /> write(reply, hello) /> receiveFrom(1000)
+    fileOut /> closeFile(reply)
+})
 
-//fileIn /> println("<<<< file about to read")
-fileIn /> readLines /> len /> assertEqual(2);
-//fileIn /> println("<<<< file reading");
+withReplyActor(fn(reply) {
+    var fileAppend = filename /> openFile(reply, APPEND_MODE)
+    fileAppend /> write(reply, goodbye) /> receiveFrom(1000)
+    fileAppend /> closeFile(reply)
+})
+
+
+withReplyActor(fn(reply) {
+    var fileIn = filename /> openFile(reply, READ_MODE)
+    defer filename /> rm()
+    defer fileIn /> closeFile(reply)
+    //defer fileIn /> println("<<<< file defer")
+
+    //fileIn /> println("<<<< file about to read")
+    fileIn /> readLines(reply) /> len /> assertEqual(2);
+    //fileIn /> println("<<<< file reading");
+});
+
 
 // ls
 // ---------
 
-("./" /> ls() /> len() > 0) /> assertTrue()
+("./" /> ls /> len > 0) /> assertTrue()
 
 

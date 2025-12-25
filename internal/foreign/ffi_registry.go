@@ -8,20 +8,6 @@ import (
 func GetForeignFunctions() map[string]*object.Foreign {
 	return map[string]*object.Foreign{
 
-		"slug.io.fs.readFile":   fnIoFsReadFile(),
-		"slug.io.fs.writeFile":  fnIoFsWriteFile(),
-		"slug.io.fs.appendFile": fnIoFsAppendFile(),
-		"slug.io.fs.info":       fnIoFsInfo(),
-		"slug.io.fs.exists":     fnIoFsExists(),
-		"slug.io.fs.mkDirs":     fnIoFsMkdirs(),
-		"slug.io.fs.isDir":      fnIoFsIsDir(),
-		"slug.io.fs.ls":         fnIoFsLs(),
-		"slug.io.fs.rm":         fnIoFsRm(),
-		"slug.io.fs.openFile":   fnIoFsOpenFile(),
-		"slug.io.fs.readLine":   fnIoFsReadLine(),
-		"slug.io.fs.write":      fnIoFsWrite(),
-		"slug.io.fs.closeFile":  fnIoFsCloseFile(),
-
 		"slug.io.http.request": fnIoHttpRequest(),
 
 		"slug.bytes.strToBytes":    fnBytesStrToBytes(),
