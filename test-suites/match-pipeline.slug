@@ -5,11 +5,27 @@ var {*} = import(
 )
 
 @test
-var test01 = fn() {
+var testSimpleMatch = fn() {
     1 /> match {
             1 => "one";
             2 => "two";
             v => throw v;
         }
     /> assertEqual("one")
+}
+
+@test
+var testListMatch = fn() {
+    [1, 2, 3] /> match {
+            [h, ...] => h;
+        }
+    /> assertEqual(1)
+}
+
+@test
+var testMapMatch = fn() {
+    {a: 1, b: 2} /> match {
+            {a} => a;
+        }
+    /> assertEqual(1)
 }
