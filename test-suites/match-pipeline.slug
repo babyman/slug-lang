@@ -1,0 +1,15 @@
+var {*} = import(
+    "slug.string",
+    "slug.std",
+    "slug.test",
+)
+
+@test
+var test01 = fn() {
+    1 /> match {
+            1 => "one";
+            2 => "two";
+            v => throw v;
+        }
+    /> assertEqual("one")
+}

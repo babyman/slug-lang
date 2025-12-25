@@ -488,12 +488,11 @@ func (p *Parser) parseMatchExpression() ast.Expression {
 	match := &ast.MatchExpression{Token: p.curToken}
 
 	// Check if match has a value to match against
+	// If it's a prefix expression (match value { ... }), we expect a value.
+	// If it's part of a pipeline (val /> match { ... }), the value will be injected later.
 	if !p.peekTokenIs(token.LBRACE) {
 		p.nextToken()
 		match.Value = p.parseExpression(LOWEST)
-	} else {
-		p.addErrorAt(match.Token.Position, "match expression must be followed by an expression")
-		return nil
 	}
 
 	if !p.expectPeek(token.LBRACE) {
@@ -1164,8 +1163,18 @@ func (p *Parser) parseCallChainExpression(left ast.Expression) ast.Expression {
 
 	right := p.parseExpression(precedence)
 	if right == nil {
-		p.addErrorAt(p.curToken.Position, "expected function after '/>'")
+		p.addErrorAt(p.curToken.Position, "expected function or match after '/>'")
 		return nil
+	}
+
+	// Support for value /> match { ... }
+	if match, ok := right.(*ast.MatchExpression); ok {
+		if match.Value != nil {
+			p.addErrorAt(match.Token.Position, "match in pipeline cannot have an explicit value")
+			return nil
+		}
+		match.Value = left
+		return match
 	}
 
 	// If right is a call, prepend left to its arguments.
