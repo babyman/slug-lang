@@ -999,11 +999,38 @@ func (p *Parser) parseFunctionLiteral() ast.Expression {
 	lit.Parameters = p.parseFunctionParameters()
 	lit.Signature = p.generateSignature(lit.Parameters)
 
-	if !p.expectPeek(token.LBRACE) {
-		return nil
-	}
+	if p.peekTokenIs(token.MATCH) {
+		p.nextToken() // consume 'match'
+		match := p.parseMatchExpression().(*ast.MatchExpression)
 
-	lit.Body = p.parseBlockStatement()
+		// Inject the parameter(s) as the value to match against
+		if len(lit.Parameters) == 1 {
+			match.Value = lit.Parameters[0].Name
+		} else {
+			// For multiple parameters, match against a list of them
+			list := &ast.ListLiteral{Token: lit.Token}
+			for _, param := range lit.Parameters {
+				list.Elements = append(list.Elements, param.Name)
+			}
+			match.Value = list
+		}
+
+		// Wrap the match in a block statement to serve as the function body
+		lit.Body = &ast.BlockStatement{
+			Token: match.Token,
+			Statements: []ast.Statement{
+				&ast.ExpressionStatement{
+					Token:      match.Token,
+					Expression: match,
+				},
+			},
+		}
+	} else {
+		if !p.expectPeek(token.LBRACE) {
+			return nil
+		}
+		lit.Body = p.parseBlockStatement()
+	}
 
 	// Analyze function body for tail calls
 	p.setTailCallFlags(lit)

@@ -1,0 +1,69 @@
+var {*} = import(
+    "slug.string",
+    "slug.std",
+    "slug.test",
+)
+
+@test
+var testSingleParameterFunction = fn() {
+    var f = fn(a) match {
+        1 => "one";
+        _ => "other"
+    }
+
+    f(1) /> assertEqual("one")
+    f(2) /> assertEqual("other")
+}
+
+@test
+var testMultipleParameterFunction = fn() {
+    var f = fn(a, b) match {
+        [x, y] => x + y;
+    }
+
+    f(1, 2) /> assertEqual(3)
+}
+
+@test
+var testVargsParameterFunction_singleVargsParameter = fn() {
+    var f = fn(...a) match {
+        [h, ...] => h;
+    }
+
+    f(1, 2) /> assertEqual(1)
+}
+
+@test
+var testVargsParameterFunction_matchVargs = fn() {
+    var f = fn(a, ...b) match {
+        [x, y] => x + reduce(y, 1, fn(i, j) {i * j});
+    }
+
+    f(1, 2, 3) /> assertEqual(7)
+}
+
+@test
+var testVargsParameterFunction_matchTheNestedList = fn() {
+    var f = fn(a, ...b) match {
+        [x, [y, z, ...]] => x + y + z;
+        [x, []] => x;
+        _ => 0
+    }
+
+    f(1, 2, 3) /> assertEqual(6)
+    f(1, 2) /> assertEqual(0)
+    f(1) /> assertEqual(1)
+}
+
+@test
+var testTailCallOptimizedRecursiveFunction = fn() {
+
+    var sum = fn(numbers, acc = 0) match {
+        [[], acc] => acc;
+        [[h, ...t], acc] => recur(t, acc + h);
+    }
+
+    var nums = [1, 2, 3];
+    nums /> sum /> assertEqual(6)
+}
+
