@@ -109,3 +109,10 @@ foreign mailboxLen = fn();
 @export
 foreign mailboxLen = fn(@num pid);
 
+
+@export
+var withReplyActor = fn(@fun doWith) {
+    var reply = spawn()
+    defer reply /> terminate
+    doWith(reply)
+}

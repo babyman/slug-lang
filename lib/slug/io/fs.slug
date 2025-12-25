@@ -135,18 +135,18 @@ var readLine = fn(@num handle, @num replyTo) {
 	replyTo
 }
 
+
+// read reads a fixed number of bytes from file
+// Parameters:
+//   handle: file handle from openFile
+//   count: number of bytes to read
+// Returns:
+//   bytes containing read bytes, or error if read fails
 @export
 var read = fn(@num handle, @num replyTo, @num max = 4096) {
 	handle /> send({type: "read", max: max}, replyTo)
 	replyTo
 }
-
-// readBytes reads a fixed number of bytes from file
-// Parameters:
-//   handle: file handle from openFile
-//   count: number of bytes to read
-// Returns:
-//   string containing read bytes, or error if read fails
 
 // write writes string content to an open file
 // Parameters:

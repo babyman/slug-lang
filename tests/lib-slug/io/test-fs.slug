@@ -35,13 +35,6 @@ filename /> rm();
 
 // read / write / append file with handle
 // --------------------------------------
-
-var withReplyActor = fn(@fun doWith) {
-    var reply = spawn()
-    defer reply /> terminate
-    doWith(reply)
-}
-
 withReplyActor(fn(reply) {
     var fileOut = filename /> openFile(reply, WRITE_MODE)
     fileOut /> write(reply, hello) /> receiveFrom(1000)
