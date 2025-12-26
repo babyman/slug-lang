@@ -101,23 +101,19 @@ var compute = fn(@map map, key, f) {
 	[[1,2], fn(n) {n * 2}], [2,4]
 )
 @export
-var map = fn(@list vs, @fun f, acc = []) {
-	match vs {
-		[h, ...t] => recur(t, f, acc :+ h /> f());
-		[] => acc;
-	}
+var map = fn(@list vs, @fun f, acc = []) match {
+	[[], ...] => acc;
+	[[h, ...t], ...] => recur(t, f, acc :+ h /> f());
 }
 
 @testWith(
 	[[1,2,3,4], fn(v) { v % 2 == 0}], [2,4]
 )
 @export
-var filter = fn(@list vs, f, acc = []) {
-	match vs {
-		[h, ...t] if h /> f() => recur(t, f, acc :+ h);
-		[h, ...t] => recur(t, f, acc);
-		[] => acc;
-	}
+var filter = fn(@list vs, f, acc = []) match {
+	[[], ...] => acc;
+	[[h, ...t], ...] if h /> f() => recur(t, f, acc :+ h);
+	[[h, ...t], ...] => recur(t, f, acc);
 }
 
 @testWith(
@@ -126,11 +122,9 @@ var filter = fn(@list vs, f, acc = []) {
 	[[1,2,3], 9, fn(a,b) {a+b}], 15,
 )
 @export
-var reduce = fn(@list vs, v, f) {
-	match vs {
-		[h, ...t] => recur(t, f(v, h), f);
-		[] => v;
-	}
+var reduce = fn(@list vs, v, f) match {
+	[[], ...] => v;
+	[[h, ...t], ...] => recur(t, f(v, h), f);
 }
 
 @testWith(
@@ -215,17 +209,17 @@ var zip = fn(@list lst1, @list lst2, acc = []) {
 @export
 var toBoolean = fn(v) {
 	match v /> type() {
-		t if t == BOOLEAN_TYPE => v;
-		t if t == NUMBER_TYPE => v == 1;
-		t if t == NIL_TYPE => false;
-		t if t == STRING_TYPE => {
+		^BOOLEAN_TYPE => v;
+		^NUMBER_TYPE => v == 1;
+		^NIL_TYPE => false;
+		^STRING_TYPE => {
 			match v /> toLower() {
 				"true", "yes", "1" => true;
 				"false", "no", "0" => false;
-				_ => UnsupportedTypeConversionError({msg: "Cannot convert '{{v}}' to boolean"})
+				_ => throw {type: "error", msg: "Cannot convert '{{v}}' to boolean"}
 			}
 		}
-		t => throw UnsupportedTypeConversionError({msg: "Cannot convert type {{t}} to boolean"});
+		t => throw {type: "error", msg: "Cannot convert type {{t}} to boolean"};
 	}
 }
 
@@ -246,10 +240,10 @@ foreign parseNumber = fn(@str value);
 @export
 var toNumber = fn(v) {
 	match v /> type() {
-		t if t == NIL_TYPE => nil;
-		t if t == NUMBER_TYPE => v;
-		t if t == STRING_TYPE => parseNumber(v);
-		t => throw UnsupportedTypeConversionError({msg: "Cannot convert type {{t}} to number"});
+		^NIL_TYPE => nil;
+		^NUMBER_TYPE => v;
+		^STRING_TYPE => parseNumber(v);
+		t => throw {type: "error", msg: "Cannot convert type {{t}} to number"};
 	}
 }
 
@@ -262,8 +256,8 @@ var toNumber = fn(v) {
 @export
 var toString = fn(v) {
 	match v /> type() {
-		t if t == NIL_TYPE => nil;
-		t if t == STRING_TYPE => v;
+		^NIL_TYPE => nil;
+		^STRING_TYPE => v;
 		t => v + "";
 	}
 }
@@ -336,12 +330,9 @@ var equals = fn(@map m1, @map m2) {
 }
 
 @export
-var ifNil = fn(v, @fun f) {
-	if (v == nil) {
-		f()
-	} else {
-		v
-	}
+var ifNil = fn(v, @fun f) match {
+	[nil, ...] => f();
+	_ => v;
 }
 
 @export
@@ -350,12 +341,9 @@ var ifNil = fn(v, default) {
 }
 
 @export
-var nonNil = fn(v, @fun f, default = nil) {
-	if (v != nil) {
-		f(v)
-	} else {
-		default
-	}
+var nonNil = fn(v, @fun f, default = nil) match {
+	[nil, ...] => default;
+	[...] => f(v);
 }
 
 @export

@@ -129,18 +129,13 @@ var readValue = fn(@list args, @map opts) {
 	[nil, STRING_TYPE], nil,
 	["123", STRING_TYPE], "123"
 )
-var convertValue = fn(newValue, targetType) {
-	if (targetType == newValue /> type() || targetType == NIL_TYPE) {
-		newValue;
-	} else if( targetType == BOOLEAN_TYPE ) {
-		toBoolean(newValue)
-	} else if( targetType == NUMBER_TYPE ) {
-		toNumber(newValue)
-	} else if( targetType == STRING_TYPE ) {
-		toString(newValue)
-	} else {
-		throw UnsupportedTypeConversionError({msg:"Cannot convert '{{newValue}}' to type {{targetType}}"})
-	}
+var convertValue = fn(newValue, targetType) match {
+	[nv, tt] if tt == nv /> type() => nv;
+	[nv, ^NIL_TYPE]     => nv;
+	[nv, ^BOOLEAN_TYPE] => toBoolean(nv);
+	[nv, ^NUMBER_TYPE]  => toNumber(nv);
+	[nv, ^STRING_TYPE]  => toString(nv);
+	[nv, tt] => throw {type: "error", msg:"Cannot convert '{{nv}}' to type {{tt}}"}
 }
 
 var argString = fn(@str arg) {

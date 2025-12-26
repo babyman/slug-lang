@@ -64,5 +64,3 @@ withReplyActor(fn(reply) {
 // ---------
 
 ("./" /> ls /> len > 0) /> assertTrue()
-
-

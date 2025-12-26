@@ -186,20 +186,14 @@ var readLines = fn(@num file, @num replyTo, lines = []) {
 }
 
 @export
-var listFilesRecursive = fn(@list path, @fun filter = fn(s) {true}, acc = []) {
-	match path {
-		[] => acc;
-		[h, ...t] => {
-			if (h /> isDir) {
-				var files = ls(h) /> map(fn(v) {h + "/" + v})
-				recur(t + files, filter, acc)
-			} else if (h /> filter) {
-				recur(t, filter, acc :+ h)
-			} else {
-				recur(t, filter, acc)
-			}
+var listFilesRecursive = fn(@list path, @fun filter = fn(s) {true}, acc = []) match {
+	[[], ...] => acc;
+	[[h, ...t], ...] if h /> isDir => {
+			var files = ls(h) /> map(fn(v) {h + "/" + v})
+			recur(t + files, filter, acc)
 		}
-	}
+	[[h, ...t], ...] if h /> filter => recur(t, filter, acc :+ h);
+	[[h, ...t], ...] => recur(t, filter, acc);
 }
 
 

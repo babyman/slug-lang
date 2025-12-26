@@ -52,12 +52,10 @@ var checkTerminal = fn() {
 	[[31,1]], "31;1",
 	[[0]], "0",
 )
-var combine = fn(@list i, acc = "") {
-	match i {
-		[] => acc;
-		[h] => acc + h;
-		[h, ...t] => recur(t, acc + h + ";" )
-	}
+var combine = fn(@list i, acc = "") match {
+	[[], acc] => acc;
+	[[h], acc] => acc + h;
+	[[h, ...t], acc] => recur(t, acc + h + ";" );
 }
 
 @testWith(

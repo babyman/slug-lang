@@ -34,7 +34,7 @@ var assertThrows = fn(@fun f, expected, @str msg = nil) {
                 msg = "No error was thrown";
             }
         }
-        throw {type: "AssertionError", msg: msg}
+        throw {type: "error", msg: msg}
     }
 }
 
@@ -51,7 +51,7 @@ var assertErrorType = fn(@fun f, @str expected, @str msg = nil) {
                 msg = "No error was thrown";
             }
         }
-        throw {type: "AssertionError", msg: msg}
+        throw {type: "error", msg: msg}
     }
 }
 
@@ -61,7 +61,7 @@ var assert = fn(a, msg = nil) {
         if ( !msg ) {
             msg = "{{a}} ({{a /> type()}}) is not true";
         }
-        throw {type: "AssertionError", msg: msg}
+        throw {type: "error", msg: msg}
     }
 }
 
@@ -86,7 +86,7 @@ var assertEqual = fn(value, expected, msg = nil) {
         if (!msg) {
             msg = "'{{value}}' is not equal to '{{expected}}'"
         }
-        throw {type: "AssertionError", msg: msg}
+        throw {type: "error", msg: msg}
     }
     value
 }
@@ -98,7 +98,7 @@ var assertNotEqual = fn(value, expected, msg = nil) {
         if (!msg) {
             msg = "Expected '{{value}}' to NOT equal '{{expected}}'"
         }
-        throw {type: "AssertionError", msg: msg}
+        throw {type: "error", msg: msg}
     }
     value
 }
@@ -109,7 +109,7 @@ var assertNil = fn(value, msg = nil) {
         if (!msg) {
             msg = "Expected nil but got '{{value}}'"
         }
-        throw {type: "AssertionError", msg: msg}
+        throw {type: "error", msg: msg}
     }
 }
 
@@ -119,7 +119,7 @@ var assertNotNil = fn(value, msg = nil) {
         if (!msg) {
             msg = "Expected non-nil"
         }
-        throw {type: "AssertionError", msg: msg}
+        throw {type: "error", msg: msg}
     }
 }
 
@@ -128,7 +128,7 @@ var fail = fn(msg = nil) {
     if ( !msg ) {
         msg = "Test failed!";
     }
-    throw {type: "AssertionError", msg: msg}
+    throw {type: "error", msg: msg}
 }
 
 @export var eq = assertEqual

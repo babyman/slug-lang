@@ -50,15 +50,12 @@ foreign receiveFrom = fn(@num replyActor, @num timeout_ms = nil); // -> msg | ni
 
 
 @export
-var receiveN = fn(@num n, @num timeout = 10, @list acc = []) {
-	if ( n == 0 ) {
-		acc
-	} else {
-		val msg = receive(timeout)
-		if ( msg == nil ) {
-			acc
-		} else {
-			recur(n - 1, timeout, acc :+ msg)
+var receiveN = fn(@num n, @num timeout = 10, @list acc = []) match {
+	[0, ...] => acc;
+	[n, ...] => {
+		match receive(timeout) {
+			nil => acc;
+			msg => recur(n - 1, timeout, acc :+ msg);
 		}
 	}
 }

@@ -138,13 +138,11 @@ var split = fn(@str str, @str delimiter, @num max = -1, @num count = 1, @list st
 	[["slug", "test"], "."], "slug.test",
 )
 @export
-var join = fn(strs, @str delimiter, @str str = nil) {
-	match strs {
-		[] if str == nil => "";
-		[] => str;
-		[h, ...t] if str == nil => recur(t, delimiter, h);
-		[h, ...t] => recur(t, delimiter, str + delimiter + h);
-	}
+var join = fn(strs, @str delimiter, @str str = nil) match {
+	[[], ...] if str == nil => "";
+	[[], ...] => str;
+	[[h, ...t], ...] if str == nil => recur(t, delimiter, h);
+	[[h, ...t], ...] => recur(t, delimiter, str + delimiter + h);
 }
 
 @testWith(
@@ -154,12 +152,9 @@ var join = fn(strs, @str delimiter, @str str = nil) {
 	["E &amp; S", "&amp;", "&"], "E & S",
 )
 @export
-var replaceAll = fn(@str str, @str replace, @str with) {
-	if (str == nil) {
-		nil
-	} else {
-		str /> split(replace) /> join(with);
-	}
+var replaceAll = fn(@str str, @str replace, @str with) match {
+	[nil, ...] => nil;
+	[...] => str /> split(replace) /> join(with);
 }
 
 @export

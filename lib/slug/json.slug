@@ -20,12 +20,12 @@ var {*} = import(
 @export
 var encode = fn(v) {
 	match (type(v)) {
-		"STRING"  => encodeString(v);
-		"NUMBER"  => encodeNumber(v);
-		"BOOLEAN" => encodeBool(v);
-		"NIL"     => "null";
-		"LIST"    => encodeList(v);
-		"MAP"     => encodeObject(v);
+		^STRING_TYPE  => encodeString(v);
+		^NUMBER_TYPE  => encodeNumber(v);
+		^BOOLEAN_TYPE => encodeBool(v);
+		^NIL_TYPE     => "null";
+		^LIST_TYPE    => encodeList(v);
+		^MAP_TYPE     => encodeObject(v);
 		_ => error("json: unsupported type for encode: " + type(v));
 	}
 }
@@ -80,20 +80,19 @@ var encodeNumber = fn(@num n) {
 	toString(n)
 }
 
-var encodeBool = fn(@bool b) {
-	if (b) { "true"; } else { "false"; }
+var encodeBool = fn(@bool b) match {
+	true => "true";
+	_ => "false";
 }
 
 var encodeList = fn(@list lst) {
 	"[" + encodeListItems(lst, "") + "]"
 }
 
-var encodeListItems = fn(@list lst, @str acc) {
-	match lst {
-		[] => acc;
-		[h] => acc + encode(h);
-		[h, ...t] => recur(t, acc + encode(h) + ",");
-	}
+var encodeListItems = fn(@list lst, @str acc) match {
+	[[], ...] => acc;
+	[[h], ...] => acc + encode(h);
+	[[h, ...t], ...] => recur(t, acc + encode(h) + ",");
 }
 
 var encodeObject = fn(@map m) {
@@ -101,22 +100,20 @@ var encodeObject = fn(@map m) {
 	"{" + encodeObjectPairs(keys, m, "") + "}"
 }
 
-var encodeObjectPairs = fn(@list keys, @map m, @str acc) {
-	match keys {
-		[] => acc;
-		[k] => {
-			if (type(k) != "STRING") {
-				error("json: map keys must be strings, got: " + type(k));
-			} else {
-				acc + encodeString(k) + ":" + encode(m[k]);
-			}
+var encodeObjectPairs = fn(@list keys, @map m, @str acc) match {
+	[[], ...] => acc;
+	[[k], ...] => {
+		if (type(k) != "STRING") {
+			error("json: map keys must be strings, got: " + type(k));
+		} else {
+			acc + encodeString(k) + ":" + encode(m[k]);
 		}
-		[k, ...rest] => {
-			if (type(k) != "STRING") {
-				error("json: map keys must be strings, got: " + type(k));
-			} else {
-				recur(rest, m, acc + encodeString(k) + ":" + encode(m[k]) + ",");
-			}
+	}
+	[[k, ...rest], ...] => {
+		if (type(k) != "STRING") {
+			error("json: map keys must be strings, got: " + type(k));
+		} else {
+			recur(rest, m, acc + encodeString(k) + ":" + encode(m[k]) + ",");
 		}
 	}
 }
@@ -127,12 +124,12 @@ var encodeObjectPairs = fn(@list keys, @map m, @str acc) {
 
 var prettyPrint = fn(v, @num indent, @num depth) {
 	match (type(v)) {
-		"STRING"  => encodeString(v);
-		"NUMBER"  => encodeNumber(v);
-		"BOOLEAN" => encodeBool(v);
-		"NIL"     => "null";
-		"LIST"    => prettyList(v, indent, depth);
-		"MAP"     => prettyObject(v, indent, depth);
+		^STRING_TYPE  => encodeString(v);
+		^NUMBER_TYPE  => encodeNumber(v);
+		^BOOLEAN_TYPE => encodeBool(v);
+		^NIL_TYPE     => "null";
+		^LIST_TYPE    => prettyList(v, indent, depth);
+		^MAP_TYPE     => prettyObject(v, indent, depth);
 		_ => error("json: unsupported type for pretty: " + type(v))
 	}
 }
@@ -147,12 +144,10 @@ var prettyList = fn(@list lst, @num indent, @num depth) {
 	}
 }
 
-var prettyListItems = fn(@list lst, @num indent, @num depth, @str indentStr, @str acc) {
-	match lst {
-		[] => acc;
-		[h] => acc + indentStr + prettyPrint(h, indent, depth);
-		[h, ...t] => recur(t, indent, depth, indentStr, acc + indentStr + prettyPrint(h, indent, depth) + ",\n");
-	}
+var prettyListItems = fn(@list lst, @num indent, @num depth, @str indentStr, @str acc) match {
+	[[], ...] => acc;
+	[[h], ...] => acc + indentStr + prettyPrint(h, indent, depth);
+	[[h, ...t], ...] => recur(t, indent, depth, indentStr, acc + indentStr + prettyPrint(h, indent, depth) + ",\n");
 }
 
 var prettyObject = fn(@map m, @num indent, @num depth) {
@@ -246,7 +241,7 @@ var tokenize = fn(@str s, @num i, @num n, @list tokens) {
 }
 
 var error = fn(@str msg) {
-	throw {type: "JsonError", msg: msg}
+	throw {type: "error", msg: msg}
 }
 
 var isWhitespace = fn(@str c) {
@@ -356,22 +351,15 @@ var parseValue = fn(@list tokens, @num idx) {
 		var token = tokens[idx];
 		var tokenType = token["type"];
 
-		if (tokenType == "string") {
-			{"value": token["value"], "nextIdx": idx + 1}
-		} else if (tokenType == "number") {
-			{"value": token["value"], "nextIdx": idx + 1}
-		} else if (tokenType == "true") {
-			{"value": true, "nextIdx": idx + 1}
-		} else if (tokenType == "false") {
-			{"value": false, "nextIdx": idx + 1}
-		} else if (tokenType == "null") {
-			{"value": nil, "nextIdx": idx + 1}
-		} else if (tokenType == "lbracket") {
-			parseArray(tokens, idx + 1, [], false)
-		} else if (tokenType == "lbrace") {
-			parseObject(tokens, idx + 1, {}, false)
-		} else {
-			error("json: unexpected token " + tokenType + " at position " + idx)
+		match tokenType {
+			"string" => return {"value": token["value"], "nextIdx": idx + 1};
+			"number" => return {"value": token["value"], "nextIdx": idx + 1};
+			"true" => return {"value": true, "nextIdx": idx + 1};
+			"false" => return {"value": false, "nextIdx": idx + 1};
+			"null" => return {"value": nil, "nextIdx": idx + 1};
+			"lbracket" => parseArray(tokens, idx + 1, [], false);
+			"lbrace" => parseObject(tokens, idx + 1, {}, false);
+			_ => error("json: unexpected token " + tokenType + " at position " + idx);
 		}
 	}
 }

@@ -52,22 +52,16 @@ foreign base64Encode = fn(@bytes b)
     [0x"ff", 3], 0x"ffffff",
 )
 @export
-var repeat = fn(@bytes b, @num count, @bytes acc = 0x"") {
-    if ( count == 0 ) {
-        acc
-    } else {
-        recur(b, count - 1, acc + b)
-    }
+var repeat = fn(@bytes b, @num count, @bytes acc = 0x"") match {
+    [_, 0, ...] => acc;
+    [...] => recur(b, count - 1, acc + b);
 }
 
 @testWith(
     [0x"a8ff04"], [168, 255, 4],
 )
 @export
-var bytesToNumbers = fn(@bytes b, i = 0, acc = []) {
-    if ( len(b) == i ) {
-        acc
-    } else {
-        recur(b, i + 1, acc :+ b[i])
-    }
+var bytesToNumbers = fn(@bytes b, i = 0, acc = []) match {
+    [b, ...] if len(b) == i  => acc;
+    [b, ...]                 => recur(b, i + 1, acc :+ b[i])
 }
