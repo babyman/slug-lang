@@ -2,13 +2,20 @@ package parser
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"slug/internal/ast"
 )
 
-// WalkAST recursively traverses an AST and serializes it into a map structure for JSON output.
+// WalkAST recursively traverses an AST and serializes it into a machine-centric map structure.
+// This output is designed for stability, canonical representation, and tool-chain consumption.
 func WalkAST(node ast.Node) interface{} {
+	if node == nil || (reflect.ValueOf(node).Kind() == reflect.Ptr && reflect.ValueOf(node).IsNil()) {
+		return nil
+	}
+
 	switch n := node.(type) {
 	case *ast.Program:
 		statements := make([]interface{}, len(n.Statements))
@@ -16,33 +23,40 @@ func WalkAST(node ast.Node) interface{} {
 			statements[i] = WalkAST(s)
 		}
 		return map[string]interface{}{
-			"0.type":       "Program",
-			"1.statements": statements,
+			"type":       "Program",
+			"statements": statements,
 		}
 
 	case *ast.VarExpression:
 		return map[string]interface{}{
-			"0.type":     "VarExpression",
-			"1.position": n.Token.Position,
-			"2.token":    n.TokenLiteral(),
-			"3.pattern":  WalkAST(n.Pattern),
-			"4.value":    WalkAST(n.Value),
+			"type":    "VarExpression",
+			"tags":    walkTags(n.Tags),
+			"token":   n.TokenLiteral(),
+			"pattern": WalkAST(n.Pattern),
+			"value":   WalkAST(n.Value),
+		}
+
+	case *ast.ValExpression:
+		return map[string]interface{}{
+			"type":    "ValExpression",
+			"tags":    walkTags(n.Tags),
+			"token":   n.TokenLiteral(),
+			"pattern": WalkAST(n.Pattern),
+			"value":   WalkAST(n.Value),
 		}
 
 	case *ast.ReturnStatement:
 		return map[string]interface{}{
-			"0.type":        "ReturnStatement",
-			"1.position":    n.Token.Position,
-			"2.token":       n.TokenLiteral(),
-			"3.returnValue": WalkAST(n.ReturnValue),
+			"type":        "ReturnStatement",
+			"token":       n.TokenLiteral(),
+			"returnValue": WalkAST(n.ReturnValue),
 		}
 
 	case *ast.ExpressionStatement:
 		return map[string]interface{}{
-			"0.type":       "ExpressionStatement",
-			"1.position":   n.Token.Position,
-			"2.token":      n.TokenLiteral(),
-			"3.expression": WalkAST(n.Expression),
+			"type":       "ExpressionStatement",
+			"token":      n.TokenLiteral(),
+			"expression": WalkAST(n.Expression),
 		}
 
 	case *ast.BlockStatement:
@@ -51,103 +65,89 @@ func WalkAST(node ast.Node) interface{} {
 			statements[i] = WalkAST(s)
 		}
 		return map[string]interface{}{
-			"0.type":       "BlockStatement",
-			"1.position":   n.Token.Position,
-			"2.token":      n.TokenLiteral(),
-			"3.statements": statements,
+			"type":       "BlockStatement",
+			"token":      n.TokenLiteral(),
+			"statements": statements,
 		}
 
 	case *ast.Identifier:
 		return map[string]interface{}{
-			"0.type":     "Identifier",
-			"1.position": n.Token.Position,
-			"2.token":    n.TokenLiteral(),
-			"3.value":    n.Value,
+			"type":  "Identifier",
+			"token": safeTokenLiteral(n),
+			"value": n.Value,
 		}
 
 	case *ast.Boolean:
 		return map[string]interface{}{
-			"0.type":     "Boolean",
-			"1.position": n.Token.Position,
-			"2.token":    n.TokenLiteral(),
-			"3.value":    n.Value,
+			"type":  "Boolean",
+			"token": n.TokenLiteral(),
+			"value": n.Value,
 		}
 
 	case *ast.Nil:
 		return map[string]interface{}{
-			"0.type":     "Nil",
-			"1.position": n.Token.Position,
-			"2.token":    n.TokenLiteral(),
+			"type":  "Nil",
+			"token": n.TokenLiteral(),
 		}
 
 	case *ast.NumberLiteral:
 		return map[string]interface{}{
-			"0.type":     "NumberLiteral",
-			"1.position": n.Token.Position,
-			"2.token":    n.TokenLiteral(),
-			"3.value":    n.Value,
-		}
-
-	case *ast.InfixExpression:
-		return map[string]interface{}{
-			"0.type":     "InfixExpression",
-			"1.position": n.Token.Position,
-			"2.token":    n.TokenLiteral(),
-			"3.left":     WalkAST(n.Left),
-			"4.operator": n.Operator,
-			"5.right":    WalkAST(n.Right),
-		}
-
-	case *ast.PrefixExpression:
-		return map[string]interface{}{
-			"0.type":     "PrefixExpression",
-			"1.position": n.Token.Position,
-			"2.token":    n.TokenLiteral(),
-			"3.operator": n.Operator,
-			"4.right":    WalkAST(n.Right),
+			"type":  "NumberLiteral",
+			"token": safeTokenLiteral(n),
+			"value": n.Value.String(), // Dec64 as string for precision
 		}
 
 	case *ast.StringLiteral:
 		return map[string]interface{}{
-			"0.type":     "StringLiteral",
-			"1.position": n.Token.Position,
-			"2.token":    n.TokenLiteral(),
-			"3.value":    n.Value,
+			"type":  "StringLiteral",
+			"token": n.TokenLiteral(),
+			"value": n.Value,
 		}
 
-	case *ast.ListLiteral:
-		elements := make([]interface{}, len(n.Elements))
-		for i, el := range n.Elements {
-			elements[i] = WalkAST(el)
-		}
+	case *ast.BytesLiteral:
 		return map[string]interface{}{
-			"0.type":     "ListLiteral",
-			"1.position": n.Token.Position,
-			"2.token":    n.TokenLiteral(),
-			"3.elements": elements,
+			"type":  "BytesLiteral",
+			"token": safeTokenLiteral(n),
+			"value": hex.EncodeToString(n.Value),
+		}
+
+	case *ast.InfixExpression:
+		return map[string]interface{}{
+			"type":     "InfixExpression",
+			"token":    n.TokenLiteral(),
+			"left":     WalkAST(n.Left),
+			"operator": n.Operator,
+			"right":    WalkAST(n.Right),
+		}
+
+	case *ast.PrefixExpression:
+		return map[string]interface{}{
+			"type":     "PrefixExpression",
+			"token":    n.TokenLiteral(),
+			"operator": n.Operator,
+			"right":    WalkAST(n.Right),
 		}
 
 	case *ast.IfExpression:
 		return map[string]interface{}{
-			"0.type":      "IfExpression",
-			"1.position":  n.Token.Position,
-			"2.token":     n.TokenLiteral(),
-			"3.condition": WalkAST(n.Condition),
-			"4.then":      WalkAST(n.ThenBranch),
-			"5.else":      WalkAST(n.ElseBranch),
+			"type":       "IfExpression",
+			"token":      safeTokenLiteral(n),
+			"condition":  WalkAST(n.Condition),
+			"thenBranch": WalkAST(n.ThenBranch),
+			"elseBranch": WalkAST(n.ElseBranch),
 		}
 
 	case *ast.FunctionLiteral:
-		parameters := make([]interface{}, len(n.Parameters))
-		for i, param := range n.Parameters {
-			parameters[i] = WalkAST(param)
+		params := make([]interface{}, len(n.Parameters))
+		for i, p := range n.Parameters {
+			params[i] = WalkAST(p)
 		}
 		return map[string]interface{}{
-			"0.type":       "FunctionLiteral",
-			"1.position":   n.Token.Position,
-			"2.token":      n.TokenLiteral(),
-			"3.parameters": parameters,
-			"4.body":       WalkAST(n.Body),
+			"type":        "FunctionLiteral",
+			"token":       n.TokenLiteral(),
+			"parameters":  params,
+			"body":        WalkAST(n.Body),
+			"hasTailCall": n.HasTailCall,
 		}
 
 	case *ast.CallExpression:
@@ -156,182 +156,208 @@ func WalkAST(node ast.Node) interface{} {
 			args[i] = WalkAST(arg)
 		}
 		return map[string]interface{}{
-			"0.type":      "CallExpression",
-			"1.position":  n.Token.Position,
-			"2.token":     n.TokenLiteral(),
-			"3.function":  WalkAST(n.Function),
-			"4.arguments": args,
+			"type":       "CallExpression",
+			"token":      safeTokenLiteral(n),
+			"function":   WalkAST(n.Function),
+			"arguments":  args,
+			"isTailCall": n.IsTailCall,
 		}
 
-	case *ast.MapLiteral:
-		pairs := map[string]interface{}{}
-		for key, value := range n.Pairs {
-			pairs[fmt.Sprintf("%v", WalkAST(key))] = WalkAST(value)
+	case *ast.RecurExpression:
+		args := make([]interface{}, len(n.Arguments))
+		for i, arg := range n.Arguments {
+			args[i] = WalkAST(arg)
 		}
 		return map[string]interface{}{
-			"0.type":     "MapLiteral",
-			"1.position": n.Token.Position,
-			"2.token":    n.TokenLiteral(),
-			"3.pairs":    pairs,
+			"type":      "RecurExpression",
+			"token":     n.TokenLiteral(),
+			"arguments": args,
 		}
 
-	case *ast.FunctionParameter:
-		return map[string]interface{}{
-			"0.type":       "FunctionParameter",
-			"2.token":      n.TokenLiteral(),
-			"3.name":       WalkAST(n.Name),
-			"4.isVariadic": n.IsVariadic,
-			"5.default":    WalkAST(n.Default),
-		}
-
-	case *ast.MatchExpression:
-		var cases []interface{}
-		for _, c := range n.Cases {
-			cases = append(cases, WalkAST(c))
-		}
-		return map[string]interface{}{
-			"0.type":       "MatchExpression",
-			"1.position":   n.Token.Position,
-			"2.expression": WalkAST(n.Value),
-			"3.cases":      cases,
-		}
-
-	case *ast.MatchCase:
-		return map[string]interface{}{
-			"0.type":     "MatchCase",
-			"1.position": n.Token.Position,
-			"2.pattern":  WalkAST(n.Pattern),
-			"3.guard":    WalkAST(n.Guard),
-			"4.body":     WalkAST(n.Body),
-		}
-
-	case *ast.WildcardPattern:
-		return map[string]interface{}{
-			"0.type":     "WildcardPattern",
-			"1.position": n.Token.Position,
-			"2.token":    n.Token.Literal,
-		}
-
-	case *ast.SpreadPattern:
-		var id interface{}
-		if n.Value != nil {
-			id = WalkAST(n.Value)
-		}
-		return map[string]interface{}{
-			"0.type":     "SpreadPattern",
-			"1.position": n.Token.Position,
-			"2.token":    n.Token.Literal,
-			"3.value":    id,
-		}
-
-	case *ast.LiteralPattern:
-		return map[string]interface{}{
-			"0.type":     "LiteralPattern",
-			"1.position": n.Token.Position,
-			"2.value":    WalkAST(n.Value),
-		}
-
-	case *ast.IdentifierPattern:
-		return map[string]interface{}{
-			"0.type":       "IdentifierPattern",
-			"1.position":   n.Token.Position,
-			"2.identifier": WalkAST(n.Value),
-		}
-
-	case *ast.MultiPattern:
-		patterns := make([]interface{}, len(n.Patterns))
-		for i, p := range n.Patterns {
-			patterns[i] = WalkAST(p)
-		}
-		return map[string]interface{}{
-			"0.type":     "MultiPattern",
-			"1.position": n.Token.Position,
-			"2.patterns": patterns,
-		}
-
-	case *ast.ListPattern:
+	case *ast.ListLiteral:
 		elements := make([]interface{}, len(n.Elements))
 		for i, el := range n.Elements {
 			elements[i] = WalkAST(el)
 		}
 		return map[string]interface{}{
-			"0.type":     "ListPattern",
-			"1.position": n.Token.Position,
-			"2.elements": elements,
+			"type":     "ListLiteral",
+			"token":    n.TokenLiteral(),
+			"elements": elements,
 		}
 
-	case *ast.MapPattern:
-		pairs := map[string]interface{}{}
-		for key, value := range n.Pairs {
-			pairs[fmt.Sprintf("%v", key)] = WalkAST(value)
+	case *ast.MapLiteral:
+		type pair struct {
+			Key   interface{} `json:"key"`
+			Value interface{} `json:"value"`
+		}
+		pairs := make([]pair, 0, len(n.Pairs))
+		for k, v := range n.Pairs {
+			pairs = append(pairs, pair{Key: WalkAST(k), Value: WalkAST(v)})
 		}
 		return map[string]interface{}{
-			"0.type":     "MapPattern",
-			"1.position": n.Token.Position,
-			"2.pairs":    pairs,
+			"type":  "MapLiteral",
+			"token": n.TokenLiteral(),
+			"pairs": pairs,
+		}
+
+	case *ast.IndexExpression:
+		return map[string]interface{}{
+			"type":  "IndexExpression",
+			"token": safeTokenLiteral(n),
+			"left":  WalkAST(n.Left),
+			"index": WalkAST(n.Index),
+		}
+
+	case *ast.SliceExpression:
+		return map[string]interface{}{
+			"type":  "SliceExpression",
+			"token": safeTokenLiteral(n),
+			"start": WalkAST(n.Start),
+			"end":   WalkAST(n.End),
+			"step":  WalkAST(n.Step),
+		}
+
+	case *ast.MatchExpression:
+		cases := make([]interface{}, len(n.Cases))
+		for i, c := range n.Cases {
+			cases[i] = WalkAST(c)
+		}
+		return map[string]interface{}{
+			"type":  "MatchExpression",
+			"token": n.TokenLiteral(),
+			"value": WalkAST(n.Value),
+			"cases": cases,
+		}
+
+	case *ast.MatchCase:
+		return map[string]interface{}{
+			"type":    "MatchCase",
+			"token":   n.TokenLiteral(),
+			"pattern": WalkAST(n.Pattern),
+			"guard":   WalkAST(n.Guard),
+			"body":    WalkAST(n.Body),
+		}
+
+	// Pattern Nodes
+	case *ast.WildcardPattern:
+		return map[string]interface{}{"type": "WildcardPattern", "token": n.TokenLiteral()}
+	case *ast.AllPattern:
+		return map[string]interface{}{"type": "AllPattern", "token": n.TokenLiteral()}
+	case *ast.LiteralPattern:
+		return map[string]interface{}{"type": "LiteralPattern", "value": WalkAST(n.Value)}
+	case *ast.IdentifierPattern:
+		return map[string]interface{}{"type": "IdentifierPattern", "identifier": WalkAST(n.Value)}
+	case *ast.PinnedIdentifierPattern:
+		return map[string]interface{}{"type": "PinnedIdentifierPattern", "identifier": WalkAST(n.Value)}
+	case *ast.SpreadPattern:
+		return map[string]interface{}{"type": "SpreadPattern", "token": safeTokenLiteral(n), "identifier": WalkAST(n.Value)}
+	case *ast.ListPattern:
+		elements := make([]interface{}, len(n.Elements))
+		for i, el := range n.Elements {
+			elements[i] = WalkAST(el)
+		}
+		return map[string]interface{}{"type": "ListPattern", "elements": elements}
+	case *ast.MapPattern:
+		type pair struct {
+			Key     string      `json:"key"`
+			Pattern interface{} `json:"pattern"`
+		}
+		pairs := make([]pair, 0, len(n.Pairs))
+		for k, p := range n.Pairs {
+			pairs = append(pairs, pair{Key: k, Pattern: WalkAST(p)})
+		}
+		return map[string]interface{}{
+			"type":      "MapPattern",
+			"pairs":     pairs,
+			"exact":     n.Exact,
+			"selectAll": n.SelectAll,
+			"spread":    n.Spread,
+		}
+
+	case *ast.FunctionParameter:
+		return map[string]interface{}{
+			"type":         "FunctionParameter",
+			"tags":         walkTags(n.Tags),
+			"name":         WalkAST(n.Name),
+			"defaultValue": WalkAST(n.Default),
+			"isVariadic":   n.IsVariadic,
 		}
 
 	case *ast.ThrowStatement:
 		return map[string]interface{}{
-			"0.type":  "ThrowStatement",
-			"1.token": n.TokenLiteral(),
-			"2.value": WalkAST(n.Value),
-		}
-
-	case *ast.ValExpression:
-		return map[string]interface{}{
-			"0.type":     "ValExpression",
-			"1.position": n.Token.Position,
-			"2.token":    n.TokenLiteral(),
-			"3.pattern":  WalkAST(n.Pattern),
-			"4.value":    WalkAST(n.Value),
-		}
-
-	case *ast.NotImplemented:
-		return map[string]interface{}{
-			"0.type":     "NotImplemented",
-			"1.position": n.Token.Position,
-			"2.token":    n.TokenLiteral(),
-		}
-
-	case *ast.ForeignFunctionDeclaration:
-		parameters := make([]interface{}, len(n.Parameters))
-		for i, param := range n.Parameters {
-			parameters[i] = WalkAST(param)
-		}
-		return map[string]interface{}{
-			"0.type":       "ForeignFunctionDeclaration",
-			"1.position":   n.Token.Position,
-			"2.token":      n.TokenLiteral(),
-			"3.name":       WalkAST(n.Name),
-			"4.parameters": parameters,
+			"type":  "ThrowStatement",
+			"token": safeTokenLiteral(n),
+			"value": WalkAST(n.Value),
 		}
 
 	case *ast.DeferStatement:
 		return map[string]interface{}{
-			"0.type":  "DeferStatement",
-			"1.token": n.TokenLiteral(),
-			"2.call":  WalkAST(n.Call),
+			"type":      "DeferStatement",
+			"token":     safeTokenLiteral(n),
+			"call":      WalkAST(n.Call),
+			"mode":      int(n.Mode),
+			"errorName": WalkAST(n.ErrorName),
+		}
+
+	case *ast.ForeignFunctionDeclaration:
+		params := make([]interface{}, len(n.Parameters))
+		for i, p := range n.Parameters {
+			params[i] = WalkAST(p)
+		}
+		return map[string]interface{}{
+			"type":       "ForeignFunctionDeclaration",
+			"tags":       walkTags(n.Tags),
+			"token":      safeTokenLiteral(n),
+			"name":       WalkAST(n.Name),
+			"parameters": params,
 		}
 
 	case *ast.SpreadExpression:
 		return map[string]interface{}{
-			"0.type":  "SpreadExpression",
-			"1.token": n.Token.Literal,
-			"2.value": WalkAST(n.Value),
+			"type":  "SpreadExpression",
+			"token": safeTokenLiteral(n),
+			"value": WalkAST(n.Value),
 		}
+
+	case *ast.NotImplemented:
+		return map[string]interface{}{"type": "NotImplemented", "token": safeTokenLiteral(n)}
 
 	default:
 		return map[string]interface{}{
-			"0.type": "Unknown",
-			"1.node": n,
+			"type": "Unknown",
+			"node": fmt.Sprintf("%T", n),
 		}
 	}
 }
 
+func safeTokenLiteral(node ast.Node) string {
+	if node == nil || (reflect.ValueOf(node).Kind() == reflect.Ptr && reflect.ValueOf(node).IsNil()) {
+		return ""
+	}
+	return node.TokenLiteral()
+}
+
+func walkTags(tags []*ast.Tag) []interface{} {
+	if tags == nil {
+		return []interface{}{}
+	}
+	result := make([]interface{}, len(tags))
+	for i, t := range tags {
+		args := make([]interface{}, len(t.Args))
+		for j, arg := range t.Args {
+			args[j] = WalkAST(arg)
+		}
+		result[i] = map[string]interface{}{
+			"type":      "Tag",
+			"name":      t.Name,
+			"arguments": args,
+		}
+	}
+	return result
+}
+
 func RenderASTAsJSON(node ast.Node) (string, error) {
 	astMap := WalkAST(node)
-
 	buf := new(bytes.Buffer)
 	encoder := json.NewEncoder(buf)
 	encoder.SetIndent("", "  ")
