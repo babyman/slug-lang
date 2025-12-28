@@ -94,6 +94,20 @@ var test05 = fn() {
     assertEqual(x, [3, 2, 1], "Test 5 - nested defer called before caller defer: {{x}}")
 }
 
+# 6. onerror with match
+@test
+var test06 = fn() {
+    var f = fn() {
+        defer onerror(e) match {
+            "bad" => 42;
+            _ => throw e;
+        }
+        throw "bad"
+    }
+    var r = f()
+    assertEqual(r, 42, "Test 6 - onerror support match")
+}
+
 # 7. onerror can convert an error into a normal value (swallow)
 @test
 var test07 = fn() {

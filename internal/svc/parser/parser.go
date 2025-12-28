@@ -1602,7 +1602,24 @@ func (p *Parser) parseDeferStatement() *ast.DeferStatement {
 		}
 	}
 
-	if p.curTokenIs(token.LBRACE) {
+	if stmt.Mode == ast.DeferOnError && p.curTokenIs(token.MATCH) {
+
+		match := p.parseMatchExpression().(*ast.MatchExpression)
+
+		// Inject the error variable as the value to match against
+		match.Value = stmt.ErrorName
+
+		// Wrap the match in a block statement to serve as the defer body
+		stmt.Call = &ast.BlockStatement{
+			Token: match.Token,
+			Statements: []ast.Statement{
+				&ast.ExpressionStatement{
+					Token:      match.Token,
+					Expression: match,
+				},
+			},
+		}
+	} else if p.curTokenIs(token.LBRACE) {
 		stmt.Call = p.parseBlockStatement()
 	} else {
 		stmt.Call = p.parseExpressionStatement()
