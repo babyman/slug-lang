@@ -47,7 +47,8 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 	switch payload := msg.Payload.(type) {
 	case LoadFile:
 		worker := FileLoader{
-			DebugAST: m.Config.DebugAST,
+			DebugJsonAST: m.Config.DebugJsonAST,
+			DebugTxtAST:  m.Config.DebugTxtAST,
 		}
 		workedId, _ := ctx.SpawnChild("mods-fl-wrk", Operations, worker.loadFileHandler)
 		err := ctx.SendAsync(workedId, msg)
@@ -66,7 +67,8 @@ func (m *Modules) Handler(ctx *kernel.ActCtx, msg kernel.Message) kernel.Handler
 			}
 		} else {
 			worker := ModuleLoader{
-				DebugAST: m.Config.DebugAST,
+				DebugJsonAST: m.Config.DebugJsonAST,
+				DebugTxtAST:  m.Config.DebugTxtAST,
 			}
 			workedId, _ := ctx.SpawnChild("module: "+moduleName, Operations, worker.loadModuleHandler)
 			m.moduleRegistry[moduleName] = workedId

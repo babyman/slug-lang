@@ -8,7 +8,8 @@ import (
 )
 
 type FileLoader struct {
-	DebugAST bool
+	DebugJsonAST bool
+	DebugTxtAST  bool
 }
 
 func (fl *FileLoader) loadFileHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
@@ -39,5 +40,5 @@ func (fl *FileLoader) loadFile(ctx *kernel.ActCtx, msg kernel.Message, payload L
 		return nil, modData.Error
 	}
 
-	return lexAndParseModule(ctx, modData, fl.DebugAST)
+	return lexAndParseModule(ctx, modData, fl.DebugJsonAST, fl.DebugTxtAST)
 }

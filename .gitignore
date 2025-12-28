@@ -15,5 +15,6 @@ dist/
 
 # ast json files
 *.ast.json
+*.ast.txt
 
 *.log

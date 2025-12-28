@@ -51,8 +51,9 @@ var (
 	logFile   string
 	logSource bool
 	// config vars
-	rootPath string
-	debugAST bool
+	rootPath     string
+	debugJsonAST bool
+	debugTxtAST  bool
 )
 
 func init() {
@@ -63,7 +64,8 @@ func init() {
 	// evaluator config
 	flag.StringVar(&rootPath, "root", DefaultRootPath, "Set the root context for the program (used for imports)")
 	// parser config
-	flag.BoolVar(&debugAST, "debug-ast", false, "Render the AST as a JSON file")
+	flag.BoolVar(&debugJsonAST, "debug-json-ast", false, "Render the AST as a JSON file")
+	flag.BoolVar(&debugTxtAST, "debug-txt-ast", false, "Render the AST as a TXT file")
 	// log config
 	flag.StringVar(&logLevel, "log-level", "NONE", "Log level: trace, debug, info, warn, error, none")
 	flag.StringVar(&logFile, "log-file", "", "Log file path (if not set, logs to stderr)")
@@ -94,12 +96,13 @@ func main() {
 	}
 
 	config := util.Configuration{
-		Version:   Version,
-		BuildDate: BuildDate,
-		Commit:    Commit,
-		RootPath:  rootPath,
-		DebugAST:  debugAST,
-		SlugHome:  os.Getenv("SLUG_HOME"),
+		Version:      Version,
+		BuildDate:    BuildDate,
+		Commit:       Commit,
+		RootPath:     rootPath,
+		DebugJsonAST: debugJsonAST,
+		DebugTxtAST:  debugTxtAST,
+		SlugHome:     os.Getenv("SLUG_HOME"),
 	}
 
 	k := kernel.NewKernel()
@@ -239,7 +242,8 @@ func printHelp() {
 
 Options:
   -root <path>       Set the root context for the program (used for imports). Default is '.'
-  -debug-ast         Render the AST as a JSON file.
+  -debug-json-ast    Render the AST as a JSON file.
+  -debug-txt-ast     Render the AST as a TXT file.
   -help              Display this help information and exit.
   -version           Display version information and exit.
   -log-level <level> Set the log level: debug, info, warn, error. Default is 'error'.

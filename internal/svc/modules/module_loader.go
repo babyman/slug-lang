@@ -18,9 +18,10 @@ const (
 )
 
 type ModuleLoader struct {
-	DebugAST bool
-	Module   *object.Module
-	Error    error
+	DebugJsonAST bool
+	DebugTxtAST  bool
+	Module       *object.Module
+	Error        error
 }
 
 func (ml *ModuleLoader) loadModuleHandler(ctx *kernel.ActCtx, msg kernel.Message) kernel.HandlerSignal {
@@ -63,13 +64,14 @@ func (ml *ModuleLoader) loadModule(ctx *kernel.ActCtx, pathParts []string) (*obj
 		return nil, modData.Error
 	}
 
-	return lexAndParseModule(ctx, modData, ml.DebugAST)
+	return lexAndParseModule(ctx, modData, ml.DebugJsonAST, ml.DebugTxtAST)
 }
 
 func lexAndParseModule(
 	ctx *kernel.ActCtx,
 	modData resolver.ResolvedResult,
-	debugAst bool,
+	debugJsonAst bool,
+	debugTxtAst bool,
 ) (*object.Module, error) {
 
 	// Create a new environment and module object
@@ -116,17 +118,24 @@ func lexAndParseModule(
 
 	// ==============================
 
-	if debugAst {
+	if debugJsonAst || debugTxtAst {
 		json, err := parser.RenderASTAsJSON(module.Program)
+		text := parser.RenderASTAsText(module.Program, 0)
 		if err != nil {
 			slog.Error("Failed to render AST as JSON",
 				slog.Any("error", err))
 		} else {
 			fsID, ok := ctx.K.ActorByName(svc.FsService)
-			if ok {
+			if ok && debugJsonAst {
 				ctx.SendAsync(fsID, fs.WriteBytes{
 					Data: []byte(json),
 					Path: module.Path + ".ast.json",
+				})
+			}
+			if ok && debugTxtAst {
+				ctx.SendAsync(fsID, fs.WriteBytes{
+					Data: []byte(text),
+					Path: module.Path + ".ast.txt",
 				})
 			}
 		}

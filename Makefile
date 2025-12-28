@@ -35,6 +35,7 @@ lc: clean
 
 clean:
 	find ./ -name "*.ast.json" -type f -delete
+	find ./ -name "*.ast.txt" -type f -delete
 	rm -rf ./dist
 	rm -rf ./bin/$(BINARY_NAME)
 
