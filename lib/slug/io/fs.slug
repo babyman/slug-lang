@@ -1,61 +1,32 @@
 var {*} = import(
-    "slug.actor",
-    "slug.bytes",
     "slug.std",
 );
-
-@export val READ_MODE = "r";
-@export val WRITE_MODE = "w";
-@export val APPEND_MODE = "a";
-
-@export
-var readFileBytes = fn(@str path) {
-	sendFsSync({type: "readFile", path: path})
-}
 
 // readFile reads entire file content as a string
 // Parameters:
 //   path: path to the file to read
 // Returns:
 //   string content of file, or error if file cannot be read
-// @export
-// foreign readFile = fn(@str path);
 @export
-var readFile = fn(@str path) {
-	readFileBytes(path) /> bytesToStr
-}
+foreign readFile = fn(@str path);
 
 // writeFile writes string content to a file
 // Parameters:
 //   contents: string data to write
 //   path: path to file to write
 // Returns:
-//   the number of bytes written on success, error if write fails
+//   nil on success, error if write fails
 @export
-var writeFile = fn(@str contents, @str path) {
-	sendFsSync({type: "writeFile", path: path, data: contents})
-}
-
-@export
-var writeFile = fn(@bytes contents, @str path) {
-	sendFsSync({type: "writeFile", path: path, data: contents})
-}
+foreign writeFile = fn(@str contents, @str path);
 
 // appendFile appends string content to end of file
 // Parameters:
 //   contents: string data to append
 //   path: path to file to append to
 // Returns:
-//   the number of bytes written on success, error if write fails
+//   nil on success, error if write fails
 @export
-var appendFile = fn(@str contents, @str path) {
-	sendFsSync({type: "writeFile", mode: APPEND_MODE, path: path, data: contents})
-}
-
-@export
-var appendFile = fn(@bytes contents, @str path) {
-	sendFsSync({type: "writeFile", mode: APPEND_MODE, path: path, data: contents})
-}
+foreign appendFile = fn(@str contents, @str path);
 
 // info gets information about a file
 // Parameters:
@@ -63,9 +34,7 @@ var appendFile = fn(@bytes contents, @str path) {
 // Returns:
 //   object containing file metadata
 @export
-var info = fn(@str path) {
-	sendFsSync({type: "info", path: path})
-}
+foreign info = fn(@str path);
 
 // exists checks if a file exists and is accessible
 // Parameters:
@@ -73,14 +42,10 @@ var info = fn(@str path) {
 // Returns:
 //   true if file exists and is accessible, false otherwise
 @export
-var exists = fn(@str path) {
-	sendFsSync({type: "exists", path: path})
-}
+foreign exists = fn(@str path);
 
 @export
-var mkDirs = fn(@str path) {
-	sendFsSync({type: "mkdirs", path: path})
-}
+foreign mkDirs = fn(... path);
 
 // isDir checks if path points to a directory
 // Parameters:
@@ -88,9 +53,7 @@ var mkDirs = fn(@str path) {
 // Returns:
 //   true if path is a directory, false otherwise
 @export
-var isDir = fn(@str path) {
-	info(path).isDir
-}
+foreign isDir = fn(@str path);
 
 // ls lists contents of a directory (non-recursively)
 // Parameters:
@@ -98,9 +61,7 @@ var isDir = fn(@str path) {
 // Returns:
 //   list of filenames in the directory
 @export
-var ls = fn(@str path) {
-	sendFsSync({type: "ls", path: path})
-}
+foreign ls = fn(@str path);
 
 // rm removes a file or empty directory
 // Parameters:
@@ -108,9 +69,11 @@ var ls = fn(@str path) {
 // Returns:
 //   nil on success, error if removal fails
 @export
-var rm = fn(@str path) {
-	sendFsSync({type: "rm", path: path})
-}
+foreign rm = fn(@str path);
+
+@export val READ_MODE = "r";
+@export val WRITE_MODE = "w";
+@export val APPEND_MODE = "a";
 
 // openFile opens a file in specified mode
 // Parameters:
@@ -119,10 +82,7 @@ var rm = fn(@str path) {
 // Returns:
 //   file handle number on success, error if open fails
 @export
-var openFile = fn(@str path, @num replyTo, @str mode) {
-	lookup("filesystem") /> send({type:"open", path: path, mode: mode}, replyTo)
-	replyTo /> receiveFrom(1000)
-}
+foreign openFile = fn(@str path, @str mode);
 
 // readLine reads the next line from an open file
 // Parameters:
@@ -130,23 +90,14 @@ var openFile = fn(@str path, @num replyTo, @str mode) {
 // Returns:
 //   string containing next line, or error if read fails
 @export
-var readLine = fn(@num handle, @num replyTo) {
-	handle /> send({type: "readLine"}, replyTo)
-	replyTo
-}
+foreign readLine = fn(@num handle);
 
-
-// read reads a fixed number of bytes from file
+// readBytes reads a fixed number of bytes from file
 // Parameters:
 //   handle: file handle from openFile
 //   count: number of bytes to read
 // Returns:
-//   bytes containing read bytes, or error if read fails
-@export
-var read = fn(@num handle, @num replyTo, @num max = 4096) {
-	handle /> send({type: "read", max: max}, replyTo)
-	replyTo
-}
+//   string containing read bytes, or error if read fails
 
 // write writes string content to an open file
 // Parameters:
@@ -155,16 +106,7 @@ var read = fn(@num handle, @num replyTo, @num max = 4096) {
 // Returns:
 //   number of bytes written, or error if write fails
 @export
-var write = fn(@num handle, @num replyTo, @str content) {
-	handle /> send({type: "write", data: content}, replyTo)
-	replyTo
-}
-
-@export
-var write = fn(@num handle, @num replyTo, @bytes content) {
-	handle /> send({type: "write", data: content}, replyTo)
-	replyTo
-}
+foreign write = fn(@num handle, @str content);
 
 // closeFile closes an open file handle
 // Parameters:
@@ -172,49 +114,29 @@ var write = fn(@num handle, @num replyTo, @bytes content) {
 // Returns:
 //   nil on success, error if close fails
 @export
-var closeFile = fn(@num handle, @num replyTo) {
-	handle /> send({type:"close"}, replyTo)
-	replyTo /> receiveFrom(1000)
-}
+foreign closeFile = fn(@num handle)
 
 @export
-var readLines = fn(@num file, @num replyTo, lines = []) {
-	match file /> readLine(replyTo) /> receiveFrom(1000) {
-		{type: "eof"} => lines
-		{type: "readLine", line} => recur(file, replyTo, lines :+ line[:-1]) // -1 to trim the newline
+var readLines = fn(@num file, lines = []) {
+	match file /> readLine {
+		nil => lines
+		str => readLines(file, lines :+ str[:-1]) // -1 to trim the newline
 	}
 }
 
 @export
-var listFilesRecursive = fn(@list path, @fun filter = fn(s) {true}, acc = []) match {
-	[[], ...] => acc;
-	[[h, ...t], ...] if h /> isDir => {
-			var files = ls(h) /> map(fn(v) {h + "/" + v})
-			recur(t + files, filter, acc)
+var listFilesRecursive = fn(@list path, @fun filter = fn(s) {true}, acc = []) {
+	match path {
+		[] => acc;
+		[h, ...t] => {
+			if (h /> isDir) {
+				var files = ls(h) /> map(fn(v) {h + "/" + v})
+				recur(t + files, filter, acc)
+			} else if (h /> filter) {
+				recur(t, filter, acc :+ h)
+			} else {
+				recur(t, filter, acc)
+			}
 		}
-	[[h, ...t], ...] if h /> filter => recur(t, filter, acc :+ h);
-	[[h, ...t], ...] => recur(t, filter, acc);
-}
-
-
-
-var sendFsSync = fn(message) {
-	var replyTo = spawn()
-	defer replyTo /> terminate
-
-	lookup("filesystem") /> send(message, replyTo)
-	
-	match replyTo /> receiveFrom(1000) {
-		map if map.type == "info" => map;
-		{type:"readFile", bytes} => bytes;
-		{type:"readFile", text} => text;
-		{type:"exists", exists} => exists;
-		{type:"writeFile", written} => written;
-		{type:"ls", entries} => entries;
-		{type:"eof"} => nil;
-		{type:"mkdirs"} => true;
-		{type:"rm"} => true;
-		{type:"error", msg} => throw msg;
-		_ => throw "timeout";
 	}
 }

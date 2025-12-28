@@ -1,19 +1,22 @@
-package eval
+package evaluator
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/rand"
+	"os"
+	"path/filepath"
 	"slug/internal/ast"
 	"slug/internal/dec64"
-	"slug/internal/kernel"
+	"slug/internal/lexer"
 	"slug/internal/object"
-	"slug/internal/svc"
-	"slug/internal/svc/modules"
+	"slug/internal/parser"
 	"slug/internal/token"
 	"slug/internal/util"
 	"strings"
+	"sync"
 )
 
 var (
@@ -37,8 +40,7 @@ type Evaluator struct {
 	Config         util.Configuration
 	Sandbox        bool
 	AllowedImports []string
-	SlugReceiver   kernel.SlugReceiver // can be null
-	Ctx            *kernel.ActCtx
+	Modules        map[string]*object.Module
 
 	envStack []*object.Environment // Environment stack encapsulated in an evaluator struct
 	// callStack keeps track of the current function for things like `recur`
@@ -47,21 +49,20 @@ type Evaluator struct {
 		FnName string
 		FnObj  object.Object
 	}
+	nextID      int64
+	nextIdMutex sync.Mutex
+}
+
+func (e *Evaluator) NextHandleID() int64 {
+	e.nextIdMutex.Lock()
+	defer e.nextIdMutex.Unlock()
+	id := e.nextID<<16 | int64(rand.Intn(0xFFFF))
+	e.nextID++
+	return id
 }
 
 func (e *Evaluator) GetConfiguration() util.Configuration {
 	return e.Config
-}
-
-func (e *Evaluator) WaitForMessage(timeout int64) (any, bool) {
-	if e.SlugReceiver == nil {
-		return nil, false
-	}
-	return e.SlugReceiver.WaitForMessage(timeout)
-}
-
-func (e *Evaluator) ActCtx() *kernel.ActCtx {
-	return e.Ctx
 }
 
 func (e *Evaluator) Nil() *object.Nil {
@@ -430,52 +431,96 @@ func (e *Evaluator) LoadModule(modName string) (*object.Module, error) {
 		}
 	}
 
+	if e.Modules == nil {
+		e.Modules = make(map[string]*object.Module)
+	}
+
+	if mod, ok := e.Modules[modName]; ok {
+		return mod, nil
+	}
+
+	// 1. Resolve module name to relative file path (e.g., "slug.std" -> "slug/std.slug")
 	pathParts := strings.Split(modName, ".")
-	modsId, _ := e.Ctx.K.ActorByName(svc.ModuleService)
-	reply, err := e.Ctx.SendSync(modsId, modules.LoadModule{
-		PathParts: pathParts,
-	})
+	relPath := filepath.Join(pathParts...) + ".slug"
+
+	// 2. Search Paths: Check local RootPath, then SLUG_HOME/lib
+	var fullPath string
+	var source []byte
+	var err error
+
+	// Try local RootPath (directory of the entry script)
+	fullPath = filepath.Join(e.Config.RootPath, relPath)
+	source, errFirst := os.ReadFile(fullPath)
+
+	// Fallback to $SLUG_HOME/lib
+	if errFirst != nil && e.Config.SlugHome != "" {
+		fullPath = filepath.Join(e.Config.SlugHome, "lib", relPath)
+		source, err = os.ReadFile(fullPath)
+	}
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not load module %s: %v and %v", modName, errFirst, err)
 	}
 
-	result := reply.Payload.(modules.LoadModuleResult)
-	if result.Module == nil {
-		return nil, result.Error
+	// 3. Tokenize and Parse
+	l := lexer.New(string(source))
+	p := parser.New(l, fullPath, string(source))
+	program := p.ParseProgram()
+
+	if len(p.Errors()) > 0 {
+		return nil, fmt.Errorf("parse errors in module %s:\n%s", modName, strings.Join(p.Errors(), "\n"))
 	}
 
-	module := result.Module
-
-	if module.Env != nil {
-		slog.Debug("return previously loaded module",
-			slog.Any("name", module.Name))
-		return module, nil
+	if e.Config.DebugJsonAST {
+		json, err := parser.RenderASTAsJSON(program)
+		if err != nil {
+			slog.Error("Failed to render AST as JSON",
+				slog.Any("error", err))
+		} else {
+			jsonPath := fullPath + ".ast.json"
+			err = os.WriteFile(jsonPath, []byte(json), 0644)
+			if err != nil {
+				slog.Error("Failed to write AST as JSON")
+			}
+		}
+	}
+	if e.Config.DebugTxtAST {
+		txtPath := fullPath + ".ast.txt"
+		text := parser.RenderASTAsText(program, 0)
+		err = os.WriteFile(txtPath, []byte(text), 0644)
+		if err != nil {
+			slog.Error("Failed to write AST as JSON")
+		}
 	}
 
-	// if the module is not in the registry, create a new Module object and cache it
+	// 4. Setup Module Object and Environment
 	moduleEnv := object.NewEnvironment()
-	moduleEnv.Path = module.Path
-	moduleEnv.ModuleFqn = module.Name
-	moduleEnv.Src = module.Src
+	moduleEnv.Path = fullPath
+	moduleEnv.ModuleFqn = modName
+	moduleEnv.Src = string(source)
 
-	// Evaluate the module
-	module.Env = moduleEnv
+	module := &object.Module{
+		Name:    modName,
+		Path:    fullPath,
+		Src:     string(source),
+		Program: program,
+		Env:     moduleEnv,
+	}
 
-	slog.Debug("load module",
-		slog.Any("module-name", module.Name))
+	e.Modules[modName] = module
+
+	// 5. Evaluate the module in its own environment
+	slog.Debug("loading module", slog.String("name", modName), slog.String("path", fullPath))
+
 	e.PushEnv(moduleEnv)
-	out := e.Eval(module.Program)
-	out = e.PopEnv(out)
-	slog.Info("Module loaded",
-		slog.Any("module-name", module.Name),
-		slog.Any("environment-size", len(module.Env.Bindings)))
+	out := e.Eval(program)
+	// We pop the env, but the moduleEnv now contains all the defined bindings
+	e.PopEnv(out)
 
 	if e.isError(out) {
-		o := out.(*object.Error)
-		return nil, errors.New(o.Message)
+		return nil, fmt.Errorf("runtime error while loading module %s: %s", modName, out.Inspect())
 	}
 
-	// Import the module into the current environment
 	return module, nil
 }
 

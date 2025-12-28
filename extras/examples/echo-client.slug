@@ -1,32 +1,25 @@
 var {*} = import(
 	"slug.std",
-	"slug.io.tcp",
-	"slug.actor",
-	"slug.bytes",
+	"slug.io.tcp"
 );
 
-var msg = if(isDefined("args") && len(args) > 0) {
+
+var msg = if(args != nil && len(args) > 0) {
 	args[0];
 } else {
 	"Echo this from Slug!";
 }
 
-var reply = spawn()
-defer reply /> terminate
-
-var client = connect(reply, "127.0.0.1", 8080)
-defer client /> close(reply)
-
+var client = connect("127.0.0.1", 8080);
+defer {
+	println("defered client close");
+	close(client);
+}
 
 println("connected, writing", msg);
-client /> write(reply, msg) /> receiveFrom(1000) /> println;
 
-var str = client
-	/> read(reply, 1024)
-	/> receiveFrom(1000)
-	/> println
-	/> then(fn(v) { v.bytes /> bytesToStr })
+client /> write(msg);
 
-println("Got echo:", str);
 
-nil
+println("Got echo:", read(client, 1024));
+

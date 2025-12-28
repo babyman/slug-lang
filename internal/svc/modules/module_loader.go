@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 	"slug/internal/kernel"
+	"slug/internal/lexer"
 	"slug/internal/object"
+	"slug/internal/parser"
 	"slug/internal/svc"
 	"slug/internal/svc/fs"
-	"slug/internal/svc/lexer"
-	"slug/internal/svc/parser"
 	"slug/internal/svc/resolver"
 )
 

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"slug/internal/dec64"
 	"slug/internal/object"
-	"slug/internal/svc"
 )
 
 func fnStdType() *object.Foreign {
@@ -56,7 +55,7 @@ func fnStdPrintf() *object.Foreign {
 			for i := 1; i < len(args); i++ {
 				fmtArgs[i-1] = args[i].Inspect()
 			}
-			svc.SendStdOut(ctx.ActCtx(), format.Value, fmtArgs...)
+			fmt.Printf(format.Value, fmtArgs...)
 			return ctx.Nil()
 		},
 	}

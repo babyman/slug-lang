@@ -1,62 +1,62 @@
-var {*} = import(
-    "slug.std", 
-    "slug.actor",
-    "slug.time",
-    "slug.list",
-    "slug.term.colour",
-);
+// var {*} = import(
+//     "slug.std", 
+//     "slug.actor",
+//     "slug.time",
+//     "slug.list",
+//     "slug.term.colour",
+// );
 
-@export val TRACE = 0;
-@export val DEBUG = 1;
-@export val INFO = 2;
-@export val WARN = 3;
-@export val ERROR = 4;
-@export val NONE = 5;
+// @export val TRACE = 0;
+// @export val DEBUG = 1;
+// @export val INFO = 2;
+// @export val WARN = 3;
+// @export val ERROR = 4;
+// @export val NONE = 5;
 
-val LEVELS = ["trace", "debug", "info", "warn", "error", "none"];
-val COLOURS = [BrightColour.Black, Colour.Cyan, Colour.Green, Colour.Yellow, Colour.Red];
-val RESET_COLOR = reset;
+// val LEVELS = ["trace", "debug", "info", "warn", "error", "none"];
+// val COLOURS = [BrightColour.Black, Colour.Cyan, Colour.Green, Colour.Yellow, Colour.Red];
+// val RESET_COLOR = reset;
 
-// private var to track log level
-var logLevel = NONE;
+// // private var to track log level
+// var logLevel = NONE;
 
-var logger = fn() {
-    match receive() {
-        {tag:"log", level, ...l} if level >= logLevel => {
-                val tag = sprintf("%s%-5s%s", COLOURS[level], LEVELS[level], RESET_COLOR);
-                var msg = sprintf(l.message, ...l.args);
-                if (msg[-1] != "\n") {
-                    msg = msg + "\n";
-                }
-                printf("%s [ %s ] %s", fmtClock(l.time, "2006-01-02 15:04:05.000"), tag, msg);
-            }
-    }
-    recur();
-}
+// var logger = fn() {
+//     match receive() {
+//         {tag:"log", level, ...l} if level >= logLevel => {
+//                 val tag = sprintf("%s%-5s%s", COLOURS[level], LEVELS[level], RESET_COLOR);
+//                 var msg = sprintf(l.message, ...l.args);
+//                 if (msg[-1] != "\n") {
+//                     msg = msg + "\n";
+//                 }
+//                 printf("%s [ %s ] %s", fmtClock(l.time, "2006-01-02 15:04:05.000"), tag, msg);
+//             }
+//     }
+//     recur();
+// }
 
-// create a mailbox and bind the logging function to it
-var logActor = spawn(logger);
+// // create a mailbox and bind the logging function to it
+// var logActor = spawn(logger);
 
-var sendLog = fn(level, message, args) {
-    if ( level >=  logLevel ) {
-        logActor /> send({ tag: "log", time: clock(), level: level, message: message, args: args })
-    }
-}
+// var sendLog = fn(level, message, args) {
+//     if ( level >=  logLevel ) {
+//         logActor /> send({ tag: "log", time: clock(), level: level, message: message, args: args })
+//     }
+// }
 
-@export
-var configureLogging = fn(@num level) {
-    logLevel = level
-}
+// @export
+// var configureLogging = fn(@num level) {
+//     logLevel = level
+// }
 
-@export
-var trace = fn(message, ...args) { sendLog(TRACE, message, args) }
-@export
-var debug = fn(message, ...args) { sendLog(DEBUG, message, args) }
-@export
-var info = fn(message, ...args) { sendLog(INFO, message, args) }
-@export
-var warn = fn(message, ...args) { sendLog(WARN, message, args) }
-@export
-var error = fn(message, ...args) { sendLog(ERROR, message, args) }
-@export
-var none = fn(message, ...args) { sendLog(NONE, message, args) }
+// @export
+// var trace = fn(message, ...args) { sendLog(TRACE, message, args) }
+// @export
+// var debug = fn(message, ...args) { sendLog(DEBUG, message, args) }
+// @export
+// var info = fn(message, ...args) { sendLog(INFO, message, args) }
+// @export
+// var warn = fn(message, ...args) { sendLog(WARN, message, args) }
+// @export
+// var error = fn(message, ...args) { sendLog(ERROR, message, args) }
+// @export
+// var none = fn(message, ...args) { sendLog(NONE, message, args) }

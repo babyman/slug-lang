@@ -2,6 +2,8 @@ package foreign
 
 import (
 	"errors"
+	"fmt"
+	"slug/internal/dec64"
 	"slug/internal/object"
 )
 
@@ -28,3 +30,105 @@ func ToFunctionArgument(obj object.Object, args []object.Object) (*object.Functi
 		return foundFunction, nil
 	}
 }
+
+func unpackString(arg object.Object, argName string) (string, error) {
+
+	if arg.Type() != object.STRING_OBJ {
+		return "", fmt.Errorf("argument to `%s` must be a STRING, got=%s", argName, arg.Type())
+	}
+	value := arg.(*object.String)
+	return value.Value, nil
+}
+
+func unpackNumber(arg object.Object, argName string) (int64, error) {
+
+	if arg.Type() != object.NUMBER_OBJ {
+		return -1, fmt.Errorf("argument to `%s` must be a NUMBER, got=%s", argName, arg.Type())
+	}
+	value := arg.(*object.Number)
+	return value.Value.ToInt64(), nil
+}
+
+func putObj(resultMap *object.Map, key string, val object.Object) {
+	keyStr := &object.String{Value: key}
+	resultMap.Pairs[(keyStr).MapKey()] = object.MapPair{
+		Key:   keyStr,
+		Value: val,
+	}
+}
+
+func GetObj(m *object.Map, key object.MapKey) (object.Object, bool) {
+	pair, ok := m.Pairs[key]
+	if !ok {
+		return nil, false
+	}
+	return pair.Value, true
+}
+
+func PutString(resultMap *object.Map, key string, val string) {
+	putObj(resultMap, key, &object.String{Value: val})
+}
+
+func GetString(m *object.Map, key object.MapKey) (string, bool) {
+	pair, ok := GetObj(m, key)
+	if !ok {
+		return "", false
+	}
+	str, ok := pair.(*object.String)
+	if !ok {
+		return "", false
+	}
+	return str.Value, true
+}
+
+func GetStringWithDefault(m *object.Map, key object.MapKey, def string) string {
+	str, ok := GetString(m, key)
+	if !ok {
+		return def
+	}
+	return str
+}
+
+func PutBytes(resultMap *object.Map, key string, val []byte) {
+	putObj(resultMap, key, &object.Bytes{Value: val})
+}
+
+func PutInt(resultMap *object.Map, key string, val int) {
+	putObj(resultMap, key, &object.Number{Value: dec64.FromInt(val)})
+}
+
+func PutInt64(resultMap *object.Map, key string, val int64) {
+	putObj(resultMap, key, &object.Number{Value: dec64.FromInt64(val)})
+}
+
+func GetInt(m *object.Map, key object.MapKey) (int, bool) {
+	pair, ok := GetObj(m, key)
+	if !ok {
+		return 0, false
+	}
+	str, ok := pair.(*object.Number)
+	if !ok {
+		return 0, false
+	}
+	return str.Value.ToInt(), true
+}
+
+func GetIntWithDefault(m *object.Map, key object.MapKey, def int) int {
+	val, ok := GetInt(m, key)
+	if !ok {
+		return def
+	}
+	return val
+}
+
+func PutList(resultMap *object.Map, key string, val []object.Object) {
+	putObj(resultMap, key, &object.List{Elements: val})
+}
+
+//func PutBool(resultMap *object.Map, key string, val bool) {
+//	if val {
+//		putObj(resultMap, key, evaluator.TRUE)
+//	} else {
+//		putObj(resultMap, key, evaluator.FALSE)
+//	}
+//}

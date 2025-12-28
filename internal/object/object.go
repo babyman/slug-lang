@@ -10,7 +10,6 @@ import (
 	"math"
 	"slug/internal/ast"
 	"slug/internal/dec64"
-	"slug/internal/kernel"
 	"slug/internal/util"
 	"strings"
 	"unicode/utf8"
@@ -62,9 +61,8 @@ type EvaluatorContext interface {
 	Nil() *Nil
 	NativeBoolToBooleanObject(input bool) *Boolean
 	LoadModule(pathParts string) (*Module, error)
-	ActCtx() *kernel.ActCtx
 	GetConfiguration() util.Configuration
-	WaitForMessage(timeout int64) (any, bool)
+	NextHandleID() int64
 }
 
 type ForeignFunction func(ctx EvaluatorContext, args ...Object) Object

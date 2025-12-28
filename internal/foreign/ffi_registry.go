@@ -1,14 +1,11 @@
 package foreign
 
 import (
-	"fmt"
 	"slug/internal/object"
 )
 
 func GetForeignFunctions() map[string]*object.Foreign {
 	return map[string]*object.Foreign{
-
-		"slug.io.http.request": fnIoHttpRequest(),
 
 		"slug.bytes.strToBytes":    fnBytesStrToBytes(),
 		"slug.bytes.bytesToStr":    fnBytesBytesToStr(),
@@ -20,6 +17,37 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.crypto.md5":    fnCryptoMd5(),
 		"slug.crypto.sha256": fnCryptoSha256(),
 		"slug.crypto.sha512": fnCryptoSha512(),
+
+		"slug.io.db.connect":  fnIoDbConnect(),
+		"slug.io.db.query":    fnIoDbQuery(),
+		"slug.io.db.exec":     fnIoDbExec(),
+		"slug.io.db.close":    fnIoDbClose(),
+		"slug.io.db.begin":    fnIoDbBegin(),
+		"slug.io.db.commit":   fnIoDbCommit(),
+		"slug.io.db.rollback": fnIoDbRollback(),
+
+		"slug.io.fs.readFile":   fnIoFsReadFile(),
+		"slug.io.fs.writeFile":  fnIoFsWriteFile(),
+		"slug.io.fs.appendFile": fnIoFsAppendFile(),
+		"slug.io.fs.info":       fnIoFsInfo(),
+		"slug.io.fs.exists":     fnIoFsExists(),
+		"slug.io.fs.mkDirs":     fnIoFsMkdirs(),
+		"slug.io.fs.isDir":      fnIoFsIsDir(),
+		"slug.io.fs.ls":         fnIoFsLs(),
+		"slug.io.fs.rm":         fnIoFsRm(),
+		"slug.io.fs.openFile":   fnIoFsOpenFile(),
+		"slug.io.fs.readLine":   fnIoFsReadLine(),
+		"slug.io.fs.write":      fnIoFsWrite(),
+		"slug.io.fs.closeFile":  fnIoFsCloseFile(),
+
+		"slug.io.http.request": fnIoHttpRequest(),
+
+		"slug.io.tcp.bind":    fnIoTcpBind(),
+		"slug.io.tcp.accept":  fnIoTcpAccept(),
+		"slug.io.tcp.connect": fnIoTcpConnect(),
+		"slug.io.tcp.read":    fnIoTcpRead(),
+		"slug.io.tcp.write":   fnIoTcpWrite(),
+		"slug.io.tcp.close":   fnIoTcpClose(),
 
 		"slug.list.sortWithComparator": fnListSortWithComparator(),
 
@@ -67,22 +95,4 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.time.clockNanos": fnTimeClockNanos(),
 		"slug.time.sleep":      fnTimeSleep(),
 	}
-}
-
-func unpackString(arg object.Object, argName string) (string, error) {
-
-	if arg.Type() != object.STRING_OBJ {
-		return "", fmt.Errorf("argument to `%s` must be a STRING, got=%s", argName, arg.Type())
-	}
-	value := arg.(*object.String)
-	return value.Value, nil
-}
-
-func unpackNumber(arg object.Object, argName string) (int64, error) {
-
-	if arg.Type() != object.NUMBER_OBJ {
-		return -1, fmt.Errorf("argument to `%s` must be a NUMBER, got=%s", argName, arg.Type())
-	}
-	value := arg.(*object.Number)
-	return value.Value.ToInt64(), nil
 }

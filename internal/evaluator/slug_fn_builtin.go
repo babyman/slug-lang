@@ -1,10 +1,10 @@
-package eval
+package evaluator
 
 import (
 	"bytes"
+	"fmt"
 	"slug/internal/dec64"
 	"slug/internal/object"
-	"slug/internal/svc"
 	"unicode/utf8"
 )
 
@@ -19,21 +19,25 @@ func fnBuiltinImport() *object.Foreign {
 			tempMap := make(map[string]object.Object)
 
 			for i, arg := range args {
-				if arg.Type() != object.STRING_OBJ {
-					return ctx.NewError("argument %d to import must be a string", i)
+				strArg, ok := arg.(*object.String)
+				if !ok {
+					return ctx.NewError("argument %d to import must be a string, got %s", i, arg.Type())
 				}
-				module, err := ctx.LoadModule(arg.Inspect())
+
+				module, err := ctx.LoadModule(strArg.Value)
 				if err != nil {
-					return ctx.NewError(err.Error())
+					return ctx.NewError("failed to import '%s': %v", strArg.Value, err)
 				}
+
+				// Import exported bindings into the temp map
 				for name, binding := range module.Env.Bindings {
 					if binding.Meta.IsExport {
-						// check if this is a FunctionGroup, if it is combine it, do not overwrite
+						// Handle function groups (polymorphism)
 						if fg, ok := binding.Value.(*object.FunctionGroup); ok {
 							if existing, exists := tempMap[name]; exists {
 								if existingFg, ok := existing.(*object.FunctionGroup); ok {
-									for k, v := range fg.Functions {
-										existingFg.Functions[k] = v
+									for sig, fn := range fg.Functions {
+										existingFg.Functions[sig] = fn
 									}
 									continue
 								}
@@ -44,6 +48,7 @@ func fnBuiltinImport() *object.Foreign {
 				}
 			}
 
+			// Return a map containing the imported members
 			m := &object.Map{
 				Tags: map[string]object.List{
 					object.IMPORT_TAG: {},
@@ -90,7 +95,7 @@ func fnBuiltinPrint() *object.Foreign {
 					out.WriteString(" ")
 				}
 			}
-			svc.SendStdOut(ctx.ActCtx(), out.String())
+			fmt.Print(out.String())
 			if len(args) > 0 {
 				return args[0]
 			}
@@ -111,7 +116,7 @@ func fnBuiltinPrintLn() *object.Foreign {
 					out.WriteString("\n")
 				}
 			}
-			svc.SendStdOut(ctx.ActCtx(), out.String())
+			fmt.Print(out.String())
 			if len(args) > 0 {
 				return args[0]
 			}

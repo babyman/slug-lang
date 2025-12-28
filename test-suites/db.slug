@@ -1,0 +1,54 @@
+var {*} = import(
+    "slug.std",
+    "slug.test",
+    "slug.io.db",
+)
+
+@test
+var testSqliteWorkflow = fn() {
+    // 1. Connect to an in-memory database
+    val conn = connect(":memory:", SQLITE_DRIVER)
+    defer close(conn)
+
+    // 2. Create a table
+    exec(conn, "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)")
+
+    // 3. Insert data
+    exec(conn, "INSERT INTO users (name, age) VALUES (?, ?)", "Alice", 30)
+    exec(conn, "INSERT INTO users (name, age) VALUES (?, ?)", "Bob", 25)
+
+    // 4. Query data
+    val rows = query(conn, "SELECT name, age FROM users ORDER BY age ASC")
+    
+    assertEqual(len(rows), 2)
+    assertEqual(rows[0].name, "Bob")
+    assertEqual(rows[0].age, 25)
+    assertEqual(rows[1].name, "Alice")
+    assertEqual(rows[1].age, 30)
+}
+
+@test
+var testSqliteTransactions = fn() {
+    val conn = connect(":memory:", SQLITE_DRIVER)
+    defer close(conn)
+
+    exec(conn, "CREATE TABLE tokens (token TEXT)") /> println
+
+    // Test Rollback
+    begin(conn)
+    exec(conn, "INSERT INTO tokens (token) VALUES (?)", "secret")
+    rollback(conn)
+
+    query(conn, "SELECT * FROM tokens")
+        /> len
+        /> assertEqual(0, "Rollback failed to remove data")
+
+    // Test Commit
+    begin(conn)
+    exec(conn, "INSERT INTO tokens (token) VALUES (?)", "permanent")
+    commit(conn)
+
+    val rowsAfterCommit = query(conn, "SELECT * FROM tokens")
+    assertEqual(len(rowsAfterCommit), 1, "Commit failed to persist data")
+    assertEqual(rowsAfterCommit[0].token, "permanent")
+}

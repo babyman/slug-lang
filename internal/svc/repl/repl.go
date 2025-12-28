@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"slug/internal/evaluator"
+	"slug/internal/lexer"
 	"slug/internal/object"
-	"slug/internal/svc/eval"
-	"slug/internal/svc/lexer"
-	"slug/internal/svc/parser"
+	"slug/internal/parser"
 )
 
 const PROMPT = ">> "
@@ -32,7 +32,7 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		e := eval.Evaluator{}
+		e := evaluator.Evaluator{}
 		e.PushEnv(object.NewEnvironment())
 		evaluated := e.Eval(program)
 		e.PopEnv(evaluated)

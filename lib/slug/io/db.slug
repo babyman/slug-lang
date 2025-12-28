@@ -1,53 +1,23 @@
-var {*} = import(
-	"slug.actor",
-)
-
-@export val SQLITE_DRIVER = "sqlite";
+@export val SQLITE_DRIVER = "sqlite3";
 @export val MYSQL_DRIVER = "mysql";
-// @export val POSTGRESQL_DRIVER = "postgresql";
-
 
 @export
-var connect = fn(@num replyTo, @str connectionString, @str driver) {
-    lookup(driver) /> send({type:"connect", connectionString:connectionString}, replyTo)
-    replyTo /> receiveFrom(1000)
-}
-
+foreign connect = fn(@str connectionString, @str driver);
 
 @export
-var close = fn(@num connection, @num replyTo) {
-    connection /> send({type:"close"}, replyTo)
-	replyTo /> receiveFrom(1000)
-}
-
+foreign query = fn(@num connection, @str sql, ...params);
 
 @export
-var query = fn(@num connection, @num replyTo, @str sql, ...params) {
-    connection /> send({type: "query", sql: sql, params: params}, replyTo)
-    replyTo
-}
-
+foreign exec = fn(@num connection, @str sql, ...params);
 
 @export
-var exec = fn(@num connection, @num replyTo, @str sql, ...params) {
-    connection /> send({type:"exec", sql: sql, params: params}, replyTo)
-    replyTo
-}
-
+foreign begin = fn(@num connection);
 
 @export
-var begin = fn(@num connection, @num replyTo) {
-    connection /> send({type:"begin"}, replyTo)
-}
-
+foreign commit = fn(@num connection);
 
 @export
-var commit = fn(@num connection, @num replyTo) {
-    connection /> send({type:"commit"}, replyTo)
-}
-
+foreign rollback = fn(@num connection);
 
 @export
-var rollback = fn(@num connection, @num replyTo) {
-    connection /> send({type:"rollback"}, replyTo)
-}
+foreign close = fn(@num connection);

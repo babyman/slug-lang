@@ -3,9 +3,9 @@ package repl
 import (
 	"log/slog"
 	"slug/internal/kernel"
+	"slug/internal/lexer"
+	"slug/internal/parser"
 	"slug/internal/svc"
-	"slug/internal/svc/lexer"
-	"slug/internal/svc/parser"
 )
 
 type Repl struct {

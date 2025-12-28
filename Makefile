@@ -26,7 +26,7 @@ test:
 		echo "Running tests for $$file"; \
 		go run ./cmd/app/main.go -log-level error --root ./tests $$file || exit 1; \
 	done
-	go run ./cmd/app/main.go -log-level error test \
+	go run ./cmd/app/main.go -log-level error --root . test \
 		$(shell find './lib' -name "*.slug" | sed -e 's/\.\/lib\///' -e 's/\//./g' -e 's/\.slug//' | sort) \
 		$(shell find './test-suites' -name "*.slug" | sort) || exit 1
 

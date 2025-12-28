@@ -3,8 +3,8 @@ var {*} = import (
 );
 
 var sayHi = fn(args) match {
-    [] => "Hello Slug!";
-    [n, ...] => "Hello {{n}}!";
+    [] => println("Hello Slug!");
+    [n, ...] => println("Hello {{n}}!");
 }
 
 //

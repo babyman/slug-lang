@@ -6,47 +6,19 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"slug/internal/kernel"
-	"slug/internal/privileged"
-	"slug/internal/svc"
-	"slug/internal/svc/cli"
-	"slug/internal/svc/eval"
-	"slug/internal/svc/filesystem"
-	"slug/internal/svc/fs"
-	"slug/internal/svc/lexer"
-	"slug/internal/svc/modules"
-	"slug/internal/svc/mysql"
-	"slug/internal/svc/parser"
-	"slug/internal/svc/repl"
-	"slug/internal/svc/resolver"
-	"slug/internal/svc/sout"
-	"slug/internal/svc/sqlite"
-	"slug/internal/svc/tcp"
+	"slug/internal/evaluator"
+	"slug/internal/lexer"
+	"slug/internal/object"
+	"slug/internal/parser"
 	"slug/internal/util"
 )
 
-const (
-	r   = kernel.RightRead
-	rw  = kernel.RightRead | kernel.RightWrite
-	rwx = kernel.RightRead | kernel.RightWrite | kernel.RightExec
-	rx  = kernel.RightRead | kernel.RightExec
-	w   = kernel.RightWrite
-	wx  = kernel.RightWrite | kernel.RightExec
-	x   = kernel.RightExec
-)
-
-const (
-	DefaultRootPath = "."
-)
-
 var (
-	// Version is the current version of the slug binary loaded from the VERSION file in the root of the project.
 	Version   = "dev"
 	BuildDate = "unknown"
 	Commit    = "unknown"
 	help      bool
 	version   bool
-	// logging
 	logLevel  string
 	logFile   string
 	logSource bool
@@ -62,7 +34,7 @@ func init() {
 	flag.BoolVar(&version, "version", false, "Display version information and exit")
 	flag.BoolVar(&version, "v", false, "Display version information and exit")
 	// evaluator config
-	flag.StringVar(&rootPath, "root", DefaultRootPath, "Set the root context for the program (used for imports)")
+	flag.StringVar(&rootPath, "root", "", "Set the root context for the program (used for imports)")
 	// parser config
 	flag.BoolVar(&debugJsonAST, "debug-json-ast", false, "Render the AST as a JSON file")
 	flag.BoolVar(&debugTxtAST, "debug-txt-ast", false, "Render the AST as a TXT file")
@@ -73,143 +45,133 @@ func init() {
 }
 
 func main() {
-
 	flag.Parse()
 
-	// Creates a new Logger that uses a JSONHandler to write to standard output
-	loggerOptions := &slog.HandlerOptions{
-		AddSource: logSource,
-		Level:     logLevelFromString(logLevel),
-	}
-	logWriter := configureLogWriter()
-	defaultLogger := slog.New(slog.NewJSONHandler(logWriter, loggerOptions))
-	slog.SetDefault(defaultLogger)
-
 	if version {
-		printVersion()
+		fmt.Printf("slug version 'v%s' %s %s\n", Version, BuildDate, Commit)
 		return
 	}
 
-	if help {
+	if help || flag.NArg() == 0 {
 		printHelp()
 		return
 	}
 
+	setupLogging()
+
+	// 1. Resolve Script Path
+	targetName := flag.Arg(0)
+	scriptPath, source, err := resolveScript(targetName)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 2. Prepare Configuration
+	// RootPath is the directory of the resolved script
+	resolvedRootPath := filepath.Dir(scriptPath)
+	if rootPath != "" {
+		resolvedRootPath = rootPath
+	}
 	config := util.Configuration{
 		Version:      Version,
-		BuildDate:    BuildDate,
-		Commit:       Commit,
-		RootPath:     rootPath,
+		RootPath:     resolvedRootPath,
+		SlugHome:     os.Getenv("SLUG_HOME"),
 		DebugJsonAST: debugJsonAST,
 		DebugTxtAST:  debugTxtAST,
-		SlugHome:     os.Getenv("SLUG_HOME"),
 	}
 
-	k := kernel.NewKernel()
+	// 3. Tokenize & Parse
+	l := lexer.New(string(source))
+	p := parser.New(l, scriptPath, string(source))
+	program := p.ParseProgram()
 
-	kernelID, _ := k.ActorByName(kernel.KernelService)
+	if len(p.Errors()) != 0 {
+		fmt.Fprintf(os.Stderr, "Parse errors:\n")
+		for _, msg := range p.Errors() {
+			fmt.Fprintf(os.Stderr, "\t%s\n", msg)
+		}
+		os.Exit(1)
+	}
 
-	controlPlane := &privileged.ControlPlane{}
-	k.RegisterPrivilegedService(privileged.ControlPlaneService, controlPlane)
+	// 5. Initialize Evaluator & Environment
+	env := object.NewEnvironment()
 
-	// system out Service
-	out := &sout.SOut{}
-	soutID := k.RegisterService(svc.SOutService, sout.Operations, out.Handler)
+	// Inject command line arguments into the environment as args[]
+	programArgs := []object.Object{}
+	for _, arg := range flag.Args()[1:] {
+		programArgs = append(programArgs, &object.String{Value: arg})
+	}
+	env.Define("args", &object.List{Elements: programArgs}, false, false)
 
-	// system out Service
-	mods := modules.NewModules(config)
-	modsID := k.RegisterService(svc.ModuleService, modules.Operations, mods.Handler)
-
-	// system out Service
-	res := &resolver.Resolver{
+	eval := &evaluator.Evaluator{
 		Config: config,
 	}
-	resID := k.RegisterService(svc.ResolverService, resolver.Operations, res.Handler)
+	eval.PushEnv(env)
 
-	// CLI Service
-	cliSvc := &cli.Cli{
-		Config:   config,
-		FileName: flag.Arg(0),
-		Args:     flag.Args()[1:],
+	// 6. Execute
+	result := eval.Eval(program)
+
+	// 7. Handle Result/Errors
+	if result != nil {
+		if result.Type() == object.ERROR_OBJ {
+			fmt.Fprintf(os.Stderr, "Runtime Error: %s\n", result.Inspect())
+			os.Exit(1)
+		}
+		// In non-REPL mode, we usually don't print the final expression result
+		// unless it's an error, but you can if you want to.
 	}
-	cliID := k.RegisterService(svc.CliService, cli.Operations, cliSvc.Handler)
+}
 
-	// File system service
-	fsSvc := &fs.Fs{}
-	fsID := k.RegisterService(svc.FsService, fs.Operations, fsSvc.Handler)
+func resolveScript(target string) (string, []byte, error) {
+	slugHome := os.Getenv("SLUG_HOME")
 
-	// Lexer service
-	lexerSvc := &lexer.LexingService{}
-	lexerID := k.RegisterService(svc.LexerService, lexer.Operations, lexerSvc.Handler)
+	// Search order:
+	// 1. Exact local path
+	// 2. Local path + .slug
+	// 3. $SLUG_HOME/lib + .slug
 
-	// Parser service
-	parserSvc := &parser.Service{}
-	parserID := k.RegisterService(svc.ParserService, parser.Operations, parserSvc.Handler)
-
-	// Evaluator service
-	evalSvc := &eval.EvaluatorService{
-		Config: config,
+	searchPaths := []string{
+		target,
+		target + ".slug",
 	}
-	evalID := k.RegisterService(svc.EvalService, eval.Operations, evalSvc.Handler)
 
-	// REPL service
-	replSvc := repl.NewReplService()
-	replID := k.RegisterService(svc.ReplService, repl.Operations, replSvc.Handler)
+	if slugHome != "" {
+		searchPaths = append(searchPaths, filepath.Join(slugHome, "lib", target+".slug"))
+	}
 
-	// SQLITE service
-	sqliteSvc := sqlite.Service{}
-	sqliteID := k.RegisterService(svc.SqliteService, sqlite.Operations, sqliteSvc.Handler)
+	for _, path := range searchPaths {
+		source, err := os.ReadFile(path)
+		if err == nil {
+			absPath, _ := filepath.Abs(path)
+			return absPath, source, nil
+		}
+	}
 
-	// MySQL service
-	mysqlSvc := mysql.Service{}
-	mysqlID := k.RegisterService(svc.MysqlService, mysql.Operations, mysqlSvc.Handler)
+	return "", nil, fmt.Errorf("could not find script '%s' locally or in $SLUG_HOME/lib", target)
+}
 
-	// TCP service
-	tcpSvc := tcp.Service{}
-	tcpID := k.RegisterService(svc.TcpService, tcp.Operations, tcpSvc.Handler)
+func setupLogging() {
+	var level slog.Level
+	switch logLevel {
+	case "debug":
+		level = slog.LevelDebug
+	case "info":
+		level = slog.LevelInfo
+	case "warn":
+		level = slog.LevelWarn
+	default:
+		level = slog.LevelError
+	}
 
-	// FileSystem service
-	fileSysSvc := filesystem.Service{}
-	fileSysID := k.RegisterService(svc.FileSystemService, filesystem.Operations, fileSysSvc.Handler)
-
-	// Cap grants
-	_ = k.GrantCap(kernelID, cliID, x, nil)
-
-	_ = k.GrantCap(cliID, evalID, x, nil)
-	_ = k.GrantCap(cliID, kernelID, x, nil)
-	_ = k.GrantCap(cliID, modsID, rx, nil)
-	_ = k.GrantCap(cliID, soutID, w, nil)
-
-	_ = k.GrantCap(modsID, fsID, w, nil)
-	_ = k.GrantCap(modsID, lexerID, x, nil)
-	_ = k.GrantCap(modsID, parserID, x, nil)
-	_ = k.GrantCap(modsID, resID, r, nil)
-
-	_ = k.GrantCap(resID, fsID, r, nil)
-
-	_ = k.GrantCap(evalID, evalID, rwx, nil)
-	_ = k.GrantCap(evalID, lexerID, rwx, nil)
-	_ = k.GrantCap(evalID, modsID, r, nil)
-	_ = k.GrantCap(evalID, parserID, rwx, nil)
-	_ = k.GrantCap(evalID, soutID, w, nil)
-	_ = k.GrantCap(evalID, sqliteID, w, nil)
-	_ = k.GrantCap(evalID, mysqlID, w, nil)
-	_ = k.GrantCap(evalID, tcpID, w, nil)
-	_ = k.GrantCap(evalID, fileSysID, w, nil)
-
-	_ = k.GrantCap(sqliteID, evalID, x, nil)
-
-	_ = k.GrantCap(mysqlID, evalID, x, nil)
-
-	_ = k.GrantCap(tcpID, evalID, x, nil)
-
-	_ = k.GrantCap(fileSysID, evalID, x, nil)
-
-	_ = k.GrantCap(replID, evalID, x, nil)
-	_ = k.GrantCap(replID, lexerID, x, nil)
-	_ = k.GrantCap(replID, parserID, x, nil)
-
-	k.Start()
+	// Creates a new Logger that uses a JSONHandler to write to standard output
+	loggerOptions := &slog.HandlerOptions{
+		AddSource: logSource,
+		Level:     level,
+	}
+	logWriter := configureLogWriter()
+	defaultLogger := slog.New(slog.NewTextHandler(logWriter, loggerOptions))
+	slog.SetDefault(defaultLogger)
 }
 
 func configureLogWriter() *os.File {
@@ -232,49 +194,16 @@ func configureLogWriter() *os.File {
 	return logWriter
 }
 
-func printVersion() {
-
-	fmt.Printf("slug version 'v%s' %s %s\n", Version, BuildDate, Commit)
-}
-
 func printHelp() {
-	fmt.Printf(`Usage: slug [options] [filename [args...]]
+	fmt.Printf(`Usage: slug [options] <filename> <args>
 
 Options:
-  -root <path>       Set the root context for the program (used for imports). Default is '.'
+  -root <path>       Set the root context
+  -version, -v       Show version
+  -help, -h          Show this help
+  -log-level <level> Set log level (debug, info, warn, error)
+  -log-file <path>   Specify a log file to write logs. Default is stderr.
   -debug-json-ast    Render the AST as a JSON file.
   -debug-txt-ast     Render the AST as a TXT file.
-  -help              Display this help information and exit.
-  -version           Display version information and exit.
-  -log-level <level> Set the log level: debug, info, warn, error. Default is 'error'.
-  -log-file <path>   Specify a log file to write logs. Default is stderr.
-
-Details:
-This is the Slug programming language. 
-
-Examples:
-  slug -log-level=debug         Start with debug logging enabled
-  slug myfile.slug              Execute the provided Slug file
-  slug myfile.slug arg1 arg2    Execute the file with command-line arguments
-
-Version Information:
-  Version:    %s
-  Build Date: %s
-  Commit:     %s
-`, Version, BuildDate, Commit)
-}
-
-func logLevelFromString(level string) slog.Level {
-	switch level {
-	case "debug":
-		return slog.LevelDebug
-	case "info":
-		return slog.LevelInfo
-	case "warn":
-		return slog.LevelWarn
-	case "error":
-		return slog.LevelError
-	default:
-		return slog.LevelError
-	}
+`)
 }

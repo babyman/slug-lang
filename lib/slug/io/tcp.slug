@@ -1,78 +1,40 @@
-var {*} = import("slug.actor")
 
 // bind creates a TCP server socket bound to the specified address and port
 // Returns: listener ID on success, error on failure
 // addr: IP address to bind to (string)
 // port: Port number to listen on (integer)
 @export
-var bind = fn(@num replyTo, @str addr, @num port) { // -> listener id
-    lookup("tcp") /> send({type: "bind", addr: addr, port: port}, replyTo)
-    replyTo /> receiveFrom(1000)
-}
+foreign bind = fn(@str addr, @num port);
 
 // accept waits for and accepts an incoming TCP connection
 // Returns: connection ID on success, error on failure
 // listener: ID of the TCP listener to accept connections from (integer)
 @export
-var accept = fn(@num listener, @num replyTo) { // -> replyTo
-    listener /> send({type: "accept"}, replyTo)
-    replyTo
-}
+foreign accept = fn(@num listener);
 
 // connect establishes a TCP connection to a remote server
 // Returns: connection ID on success, error on failure
 // addr: Remote IP address to connect to (string)
 // port: Remote port number to connect to (integer)
 @export
-var connect = fn(@num replyTo, @str addr, @num port) { // -> connection id
-    lookup("tcp") /> send({type: "connect", addr: addr, port: port}, replyTo)
-    replyTo /> receiveFrom(1000)
-}
+foreign connect = fn(@str addr, @num port);
 
 // read attempts to read up to maxBytes from a TCP stream
 // Returns: string containing read data, nil on EOF, error on failure
 // stream: ID of the TCP connection to read from (integer)
 // maxBytes: Maximum number of bytes to read (integer)
 @export
-var read = fn(@num connection, @num replyTo, @num maxBytes = 4096) { // -> replyTo
-    connection /> send({type: "read", max: maxBytes}, replyTo)
-    replyTo
-}
+foreign read = fn(@num stream, @num maxBytes);
 
 // write sends data over a TCP stream
 // Returns: number of bytes written on success, error on failure
 // stream: ID of the TCP connection to write to (integer)
-// data: String or byte data to send
+// data: String data to send
 @export
-var write = fn(@num connection, @num replyTo, data) { // -> replyTo
-    connection /> send({type: "write", data: data}, replyTo)
-    replyTo
-}
-
-
-@export
-var subscribe = fn(@num connection, @num replyTo, @num credits, @num chunkSize) { // -> connection
-    connection /> send({type: "subscribe", credits: credits, chunkSize: chunkSize}, replyTo)
-}
-
-
-@export
-var credit = fn(@num connection, @num replyTo, @num credits) { // -> connection
-    connection /> send({type: "credit", credits: credits}, replyTo)
-}
-
-
-@export
-var unsubscribe = fn(@num connection) { // -> connection
-    connection /> send({type: "unsubscribe"})
-}
-
+foreign write = fn(@num stream, @str data);
 
 // close terminates a TCP listener or connection
 // Returns: nil
 // handle: ID of the TCP listener or connection to close (integer)
 @export
-var close = fn(@num handle, @num replyTo) { // -> close message
-    handle /> send({type: "close"}, replyTo)
-    replyTo /> receiveFrom(1000)
-}
+foreign close = fn(@num handle);

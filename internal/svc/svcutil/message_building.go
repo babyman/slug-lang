@@ -2,8 +2,8 @@ package svcutil
 
 import (
 	"slug/internal/dec64"
+	"slug/internal/evaluator"
 	"slug/internal/object"
-	"slug/internal/svc/eval"
 )
 
 var (
@@ -93,8 +93,8 @@ func PutList(resultMap *object.Map, key string, val []object.Object) {
 
 func PutBool(resultMap *object.Map, key string, val bool) {
 	if val {
-		putObj(resultMap, key, eval.TRUE)
+		putObj(resultMap, key, evaluator.TRUE)
 	} else {
-		putObj(resultMap, key, eval.FALSE)
+		putObj(resultMap, key, evaluator.FALSE)
 	}
 }
