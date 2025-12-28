@@ -16,7 +16,7 @@ import (
 	"slug/internal/token"
 	"slug/internal/util"
 	"strings"
-	"sync"
+	"sync/atomic"
 )
 
 var (
@@ -49,16 +49,11 @@ type Evaluator struct {
 		FnName string
 		FnObj  object.Object
 	}
-	nextID      int64
-	nextIdMutex sync.Mutex
+	nextID atomic.Int64
 }
 
 func (e *Evaluator) NextHandleID() int64 {
-	e.nextIdMutex.Lock()
-	defer e.nextIdMutex.Unlock()
-	id := e.nextID<<16 | int64(rand.Intn(0xFFFF))
-	e.nextID++
-	return id
+	return e.nextID.Add(1)<<16 | int64(rand.Intn(0xFFFF))
 }
 
 func (e *Evaluator) GetConfiguration() util.Configuration {
@@ -452,14 +447,17 @@ func (e *Evaluator) LoadModule(modName string) (*object.Module, error) {
 	fullPath = filepath.Join(e.Config.RootPath, relPath)
 	source, errFirst := os.ReadFile(fullPath)
 
-	// Fallback to $SLUG_HOME/lib
-	if errFirst != nil && e.Config.SlugHome != "" {
-		fullPath = filepath.Join(e.Config.SlugHome, "lib", relPath)
-		source, err = os.ReadFile(fullPath)
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("could not load module %s: %v and %v", modName, errFirst, err)
+	if errFirst != nil {
+		//// Fallback to $SLUG_HOME/lib
+		if e.Config.SlugHome != "" {
+			fullPath = filepath.Join(e.Config.SlugHome, "lib", relPath)
+			source, err = os.ReadFile(fullPath)
+			if err != nil {
+				return nil, fmt.Errorf("could not load module %s: local error: %v, lib error: %v", modName, errFirst, err)
+			}
+		} else {
+			return nil, fmt.Errorf("could not load module %s: %v (SLUG_HOME not set)", modName, errFirst)
+		}
 	}
 
 	// 3. Tokenize and Parse

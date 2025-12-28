@@ -71,7 +71,7 @@ func main() {
 	// RootPath is the directory of the resolved script
 	resolvedRootPath := filepath.Dir(scriptPath)
 	if rootPath != "" {
-		resolvedRootPath = rootPath
+		resolvedRootPath, _ = filepath.Abs(rootPath)
 	}
 	config := util.Configuration{
 		Version:      Version,
@@ -201,6 +201,7 @@ Options:
   -root <path>       Set the root context
   -version, -v       Show version
   -help, -h          Show this help
+  -log-source        Include the source file name in log messages.
   -log-level <level> Set log level (debug, info, warn, error)
   -log-file <path>   Specify a log file to write logs. Default is stderr.
   -debug-json-ast    Render the AST as a JSON file.
