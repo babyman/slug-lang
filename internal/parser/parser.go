@@ -108,6 +108,9 @@ func New(l lexer.Tokenizer, path, source string) *Parser {
 	p.registerPrefix(token.VAR, p.parseVarStatement)
 	p.registerPrefix(token.VAL, p.parseValStatement)
 	p.registerPrefix(token.RECUR, p.parseRecurExpression)
+	p.registerPrefix(token.ASYNC, p.parseAsyncExpression)
+	p.registerPrefix(token.SPAWN, p.parseSpawnExpression)
+	p.registerPrefix(token.AWAIT, p.parseAwaitExpression)
 
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
@@ -1287,6 +1290,74 @@ func (p *Parser) parseRecurExpression() ast.Expression {
 	// Reuse generic expression list parsing until ')'
 	args := p.parseExpressionList(token.RPAREN)
 	expr.Arguments = args
+
+	return expr
+}
+
+func (p *Parser) parseAsyncExpression() ast.Expression {
+	tok := p.curToken
+	var limit ast.Expression
+
+	p.nextToken()
+
+	if p.curTokenIs(token.LIMIT) {
+		p.nextToken()
+		limit = p.parseExpression(LOWEST)
+		p.nextToken()
+	}
+
+	// async can prefix a function or a block
+	expr := p.parseExpression(LOWEST)
+
+	switch fn := expr.(type) {
+	case *ast.FunctionLiteral:
+		fn.IsAsync = true
+		fn.Limit = limit
+		return fn
+	case *ast.BlockStatement:
+		// We might want a dedicated AsyncBlockStatement if we need to track limits on raw blocks
+		// For now, let's assume it's valid to mark a block as async
+		return &ast.FunctionLiteral{
+			Token:   token.Token{Type: token.FUNCTION, Literal: "fn"},
+			Body:    fn,
+			IsAsync: true,
+			Limit:   limit,
+		}
+	default:
+		p.addErrorAt(tok.Position, "async must be followed by a function or block")
+		return nil
+	}
+}
+
+func (p *Parser) parseSpawnExpression() ast.Expression {
+	expr := &ast.SpawnExpression{Token: p.curToken}
+	p.nextToken()
+
+	// If it's a block, wrap it in a function
+	if p.curTokenIs(token.LBRACE) {
+		block := p.parseBlockStatement()
+		expr.Body = &ast.FunctionLiteral{
+			Token: token.Token{Type: token.FUNCTION, Literal: "fn"},
+			Body:  block,
+		}
+	} else {
+		expr.Body = p.parseExpression(PREFIX)
+	}
+
+	return expr
+}
+
+func (p *Parser) parseAwaitExpression() ast.Expression {
+	expr := &ast.AwaitExpression{Token: p.curToken}
+	p.nextToken()
+
+	expr.Value = p.parseExpression(PREFIX)
+
+	if p.peekTokenIs(token.WITHIN) {
+		p.nextToken() // move to within
+		p.nextToken() // move to timeout value
+		expr.Timeout = p.parseExpression(LOWEST)
+	}
 
 	return expr
 }

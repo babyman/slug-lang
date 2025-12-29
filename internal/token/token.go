@@ -76,16 +76,21 @@ const (
 	VAR       = "VAR"
 	TRUE      = "TRUE"
 	FALSE     = "FALSE"
+	NIL       = "NIL"
 	IF        = "IF"
 	ELSE      = "ELSE"
+	MATCH     = "MATCH"
 	RETURN    = "RETURN"
 	RECUR     = "RECUR"
-	NIL       = "NIL"
 	THROW     = "THROW"
 	DEFER     = "DEFER"
 	ONSUCCESS = "ONSUCCESS"
 	ONERROR   = "ONERROR"
-	MATCH     = "MATCH"
+	ASYNC     = "ASYNC"
+	SPAWN     = "SPAWN"
+	AWAIT     = "AWAIT"
+	LIMIT     = "LIMIT"
+	WITHIN    = "WITHIN"
 )
 
 type Token struct {
@@ -118,6 +123,12 @@ var keywords = map[string]TokenType{
 	"defer":     DEFER,
 	"onsuccess": ONSUCCESS,
 	"onerror":   ONERROR,
+
+	"async":  ASYNC,
+	"spawn":  SPAWN,
+	"await":  AWAIT,
+	"limit":  LIMIT,
+	"within": WITHIN,
 }
 
 func LookupIdent(ident string) TokenType {

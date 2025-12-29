@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slug/internal/evaluator"
 	"slug/internal/lexer"
 	"slug/internal/object"
@@ -95,7 +96,8 @@ func main() {
 	}
 
 	// 5. Initialize Evaluator & Environment
-	env := object.NewEnvironment()
+	defaultLimit := runtime.NumCPU() * 2
+	env := object.NewRootEnvironment(defaultLimit)
 
 	// Inject command line arguments into the environment as args[]
 	programArgs := []object.Object{}

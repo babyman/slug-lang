@@ -187,6 +187,7 @@ type BlockStatement struct {
 }
 
 func (bs *BlockStatement) statementNode()       {}
+func (bs *BlockStatement) expressionNode()      {}
 func (bs *BlockStatement) TokenLiteral() string { return bs.Token.Literal }
 func (bs *BlockStatement) String() string {
 	var out bytes.Buffer
@@ -304,13 +305,24 @@ type FunctionLiteral struct {
 	Signature   FSig
 	Parameters  []*FunctionParameter
 	Body        *BlockStatement
-	HasTailCall bool // Whether this function has tail calls
+	HasTailCall bool       // Whether this function has tail calls
+	IsAsync     bool       // New field
+	Limit       Expression // New field (e.g., NumberLiteral)
 }
 
 func (fl *FunctionLiteral) expressionNode()      {}
 func (fl *FunctionLiteral) TokenLiteral() string { return fl.Token.Literal }
 func (fl *FunctionLiteral) String() string {
 	var out bytes.Buffer
+
+	if fl.IsAsync {
+		out.WriteString("async ")
+		if fl.Limit != nil {
+			out.WriteString("limit ")
+			out.WriteString(fl.Limit.String())
+			out.WriteString(" ")
+		}
+	}
 
 	params := []string{}
 	for _, p := range fl.Parameters {
@@ -343,6 +355,39 @@ func (r *RecurExpression) String() string {
 		out.WriteString(a.String())
 	}
 	out.WriteString(")")
+	return out.String()
+}
+
+type SpawnExpression struct {
+	Token token.Token // The 'spawn' token
+	Body  Expression  // Usually a BlockStatement or FunctionLiteral
+}
+
+func (se *SpawnExpression) expressionNode()      {}
+func (se *SpawnExpression) TokenLiteral() string { return se.Token.Literal }
+func (se *SpawnExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString("spawn ")
+	out.WriteString(se.Body.String())
+	return out.String()
+}
+
+type AwaitExpression struct {
+	Token   token.Token // The 'await' token
+	Value   Expression  // The task handle
+	Timeout Expression  // The 'within' expression (optional)
+}
+
+func (ae *AwaitExpression) expressionNode()      {}
+func (ae *AwaitExpression) TokenLiteral() string { return ae.Token.Literal }
+func (ae *AwaitExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString("await ")
+	out.WriteString(ae.Value.String())
+	if ae.Timeout != nil {
+		out.WriteString(" within ")
+		out.WriteString(ae.Timeout.String())
+	}
 	return out.String()
 }
 

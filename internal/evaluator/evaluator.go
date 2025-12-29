@@ -17,6 +17,7 @@ import (
 	"slug/internal/util"
 	"strings"
 	"sync/atomic"
+	"time"
 )
 
 var (
@@ -83,7 +84,14 @@ func (e *Evaluator) PopEnv(result object.Object) object.Object {
 		panic("Attempted to pop from an empty environment stack")
 	}
 
-	finalResult := e.CurrentEnv().ExecuteDeferred(result, func(stmt ast.Statement) object.Object {
+	currentEnv := e.CurrentEnv()
+
+	// 1. Wait for all spawned children in this scope to finish
+	// This is the core of Structured Concurrency.
+	currentEnv.WaitChildren()
+
+	// 2. Execute deferred statements (cleanups)
+	finalResult := currentEnv.ExecuteDeferred(result, func(stmt ast.Statement) object.Object {
 		return e.Eval(stmt)
 	})
 
@@ -246,6 +254,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			Body:        body,
 			Signature:   node.Signature,
 			HasTailCall: node.HasTailCall,
+			Limit:       node.Limit,
 		}
 
 	case *ast.CallExpression:
@@ -370,6 +379,11 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 	case *ast.DeferStatement:
 		return e.evalDefer(node)
 
+	case *ast.SpawnExpression:
+		return e.evalSpawnExpression(node)
+
+	case *ast.AwaitExpression:
+		return e.evalAwaitExpression(node)
 	}
 
 	return nil
@@ -1150,6 +1164,18 @@ func (e *Evaluator) extendFunctionEnv(
 		Position: fn.Body.Token.Position,
 		Src:      fn.Env.Src,
 	})
+
+	// Handle Concurrency Limit
+	if fn.Limit != nil {
+		limitVal := e.Eval(fn.Limit)
+		if num, ok := limitVal.(*object.Number); ok {
+			n := num.Value.ToInt()
+			if n > 0 {
+				env.Limit = make(chan struct{}, n)
+			}
+		}
+	}
+
 	numArgs := len(args)
 
 	for i, param := range fn.Parameters {
@@ -1969,6 +1995,107 @@ func (e *Evaluator) evalDefer(deferStmt *ast.DeferStatement) object.Object {
 	// Register the defer statement into the environment's defer stack
 	e.CurrentEnv().RegisterDefer(deferStmt)
 	return nil // Defer statements do not produce a direct result
+}
+
+func (e *Evaluator) evalSpawnExpression(node *ast.SpawnExpression) object.Object {
+	currentEnv := e.CurrentEnv()
+
+	// 1. Create the handle
+	handle := &object.TaskHandle{
+		ID:   e.NextHandleID(),
+		Done: make(chan struct{}),
+	}
+
+	// 2. Register child with parent scope for structured cleanup
+	currentEnv.AddChild(handle)
+
+	// 3. Prepare the task execution
+	// We need a fresh evaluator or a way to safely run in parallel.
+	// For "Boring" concurrency, a sub-evaluator that shares the same config is safest.
+	taskEval := &Evaluator{
+		Config:  e.Config,
+		Modules: e.Modules, // Modules are usually read-only after load
+		// Note: We don't copy the envStack directly; the task starts with the currentEnv
+	}
+	taskEval.PushEnv(currentEnv)
+
+	// 4. Start the goroutine
+	go func() {
+		// FIND THE SEMAPHORE: Walk up the environment tree to find the nearest limit
+		var limitChan chan struct{}
+		for env := currentEnv; env != nil; env = env.Outer {
+			if env.Limit != nil {
+				limitChan = env.Limit
+				break
+			}
+		}
+
+		// If a limit exists in this lexical hierarchy (including the global default), respect it
+		if limitChan != nil {
+			limitChan <- struct{}{}
+			defer func() { <-limitChan }()
+		}
+
+		// Evaluate the body (which the parser wrapped in a FunctionLiteral if it was a block)
+		result := taskEval.Eval(node.Body)
+
+		// If the result is a function, we should probably invoke it (spawn fn() { ... })
+		// but since our parser wraps blocks in fns, we check if we need to Apply.
+		if fn, ok := result.(*object.Function); ok && len(fn.Parameters) == 0 {
+			result = taskEval.ApplyFunction(node.Token.Position, "spawned_task", fn, []object.Object{})
+		}
+
+		// Mark handle as complete
+		handle.Complete(result)
+	}()
+
+	return handle
+}
+
+func (e *Evaluator) evalAwaitExpression(node *ast.AwaitExpression) object.Object {
+	obj := e.Eval(node.Value)
+	if e.isError(obj) {
+		return obj
+	}
+
+	handle, ok := obj.(*object.TaskHandle)
+	if !ok {
+		return e.newErrorfWithPos(node.Token.Position, "await expects a task handle, got %s", obj.Type())
+	}
+
+	// Handle timeout if present
+	if node.Timeout != nil {
+		timeoutVal := e.Eval(node.Timeout)
+		if e.isError(timeoutVal) {
+			return timeoutVal
+		}
+
+		// Simplified: assumes timeout is in milliseconds if a number,
+		// or we could parse a "duration" object later.
+		var duration int64
+		if num, ok := timeoutVal.(*object.Number); ok {
+			duration = num.Value.ToInt64()
+		} else {
+			return e.newErrorfWithPos(node.Token.Position, "timeout must be a number (ms)")
+		}
+
+		select {
+		case <-handle.Done:
+			// Task finished in time
+		case <-time.After(time.Duration(duration) * time.Millisecond):
+			return e.newErrorWithPos(node.Token.Position, "Timeout: task did not complete within limit")
+		}
+	} else {
+		// No timeout, block indefinitely
+		<-handle.Done
+	}
+
+	// If the task resulted in a RuntimeError, re-throw it here
+	if handle.Err != nil {
+		return handle.Err
+	}
+
+	return handle.Result
 }
 
 func (e *Evaluator) applyTagsIfPresent(tags []*ast.Tag, val object.Object) object.Object {

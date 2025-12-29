@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slug/internal/ast"
+	"sync"
 )
 
 // NewEnclosedEnvironment initializes an environment with a parent and optional stack frame.
@@ -19,18 +20,35 @@ func NewEnclosedEnvironment(outer *Environment, stackFrame *StackFrame) *Environ
 }
 
 func NewEnvironment() *Environment {
-	s := make(map[string]*Binding)
-	return &Environment{Bindings: s, Outer: nil}
+	return &Environment{
+		Bindings: make(map[string]*Binding),
+		Defers:   make([]*ast.DeferStatement, 0),
+		Children: make([]*TaskHandle, 0),
+	}
+}
+
+// NewRootEnvironment creates the base environment with a system-wide concurrency limit
+func NewRootEnvironment(limit int) *Environment {
+	env := NewEnvironment()
+	if limit > 0 {
+		env.Limit = make(chan struct{}, limit)
+	}
+	return env
 }
 
 type Environment struct {
-	Bindings   map[string]*Binding
-	Outer      *Environment
-	Src        string
-	Path       string
-	ModuleFqn  string
-	StackInfo  *StackFrame           // Optional stack frame information
-	deferStack []*ast.DeferStatement // Stack for deferred statements
+	Bindings  map[string]*Binding
+	Outer     *Environment
+	Src       string
+	Path      string
+	ModuleFqn string
+	StackInfo *StackFrame           // Optional stack frame information
+	Defers    []*ast.DeferStatement // Stack for deferred statements
+
+	// Concurrency tracking
+	Children []*TaskHandle // Tasks owned by this scope
+	Limit    chan struct{} // Semaphore for 'async limit N'
+	mu       sync.Mutex
 }
 
 type Binding struct {
@@ -44,6 +62,26 @@ type Binding struct {
 type Meta struct {
 	IsImport bool
 	IsExport bool
+}
+
+// AddChild registers a task handle with this environment
+func (e *Environment) AddChild(th *TaskHandle) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.Children = append(e.Children, th)
+}
+
+// WaitChildren blocks until all direct children of this scope have settled
+func (e *Environment) WaitChildren() {
+	// We copy the slice to avoid holding the lock during blocking waits
+	e.mu.Lock()
+	children := make([]*TaskHandle, len(e.Children))
+	copy(children, e.Children)
+	e.mu.Unlock()
+
+	for _, child := range children {
+		<-child.Done
+	}
 }
 
 func (e *Environment) GetBinding(name string) (*Binding, bool) {
@@ -186,24 +224,24 @@ func (e *Environment) Assign(name string, val Object) (Object, error) {
 func (e *Environment) RegisterDefer(deferStmt *ast.DeferStatement) {
 	slog.Debug("Stashing deferred block",
 		slog.Any("deferred-statement", deferStmt))
-	e.deferStack = append(e.deferStack, deferStmt)
+	e.Defers = append(e.Defers, deferStmt)
 }
 
 // ExecuteDeferred runs deferred statements.
 // It takes the current result of the block/function and returns the final result.
 // If a deferred statement recovers or throws, the returned object will reflect that.
 func (e *Environment) ExecuteDeferred(result Object, evalFunc func(stmt ast.Statement) Object) Object {
-	defer func() { e.deferStack = nil }() // Always clear defer stack
+	defer func() { e.Defers = nil }() // Always clear defer stack
 
-	if e.deferStack == nil || len(e.deferStack) == 0 {
+	if e.Defers == nil || len(e.Defers) == 0 {
 		return result
 	}
 	slog.Debug("Deferred execution starting",
 		slog.Any("pre-result", result))
 	currentResult := result
 
-	for i := len(e.deferStack) - 1; i >= 0; i-- {
-		ds := e.deferStack[i]
+	for i := len(e.Defers) - 1; i >= 0; i-- {
+		ds := e.Defers[i]
 
 		// 1. Analyze current state
 		isError := false
