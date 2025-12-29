@@ -57,6 +57,12 @@ do not create a nursery.
 **Spawn registration:** `spawn { ... }` registers the child task with `currentNursery` (the nearest enclosing nursery),
 not with the immediate call frame or block scope.
 
+**Escaping task handles:** A task handle may be stored in values (lists/maps) and returned from functions. If a task
+handle escapes its nursery scope (for example, it is returned from an `async` nursery scope), it is guaranteed to be
+**settled** (completed, failed, or cancelled), because the nursery cannot exit until all its children settle. As a
+result, `await` on an escaped handle is always **idempotent** and will return immediately (or re-throw the stored
+error).
+
 ---
 
 ### `spawn`
@@ -104,6 +110,24 @@ Semantics:
 * Suspension happens **only** at `await`
 * On timeout, a `Timeout` error is raised
 * Errors propagate like normal runtime errors
+
+---
+
+## Type Tags (Task Handles)
+
+Task handles are first-class values and can be passed through lists/maps and into functions. When writing polymorphic
+functions that use type-tagged dispatch, Slug provides the `@task` type tag for task handles.
+
+```slug
+var awaitAll = async fn(@list hs) {
+    hs /> map(async fn(@task h) { await h })
+}
+```
+
+Notes:
+
+* `@task` matches task handles returned by `spawn`.
+* `await` is idempotent: awaiting an already-settled handle returns immediately (or re-throws its stored error).
 
 ---
 

@@ -41,6 +41,7 @@ const (
 	IMPORT_TAG   = "@import"
 	EXPORT_TAG   = "@export"
 	FUNCTION_TAG = "@fun"
+	TASK_TAG     = "@task"
 )
 
 var TypeTags = map[string]string{
@@ -51,6 +52,7 @@ var TypeTags = map[string]string{
 	"@bytes":     BYTE_OBJ,
 	"@bool":      BOOLEAN_OBJ,
 	FUNCTION_TAG: FUNCTION_OBJ,
+	TASK_TAG:     TASK_HANDLE_OBJ,
 }
 
 // EvaluatorContext provides the bridge between native Go code and the interpreter,
