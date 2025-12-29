@@ -255,6 +255,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			Signature:   node.Signature,
 			HasTailCall: node.HasTailCall,
 			Limit:       node.Limit,
+			IsAsync:     node.IsAsync,
 		}
 
 	case *ast.CallExpression:
@@ -1165,6 +1166,9 @@ func (e *Evaluator) extendFunctionEnv(
 		Src:      fn.Env.Src,
 	})
 
+	// NEW: mark whether this call frame is an async scope
+	env.IsAsyncScope = fn.IsAsync
+
 	// Handle Concurrency Limit
 	if fn.Limit != nil {
 		limitVal := e.Eval(fn.Limit)
@@ -2000,28 +2004,32 @@ func (e *Evaluator) evalDefer(deferStmt *ast.DeferStatement) object.Object {
 func (e *Evaluator) evalSpawnExpression(node *ast.SpawnExpression) object.Object {
 	currentEnv := e.CurrentEnv()
 
-	// 1. Create the handle
+	// Find the owning scope for structured concurrency.
+	// Nearest async scope wins; fallback to the root.
+	ownerEnv := currentEnv
+	for env := currentEnv; env != nil; env = env.Outer {
+		if env.IsAsyncScope || env.Outer == nil {
+			ownerEnv = env
+			break
+		}
+	}
+
 	handle := &object.TaskHandle{
 		ID:   e.NextHandleID(),
 		Done: make(chan struct{}),
 	}
 
-	// 2. Register child with parent scope for structured cleanup
-	currentEnv.AddChild(handle)
+	// IMPORTANT: register child on the owner scope, not necessarily currentEnv
+	ownerEnv.AddChild(handle)
 
-	// 3. Prepare the task execution
-	// We need a fresh evaluator or a way to safely run in parallel.
-	// For "Boring" concurrency, a sub-evaluator that shares the same config is safest.
 	taskEval := &Evaluator{
 		Config:  e.Config,
-		Modules: e.Modules, // Modules are usually read-only after load
-		// Note: We don't copy the envStack directly; the task starts with the currentEnv
+		Modules: e.Modules,
 	}
 	taskEval.PushEnv(currentEnv)
 
-	// 4. Start the goroutine
 	go func() {
-		// FIND THE SEMAPHORE: Walk up the environment tree to find the nearest limit
+		// Limit behavior should remain lexical to where spawn occurs (currentEnv chain)
 		var limitChan chan struct{}
 		for env := currentEnv; env != nil; env = env.Outer {
 			if env.Limit != nil {
@@ -2029,23 +2037,17 @@ func (e *Evaluator) evalSpawnExpression(node *ast.SpawnExpression) object.Object
 				break
 			}
 		}
-
-		// If a limit exists in this lexical hierarchy (including the global default), respect it
 		if limitChan != nil {
 			limitChan <- struct{}{}
 			defer func() { <-limitChan }()
 		}
 
-		// Evaluate the body (which the parser wrapped in a FunctionLiteral if it was a block)
 		result := taskEval.Eval(node.Body)
 
-		// If the result is a function, we should probably invoke it (spawn fn() { ... })
-		// but since our parser wraps blocks in fns, we check if we need to Apply.
 		if fn, ok := result.(*object.Function); ok && len(fn.Parameters) == 0 {
 			result = taskEval.ApplyFunction(node.Token.Position, "spawned_task", fn, []object.Object{})
 		}
 
-		// Mark handle as complete
 		handle.Complete(result)
 	}()
 

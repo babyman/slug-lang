@@ -2,7 +2,8 @@
 
 This document defines the **official concurrency model** for the Slug programming language.
 
-Slug favors **explicit concurrency**, **lexical ownership**, and **predictable lifetime rules** over implicit parallelism or message-passing abstractions.
+Slug favors **explicit concurrency**, **lexical ownership**, and **predictable lifetime rules** over implicit
+parallelism or message-passing abstractions.
 
 ---
 
@@ -49,6 +50,13 @@ Rules:
 * Calling an `async fn` does **not** start parallelism by itself
 * `async` means “this scope may suspend”
 
+**Nursery ownership:** Each executing task has a `currentNursery` pointer. Entering an `async` *nursery scope* (e.g.,
+`async limit N fn` or `async {}`) pushes a new nursery; leaving it joins/cancels its children. Ordinary function calls
+do not create a nursery.
+
+**Spawn registration:** `spawn { ... }` registers the child task with `currentNursery` (the nearest enclosing nursery),
+not with the immediate call frame or block scope.
+
 ---
 
 ### `spawn`
@@ -66,7 +74,9 @@ Semantics:
 * Returns a **task handle**
 * The child task is owned by the current scope
 * **Execution**: Spawned tasks are executed on a managed worker pool.
-* A scope cannot exit until all its spawned children settle
+* A **nursery scope** cannot exit until all its spawned children settle
+* `spawn` registers its child task with the nearest enclosing async nursery scope (or root), not the immediate
+  function-call environment.
 
 `spawn` may execute:
 
@@ -136,7 +146,8 @@ Timeout behavior:
 
 ## Failure & Cancellation Semantics
 
-* **Deadlocks**: The runtime will attempt to detect circular dependencies (e.g., two tasks awaiting each other). If detected, a `Deadlock` error is raised. Otherwise, tasks will remain suspended until a timeout occurs.
+* **Deadlocks**: The runtime will attempt to detect circular dependencies (e.g., two tasks awaiting each other). If
+  detected, a `Deadlock` error is raised. Otherwise, tasks will remain suspended until a timeout occurs.
 * If a child task fails:
 
     * Sibling tasks are cancelled

@@ -96,8 +96,14 @@ func main() {
 	}
 
 	// 5. Initialize Evaluator & Environment
-	defaultLimit := runtime.NumCPU() * 2
+	defaultLimit := max(runtime.NumCPU()*2, 4)
 	env := object.NewRootEnvironment(defaultLimit)
+
+	// Ensure stacktraces have file/source context for line/column lookup.
+	// Child environments inherit these via NewEnclosedEnvironment.
+	env.Path = scriptPath
+	env.Src = string(source)
+	env.ModuleFqn = "<main>"
 
 	// Inject command line arguments into the environment as args[]
 	programArgs := []object.Object{}

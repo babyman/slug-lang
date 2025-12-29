@@ -3,6 +3,7 @@ package object
 import (
 	"fmt"
 	"log/slog"
+	"runtime"
 	"slug/internal/ast"
 	"sync"
 )
@@ -29,7 +30,12 @@ func NewEnvironment() *Environment {
 
 // NewRootEnvironment creates the base environment with a system-wide concurrency limit
 func NewRootEnvironment(limit int) *Environment {
+	slog.Debug("------ new root env ------\n",
+		slog.Int("concurrency-limit", limit),
+		slog.Int("gomaxprocs", runtime.GOMAXPROCS(0)),
+	)
 	env := NewEnvironment()
+	env.IsAsyncScope = true // root acts like an async scope for spawn ownership
 	if limit > 0 {
 		env.Limit = make(chan struct{}, limit)
 	}
@@ -46,9 +52,10 @@ type Environment struct {
 	Defers    []*ast.DeferStatement // Stack for deferred statements
 
 	// Concurrency tracking
-	Children []*TaskHandle // Tasks owned by this scope
-	Limit    chan struct{} // Semaphore for 'async limit N'
-	mu       sync.Mutex
+	Children     []*TaskHandle // Tasks owned by this scope
+	Limit        chan struct{} // Semaphore for 'async limit N'
+	IsAsyncScope bool          // NEW: marks a scope that can own spawned tasks
+	mu           sync.Mutex
 }
 
 type Binding struct {
