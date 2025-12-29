@@ -8,6 +8,11 @@ var filename = "__slug_test.txt";
 var hello = "Hello Slug!\n";
 var goodbye = "Goodbye Slug!\n";
 
+
+// ensure the test file doesn't exist, if it does could be defer isn't running
+// -------
+filename /> exists /> assertFalse
+
 // read / write / append entire file content
 // -----------------------------------------
 hello /> writeFile(filename);

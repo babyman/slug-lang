@@ -111,6 +111,8 @@ func main() {
 
 	// 6. Execute
 	result := eval.Eval(program)
+	// make sure defers execute
+	eval.PopEnv(nil)
 
 	// 7. Handle Result/Errors
 	if result != nil {
