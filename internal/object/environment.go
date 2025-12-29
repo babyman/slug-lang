@@ -54,8 +54,10 @@ type Environment struct {
 	// Concurrency tracking
 	Children     []*TaskHandle // Tasks owned by this scope
 	Limit        chan struct{} // Semaphore for 'async limit N'
-	IsAsyncScope bool          // NEW: marks a scope that can own spawned tasks
-	mu           sync.Mutex
+	IsAsyncScope bool          // marks a scope that can own spawned tasks
+	NurseryErr   *RuntimeError // fail-fast state (first failure wins)
+
+	mu sync.Mutex
 }
 
 type Binding struct {
@@ -78,9 +80,38 @@ func (e *Environment) AddChild(th *TaskHandle) {
 	e.Children = append(e.Children, th)
 }
 
+// CancelChildren cancels all children except `except` (if non-nil).
+func (e *Environment) CancelChildren(except *TaskHandle, cause *RuntimeError, reason string) {
+	e.mu.Lock()
+	children := make([]*TaskHandle, len(e.Children))
+	copy(children, e.Children)
+	e.mu.Unlock()
+
+	for _, ch := range children {
+		if except != nil && ch == except {
+			continue
+		}
+		ch.Cancel(cause, reason)
+	}
+}
+
+// NoteChildFailure records the first failure and cancels siblings (fail-fast).
+func (e *Environment) NoteChildFailure(failed *TaskHandle, err *RuntimeError) {
+	e.mu.Lock()
+	alreadyFailed := e.NurseryErr != nil
+	if !alreadyFailed {
+		e.NurseryErr = err
+	}
+	e.mu.Unlock()
+
+	// Only the first failure triggers sibling cancellation
+	if !alreadyFailed {
+		e.CancelChildren(failed, err, "sibling cancelled due to fail-fast")
+	}
+}
+
 // WaitChildren blocks until all direct children of this scope have settled
 func (e *Environment) WaitChildren() {
-	// We copy the slice to avoid holding the lock during blocking waits
 	e.mu.Lock()
 	children := make([]*TaskHandle, len(e.Children))
 	copy(children, e.Children)

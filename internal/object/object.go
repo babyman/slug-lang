@@ -245,6 +245,21 @@ func (th *TaskHandle) Complete(res Object) {
 	close(th.Done)
 }
 
+// Cancel force-settles the task as cancelled (idempotent).
+// The underlying goroutine may continue running, but its result is ignored.
+func (th *TaskHandle) Cancel(cause *RuntimeError, reason string) {
+	payload := &Map{}
+	payload.Put(&String{Value: "type"}, &String{Value: "cancelled"})
+	payload.Put(&String{Value: "reason"}, &String{Value: reason})
+
+	rt := &RuntimeError{
+		Payload: payload,
+		Cause:   cause,
+	}
+
+	th.Complete(rt)
+}
+
 type Error struct {
 	Message string
 }

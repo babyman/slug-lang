@@ -86,11 +86,27 @@ func (e *Evaluator) PopEnv(result object.Object) object.Object {
 
 	currentEnv := e.CurrentEnv()
 
-	// 1. Wait for all spawned children in this scope to finish
-	// This is the core of Structured Concurrency.
+	// If we are exiting early (return or error), cancel children downward.
+	switch result.(type) {
+	case *object.ReturnValue:
+		currentEnv.CancelChildren(nil, nil, "parent scope exited early")
+	case *object.RuntimeError:
+		currentEnv.CancelChildren(nil, result.(*object.RuntimeError), "parent scope failed")
+	case *object.Error:
+		currentEnv.CancelChildren(nil, nil, "parent scope failed")
+	}
+
+	// Wait for children (join nursery)
 	currentEnv.WaitChildren()
 
-	// 2. Execute deferred statements (cleanups)
+	// If any child failed and the current result isn't already an error/return, propagate it upward.
+	if currentEnv.NurseryErr != nil {
+		if result == nil || (result.Type() != object.ERROR_OBJ && result.Type() != object.RETURN_VALUE_OBJ) {
+			result = currentEnv.NurseryErr
+		}
+	}
+
+	// Execute deferred statements (cleanups)
 	finalResult := currentEnv.ExecuteDeferred(result, func(stmt ast.Statement) object.Object {
 		return e.Eval(stmt)
 	})
@@ -1760,6 +1776,25 @@ func (e *Evaluator) evalMapIndexExpression(pos int, obj, index object.Object) ob
 	return pair.Value
 }
 
+func (e *Evaluator) runtimeErrorAt(pos int, typ string, fields map[string]object.Object) *object.RuntimeError {
+	payload := &object.Map{}
+	payload.Put(&object.String{Value: "type"}, &object.String{Value: typ})
+	for k, v := range fields {
+		payload.Put(&object.String{Value: k}, v)
+	}
+
+	env := e.CurrentEnv()
+	return &object.RuntimeError{
+		Payload: payload,
+		StackTrace: e.GatherStackTrace(&object.StackFrame{
+			Function: typ,
+			File:     env.Path,
+			Src:      env.Src,
+			Position: pos,
+		}),
+	}
+}
+
 func (e *Evaluator) evalThrowStatement(node *ast.ThrowStatement) object.Object {
 	val := e.Eval(node.Value)
 	if e.isError(val) {
@@ -2004,8 +2039,7 @@ func (e *Evaluator) evalDefer(deferStmt *ast.DeferStatement) object.Object {
 func (e *Evaluator) evalSpawnExpression(node *ast.SpawnExpression) object.Object {
 	currentEnv := e.CurrentEnv()
 
-	// Find the owning scope for structured concurrency.
-	// Nearest async scope wins; fallback to the root.
+	// ownerEnv = nearest async nursery (or root) -- you already implemented this part
 	ownerEnv := currentEnv
 	for env := currentEnv; env != nil; env = env.Outer {
 		if env.IsAsyncScope || env.Outer == nil {
@@ -2029,7 +2063,7 @@ func (e *Evaluator) evalSpawnExpression(node *ast.SpawnExpression) object.Object
 	taskEval.PushEnv(currentEnv)
 
 	go func() {
-		// Limit behavior should remain lexical to where spawn occurs (currentEnv chain)
+		// lexical limit lookup (currentEnv chain)
 		var limitChan chan struct{}
 		for env := currentEnv; env != nil; env = env.Outer {
 			if env.Limit != nil {
@@ -2049,6 +2083,11 @@ func (e *Evaluator) evalSpawnExpression(node *ast.SpawnExpression) object.Object
 		}
 
 		handle.Complete(result)
+
+		// NEW: fail-fast sibling cancellation
+		if handle.Err != nil {
+			ownerEnv.NoteChildFailure(handle, handle.Err)
+		}
 	}()
 
 	return handle
@@ -2065,15 +2104,12 @@ func (e *Evaluator) evalAwaitExpression(node *ast.AwaitExpression) object.Object
 		return e.newErrorfWithPos(node.Token.Position, "await expects a task handle, got %s", obj.Type())
 	}
 
-	// Handle timeout if present
 	if node.Timeout != nil {
 		timeoutVal := e.Eval(node.Timeout)
 		if e.isError(timeoutVal) {
 			return timeoutVal
 		}
 
-		// Simplified: assumes timeout is in milliseconds if a number,
-		// or we could parse a "duration" object later.
 		var duration int64
 		if num, ok := timeoutVal.(*object.Number); ok {
 			duration = num.Value.ToInt64()
@@ -2083,20 +2119,21 @@ func (e *Evaluator) evalAwaitExpression(node *ast.AwaitExpression) object.Object
 
 		select {
 		case <-handle.Done:
-			// Task finished in time
+			// completed
 		case <-time.After(time.Duration(duration) * time.Millisecond):
-			return e.newErrorWithPos(node.Token.Position, "Timeout: task did not complete within limit")
+			// cancel task + raise Timeout
+			handle.Cancel(nil, "cancelled due to await timeout")
+			return e.runtimeErrorAt(node.Token.Position, "timeout", map[string]object.Object{
+				"ms": &object.Number{Value: dec64.FromInt(int(duration))},
+			})
 		}
 	} else {
-		// No timeout, block indefinitely
 		<-handle.Done
 	}
 
-	// If the task resulted in a RuntimeError, re-throw it here
 	if handle.Err != nil {
 		return handle.Err
 	}
-
 	return handle.Result
 }
 
