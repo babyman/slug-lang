@@ -69,6 +69,9 @@ contexts:
     - match: \b(defer|onsuccess|onerror)\b
       scope: keyword.control.flow.defer.slug
 
+    - match: \b(async|limit|spawn|await|within)\b
+      scope: keyword.control.concurrent.slug
+
     # Built-in functions
     - match: \b(len|import|print|println|stacktrace)\b
       scope: support.function.builtin.slug

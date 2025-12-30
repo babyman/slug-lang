@@ -86,23 +86,25 @@ func (e *Evaluator) PopEnv(result object.Object) object.Object {
 
 	currentEnv := e.CurrentEnv()
 
-	// If we are exiting early (return or error), cancel children downward.
-	switch result.(type) {
-	case *object.ReturnValue:
-		currentEnv.CancelChildren(nil, nil, "parent scope exited early")
-	case *object.RuntimeError:
-		currentEnv.CancelChildren(nil, result.(*object.RuntimeError), "parent scope failed")
-	case *object.Error:
-		currentEnv.CancelChildren(nil, nil, "parent scope failed")
-	}
+	if currentEnv.IsAsyncScope {
+		// If we are exiting early (return or error), cancel children downward.
+		switch result.(type) {
+		case *object.ReturnValue:
+			currentEnv.CancelChildren(nil, nil, "parent scope exited early")
+		case *object.RuntimeError:
+			currentEnv.CancelChildren(nil, result.(*object.RuntimeError), "parent scope failed")
+		case *object.Error:
+			currentEnv.CancelChildren(nil, nil, "parent scope failed")
+		}
 
-	// Wait for children (join nursery)
-	currentEnv.WaitChildren()
+		// Wait for children (join nursery)
+		currentEnv.WaitChildren()
 
-	// If any child failed and the current result isn't already an error/return, propagate it upward.
-	if currentEnv.NurseryErr != nil {
-		if result == nil || (result.Type() != object.ERROR_OBJ && result.Type() != object.RETURN_VALUE_OBJ) {
-			result = currentEnv.NurseryErr
+		// If any child failed and the current result isn't already an error/return, propagate it upward.
+		if currentEnv.NurseryErr != nil {
+			if result == nil || (result.Type() != object.ERROR_OBJ && result.Type() != object.RETURN_VALUE_OBJ) {
+				result = currentEnv.NurseryErr
+			}
 		}
 	}
 
@@ -2060,17 +2062,12 @@ func (e *Evaluator) evalSpawnExpression(node *ast.SpawnExpression) object.Object
 		Config:  e.Config,
 		Modules: e.Modules,
 	}
-	taskEval.PushEnv(currentEnv)
+	newEnv := object.NewEnclosedEnvironment(currentEnv, nil)
+	taskEval.PushEnv(newEnv)
 
 	go func() {
 		// lexical limit lookup (currentEnv chain)
-		var limitChan chan struct{}
-		for env := currentEnv; env != nil; env = env.Outer {
-			if env.Limit != nil {
-				limitChan = env.Limit
-				break
-			}
-		}
+		limitChan := ownerEnv.Limit
 		if limitChan != nil {
 			limitChan <- struct{}{}
 			defer func() { <-limitChan }()
@@ -2117,11 +2114,14 @@ func (e *Evaluator) evalAwaitExpression(node *ast.AwaitExpression) object.Object
 			return e.newErrorfWithPos(node.Token.Position, "timeout must be a number (ms)")
 		}
 
+		timer := time.NewTimer(time.Duration(duration) * time.Millisecond)
+		defer timer.Stop()
+
 		select {
 		case <-handle.Done:
-			// completed
-		case <-time.After(time.Duration(duration) * time.Millisecond):
-			// cancel task + raise Timeout
+			// Task finished in time
+		case <-timer.C:
+			// Timeout: cancel task + raise timeout error
 			handle.Cancel(nil, "cancelled due to await timeout")
 			return e.runtimeErrorAt(node.Token.Position, "timeout", map[string]object.Object{
 				"ms": &object.Number{Value: dec64.FromInt(int(duration))},

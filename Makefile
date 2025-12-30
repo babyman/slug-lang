@@ -29,6 +29,8 @@ test:
 	go run ./cmd/app/main.go -log-level error --root . test \
 		$(shell find './lib' -name "*.slug" | sed -e 's/\.\/lib\///' -e 's/\//./g' -e 's/\.slug//' | sort) \
 		$(shell find './test-suites' -name "*.slug" | sort) || exit 1
+#	go run ./cmd/app/main.go -log-level error --root . test \
+#		$(shell find './test-suites' -name "*.slug" | sort) || exit 1
 
 lc: clean
 	cloc  --exclude-dir=.idea --read-lang-def=slug_cloc_definition.txt .

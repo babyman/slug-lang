@@ -1,0 +1,102 @@
+var {*} = import(
+    "slug.std",
+    "slug.test",
+    "slug.time",
+)
+
+@test
+var test_async_actions_run_in_parallel = fn() {
+    var c = delta(clock)
+    var f = async fn() {
+        var x = spawn {
+            sleep(100)
+            10 + 1
+        }
+        var y = spawn {
+            sleep(100)
+            10 * 10
+        }
+        var i = await x within 150
+        var j = await y within 150
+        i + j
+    }
+    f() /> assertEqual(111)
+    c() /> assertLessThan(150)
+}
+
+@test
+var test_limit_1_forces_sync_execution = fn() {
+    var c = delta(clock)
+    var f = async limit 1 fn() {
+        var x = spawn {
+            sleep(100)
+            10 + 1
+        }
+        var y = spawn {
+            sleep(100)
+            10 * 10
+        }
+        var i = await x within 250
+        var j = await y within 250
+        i + j
+    }
+    f() /> assertEqual(111)
+    c() /> assertGreaterThan(200)
+}
+
+@test
+var test_map_reduce_operate_in_the_same_thread_nursery = fn() {
+    var c = delta(clock)
+    var f = async fn(xs) {
+        xs /> map(fn(x) {
+            spawn {
+                sleep(100)
+                x
+            }
+        }) /> reduce(0, async fn(a, h) {
+            a + await h
+        })
+    };
+
+    ([1,2,3]) /> f /> assertEqual(6)
+    c() /> assertLessThan(200)
+}
+
+// @test
+// var test_recur_does_not_join_threads = fn() {
+//     var c = delta(clock)
+//     var f = async fn(xs, acc = []) match {
+//         [[], ...] => acc;
+//         [[h, ...t], ...] => recur(t, acc :+ spawn { sleep(100); h*2 })
+//     }
+//     f([1,2,3])
+//         /> reduce(0, async fn(a, h) { a + await h })
+//         /> assertEqual(12)
+//     assertLessThan(c(), 150)
+// }
+
+@test
+var test_timeout_throws = fn() {
+    var f = async fn() {
+        var x = spawn {
+            sleep(100)
+            10 + 1
+        }
+        var i = await x within 50
+    }
+    var r = runSafe(fn() { f() })
+    r.error.type /> eq("timeout")
+    r.error.ms /> eq(50)
+}
+
+@test
+var test_defer_onerror_catches_timeouts = fn() {
+    var f = async fn() {
+        defer onerror(err) { 1 }
+        var x = spawn {
+            sleep(10)
+        }
+        var i = await x within 1
+    }
+    f() /> eq(1)
+}

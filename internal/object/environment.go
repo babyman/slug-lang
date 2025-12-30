@@ -57,7 +57,7 @@ type Environment struct {
 	IsAsyncScope bool          // marks a scope that can own spawned tasks
 	NurseryErr   *RuntimeError // fail-fast state (first failure wins)
 
-	mu sync.Mutex
+	mu sync.RWMutex
 }
 
 type Binding struct {
@@ -112,10 +112,10 @@ func (e *Environment) NoteChildFailure(failed *TaskHandle, err *RuntimeError) {
 
 // WaitChildren blocks until all direct children of this scope have settled
 func (e *Environment) WaitChildren() {
-	e.mu.Lock()
+	e.mu.RLock()
 	children := make([]*TaskHandle, len(e.Children))
 	copy(children, e.Children)
-	e.mu.Unlock()
+	e.mu.RUnlock()
 
 	for _, child := range children {
 		<-child.Done
@@ -123,7 +123,11 @@ func (e *Environment) WaitChildren() {
 }
 
 func (e *Environment) GetBinding(name string) (*Binding, bool) {
-	if binding, ok := e.Bindings[name]; ok {
+	e.mu.RLock()
+	binding, ok := e.Bindings[name]
+	e.mu.RUnlock()
+
+	if ok {
 		return binding, true
 	}
 	if e.Outer != nil {
@@ -153,6 +157,9 @@ func (e *Environment) Define(name string, val Object, isExported bool, isImport 
 }
 
 func (e *Environment) define(name string, val Object, isMutable bool, isExported bool, isImport bool) (Object, error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
 	declaration := "val"
 	if isMutable {
 		declaration = "var"
@@ -214,7 +221,10 @@ func (e *Environment) define(name string, val Object, isMutable bool, isExported
 }
 
 func (e *Environment) Assign(name string, val Object) (Object, error) {
-	if binding, exists := e.Bindings[name]; exists {
+	e.mu.Lock()
+	binding, exists := e.Bindings[name]
+	if exists {
+		defer e.mu.Unlock()
 		if !binding.IsMutable {
 			return nil, fmt.Errorf("failed to assign to val '%s': value is immutible", name)
 		}
@@ -253,6 +263,8 @@ func (e *Environment) Assign(name string, val Object) (Object, error) {
 			slog.Any("meta", binding.Meta))
 		return val, nil
 	}
+	e.mu.Unlock()
+
 	if e.Outer != nil {
 		return e.Outer.Assign(name, val)
 	}
