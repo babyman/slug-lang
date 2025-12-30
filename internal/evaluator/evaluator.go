@@ -1132,25 +1132,47 @@ func (e *Evaluator) ApplyFunction(pos int, fnName string, fnObj object.Object, a
 		e.pushCallFrame(fnName, fn)
 		defer e.popCallFrame()
 
-		// Create a new call frame and push it
-		e.PushEnv(e.extendFunctionEnv(fn, args))
+		// Create the initial environment
+		currentEnv := e.extendFunctionEnv(fn, args)
+		e.PushEnv(currentEnv)
 
-		// Evaluate function body
-		result := e.Eval(fn.Body)
-
-		result = e.PopEnv(result)
-
+		var result object.Object
 		for {
-			if returnVal, ok := result.(*object.TailCall); ok {
-				result = e.ApplyFunction(pos, fnName, returnVal.Function, returnVal.Arguments)
-			} else if returnVal, ok := result.(*object.ReturnValue); ok {
-				result = returnVal.Value
-			} else {
+			result = e.Eval(fn.Body)
+
+			// 1. Direct TailCall (e.g., from recur or tail-positioned call)
+			if tc, ok := result.(*object.TailCall); ok {
+				if tc.Function == fn {
+					e.rebindFunctionEnv(currentEnv, fn, tc.Arguments)
+					continue
+				}
+				// Call belongs to a different function. Resolve it now.
+				result = e.ApplyFunction(pos, tc.FnName, tc.Function, tc.Arguments)
 				break
 			}
+
+			// 2. ReturnValue (explicit return)
+			if rv, ok := result.(*object.ReturnValue); ok {
+				if tc, ok := rv.Value.(*object.TailCall); ok {
+					if tc.Function == fn {
+						e.rebindFunctionEnv(currentEnv, fn, tc.Arguments)
+						continue
+					}
+					// Resolve TailCall for a different function
+					result = e.ApplyFunction(pos, tc.FnName, tc.Function, tc.Arguments)
+					break
+				}
+				// Unwrap the final value
+				result = rv.Value
+				break
+			}
+
+			// 3. Implicit return or Error
+			break
 		}
 
-		return result
+		// PopEnv runs defers and joins children for the finalized call frame
+		return e.PopEnv(result)
 
 	case *object.Foreign:
 		var result object.Object
@@ -1224,6 +1246,39 @@ func (e *Evaluator) extendFunctionEnv(
 	}
 
 	return env
+}
+
+func (e *Evaluator) rebindFunctionEnv(
+	env *object.Environment,
+	fn *object.Function,
+	args []object.Object,
+) {
+	numArgs := len(args)
+
+	for i, param := range fn.Parameters {
+		var val object.Object
+
+		// Handle variadic arguments
+		if param.IsVariadic && len(args) >= i {
+			val = &object.List{Elements: args[i:]}
+			env.Define(param.Name.Value, val, false, false)
+			break
+		}
+
+		// Handle default values
+		if i >= numArgs {
+			if param.Default != nil {
+				val = e.Eval(param.Default)
+			} else {
+				val = NIL
+			}
+		} else {
+			val = args[i]
+		}
+
+		// Use Define to reset the binding in the function's local scope
+		env.Define(param.Name.Value, val, false, false)
+	}
 }
 
 func (e *Evaluator) unwrapReturnValue(obj object.Object) object.Object {

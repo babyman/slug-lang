@@ -15,6 +15,7 @@ var {*} = import(
 @export val MAP_TYPE = "MAP";
 @export val BYTES_TYPE = "BYTES";
 @export val FUNCTION_TYPE = "FUNCTION";
+@export val TASK_TYPE = "TASK";
 
 
 /// return a string value indicating the type of `val`

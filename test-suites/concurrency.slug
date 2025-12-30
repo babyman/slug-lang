@@ -5,6 +5,16 @@ var {*} = import(
 )
 
 @test
+var test_spawn_returns_task_handles = async fn() {
+    var x = spawn {
+        sleep(100)
+        10 + 1
+    }
+
+    x /> type /> assertEqual(TASK_TYPE);
+}
+
+@test
 var test_async_actions_run_in_parallel = fn() {
     var c = delta(clock)
     var f = async fn() {
@@ -22,6 +32,20 @@ var test_async_actions_run_in_parallel = fn() {
     }
     f() /> assertEqual(111)
     c() /> assertLessThan(150)
+}
+
+@test
+var test_completed_tasks_are_idempotent_and_cached = async fn() {
+    var c = delta(clock)
+    var t = spawn {
+        sleep(100)
+        11
+    };
+    assertEqual(await t, 11)
+    var time = c()
+    time /> assertGreaterThan(99) /> assertLessThan(150);
+    assertEqual(await t, 11);
+    (c() - time) /> assertLessThan(5)
 }
 
 @test
@@ -62,41 +86,87 @@ var test_map_reduce_operate_in_the_same_thread_nursery = fn() {
     c() /> assertLessThan(200)
 }
 
-// @test
-// var test_recur_does_not_join_threads = fn() {
-//     var c = delta(clock)
-//     var f = async fn(xs, acc = []) match {
-//         [[], ...] => acc;
-//         [[h, ...t], ...] => recur(t, acc :+ spawn { sleep(100); h*2 })
-//     }
-//     f([1,2,3])
-//         /> reduce(0, async fn(a, h) { a + await h })
-//         /> assertEqual(12)
-//     assertLessThan(c(), 150)
-// }
+@test
+var test_recur_does_not_join_threads = fn() {
+    var c = delta(clock)
+    var f = async fn(xs, acc = []) match {
+        [[], ...] => acc;
+        [[h, ...t], ...] => recur(t, acc :+ spawn { sleep(100); h*2 })
+    }
+    f([1,2,3])
+        /> reduce(0, async fn(a, h) { a + await h })
+        /> assertEqual(12)
+    assertLessThan(c(), 150)
+}
 
 @test
 var test_timeout_throws = fn() {
     var f = async fn() {
         var x = spawn {
-            sleep(100)
-            10 + 1
+            sleep(10)
         }
-        var i = await x within 50
+        var i = await x within 1
     }
     var r = runSafe(fn() { f() })
     r.error.type /> eq("timeout")
-    r.error.ms /> eq(50)
+    r.error.ms /> eq(1)
 }
 
 @test
 var test_defer_onerror_catches_timeouts = fn() {
     var f = async fn() {
-        defer onerror(err) { 1 }
+        defer onerror(err) "pass"
         var x = spawn {
             sleep(10)
         }
         var i = await x within 1
     }
-    f() /> eq(1)
+    f() /> eq("pass")
 }
+
+@test
+var test_errors_cause_incomplete_tasks_to_cancel = fn() {
+    var f = async fn() {
+        var a = spawn {
+            sleep(5)
+            throw "err"
+        }
+        var b = spawn {
+            sleep(10)
+            10
+        }
+        await b
+    }
+    var r = runSafe(fn() { f() })
+    r.error.type /> eq("cancelled")
+    r.error.reason /> eq("sibling cancelled due to fail-fast")
+}
+
+@test
+var test_errors_are_detected_during_await = fn() {
+    var a = 0
+    var f = async fn() {
+        var x = spawn {
+            throw "err"
+        }
+        sleep(10)
+        a = a + 1;
+        await x
+        a = a + 1;
+    }
+    var r = runSafe(fn() { f() })
+    r.error /> eq("err")
+    a /> eq(1)
+}
+
+@test
+var test_errors_are_detected_during_nursery_exit = fn() {
+    var f = async fn() {
+        spawn {
+            throw "err"
+        }
+    }
+    var r = runSafe(fn() { f() })
+    r.error /> eq("err")
+}
+
