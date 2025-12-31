@@ -65,7 +65,7 @@ var b = 2
 
 Semicolons are still **allowed**, but they are never required.
 
-### When a line continues
+##### When a line continues
 
 A newline does **not** end a statement when continuation is visually obvious, such as when a line starts with an
 operator:
@@ -86,7 +86,7 @@ value
     /> save
 ```
 
-### When a line always ends
+##### When a line always ends
 
 To avoid ambiguity, some constructs must stay on the same line:
 
