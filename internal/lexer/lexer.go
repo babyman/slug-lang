@@ -13,6 +13,9 @@ type Lexer struct {
 	ch           rune      // current rune under examination; 0 means EOF
 	prevMode     Tokenizer // Prev tokenizer strategy if we are in interpolation mode
 	currentMode  Tokenizer // Current tokenizer strategy
+
+	parenDepth   int // Track nesting of ( )
+	bracketDepth int // Track nesting of [ ]
 }
 
 type Tokenizer interface {
@@ -85,7 +88,7 @@ func (l *Lexer) handleCompoundToken2(
 func (l *Lexer) skipWhitespace() {
 	for {
 		switch l.ch {
-		case ' ', '\t', '\n', '\r':
+		case ' ', '\t', '\r':
 			l.readChar()
 		case '#':
 			l.skipToLineEnd()

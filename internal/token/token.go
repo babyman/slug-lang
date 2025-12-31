@@ -5,6 +5,7 @@ type TokenType string
 const (
 	ILLEGAL = "ILLEGAL"
 	EOF     = "EOF"
+	NEWLINE = "NEWLINE"
 
 	// Identifiers + literals
 	IDENT  = "IDENT"  // add, foobar, x, y, ...

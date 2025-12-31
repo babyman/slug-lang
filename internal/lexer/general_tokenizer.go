@@ -20,6 +20,17 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 	startPosition := g.lexer.position // Record the current position as the start of the token
 
 	switch g.lexer.ch {
+	case '\n':
+		// If we are inside delimiters, treat newline as whitespace
+		if g.lexer.parenDepth > 0 || g.lexer.bracketDepth > 0 {
+			g.lexer.readChar()
+			return g.NextToken()
+		}
+		// Otherwise, collapse multiple newlines into a single NEWLINE token
+		for g.lexer.ch == '\n' || g.lexer.ch == '\r' || g.lexer.ch == ' ' || g.lexer.ch == '\t' {
+			g.lexer.readChar()
+		}
+		return token.Token{Type: token.NEWLINE, Literal: "\n", Position: startPosition}
 	case '=':
 		tok = g.lexer.handleCompoundToken2(token.ASSIGN, '=', token.EQ, '>', token.ROCKET)
 	case '+':
@@ -105,9 +116,21 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 			tok = newToken(token.RBRACE, g.lexer.ch, g.lexer.position)
 		}
 	case '(':
+		g.lexer.parenDepth++
 		tok = newToken(token.LPAREN, g.lexer.ch, startPosition)
 	case ')':
+		if g.lexer.parenDepth > 0 {
+			g.lexer.parenDepth--
+		}
 		tok = newToken(token.RPAREN, g.lexer.ch, startPosition)
+	case '[':
+		g.lexer.bracketDepth++
+		tok = newToken(token.LBRACKET, g.lexer.ch, startPosition)
+	case ']':
+		if g.lexer.bracketDepth > 0 {
+			g.lexer.bracketDepth--
+		}
+		tok = newToken(token.RBRACKET, g.lexer.ch, startPosition)
 	case '"':
 		if g.lexer.peekChar() == '"' && g.lexer.peekTwoChars() == '"' {
 			g.lexer.readChar() // Consume the first ""
@@ -120,10 +143,6 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 			g.lexer.switchMode(NewSingleLineStringTokenizer(g.lexer))
 		}
 		return g.lexer.currentMode.NextToken()
-	case '[':
-		tok = newToken(token.LBRACKET, g.lexer.ch, startPosition)
-	case ']':
-		tok = newToken(token.RBRACKET, g.lexer.ch, startPosition)
 	case '@':
 		tok = newToken(token.AT, g.lexer.ch, startPosition)
 	case 0:

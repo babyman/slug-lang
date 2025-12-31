@@ -73,8 +73,9 @@ type Parser struct {
 	errors      []string
 	pendingTags []*ast.Tag
 
-	curToken  token.Token
-	peekToken token.Token
+	curToken   token.Token
+	peekToken  token.Token
+	peek2Token token.Token // NEW: 2nd lookahead
 
 	prefixParseFns map[token.TokenType]prefixParseFn
 	infixParseFns  map[token.TokenType]infixParseFn
@@ -143,13 +144,15 @@ func New(l lexer.Tokenizer, path, source string) *Parser {
 	// Read two tokens, so curToken and peekToken are both set
 	p.nextToken()
 	p.nextToken()
+	p.nextToken()
 
 	return p
 }
 
 func (p *Parser) nextToken() {
 	p.curToken = p.peekToken
-	p.peekToken = p.tokenizer.NextToken()
+	p.peekToken = p.peek2Token
+	p.peek2Token = p.tokenizer.NextToken()
 }
 
 func (p *Parser) curTokenIs(t token.TokenType) bool {
@@ -204,25 +207,46 @@ func (p *Parser) Errors() []string {
 }
 
 func (p *Parser) ParseProgram() *ast.Program {
-	program := &ast.Program{}
-	program.Statements = []ast.Statement{}
+	program := &ast.Program{Statements: []ast.Statement{}}
+
+	p.skipStatementSeparators()
 
 	for !p.curTokenIs(token.EOF) && !p.curTokenIs(token.ILLEGAL) {
 		stmt := p.parseStatement()
 		if stmt != nil {
 			program.Statements = append(program.Statements, stmt)
 		}
+
+		// Move forward at least once, then skip separators.
 		p.nextToken()
+		p.skipStatementSeparators()
 	}
 
-	// Enforce: await is only allowed inside async functions/blocks, or at top-level script.
 	p.validateAwaitUsage(program)
-
 	return program
+}
+
+func (p *Parser) skipStatementSeparators() {
+	for {
+		if p.curTokenIs(token.SEMICOLON) {
+			p.nextToken()
+			continue
+		}
+		if p.curTokenIs(token.NEWLINE) {
+			// In statement position, NEWLINE is always a separator.
+			// If a newline was a continuation, parseExpression would have eaten it.
+			p.nextToken()
+			continue
+		}
+		break
+	}
 }
 
 func (p *Parser) parseStatement() ast.Statement {
 	switch p.curToken.Type {
+	case token.NEWLINE, token.SEMICOLON:
+		// separators, not statements
+		return nil
 	case token.FOREIGN:
 		return p.parseForeignFunctionDeclaration()
 	case token.RETURN:
@@ -317,12 +341,9 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	stmt := &ast.ReturnStatement{Token: p.curToken}
 
 	p.nextToken()
+	p.skipLeadingNewlines()
 
 	stmt.ReturnValue = p.parseExpression(LOWEST)
-
-	if p.peekTokenIs(token.SEMICOLON) {
-		p.nextToken()
-	}
 
 	return stmt
 }
@@ -332,14 +353,22 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 
 	stmt.Expression = p.parseExpression(LOWEST)
 
-	if p.peekTokenIs(token.SEMICOLON) {
-		p.nextToken()
-	}
-
 	return stmt
 }
 
+func (p *Parser) peekIsExpressionTerminator(precedence int) bool {
+	if p.peekTokenIs(token.SEMICOLON) || p.peekTokenIs(token.EOF) || p.peekTokenIs(token.RBRACE) {
+		return true
+	}
+	if p.peekTokenIs(token.NEWLINE) && p.newlineTerminates() {
+		return true
+	}
+	return false
+}
+
 func (p *Parser) parseExpression(precedence int) ast.Expression {
+	p.skipLeadingNewlines()
+
 	prefix := p.prefixParseFns[p.curToken.Type]
 	if prefix == nil {
 		p.noPrefixParseFnError(p.curToken.Type)
@@ -347,18 +376,35 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 	}
 	leftExp := prefix()
 
-	for !p.peekTokenIs(token.SEMICOLON) && precedence < p.peekPrecedence() {
+	for {
+		// 1) Stop on real terminators
+		if p.peekTokenIs(token.SEMICOLON) || p.peekTokenIs(token.EOF) || p.peekTokenIs(token.RBRACE) {
+			return leftExp
+		}
+
+		// 2) NEWLINE: either terminator or whitespace
+		if p.peekTokenIs(token.NEWLINE) {
+			if p.newlineTerminates() {
+				return leftExp
+			}
+			// continuation newline: consume it and restart loop
+			p.nextToken() // cur becomes NEWLINE
+			continue
+		}
+
+		// 3) Normal Pratt precedence gate
+		if precedence >= p.peekPrecedence() {
+			return leftExp
+		}
+
 		infix := p.infixParseFns[p.peekToken.Type]
 		if infix == nil {
 			return leftExp
 		}
 
-		p.nextToken()
-
+		p.nextToken() // advance onto operator (e.g. '/>')
 		leftExp = infix(leftExp)
 	}
-
-	return leftExp
 }
 
 func (p *Parser) peekPrecedence() int {
@@ -510,20 +556,27 @@ func (p *Parser) parseMatchExpression() ast.Expression {
 
 	// Skip the opening brace
 	p.nextToken()
+	p.skipCaseSeparators() // allow blank lines after '{'
 
-	// Parse cases until we hit the closing brace
 	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
 		matchCase := p.parseMatchCase()
 		if matchCase != nil {
 			match.Cases = append(match.Cases, matchCase)
 		}
-		p.nextToken() // Move to the next case or closing brace
+
+		// Move forward and skip any NEWLINE/; between cases
+		p.nextToken()
+		p.skipCaseSeparators()
 	}
 
 	return match
 }
 
-// No commented out code needed here - replaced with the new implementation
+func (p *Parser) skipCaseSeparators() {
+	for p.curTokenIs(token.NEWLINE) || p.curTokenIs(token.SEMICOLON) {
+		p.nextToken()
+	}
+}
 
 func (p *Parser) parseMatchCase() *ast.MatchCase {
 	matchCase := &ast.MatchCase{Token: p.curToken}
@@ -560,18 +613,26 @@ func (p *Parser) parseMatchCase() *ast.MatchCase {
 		p.nextToken()
 		matchCase.Body = p.parseBlockStatement()
 	} else {
-		// For single-expression cases
-		p.nextToken()
-		stmt := p.parseStatement()
+		// For single-statement cases (expression statement OR throw/return/etc)
+		p.nextToken() // move to first token of body (may be NEWLINE)
+		p.skipLeadingNewlines()
 
-		// Create a block with a single statement
-		matchCase.Body = &ast.BlockStatement{
-			Token:      p.curToken,
-			Statements: []ast.Statement{stmt},
+		stmt := p.parseStatement()
+		if stmt == nil {
+			// If the body line is empty, it's a real syntax error (match arms require a body)
+			p.addErrorAt(p.curToken.Position, "match case body expected after '=>', got %s", p.curToken.Type)
+			return nil
 		}
 
-		// Expect a semicolon at the end of the expression
-		if p.peekTokenIs(token.SEMICOLON) {
+		matchCase.Body = &ast.BlockStatement{
+			Token: matchCase.Token,
+			Statements: []ast.Statement{
+				stmt,
+			},
+		}
+
+		// case terminator: ; OR NEWLINE OR } (outer loop handles })
+		if p.peekTokenIs(token.SEMICOLON) || p.peekTokenIs(token.NEWLINE) {
 			p.nextToken()
 		}
 	}
@@ -603,7 +664,7 @@ func (p *Parser) parseMatchPattern() ast.MatchPattern {
 		}
 		p.nextToken() // consume IDENT
 		return &ast.PinnedIdentifierPattern{
-			Token: p.curToken, // NOTE: after nextToken(), curToken is IDENT; keep '^' position? If you prefer caret position, store separately.
+			Token: p.curToken,
 			Value: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
 		}
 
@@ -626,7 +687,7 @@ func (p *Parser) parseMatchPattern() ast.MatchPattern {
 		// Map pattern
 		return p.parseMapPattern()
 	default:
-		p.peekError(p.curToken.Type)
+		p.addErrorAt(p.curToken.Position, "unexpected token in match pattern: %s", p.curToken.Type)
 		return nil
 	}
 }
@@ -979,17 +1040,19 @@ func (p *Parser) parseIfExpression() ast.Expression {
 }
 
 func (p *Parser) parseBlockStatement() *ast.BlockStatement {
-	block := &ast.BlockStatement{Token: p.curToken}
-	block.Statements = []ast.Statement{}
+	block := &ast.BlockStatement{Token: p.curToken, Statements: []ast.Statement{}}
 
-	p.nextToken()
+	p.nextToken() // move to first token inside block
+	p.skipStatementSeparators()
 
 	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
 		stmt := p.parseStatement()
 		if stmt != nil {
 			block.Statements = append(block.Statements, stmt)
 		}
+
 		p.nextToken()
+		p.skipStatementSeparators()
 	}
 
 	return block
@@ -1516,12 +1579,24 @@ func (p *Parser) parseMapLiteral() ast.Expression {
 	mapLit := &ast.MapLiteral{Token: p.curToken}
 	mapLit.Pairs = make(map[ast.Expression]ast.Expression)
 
-	for !p.peekTokenIs(token.RBRACE) {
+	for {
+		// If next is '}', we're done
+		if p.peekTokenIs(token.RBRACE) {
+			break
+		}
+
+		// Advance to the next token (key start), then skip newlines/blank lines
 		p.nextToken()
+		p.skipLeadingNewlines()
+
+		// NEW: allow newline(s) before closing brace (e.g. after trailing comma)
+		if p.curTokenIs(token.RBRACE) {
+			return mapLit
+		}
 
 		readIdent := p.curTokenIs(token.LBRACKET)
 		if readIdent {
-			p.nextToken() // consume the '['
+			p.nextToken() // consume '['
 		}
 
 		key := p.parseExpression(LOWEST)
@@ -1530,9 +1605,8 @@ func (p *Parser) parseMapLiteral() ast.Expression {
 			p.expectPeek(token.RBRACKET)
 		}
 
-		_, isIdent := key.(*ast.Identifier)
-		if isIdent && !readIdent {
-			key = &ast.StringLiteral{Token: key.(*ast.Identifier).Token, Value: key.(*ast.Identifier).Value}
+		if ident, ok := key.(*ast.Identifier); ok && !readIdent {
+			key = &ast.StringLiteral{Token: ident.Token, Value: ident.Value}
 		}
 
 		if !p.expectPeek(token.COLON) {
@@ -1540,18 +1614,25 @@ func (p *Parser) parseMapLiteral() ast.Expression {
 		}
 
 		p.nextToken()
+		p.skipLeadingNewlines() // NEW: allow value on next line
 		value := p.parseExpression(LOWEST)
 
 		mapLit.Pairs[key] = value
 
-		// If next is '}', we're done; allow optional trailing comma before '}'
+		// If next is '}', we're done (no comma)
 		if p.peekTokenIs(token.RBRACE) {
 			break
 		}
+
+		// Require comma between entries
 		if !p.expectPeek(token.COMMA) {
 			return nil
 		}
-		// After a comma, if the next is '}', accept dangling comma and finish
+
+		// NEW: allow trailing comma followed by NEWLINE(s) and then '}'
+		for p.peekTokenIs(token.NEWLINE) {
+			p.nextToken() // consume NEWLINE
+		}
 		if p.peekTokenIs(token.RBRACE) {
 			p.nextToken() // consume '}'
 			return mapLit
@@ -1578,13 +1659,11 @@ func (p *Parser) parseThrowStatement() *ast.ThrowStatement {
 
 	// Advance to the expression after `throw`
 	p.nextToken()
+	p.skipLeadingNewlines()
+
 	ident := p.parseExpression(LOWEST)
 
 	throw.Value = ident
-
-	if p.peekTokenIs(token.SEMICOLON) {
-		p.nextToken()
-	}
 
 	return throw
 }
@@ -1721,6 +1800,89 @@ func (p *Parser) parseTag() *ast.Tag {
 	}
 
 	return annotation
+}
+
+func (p *Parser) skipLeadingNewlines() {
+	for p.curTokenIs(token.NEWLINE) {
+		p.nextToken()
+	}
+}
+
+func (p *Parser) curTokenIsAny(ts ...token.TokenType) bool {
+	for _, t := range ts {
+		if p.curTokenIs(t) {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *Parser) peekTokenIsAny(ts ...token.TokenType) bool {
+	for _, t := range ts {
+		if p.peekTokenIs(t) {
+			return true
+		}
+	}
+	return false
+}
+
+func isContinuationToken(t token.TokenType) bool {
+	switch t {
+	// binary/infix operators
+	case token.PLUS, token.MINUS, token.ASTERISK, token.SLASH, token.PERCENT,
+		token.EQ, token.NOT_EQ, token.LT, token.LT_EQ, token.GT, token.GT_EQ,
+		token.LOGICAL_AND, token.LOGICAL_OR,
+		token.BITWISE_AND, token.BITWISE_OR,
+		token.SHIFT_LEFT, token.SHIFT_RIGHT,
+		token.APPEND_ITEM, token.PREPEND_ITEM,
+		token.CALL_CHAIN, // '/>'
+		token.PERIOD:
+		return true
+	default:
+		return false
+	}
+}
+
+// Tokens that mean "the expression is incomplete; newline must not terminate"
+func isRhsRequiredToken(t token.TokenType) bool {
+	// If the current token is one of these, we're expecting a RHS next.
+	// (This is mostly a safety net; your Pratt parse often enforces it naturally.)
+	switch t {
+	case token.ASSIGN,
+		token.PLUS, token.MINUS, token.ASTERISK, token.SLASH, token.PERCENT,
+		token.EQ, token.NOT_EQ, token.LT, token.LT_EQ, token.GT, token.GT_EQ,
+		token.LOGICAL_AND, token.LOGICAL_OR,
+		token.BITWISE_AND, token.BITWISE_OR, token.BITWISE_XOR,
+		token.SHIFT_LEFT, token.SHIFT_RIGHT,
+		token.APPEND_ITEM, token.PREPEND_ITEM,
+		token.CALL_CHAIN,
+		token.PERIOD,
+		token.COLON,  // if you ever parse "key: value" inside expressions
+		token.ROCKET: // in match arms, if relevant to your parse flow
+		return true
+	default:
+		return false
+	}
+}
+
+func (p *Parser) newlineTerminates() bool {
+	//fmt.Printf("NL? cur=%s peek=%s peek2=%s\n", p.curToken.Type, p.peekToken.Type, p.peek2Token.Type)
+
+	// We only call this when peekToken is NEWLINE.
+	// Rule 4: newline-call/index is forbidden:
+	if p.peek2Token.Type == token.LPAREN || p.peek2Token.Type == token.LBRACKET {
+		return true
+	}
+	// Continuation tokens keep the statement going (e.g. +, />, .)
+	if isContinuationToken(p.peek2Token.Type) {
+		return false
+	}
+	// If we're in a context that requires a RHS, newline is whitespace.
+	if isRhsRequiredToken(p.curToken.Type) {
+		return false
+	}
+	// Default: newline ends the statement
+	return true
 }
 
 // validateRecurUsage ensures that all `recur` expressions inside a function
