@@ -1,24 +1,24 @@
 var {*} = import(
     "slug.test"
-);
+)
 
 // concatenating lists
 // -------------------
-([1, 2] + [3, 4]) /> len() /> assertEqual(4);
-([1, 2] + [3]) /> len() /> assertEqual(3);
+([1, 2] + [3, 4]) /> len() /> assertEqual(4)
+([1, 2] + [3]) /> len() /> assertEqual(3)
 
 // appending items
 // ---------------
-([1, 2] :+ 3) /> len() /> assertEqual(3);
+([1, 2] :+ 3) /> len() /> assertEqual(3)
 
-([] :+ 1 :+ 2 :+ 3) /> len() /> assertEqual(3);
+([] :+ 1 :+ 2 :+ 3) /> len() /> assertEqual(3)
 
 // prepending items
 // ----------------
-(0 +: [1, 2]) /> len() /> assertEqual(3);
+(0 +: [1, 2]) /> len() /> assertEqual(3)
 
-(1 +: 2 +: 3 +: []) /> len() /> assertEqual(3);
+(1 +: 2 +: 3 +: []) /> len() /> assertEqual(3)
 
-(1 +: [2, 3] + [4] :+ 5) /> len() /> assertEqual(5);
+(1 +: [2, 3] + [4] :+ 5) /> len() /> assertEqual(5)
 
 // todo: test list update() and swap()

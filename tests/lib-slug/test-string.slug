@@ -1,27 +1,27 @@
 var {*} = import(
     "slug.string",
     "slug.test"
-);
+)
 
-"1,2,3" /> split(",") /> len /> assertEqual(3);
+"1,2,3" /> split(",") /> len /> assertEqual(3)
 
-"1,2,3" /> split(",", 2) /> len /> assertEqual(2);
+"1,2,3" /> split(",", 2) /> len /> assertEqual(2)
 
-"A" /> isLower /> assertFalse;
-"a" /> isLower /> assertTrue;
+"A" /> isLower /> assertFalse
+"a" /> isLower /> assertTrue
 
-"A" /> isUpper /> assertTrue;
-"a" /> isUpper /> assertFalse;
+"A" /> isUpper /> assertTrue
+"a" /> isUpper /> assertFalse
 
-"a" /> toUpper /> assertEqual("A");
-"A" /> toLower /> assertEqual("a");
+"a" /> toUpper /> assertEqual("A")
+"A" /> toLower /> assertEqual("a")
 
-"hello Slug!" /> startsWith("hello") /> assertTrue;
-"hello Slug!" /> startsWith("Slug!") /> assertFalse;
+"hello Slug!" /> startsWith("hello") /> assertTrue
+"hello Slug!" /> startsWith("Slug!") /> assertFalse
 
-"hello Slug!" /> endsWith("hello") /> assertFalse;
-"hello Slug!" /> endsWith("Slug!") /> assertTrue;
+"hello Slug!" /> endsWith("hello") /> assertFalse
+"hello Slug!" /> endsWith("Slug!") /> assertTrue
 
-"hello Slug!" /> contains("hello") /> assertTrue;
-"hello Slug!" /> contains("goodbye") /> assertFalse;
+"hello Slug!" /> contains("hello") /> assertTrue
+"hello Slug!" /> contains("goodbye") /> assertFalse
 

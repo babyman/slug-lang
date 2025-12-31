@@ -1,21 +1,21 @@
-@export var BINDING_NAME = 0;
-@export var BINDING_VALUE = 1;
-@export var BINDING_PARAMS = 2;
+@export var BINDING_NAME = 0
+@export var BINDING_VALUE = 1
+@export var BINDING_PARAMS = 2
 
 @export
-foreign hasTag = fn(value, @str tag);
+foreign hasTag = fn(value, @str tag)
 
 @export
-foreign getTag = fn(value, @str tag);
+foreign getTag = fn(value, @str tag)
 
 @export
-foreign searchModuleTags = fn(@str module, @str tag, @bool includePrivate = false);
+foreign searchModuleTags = fn(@str module, @str tag, @bool includePrivate = false)
 
 @export
-foreign searchScopeTags = fn(@str tag);
+foreign searchScopeTags = fn(@str tag)
 
 @export
-foreign rebindScopeTags = fn(@str tag, @fun supplier = fn(name, value, tagParams) { value });
+foreign rebindScopeTags = fn(@str tag, @fun supplier = fn(name, value, tagParams) { value })
 
 @export
-foreign withEnv = fn(@fun f);
+foreign withEnv = fn(@fun f)

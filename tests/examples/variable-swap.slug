@@ -1,17 +1,17 @@
 var {*} = import(
     "slug.test"
-);
+)
 
 // variable swap without using a temp variable
 //
 // this depends on the ability to redeclare variables
 // AND list decomposition
 
-var a = 1;
-var b = 2;
+var a = 1
+var b = 2
 
 
-var [b, a] = [a, b];
+var [b, a] = [a, b]
 
-a /> assertEqual(2);
-b /> assertEqual(1);
+a /> assertEqual(2)
+b /> assertEqual(1)

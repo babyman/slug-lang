@@ -1,61 +1,61 @@
 var {*} = import(
     "slug.test"
-);
+)
 
 //
 // matching on primitive values
 // ----------------------------
 
-var pinned = "slug";
-var p1 = 1;
-var p2 = 2;
+var pinned = "slug"
+var p1 = 1
+var p2 = 2
 
 var f = fn(x) {
     match x {
-        "hello", "hi"  => "greeting";
-        "bye"          => "farewell";
-        ^pinned        => "slug";
-        true           => "truthy";
-        42             => "magic number";
-        10, 11, 12, 13 => "multi-match";
-        0, ^p1, ^p2, 3 => "multi-pin";
+        "hello", "hi"  => "greeting"
+        "bye"          => "farewell"
+        ^pinned        => "slug"
+        true           => "truthy"
+        42             => "magic number"
+        10, 11, 12, 13 => "multi-match"
+        0, ^p1, ^p2, 3 => "multi-pin"
         // 
         // ERROR: type mismatch: BOOLEAN < INTEGER
         // todo: make sure this fails to match but no error
         // 
-        // n if n < 10   => "small number";
-        _              => "something else";
+        // n if n < 10   => "small number"
+        _              => "something else"
     }
 }
 
-"hello" /> f() /> assertEqual("greeting");
-"hi" /> f() /> assertEqual("greeting");
+"hello" /> f() /> assertEqual("greeting")
+"hi" /> f() /> assertEqual("greeting")
 
-"bye" /> f() /> assertEqual("farewell");
+"bye" /> f() /> assertEqual("farewell")
 
-"slug" /> f() /> assertEqual("slug");
-pinned /> f() /> assertEqual("slug");
+"slug" /> f() /> assertEqual("slug")
+pinned /> f() /> assertEqual("slug")
 
-10 /> f /> assertEqual("multi-match");
-11 /> f /> assertEqual("multi-match");
-12 /> f /> assertEqual("multi-match");
-13 /> f /> assertEqual("multi-match");
-
-
-0 /> f /> assertEqual("multi-pin");
-1 /> f /> assertEqual("multi-pin");
-2 /> f /> assertEqual("multi-pin");
-3 /> f /> assertEqual("multi-pin");
-p1 /> f /> assertEqual("multi-pin");
-p2 /> f /> assertEqual("multi-pin");
-
-true /> f() /> assertEqual("truthy");
-false /> f() /> assertEqual("something else");
-
-42 /> f() /> assertEqual("magic number");
-
-// 9 /> f() /> assertEqual("small number");
+10 /> f /> assertEqual("multi-match")
+11 /> f /> assertEqual("multi-match")
+12 /> f /> assertEqual("multi-match")
+13 /> f /> assertEqual("multi-match")
 
 
-43 /> f() /> assertEqual("something else");
+0 /> f /> assertEqual("multi-pin")
+1 /> f /> assertEqual("multi-pin")
+2 /> f /> assertEqual("multi-pin")
+3 /> f /> assertEqual("multi-pin")
+p1 /> f /> assertEqual("multi-pin")
+p2 /> f /> assertEqual("multi-pin")
+
+true /> f() /> assertEqual("truthy")
+false /> f() /> assertEqual("something else")
+
+42 /> f() /> assertEqual("magic number")
+
+// 9 /> f() /> assertEqual("small number")
+
+
+43 /> f() /> assertEqual("something else")
 

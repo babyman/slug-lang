@@ -1,11 +1,11 @@
 var {*} = import(
     "slug.test"
-);
+)
 
-var callCount = 0;
+var callCount = 0
 
 val f = fn(b) {
-    callCount = callCount + 1;
+    callCount = callCount + 1
     b
 }
 
@@ -13,34 +13,34 @@ if(f(false) && f(true)) {
     // empty
 }
 
-callCount /> assertEqual(1);
+callCount /> assertEqual(1)
 
 // one more AND check
-callCount = 0;
+callCount = 0
 
 if(f(true) && f(false)) {
     // empty
 }
 
-callCount /> assertEqual(2);
+callCount /> assertEqual(2)
 
 
 //
 // OR optimizations
 //
-callCount = 0;
+callCount = 0
 
 if(f(true) || f(false)) {
     // empty
 }
 
-callCount /> assertEqual(1);
+callCount /> assertEqual(1)
 
 // one more OR check
-callCount = 0;
+callCount = 0
 
 if(f(false) || f(true)) {
     // empty
 }
 
-callCount /> assertEqual(2);
+callCount /> assertEqual(2)

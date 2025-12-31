@@ -1,12 +1,12 @@
 var {*} = import(
     "slug.test"
-);
+)
 
-var a = 0;
+var a = 0
 
 if(true) {
-    defer a = 1;
-    a /> assertEqual(0);
+    defer a = 1
+    a /> assertEqual(0)
 }
 
-a /> assertEqual(1);
+a /> assertEqual(1)

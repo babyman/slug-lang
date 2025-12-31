@@ -1,6 +1,6 @@
 var {*} = import(
 	"slug.std"
-);
+)
 
 var searchList = fn(vals, result, f, idx = 0) {
 	if(len(vals) > idx) {
@@ -17,8 +17,8 @@ var searchList = fn(vals, result, f, idx = 0) {
 )
 @export
 var max = fn(a, ...b) {
-	val _max = fn(x, y) {if (x > y) {x} else {y}};
-	searchList(b, a, _max);
+	val _max = fn(x, y) {if (x > y) {x} else {y}}
+	searchList(b, a, _max)
 }
 
 @testWith(
@@ -28,8 +28,8 @@ var max = fn(a, ...b) {
 )
 @export
 var min = fn(a, ...b) {
-	val _min = fn(x, y) {if (x < y) {x} else {y}};
-	searchList(b, a, _min);
+	val _min = fn(x, y) {if (x < y) {x} else {y}}
+	searchList(b, a, _min)
 }
 
 // random_range generates a random integer in the range [min, max] (exclusive).
@@ -37,4 +37,4 @@ var min = fn(a, ...b) {
 // max: Maximum value of the range (integer).
 // Returns: a random integer in the specified range.
 @export
-foreign rndRange = fn(min, max);
+foreign rndRange = fn(min, max)

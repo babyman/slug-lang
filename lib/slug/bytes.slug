@@ -53,8 +53,8 @@ foreign base64Encode = fn(@bytes b)
 )
 @export
 var repeat = fn(@bytes b, @num count, @bytes acc = 0x"") match {
-    [_, 0, ...] => acc;
-    [...] => recur(b, count - 1, acc + b);
+    [_, 0, ...] => acc
+    [...] => recur(b, count - 1, acc + b)
 }
 
 @testWith(
@@ -62,6 +62,6 @@ var repeat = fn(@bytes b, @num count, @bytes acc = 0x"") match {
 )
 @export
 var bytesToNumbers = fn(@bytes b, i = 0, acc = []) match {
-    [b, ...] if len(b) == i  => acc;
+    [b, ...] if len(b) == i  => acc
     [b, ...]                 => recur(b, i + 1, acc :+ b[i])
 }

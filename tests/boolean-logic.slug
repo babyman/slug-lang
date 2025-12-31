@@ -1,23 +1,23 @@
 var {*} = import(
     "slug.test"
-);
+)
 
 // logic checks
 
 // and
 // --------
-(true && true) /> assertTrue("true && true");
-(true && false == false) /> assertTrue("true && false == false");
-(!(true && false)) /> assertTrue("true && false");
+(true && true) /> assertTrue("true && true")
+(true && false == false) /> assertTrue("true && false == false")
+(!(true && false)) /> assertTrue("true && false")
 
 // or
 // --------
-(true || true) /> assertTrue("true || true");
-(true || false) /> assertTrue("true || false");
+(true || true) /> assertTrue("true || true")
+(true || false) /> assertTrue("true || false")
 
 
 // not
 // --------
-(!true) /> assertFalse("!true");
-(!false) /> assertTrue("!false");
+(!true) /> assertFalse("!true")
+(!false) /> assertTrue("!false")
 

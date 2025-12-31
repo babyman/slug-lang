@@ -1,6 +1,6 @@
 var {*} = import(
 	"slug.test",
-);
+)
 
 // Sum 1..n using tail recursion in an anonymous function
 fn(n, acc) {
@@ -9,4 +9,4 @@ fn(n, acc) {
 	} else {
 		recur(n - 1, acc + n) 
 	} 
-}(5, 0) /> assertEqual(15);
+}(5, 0) /> assertEqual(15)

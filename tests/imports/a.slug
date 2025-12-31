@@ -4,11 +4,11 @@
 var {*} = import(
     "slug.std",
     "imports.b"
-);
+)
 
 @export
 var sub = fn(a, b) {
-    a - b;
+    a - b
 }
 
-println("a executed");
+println("a executed")

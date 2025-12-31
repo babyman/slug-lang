@@ -2,22 +2,22 @@
 @export val MYSQL_DRIVER = "mysql";
 
 @export
-foreign connect = fn(@str connectionString, @str driver);
+foreign connect = fn(@str connectionString, @str driver)
 
 @export
-foreign query = fn(@num connection, @str sql, ...params);
+foreign query = fn(@num connection, @str sql, ...params)
 
 @export
-foreign exec = fn(@num connection, @str sql, ...params);
+foreign exec = fn(@num connection, @str sql, ...params)
 
 @export
-foreign begin = fn(@num connection);
+foreign begin = fn(@num connection)
 
 @export
-foreign commit = fn(@num connection);
+foreign commit = fn(@num connection)
 
 @export
-foreign rollback = fn(@num connection);
+foreign rollback = fn(@num connection)
 
 @export
-foreign close = fn(@num connection);
+foreign close = fn(@num connection)

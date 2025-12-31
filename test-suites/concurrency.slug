@@ -11,7 +11,7 @@ var test_spawn_returns_task_handles = async fn() {
         10 + 1
     }
 
-    x /> type /> assertEqual(TASK_TYPE);
+    x /> type /> assertEqual(TASK_TYPE)
 }
 
 @test
@@ -40,11 +40,11 @@ var test_completed_tasks_are_idempotent_and_cached = async fn() {
     var t = spawn {
         sleep(100)
         11
-    };
-    assertEqual(await t, 11)
+    }
+    (await t) /> assertEqual(11)
     var time = c()
-    time /> assertGreaterThan(99) /> assertLessThan(150);
-    assertEqual(await t, 11);
+    time /> assertGreaterThan(99) /> assertLessThan(150)
+    assertEqual(await t, 11)
     (c() - time) /> assertLessThan(5)
 }
 
@@ -80,7 +80,7 @@ var test_map_reduce_operate_in_the_same_thread_nursery = fn() {
         }) /> reduce(0, async fn(a, h) {
             a + await h
         })
-    };
+    }
 
     ([1,2,3]) /> f /> assertEqual(6)
     c() /> assertLessThan(200)
@@ -90,7 +90,7 @@ var test_map_reduce_operate_in_the_same_thread_nursery = fn() {
 var test_recur_does_not_join_threads = fn() {
     var c = delta(clock)
     var f = async fn(xs, acc = []) match {
-        [[], ...] => acc;
+        [[], ...] => acc
         [[h, ...t], ...] => recur(t, acc :+ spawn { sleep(100); h*2 })
     }
     f([1,2,3])
@@ -150,9 +150,9 @@ var test_errors_are_detected_during_await = fn() {
             throw "err"
         }
         sleep(10)
-        a = a + 1;
+        a = a + 1
         await x
-        a = a + 1;
+        a = a + 1
     }
     var r = runSafe(fn() { f() })
     r.error /> eq("err")

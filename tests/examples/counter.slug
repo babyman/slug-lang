@@ -1,24 +1,24 @@
 var {*} = import(
     "slug.test"
-);
+)
 
 //
 // closure scope counter
 // ---------------------
 
 var makeCounter = fn(start = 0) {
-    var count = start;
+    var count = start
     fn() {
-        count = count + 1;
-    };
+        count = count + 1
+    }
 }
 
-var c1 = makeCounter();
-var c2 = makeCounter(10);
+var c1 = makeCounter()
+var c2 = makeCounter(10)
 
-c1() /> assertEqual(1);
-c1() /> assertEqual(2);
+c1() /> assertEqual(1)
+c1() /> assertEqual(2)
 
-c2() /> assertEqual(11);
-c2() /> assertEqual(12);
+c2() /> assertEqual(11)
+c2() /> assertEqual(12)
 

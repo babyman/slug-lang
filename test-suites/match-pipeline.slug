@@ -7,9 +7,9 @@ var {*} = import(
 @test
 var testSimpleMatch = fn() {
     1 /> match {
-            1 => "one";
-            2 => "two";
-            v => throw v;
+            1 => "one"
+            2 => "two"
+            v => throw v
         }
     /> assertEqual("one")
 }
@@ -17,7 +17,7 @@ var testSimpleMatch = fn() {
 @test
 var testListMatch = fn() {
     [1, 2, 3] /> match {
-            [h, ...] => h;
+            [h, ...] => h
         }
     /> assertEqual(1)
 }
@@ -25,7 +25,7 @@ var testListMatch = fn() {
 @test
 var testMapMatch = fn() {
     {a: 1, b: 2} /> match {
-            {a} => a;
+            {a} => a
         }
     /> assertEqual(1)
 }

@@ -6,7 +6,7 @@ var {*} = import(
 	"slug.string",
 	"slug.term.colour",
 	"slug.xkcd.colours",
-);
+)
 
 ""
 

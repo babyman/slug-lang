@@ -19,7 +19,7 @@ To create a test with `@testWith`:
     [0, 0], 0
 )
 var parameterizedTest = fn(a, b) {
- a + b; 
+ a + b 
 }
 ```
 
@@ -37,11 +37,11 @@ assertions or errors during their execution determine if the test passes or fail
 To create a simple test using `@test`:
 
 ```slug
-var {*} = import("slug.test");
+var {*} = import("slug.test")
 @test
 var simpleTest = fn() {
-    val result = 1 + 1;
-    result /> assertEqual(2);
+    val result = 1 + 1
+    result /> assertEqual(2)
 }
 ```
 

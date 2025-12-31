@@ -1,17 +1,17 @@
 var {*} = import(
     "slug.test",
     "slug.list"
-);
+)
 
-var arr = ["h", "e", "l", "l", "o"];
+var arr = ["h", "e", "l", "l", "o"]
 
-arr /> indexOf("z") /> assertEqual(-1);
-arr /> indexOf("h") /> assertEqual(0);
-arr /> indexOf("l") /> assertEqual(2);
-arr /> indexOf("o") /> assertEqual(4);
+arr /> indexOf("z") /> assertEqual(-1)
+arr /> indexOf("h") /> assertEqual(0)
+arr /> indexOf("l") /> assertEqual(2)
+arr /> indexOf("o") /> assertEqual(4)
 
-arr /> removeValue("z") /> assertEqual(arr);
-arr /> removeValue("h") /> assertEqual(["e", "l", "l", "o"]);
-arr /> removeValue("o") /> assertEqual(["h", "e", "l", "l"]);
-arr /> removeValue("l") /> assertEqual(["h", "e", "l", "o"]);
+arr /> removeValue("z") /> assertEqual(arr)
+arr /> removeValue("h") /> assertEqual(["e", "l", "l", "o"])
+arr /> removeValue("o") /> assertEqual(["h", "e", "l", "l"])
+arr /> removeValue("l") /> assertEqual(["h", "e", "l", "o"])
 

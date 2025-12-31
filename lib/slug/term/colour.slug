@@ -13,33 +13,33 @@ var {*} = import(
 	"slug.sys",
 	"slug.bytes",
 	"slug.xkcd.colours",
-);
+)
 
 
-val effectNames = ["bold", "dim", "underline", "blink", "reverse", "hide", ];
-val effects = [1, 2, 4, 5, 7, 8, ];
-val effectOffMod = 20;
-val offPostfix = "Off";
+val effectNames = ["bold", "dim", "underline", "blink", "reverse", "hide", ]
+val effects = [1, 2, 4, 5, 7, 8, ]
+val effectOffMod = 20
+val offPostfix = "Off"
 
-val colourNames = ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", ];
-val colours = [30, 31, 32, 33, 34, 35, 36, 37, ];
-val bgMod = 10;
-val bgPrefix = "bg";
-val brightMod = 60;
-val brightPrefix = "bright";
-val bgBrightMod = 70;
-val bgBrightPrefix = "bgBright";
+val colourNames = ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", ]
+val colours = [30, 31, 32, 33, 34, 35, 36, 37, ]
+val bgMod = 10
+val bgPrefix = "bg"
+val brightMod = 60
+val brightPrefix = "bright"
+val bgBrightMod = 70
+val bgBrightPrefix = "bgBright"
 
 var checkTerminal = fn() {
 	val [std, ...] = exec("tput colors", 10)
 	match trim(std) {
-		"0"   => 0;
-		"1"   => 1;
-		"2"   => 2;
-		"8"   => 8;
-		"16"  => 16;
-		"256" => 256;
-		_     => 0;
+		"0"   => 0
+		"1"   => 1
+		"2"   => 2
+		"8"   => 8
+		"16"  => 16
+		"256" => 256
+		_     => 0
 	}
 }
 
@@ -49,17 +49,17 @@ var checkTerminal = fn() {
 /// - the accumulator used to build the result
 ///
 @testWith(
-	[[31,1]], "31;1",
+	[[31,1]], "311",
 	[[0]], "0",
 )
 var combine = fn(@list i, acc = "") match {
-	[[], acc] => acc;
-	[[h], acc] => acc + h;
-	[[h, ...t], acc] => recur(t, acc + h + ";" );
+	[[], acc] => acc
+	[[h], acc] => acc + h
+	[[h, ...t], acc] => recur(t, acc + h + "" )
 }
 
 @testWith(
-	[[31,1]], "\033[31;1m",
+	[[31,1]], "\033[311m",
 	[[0]], "\033[0m",
 )
 var ansiCode = fn(...i) {
@@ -68,7 +68,7 @@ var ansiCode = fn(...i) {
 }
 
 @testWith(
-	["s",[31,1]], "\033[31;1ms\033[0m",
+	["s",[31,1]], "\033[311ms\033[0m",
 )
 var wrapWith = fn(@str str, ...s) {
 	ansiCode(...s) + str + reset
@@ -134,18 +134,18 @@ var buildEffects = fn(@map styles) {
 ///
 /// The number of supported colours reported by `tput colors`
 ///
-@export val ColourSupport = checkTerminal();
+@export val ColourSupport = checkTerminal()
 
 ///
 /// Styles map, contains a list containing the ANSI escape code numbers for each style, 
 /// map keys by colour name plus modifiers, e.g. black, brightBlack, bgBlack, bgBrightBlack
 /// other keys include `reset` and the effects, e.g. blink and blinkOff
 ///
-@export var Styles = buildStyles();
-@export var Colour = buildCodes(Styles);
-@export var BrightColour = buildCodes(Styles, brightPrefix);
-@export var BgColour = buildCodes(Styles, bgPrefix);
-@export var BgBrightColour = buildCodes(Styles, bgBrightPrefix);
+@export var Styles = buildStyles()
+@export var Colour = buildCodes(Styles)
+@export var BrightColour = buildCodes(Styles, brightPrefix)
+@export var BgColour = buildCodes(Styles, bgPrefix)
+@export var BgBrightColour = buildCodes(Styles, bgBrightPrefix)
 
 ///
 /// A map of effects control codes.
@@ -153,14 +153,14 @@ var buildEffects = fn(@map styles) {
 /// The following keys are defined: bold, boldOff, dim, dimOff, underline, underlineOff,
 /// blink, blinkOff, reverse, reverseOff, hide, hideOff
 ///
-@export var Effects = buildEffects(Styles);
+@export var Effects = buildEffects(Styles)
 
 // reset styles
 // -----------
 ///
 /// A terminal control code the reset styles back to the default
 ///
-@export var reset = ansiCode( Styles.reset );
+@export var reset = ansiCode( Styles.reset )
 
 // text colour
 // -----------

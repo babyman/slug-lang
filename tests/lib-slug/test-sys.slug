@@ -1,14 +1,14 @@
 var {*} = import(
     "slug.sys",
     "slug.test",
-);
+)
 
-assert(env("SLUG_HOME") != nil, "You should set a SLUG_HOME environment value!");
+assert(env("SLUG_HOME") != nil, "You should set a SLUG_HOME environment value!")
 
 
 
 if (true) {
-    var [sout, serr] = exec("date", 500);
+    var [sout, serr] = exec("date", 500)
 
     (len(sout) > 0) /> assertTrue
     serr /> assertEqual("")
@@ -16,7 +16,7 @@ if (true) {
 
 
 if (true) {
-    var [sout, serr] = exec("sleep 1", 500);
+    var [sout, serr] = exec("sleep 1", 500)
 
     sout /> assertEqual("")
     serr /> assertEqual("command timed out")

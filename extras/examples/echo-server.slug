@@ -1,34 +1,34 @@
 var {*} = import(
 	"slug.std",
 	"slug.io.tcp",
-);
+)
 
 
-var listener = bind("127.0.0.1", 8080);
+var listener = bind("127.0.0.1", 8080)
 defer {
-	listener /> close();
-	println("Listener closed", listener);
+	listener /> close()
+	println("Listener closed", listener)
 }
 
-println("Server listening on 127.0.0.1:8080", listener);
+println("Server listening on 127.0.0.1:8080", listener)
 
 var serverLoop = fn(count = 1) {
-	var connection = listener /> accept();
+	var connection = listener /> accept()
 	defer {
-		connection /> close();
-		println("<<< connection closed", connection);
+		connection /> close()
+		println("<<< connection closed", connection)
 	}
-	var msg = connection /> read(1024);
-	println(count, "Connection received:", msg, listener, connection);
-	connection /> write(msg);
+	var msg = connection /> read(1024)
+	println(count, "Connection received:", msg, listener, connection)
+	connection /> write(msg)
 	if (msg != "bye") {
-		recur(count + 1);
+		recur(count + 1)
 	} else {
 		"Server loop exited"
 	}
 }
 
-serverLoop() /> println;
+serverLoop() /> println
 
 
 

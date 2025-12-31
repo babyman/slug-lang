@@ -1,12 +1,12 @@
 var {*} = import(
     "slug.std",
     "slug.test"
-);
+)
 
-var list = [1, 2, 3, 4, 5, 6];
+var list = [1, 2, 3, 4, 5, 6]
 
 list /> map(fn(v) {v * v})
 	 /> filter(fn(v) {v % 2 == 0})
 	 /> reduce(0, fn(a, b) { a + b })
-	 /> assertEqual(56);
+	 /> assertEqual(56)
 

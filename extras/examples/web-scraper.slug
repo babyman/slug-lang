@@ -10,12 +10,12 @@ var {*} = import(
 	"slug.html",
 	"slug.csv",
 	"slug.time"
-);
+)
 // import regex separately so we can rename `replaceAll` to prevent conflict with `slug.string`.replaceAll
-var {findAllGroups, findAll, replaceAll: rxReplace} = import("slug.regex");
+var {findAllGroups, findAll, replaceAll: rxReplace} = import("slug.regex")
 
 if(mkDirs("./cache")) {
-	println("./cache directory created");
+	println("./cache directory created")
 }
 
 // getPage fetches a web page and caches it locally
@@ -24,15 +24,15 @@ if(mkDirs("./cache")) {
 //   page: The page path to fetch
 // Returns: [statusCode, pageContent]
 var getPage = fn(base, page) {
-	var cachePage = "./cache/{{page}}.html";
+	var cachePage = "./cache/{{page}}.html"
 	if(exists(cachePage)) {
 		[200, readFile(cachePage)]
 	} else {
-		println("Fetching page {{base}}{{page}}");
-		sleep(5000);
-		var [r, b] = get(base + page);
-		b /> writeFile(cachePage);
-		[r, b];
+		println("Fetching page {{base}}{{page}}")
+		sleep(5000)
+		var [r, b] = get(base + page)
+		b /> writeFile(cachePage)
+		[r, b]
 	}
 }
 
@@ -45,25 +45,25 @@ var getPage = fn(base, page) {
 // Returns: List of card URLs
 var extractIndexAndCardLinks = fn(base, pages = [], cards = {}, pagesSeen = {}) {
 	match pages {
-		[] => cards /> keys();
+		[] => cards /> keys()
 		[h, ...t] if pagesSeen[h] != nil => {
-			extractIndexAndCardLinks(base, t, cards, pagesSeen);
+			extractIndexAndCardLinks(base, t, cards, pagesSeen)
 		}
 		[h, ...t] => {
-			var page = base + h;
-			var pagesRemaining = t;
-			var [respCode, body] = getPage(base, h);
+			var page = base + h
+			var pagesRemaining = t
+			var [respCode, body] = getPage(base, h)
 			if (respCode < 300) {
 				var pages = body /> findAll("\?page=\d+")
-					 /> filter(fn(v) { pagesSeen[v] == nil });
-				pagesRemaining = pagesRemaining + pages;
+					 /> filter(fn(v) { pagesSeen[v] == nil })
+				pagesRemaining = pagesRemaining + pages
 				body /> findAll("service.html\?i=\d+") /> map(fn(v) {
-					cards = cards /> put(v, true);
-				});
+					cards = cards /> put(v, true)
+				})
 			} else {
-				println("Error response {{respCode}} for {{page}}");
+				println("Error response {{respCode}} for {{page}}")
 			}
-			extractIndexAndCardLinks(base, pagesRemaining, cards, pagesSeen /> put(h, true));
+			extractIndexAndCardLinks(base, pagesRemaining, cards, pagesSeen /> put(h, true))
 		}
 	}
 }
@@ -74,7 +74,7 @@ var readFirst = fn(v) {
 			/> join("; ")
 			/> htmlUnescape()
 	} else {
-		"";
+		""
 	}
 }
 
@@ -90,12 +90,12 @@ var readServiceTable = fn(tableStr, sep = "; ") {
 		/> filter(fn(v) { len(v) > 1 })
 		/> reduce([], fn(acc, v) { acc + v[1:] })
 		/> map(fn(v) {
-			var header = v /> findAllGroups("<th>(.*?)</th>") /> readFirst();
-			var list = v /> findAllGroups("<a href=\".*?\">(.*?)</a>") /> readAll(", ");
+			var header = v /> findAllGroups("<th>(.*?)</th>") /> readFirst()
+			var list = v /> findAllGroups("<a href=\".*?\">(.*?)</a>") /> readAll(", ")
 			if ( list == "" ) {
-				list = v /> findAllGroups("<td>(.*?)</td>") /> readAll(", ");
+				list = v /> findAllGroups("<td>(.*?)</td>") /> readAll(", ")
 			}
-			header + ": " + list;
+			header + ": " + list
 		})
 		/> join(sep)
 		/> htmlUnescape()
@@ -105,12 +105,12 @@ var readAmenities = fn(lst, sep = "; ") {
 	lst /> filter(fn(v) { len(v) > 1 })
 		/> reduce([], fn(acc, v) { acc :+ v[1:] })
 		/> map(fn(v) {
-			var header = v[0];
-			var list = v[1] /> findAllGroups("<a href=\".*?\">(.*?)</a>") /> readAll(", ");
+			var header = v[0]
+			var list = v[1] /> findAllGroups("<a href=\".*?\">(.*?)</a>") /> readAll(", ")
 			if ( list == "" ) {
-				list = v[1];
+				list = v[1]
 			}
-			header + ": " + list;
+			header + ": " + list
 		})
 		/> join(sep)
 		/> htmlUnescape()
@@ -118,15 +118,15 @@ var readAmenities = fn(lst, sep = "; ") {
 
 var scrapeCards = fn(cards, base, rows) {
 	match cards {
-		[] => rows;
+		[] => rows
 		[h, ...t] => {
-			var [respCode, body] = getPage(base, h);
+			var [respCode, body] = getPage(base, h)
 			if (respCode < 300) {
-				var row = scrapeCard(body) :+ (base + h);
-				scrapeCards(t, base, rows :+ row);
+				var row = scrapeCard(body) :+ (base + h)
+				scrapeCards(t, base, rows :+ row)
 			} else {
-				println("Error {{respCode}} when trying to scrape {{base + h}}");
-				scrapeCards(t, base, rows);
+				println("Error {{respCode}} when trying to scrape {{base + h}}")
+				scrapeCards(t, base, rows)
 			}
 		}
 	}
@@ -137,7 +137,7 @@ var cleanupText = fn(str) {
 		/> rxReplace(" +", " ")
 		/> rxReplace("([\r\n]+ +)+", "\n")
 		/> htmlUnescape()
-		/> trim();
+		/> trim()
 }
 
 var extractLinks = fn(str) {
@@ -147,7 +147,7 @@ var extractLinks = fn(str) {
 		/> urlDecode()
 }
 
-var fixEmail = fn(str) { str /> rxReplace("%40", "@") };
+var fixEmail = fn(str) { str /> rxReplace("%40", "@") }
 
 var debug = fn(s) {
 	println(s)
@@ -164,7 +164,7 @@ var debug = fn(s) {
 var scrapeCard = fn(card) {
 	var i1 = card /> indexOf("<div id=\"program_details\">")
 	var i2 = card /> indexOf("<p class=\"lastUpd\">")
-	var details = card[i1: i2 + 100];
+	var details = card[i1: i2 + 100]
 	[
 		details /> findAllGroups("<span class=\"organization\">(.*?)</span>")
 				/> readFirst(),
@@ -200,7 +200,7 @@ var scrapeCard = fn(card) {
 				/> readServiceTable(),
 		details /> findAllGroups("last updated on: <strong>(.*?)</strong>")
 				/> readFirst()
-	];
+	]
 }
 
 
@@ -221,11 +221,11 @@ var rowHeaders = [[
 	"Services",
 	"Last Updated",
 	"Source"
-]];
+]]
 
 
 extractIndexAndCardLinks("https://a.website.com/index.html", [""])
 	/> scrapeCards("https://a.website.com/", rowHeaders)
 	/> toCsv()
-	/> writeFile("data.csv");
+	/> writeFile("data.csv")
 

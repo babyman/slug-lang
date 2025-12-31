@@ -1,23 +1,23 @@
 var {*} = import(
     "slug.test"
-);
+)
 
 // concatenating lists
 // -------------------
-(0x"0102" + 0x"0304") /> len() /> assertEqual(4);
-(0x"0102" + 0x"03") /> len() /> assertEqual(3);
+(0x"0102" + 0x"0304") /> len() /> assertEqual(4)
+(0x"0102" + 0x"03") /> len() /> assertEqual(3)
 
 // appending items
 // ---------------
-(0x"0102" :+ 3) /> len() /> assertEqual(3);
+(0x"0102" :+ 3) /> len() /> assertEqual(3)
 
-(0x"" :+ 1 :+ 2 :+ 3) /> len() /> assertEqual(3);
+(0x"" :+ 1 :+ 2 :+ 3) /> len() /> assertEqual(3)
 
 // prepending items
 // ----------------
-(0 +: 0x"0102") /> assertEqual(0x"000102");
+(0 +: 0x"0102") /> assertEqual(0x"000102")
 
-(1 +: 2 +: 3 +: 0x"") /> assertEqual(0x"010203");
+(1 +: 2 +: 3 +: 0x"") /> assertEqual(0x"010203")
 
-(1 +: 0x"0203" + 0x"04" :+ 5) /> assertEqual(0x"0102030405");
+(1 +: 0x"0203" + 0x"04" :+ 5) /> assertEqual(0x"0102030405")
 

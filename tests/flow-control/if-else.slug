@@ -1,22 +1,22 @@
 var {*} = import(
     "slug.test"
-);
+)
 
 var f = fn(a) {
     if(a == 1) {
-        10;
+        10
     } else if(a == 2) {
-        11;
+        11
     } else {
-        12;
+        12
     }
 }
 
-1 /> f /> assertEqual(10, "expected 10");
+1 /> f /> assertEqual(10, "expected 10")
 
-2 /> f /> assertEqual(11);
+2 /> f /> assertEqual(11)
 
-3 /> f /> assertEqual(12);
+3 /> f /> assertEqual(12)
 
 
 // if with no else returns nil
@@ -28,6 +28,6 @@ var ifTest = fn(a) {
     }
 }
 
-1 /> ifTest /> assertEqual("small");
+1 /> ifTest /> assertEqual("small")
 
-5 /> ifTest /> assertEqual(nil);
+5 /> ifTest /> assertEqual(nil)

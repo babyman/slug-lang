@@ -1,30 +1,30 @@
 var {*} = import(
     "slug.std",
     "slug.test",
-);
+)
 
 var map = {k1: "v1", k2: "v2"}
 
 // ensure that match vars shadow outer scope
-var k1 = "shadowed";
+var k1 = "shadowed"
 
 if (true) {
 
     // bring all keys into the current scope
-    var {*} = map;
+    var {*} = map
 
-    k1 /> assertEqual("v1");
-    k2 /> assertEqual("v2");
+    k1 /> assertEqual("v1")
+    k2 /> assertEqual("v2")
 }
 
 
 if (true) {
     
     // bring select keys into the current scope
-    var {k1} = map;
+    var {k1} = map
 
-    k1 /> assertEqual("v1");
-    "k2" /> isDefined /> assertFalse;
+    k1 /> assertEqual("v1")
+    "k2" /> isDefined /> assertFalse
 }
 
 
@@ -32,11 +32,11 @@ if (true) {
 if (true) {
     
     // rename the selected keys
-    var {k2: k200} = map;
+    var {k2: k200} = map
 
-    "k2" /> isDefined /> assertFalse;
-    k1 /> assertEqual("shadowed");
-    k200 /> assertEqual("v2");
+    "k2" /> isDefined /> assertFalse
+    k1 /> assertEqual("shadowed")
+    k200 /> assertEqual("v2")
 
 }
 

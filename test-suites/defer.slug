@@ -99,8 +99,8 @@ var test05 = fn() {
 var test06 = fn() {
     var f = fn() {
         defer onerror(e) match {
-            "bad" => 42;
-            _ => throw e;
+            "bad" => 42
+            _ => throw e
         }
         throw "bad"
     }

@@ -1,4 +1,4 @@
-# Concurrency in Slug (Structured, Explicit, Boring)
+# 8. Concurrency in Slug (Structured, Explicit, Boring)
 
 This document defines the **official concurrency model** for the Slug programming language.
 
@@ -71,7 +71,7 @@ Creates a **child task** that runs concurrently.
 
 ```slug
 var t = spawn {
-    work();
+    work()
 }
 ```
 
@@ -96,13 +96,13 @@ Semantics:
 Suspends the current task until a task handle completes.
 
 ```slug
-var value = await taskHandle;
+var value = await taskHandle
 ```
 
 Optional timeout:
 
 ```slug
-var value = await taskHandle within 500ms;
+var value = await taskHandle within 500
 ```
 
 Semantics:
@@ -135,7 +135,7 @@ Notes:
 
 ### Concurrency Limits
 
-`async limit N` limits the number of concurrently executing child tasks **within the scope**.
+`async limit N` limits the number of concurrently executing child tasks **within the nursery scope**.
 
 ```slug
 var handler = async limit 10 fn() {
@@ -145,6 +145,7 @@ var handler = async limit 10 fn() {
 
 Rules:
 
+* Default limit is 2 * CPU cores or 4.
 * Applies strictly to **direct** `spawn` calls in the current scope (limits are not inherited by child tasks).
 * Excess spawns wait until capacity is available.
 * Limits are lexical and deterministic.
@@ -156,11 +157,13 @@ Rules:
 Timeouts are expressed at `await` points:
 
 ```slug
-var v = await task within 1s;
+var v = await task within 1
 ```
 
 Timeout behavior:
 
+* If no timeout is specified the default is infinite.
+* Timeouts are in millisecond units.
 * Raises a `Timeout` error.
 * **Error Handling**: Must be handled via `defer onerror` or similar error-trapping constructs.
 * Cancels the awaited task.
@@ -193,13 +196,13 @@ var fetchPosts = fn(id) { ... }
 var renderProfile = fn(user, posts) { ... }
 
 var showProfile = async limit 10 fn(id) {
-    let userT  = spawn { id /> fetchUser };
-    let postsT = spawn { id /> fetchPosts };
+    var userT  = spawn { id /> fetchUser }
+    var postsT = spawn { id /> fetchPosts }
 
-    let user  = await userT  within 500ms;
-    let posts = await postsT within 1s;
+    var user  = await userT  within 500
+    var posts = await postsT within 1000
 
-    renderProfile(user, posts);
+    renderProfile(user, posts)
 }
 ```
 
@@ -221,7 +224,7 @@ var awaitWithin = async fn(v, dur) {
     await v within dur
 }
 
-let user = userT /> awaitWithin(500ms);
+var user = userT /> awaitWithin(500);
 ```
 
 This keeps pipelines readable while preserving explicit suspension.

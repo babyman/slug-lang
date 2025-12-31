@@ -1,29 +1,29 @@
 var {*} = import(
     "slug.std",
     "slug.test",
-);
+)
 
 //
 // assert something is true
 // -----------------------
-assert(true);
-assert(true, "with a message");
+assert(true)
+assert(true, "with a message")
 
-assert(1 == 1);
-assert(1 == 1, "with a message");
+assert(1 == 1)
+assert(1 == 1, "with a message")
 
-true /> assertTrue();
+true /> assertTrue()
 
-true /> ok;
+true /> ok
 
-false /> assertFalse();
+false /> assertFalse()
 
 
 //
 // assert 2 values are equal
 // -----------------------
-assertEqual(1, 1);
-assertEqual(1, 1, "with a message");
+assertEqual(1, 1)
+assertEqual(1, 1, "with a message")
 
 
 var assertTest = fn() {
@@ -34,8 +34,8 @@ var assertTest = fn() {
             err
         }
     }
-    assert(false);
-    throw {type: "AnError"};
+    assert(false)
+    throw {type: "AnError"}
 }
 
 var assertEqualTest = fn() {
@@ -46,8 +46,8 @@ var assertEqualTest = fn() {
             err
         }
     }
-    assertEqual(1, 2);
-    throw {type: "AnError"};
+    assertEqual(1, 2)
+    throw {type: "AnError"}
 }
 
 assertTest()

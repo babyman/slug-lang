@@ -1,6 +1,6 @@
 var {*} = import(
     "slug.std",
-);
+)
 
 // readFile reads entire file content as a string
 // Parameters:
@@ -8,7 +8,7 @@ var {*} = import(
 // Returns:
 //   string content of file, or error if file cannot be read
 @export
-foreign readFile = fn(@str path);
+foreign readFile = fn(@str path)
 
 // writeFile writes string content to a file
 // Parameters:
@@ -17,7 +17,7 @@ foreign readFile = fn(@str path);
 // Returns:
 //   nil on success, error if write fails
 @export
-foreign writeFile = fn(@str contents, @str path);
+foreign writeFile = fn(@str contents, @str path)
 
 // appendFile appends string content to end of file
 // Parameters:
@@ -26,7 +26,7 @@ foreign writeFile = fn(@str contents, @str path);
 // Returns:
 //   nil on success, error if write fails
 @export
-foreign appendFile = fn(@str contents, @str path);
+foreign appendFile = fn(@str contents, @str path)
 
 // info gets information about a file
 // Parameters:
@@ -34,7 +34,7 @@ foreign appendFile = fn(@str contents, @str path);
 // Returns:
 //   object containing file metadata
 @export
-foreign info = fn(@str path);
+foreign info = fn(@str path)
 
 // exists checks if a file exists and is accessible
 // Parameters:
@@ -42,10 +42,10 @@ foreign info = fn(@str path);
 // Returns:
 //   true if file exists and is accessible, false otherwise
 @export
-foreign exists = fn(@str path);
+foreign exists = fn(@str path)
 
 @export
-foreign mkDirs = fn(... path);
+foreign mkDirs = fn(... path)
 
 // isDir checks if path points to a directory
 // Parameters:
@@ -53,7 +53,7 @@ foreign mkDirs = fn(... path);
 // Returns:
 //   true if path is a directory, false otherwise
 @export
-foreign isDir = fn(@str path);
+foreign isDir = fn(@str path)
 
 // ls lists contents of a directory (non-recursively)
 // Parameters:
@@ -61,7 +61,7 @@ foreign isDir = fn(@str path);
 // Returns:
 //   list of filenames in the directory
 @export
-foreign ls = fn(@str path);
+foreign ls = fn(@str path)
 
 // rm removes a file or empty directory
 // Parameters:
@@ -69,11 +69,11 @@ foreign ls = fn(@str path);
 // Returns:
 //   nil on success, error if removal fails
 @export
-foreign rm = fn(@str path);
+foreign rm = fn(@str path)
 
-@export val READ_MODE = "r";
-@export val WRITE_MODE = "w";
-@export val APPEND_MODE = "a";
+@export val READ_MODE = "r"
+@export val WRITE_MODE = "w"
+@export val APPEND_MODE = "a"
 
 // openFile opens a file in specified mode
 // Parameters:
@@ -82,7 +82,7 @@ foreign rm = fn(@str path);
 // Returns:
 //   file handle number on success, error if open fails
 @export
-foreign openFile = fn(@str path, @str mode);
+foreign openFile = fn(@str path, @str mode)
 
 // readLine reads the next line from an open file
 // Parameters:
@@ -90,7 +90,7 @@ foreign openFile = fn(@str path, @str mode);
 // Returns:
 //   string containing next line, or error if read fails
 @export
-foreign readLine = fn(@num handle);
+foreign readLine = fn(@num handle)
 
 // readBytes reads a fixed number of bytes from file
 // Parameters:
@@ -106,7 +106,7 @@ foreign readLine = fn(@num handle);
 // Returns:
 //   number of bytes written, or error if write fails
 @export
-foreign write = fn(@num handle, @str content);
+foreign write = fn(@num handle, @str content)
 
 // closeFile closes an open file handle
 // Parameters:
@@ -127,7 +127,7 @@ var readLines = fn(@num file, lines = []) {
 @export
 var listFilesRecursive = fn(@list path, @fun filter = fn(s) {true}, acc = []) {
 	match path {
-		[] => acc;
+		[] => acc
 		[h, ...t] => {
 			if (h /> isDir) {
 				var files = ls(h) /> map(fn(v) {h + "/" + v})

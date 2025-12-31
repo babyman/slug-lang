@@ -1,17 +1,17 @@
 var {*} = import(
     "slug.std"
-);
+)
 
 var fizzBuzz = fn(max, acc = 1) {
 	if(acc <= max) {
 		match [acc % 3, acc % 5] {
-			[0, 0] => "FizzBuzz";
-			[0, _] => "Fizz";
-			[_, 0] => "Buzz";
-			_ => acc;
-		} /> println();
-		recur(max, acc + 1);
+			[0, 0] => "FizzBuzz"
+			[0, _] => "Fizz"
+			[_, 0] => "Buzz"
+			_ => acc
+		} /> println()
+		recur(max, acc + 1)
 	}
 }
 
-fizzBuzz(100);
+fizzBuzz(100)

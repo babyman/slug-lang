@@ -1,15 +1,15 @@
 
 @export
-foreign clock = fn();
+foreign clock = fn()
 
 @export
-foreign fmtClock = fn(@num millis, @str fmt);
+foreign fmtClock = fn(@num millis, @str fmt)
 
 @export
-foreign clockNanos = fn();
+foreign clockNanos = fn()
 
 @export
-foreign sleep = fn(@num millis);
+foreign sleep = fn(@num millis)
 
 // delta creates a function that measures time difference between calls
 // Parameters:
@@ -18,9 +18,9 @@ foreign sleep = fn(@num millis);
 //   function that returns time elapsed since first call to f
 @export
 var delta = fn(f) {
-	var start = f();
+	var start = f()
 	fn() {
-		f() - start;
+		f() - start
 	}
 }
 

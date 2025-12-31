@@ -7,7 +7,7 @@ var {*} = import(
 @test
 var testSingleParameterFunction = fn() {
     var f = fn(a) match {
-        1 => "one";
+        1 => "one"
         _ => "other"
     }
 
@@ -18,7 +18,7 @@ var testSingleParameterFunction = fn() {
 @test
 var testMultipleParameterFunction = fn() {
     var f = fn(a, b) match {
-        [x, y] => x + y;
+        [x, y] => x + y
     }
 
     f(1, 2) /> assertEqual(3)
@@ -27,7 +27,7 @@ var testMultipleParameterFunction = fn() {
 @test
 var testVargsParameterFunction_singleVargsParameter = fn() {
     var f = fn(...a) match {
-        [h, ...] => h;
+        [h, ...] => h
     }
 
     f(1, 2) /> assertEqual(1)
@@ -36,7 +36,7 @@ var testVargsParameterFunction_singleVargsParameter = fn() {
 @test
 var testVargsParameterFunction_matchVargs = fn() {
     var f = fn(a, ...b) match {
-        [x, y] => x + reduce(y, 1, fn(i, j) {i * j});
+        [x, y] => x + reduce(y, 1, fn(i, j) {i * j})
     }
 
     f(1, 2, 3) /> assertEqual(7)
@@ -45,8 +45,8 @@ var testVargsParameterFunction_matchVargs = fn() {
 @test
 var testVargsParameterFunction_matchTheNestedList = fn() {
     var f = fn(a, ...b) match {
-        [x, [y, z, ...]] => x + y + z;
-        [x, []] => x;
+        [x, [y, z, ...]] => x + y + z
+        [x, []] => x
         _ => 0
     }
 
@@ -59,11 +59,11 @@ var testVargsParameterFunction_matchTheNestedList = fn() {
 var testTailCallOptimizedRecursiveFunction = fn() {
 
     var sum = fn(numbers, acc = 0) match {
-        [[], acc] => acc;
-        [[h, ...t], acc] => recur(t, acc + h);
+        [[], acc] => acc
+        [[h, ...t], acc] => recur(t, acc + h)
     }
 
-    var nums = [1, 2, 3];
+    var nums = [1, 2, 3]
     nums /> sum /> assertEqual(6)
 }
 

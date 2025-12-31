@@ -5,9 +5,9 @@ var {*} = import(
 	"slug.list",
 	"slug.string",
 	"slug.term.colour",
-);
+)
 
-val colourNames = ["Black", "Red", "Green", "Yellow", "Blue", "Magenta", "Cyan", "White", ];
+val colourNames = ["Black", "Red", "Green", "Yellow", "Blue", "Magenta", "Cyan", "White", ]
 
 var pad = fn(s) {
 	s /> padRight(" ", 16)
@@ -15,8 +15,8 @@ var pad = fn(s) {
 
 var vgaOut = fn(s, n) {
 	match n {
-		15, 51, 87, 123, 159, 195, 231, 255 => println(s + reset);
-		_ => print(s + reset);
+		15, 51, 87, 123, 159, 195, 231, 255 => println(s + reset)
+		_ => print(s + reset)
 	}
 }
 

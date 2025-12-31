@@ -1,23 +1,23 @@
 var {*} = import(
     "slug.std",
     "slug.test"
-);
+)
 
 var list = ["v1", "v2"]
 var emptyList = []
 
 // ensure that match vars shadow outer scope
-var a = "shadowed";
+var a = "shadowed"
 
 
 if (true) {
-    var [a, ...] = list;
-    a /> assertEqual("v1");
+    var [a, ...] = list
+    a /> assertEqual("v1")
 }
 
 
 if (true) {
-    var [a, b] = list;
-    a /> assertEqual("v1");
-    b /> assertEqual("v2");
+    var [a, b] = list
+    a /> assertEqual("v1")
+    b /> assertEqual("v2")
 }

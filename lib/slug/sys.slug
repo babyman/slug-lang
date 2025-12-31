@@ -5,13 +5,13 @@
 // Returns:
 //   string value of the environment variable, or nil if variable is not set
 @export
-foreign env = fn(@str str);
+foreign env = fn(@str str)
 
 @export
-foreign setEnv = fn(@str str);
+foreign setEnv = fn(@str str)
 
 @export
-foreign exit = fn(@num exitCode);
+foreign exit = fn(@num exitCode)
 
 // exec runs a system command and returns [stdout, stderr] as strings.
 // Parameters:
@@ -20,4 +20,4 @@ foreign exit = fn(@num exitCode);
 // Returns:
 //   list [stdout, stderr]
 @export
-foreign exec = fn(@str cmd, @num timeout = 0);
+foreign exec = fn(@str cmd, @num timeout = 0)

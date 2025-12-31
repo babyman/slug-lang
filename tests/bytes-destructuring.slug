@@ -1,7 +1,7 @@
 var {*} = import(
     "slug.std",
     "slug.test"
-);
+)
 
 var list = 0x"0102"
 var emptyList = 0x""
@@ -10,97 +10,97 @@ var emptyList = 0x""
 // match non-empty list
 // --------------------
 match list {
-    [] => fail();
-    [...] => true;
-    _ => fail();
+    [] => fail()
+    [...] => true
+    _ => fail()
 }
 
 match list {
     [...] => true; // will also match empty list
-    _ => fail();
+    _ => fail()
 }
 
 // match non-empty list, capture the spread
 // ----------------------------------------
 match list {
-    [...t] => t /> len() /> assertEqual(2);
-    _ => fail();
+    [...t] => t /> len() /> assertEqual(2)
+    _ => fail()
 }
 
 // match values and capture the spread
 // -----------------------------------
 match list {
     [h1, ...t] => {
-        t /> len() /> assertEqual(1);
-        h1 /> assertEqual(1);
+        t /> len() /> assertEqual(1)
+        h1 /> assertEqual(1)
     }
-    _ => fail();
+    _ => fail()
 }
 
 match list {
     [h1, h2, ...t] => {
-        t /> len() /> assertEqual(0);
-        h1 /> assertEqual(1);
-        h2 /> assertEqual(2);
+        t /> len() /> assertEqual(0)
+        h1 /> assertEqual(1)
+        h2 /> assertEqual(2)
     }
-    _ => fail();
+    _ => fail()
 }
 
 match list {
-    [h1, ...] => h1 /> assertEqual(1);
-    _ => fail();
+    [h1, ...] => h1 /> assertEqual(1)
+    _ => fail()
 }
 
 // match on a literal
 // ------------------
 match list {
-    [1, h2, ...] => h2 /> assertEqual(2);
-    _ => fail();
+    [1, h2, ...] => h2 /> assertEqual(2)
+    _ => fail()
 }
 
 match list {
-    ["--not h1--", h2, ...] => fail();
-    _ => true;
+    ["--not h1--", h2, ...] => fail()
+    _ => true
 }
 
 // exact matching
 // --------------
 match list {
     [h1, h2] => {
-        h1 /> assertEqual(1);
-        h2 /> assertEqual(2);
+        h1 /> assertEqual(1)
+        h2 /> assertEqual(2)
     }
-    _ => fail();
+    _ => fail()
 }
 
 match list {
-    [_, h2] => h2 /> assertEqual(2);
-    _ => fail();
+    [_, h2] => h2 /> assertEqual(2)
+    _ => fail()
 }
 
 match list {
-    [h1, _] => h1 /> assertEqual(1);
-    _ => fail();
+    [h1, _] => h1 /> assertEqual(1)
+    _ => fail()
 }
 
 match list {
-    [_, _] => println("any list with only 2 items");
-    _ => fail();
+    [_, _] => println("any list with only 2 items")
+    _ => fail()
 }
 
 match list {
-    [h1] => fail();
-    _ => true;
+    [h1] => fail()
+    _ => true
 }
 
 // match empty list
 // ---------------
 match emptyList {
-    [] => true;
-    _ => fail();
+    [] => true
+    _ => fail()
 }
 
 match emptyList {
-    [...] => true;
-    _ => fail();
+    [...] => true
+    _ => fail()
 }

@@ -1,6 +1,6 @@
 var {*} = import(
     "slug.test"
-);
+)
 
 //
 // guard clause using return
@@ -8,11 +8,11 @@ var {*} = import(
 
 var f = fn(a) {
     if(a == 1) {
-        return 10;
+        return 10
     }
-    a * a;
+    a * a
 }
 
-1 /> f /> assertEqual(10);
+1 /> f /> assertEqual(10)
 
-2 /> f /> assertEqual(4);
+2 /> f /> assertEqual(4)

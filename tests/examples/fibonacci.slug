@@ -1,6 +1,6 @@
 var {*} = import(
     "slug.test"
-);
+)
 
 //
 // Fibonacci sequence calculation using simple recursion
@@ -8,12 +8,12 @@ var {*} = import(
 
 var fib = fn(n) {
     if (n < 2) {
-        return n;
+        return n
     } else {
-        return fib(n - 2) + fib(n - 1);
+        return fib(n - 2) + fib(n - 1)
     }
 }
 
-var out = fib(10);
+var out = fib(10)
 
-assertEqual(out, 55, "Fibonacci 10 equals 55");
+assertEqual(out, 55, "Fibonacci 10 equals 55")

@@ -1,6 +1,6 @@
 var {*} = import(
     "slug.test"
-);
+)
 
 //
 // artity based dispatch

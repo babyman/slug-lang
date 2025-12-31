@@ -1,7 +1,7 @@
 var {*} = import(
     "slug.std",
     "slug.test",
-);
+)
 
 
 var add = fn(@num b) {
@@ -33,17 +33,17 @@ var add = fn(@fun b) {
 }
 
 
-"hello" /> add /> assertEqual("hello slug");
+"hello" /> add /> assertEqual("hello slug")
 
-false /> add /> assertEqual(true);
+false /> add /> assertEqual(true)
 
-1 /> add /> assertEqual(256);
+1 /> add /> assertEqual(256)
 
-[] /> add /> assertEqual([255]);
+[] /> add /> assertEqual([255])
 
-{} /> add /> len /> assertEqual(1);
+{} /> add /> len /> assertEqual(1)
 
-0x"63ff00" /> add /> assertEqual(0x"63ff00ff");
+0x"63ff00" /> add /> assertEqual(0x"63ff00ff")
 
 fn() { 12 } /> add /> assertEqual(267)
 

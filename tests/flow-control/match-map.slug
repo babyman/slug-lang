@@ -1,6 +1,6 @@
 var {*} = import(
     "slug.test"
-);
+)
 
 //
 // matching on map values
@@ -8,28 +8,28 @@ var {*} = import(
 
 var f = fn(x) {
     match x {
-      {} => "empty map";
-      {k:1} => "map with k == 1";
-      {k} if k == "a" => "map with " + k;
-      {k} => "map with " + k;
-      {k1, k2:k, ...a} => "map with " + k + " '" + a + "'";
-      {...} => "map with data";
+      {} => "empty map"
+      {k:1} => "map with k == 1"
+      {k} if k == "a" => "map with " + k
+      {k} => "map with " + k
+      {k1, k2:k, ...a} => "map with " + k + " '" + a + "'"
+      {...} => "map with data"
       _ => {
-              return "default";
+              return "default"
         }
     }
 }
 
-{} /> f /> assertEqual("empty map");
+{} /> f /> assertEqual("empty map")
 
-{"k":"v"} /> f /> assertEqual("map with v");
+{"k":"v"} /> f /> assertEqual("map with v")
 
-{"k":1} /> f /> assertEqual("map with k == 1");
+{"k":1} /> f /> assertEqual("map with k == 1")
 
-{"k":"a"} /> f /> assertEqual("map with a");
+{"k":"a"} /> f /> assertEqual("map with a")
 
-{"k1":"v1", "k2":"v2"} /> f /> assertEqual("map with v2 '{}'");
+{"k1":"v1", "k2":"v2"} /> f /> assertEqual("map with v2 '{}'")
 
-{"k1":"v1", "k2":"v2", "k3":"v3"} /> f /> assertEqual("map with v2 '{k3: v3}'");
+{"k1":"v1", "k2":"v2", "k3":"v3"} /> f /> assertEqual("map with v2 '{k3: v3}'")
 
-42 /> f /> assertEqual("default");
+42 /> f /> assertEqual("default")

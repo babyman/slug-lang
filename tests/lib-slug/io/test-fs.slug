@@ -2,11 +2,11 @@ var {*} = import(
     "slug.io.fs",
     "slug.std",
     "slug.test",
-);
+)
 
-var filename = "__slug_test.txt";
-var hello = "Hello Slug!\n";
-var goodbye = "Goodbye Slug!\n";
+var filename = "__slug_test.txt"
+var hello = "Hello Slug!\n"
+var goodbye = "Goodbye Slug!\n"
 
 
 // ensure the test file doesn't exist, if it does could be defer isn't running
@@ -15,27 +15,27 @@ filename /> exists /> assertFalse
 
 // read / write / append entire file content
 // -----------------------------------------
-hello /> writeFile(filename);
-goodbye /> appendFile(filename);
-readFile(filename) /> assertEqual(hello + goodbye);
+hello /> writeFile(filename)
+goodbye /> appendFile(filename)
+readFile(filename) /> assertEqual(hello + goodbye)
 
 // inspect the file
 // ----------------
 
-var info = filename /> info();
-info.name /> assertEqual(filename);
-info.isDir /> assertFalse();
-(info.mode > 0) /> assertTrue();
-(info.modTime > 0) /> assertTrue();
-(info.size > 0) /> assertTrue();
+var info = filename /> info()
+info.name /> assertEqual(filename)
+info.isDir /> assertFalse()
+(info.mode > 0) /> assertTrue()
+(info.modTime > 0) /> assertTrue()
+(info.size > 0) /> assertTrue()
 
-filename /> isDir() /> assertFalse();
+filename /> isDir() /> assertFalse()
 
-filename /> exists() /> assertTrue();
+filename /> exists() /> assertTrue()
 
 // remove the file
 // ---------------
-filename /> rm();
+filename /> rm()
 
 // read / write / append file with handle
 // --------------------------------------
@@ -53,8 +53,8 @@ defer fileIn /> closeFile()
 //defer fileIn /> println("<<<< file defer")
 
 //fileIn /> println("<<<< file about to read")
-fileIn /> readLines /> len /> assertEqual(2);
-//fileIn /> println("<<<< file reading");
+fileIn /> readLines /> len /> assertEqual(2)
+//fileIn /> println("<<<< file reading")
 
 // ls
 // ---------

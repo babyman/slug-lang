@@ -1,25 +1,25 @@
 var {*} = import(
 	"slug.std",
 	"slug.io.tcp"
-);
+)
 
 
 var msg = if(args != nil && len(args) > 0) {
-	args[0];
+	args[0]
 } else {
-	"Echo this from Slug!";
+	"Echo this from Slug!"
 }
 
-var client = connect("127.0.0.1", 8080);
+var client = connect("127.0.0.1", 8080)
 defer {
-	println("defered client close");
-	close(client);
+	println("defered client close")
+	close(client)
 }
 
-println("connected, writing", msg);
+println("connected, writing", msg)
 
-client /> write(msg);
+client /> write(msg)
 
 
-println("Got echo:", read(client, 1024));
+println("Got echo:", read(client, 1024))
 

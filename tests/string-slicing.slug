@@ -1,51 +1,51 @@
 var {*} = import(
     "slug.test"
-);
+)
 
-var str = "hello";
+var str = "hello"
 
 // simple indexing
 // ---------------
 
-str[3] /> assertEqual("l");
+str[3] /> assertEqual("l")
 
 // negative indexing
-str[-1] /> assertEqual("o");
+str[-1] /> assertEqual("o")
 
 
 // repeating strings
 // -----------------
 
-("a" * 5) /> assertEqual("aaaaa");
+("a" * 5) /> assertEqual("aaaaa")
 
 
 // slicing
 // -------
 
-str[:] /> assertEqual("hello");
+str[:] /> assertEqual("hello")
 
-str[1:] /> assertEqual("ello");
+str[1:] /> assertEqual("ello")
 
-str[:2] /> assertEqual("he");
+str[:2] /> assertEqual("he")
 
-str[0:4] /> assertEqual("hell");
+str[0:4] /> assertEqual("hell")
 
-str[1::] /> assertEqual("ello");
+str[1::] /> assertEqual("ello")
 
-str[:2:] /> assertEqual("he");
+str[:2:] /> assertEqual("he")
 
 
 // slicing with step value
 // -----------------------
 
-str[0:4:] /> assertEqual("hell");
+str[0:4:] /> assertEqual("hell")
 
-str[1:6:2] /> assertEqual("el");
+str[1:6:2] /> assertEqual("el")
 
-str[:6:2] /> assertEqual("hlo");
+str[:6:2] /> assertEqual("hlo")
 
-str[1::2] /> assertEqual("el");
+str[1::2] /> assertEqual("el")
 
-str[::2] /> assertEqual("hlo");
+str[::2] /> assertEqual("hlo")
 
-str[::] /> assertEqual("hello");
+str[::] /> assertEqual("hello")

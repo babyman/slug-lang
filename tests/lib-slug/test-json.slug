@@ -124,14 +124,14 @@ var invalidJson = [
 	"[}",
 ]
 
-var count = 0;
-var failed = 0;
+var count = 0
+var failed = 0
 
-println("");
-println("running JSON test suite");
-println("=======================");
+println("")
+println("running JSON test suite")
+println("=======================")
 
-count = count + 1;
+count = count + 1
 
 jsonObject
 	/> decode
@@ -142,13 +142,13 @@ var applyTest = fn(in, @fun f, out, @str err) {
 	defer onerror(err) {
 		match err {
 			{msg, ...} => {
-				failed = failed + 1;
-				println("{{count}}. {{err}} FAILED: {{msg}}");
+				failed = failed + 1
+				println("{{count}}. {{err}} FAILED: {{msg}}")
 			}
 		}
 	}
-	count = count + 1;
-	in /> f /> assertEqual(out);
+	count = count + 1
+	in /> f /> assertEqual(out)
 }
 
 decodeTests + bidirectionalTests
@@ -157,19 +157,19 @@ decodeTests + bidirectionalTests
 bidirectionalTests
 	/> map(fn(m) { applyTest(m[1], encode, m[0], "ENCODE") })
 
-println("");
-println("running error tests");
-println("===================");
+println("")
+println("running error tests")
+println("===================")
 
 invalidJson
 	/> map(fn(j) {
 		defer onerror(err) {
 			// on error return nil
 		}
-		count = count + 1;
-		var out = j /> decode;
-		failed = failed + 1;
-		println("{{count}}. FAILED: Should have thrown an error: {{j}} => {{out}}");
+		count = count + 1
+		var out = j /> decode
+		failed = failed + 1
+		println("{{count}}. FAILED: Should have thrown an error: {{j}} => {{out}}")
 	})
 
 println("Test executed: {{count}} / failed {{failed}}")

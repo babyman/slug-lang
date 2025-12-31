@@ -2,33 +2,33 @@ var {*} = import(
     "slug.std",
     "slug.test",
     "slug.math"
-);
+)
 
-max(1, 2, 3, 2) /> assertEqual(3);
-max(10, 2) /> assertEqual(10);
+max(1, 2, 3, 2) /> assertEqual(3)
+max(10, 2) /> assertEqual(10)
 
-min(1, 2) /> assertEqual(1);
-min(10, 2, 99) /> assertEqual(2);
+min(1, 2) /> assertEqual(1)
+min(10, 2, 99) /> assertEqual(2)
 
 // function that will generate a map of random numbers between 0 and 9
 var rnd = fn(values, counter = 0) {
     if( counter == 0 ) {
         values
     } else {
-        values = values /> compute(rndRange(0, 10), fn(k, v) {if(v == nil) {1} else {v + 1}});
+        values = values /> compute(rndRange(0, 10), fn(k, v) {if(v == nil) {1} else {v + 1}})
         recur(values, counter - 1)
     }
 }
 
-val randomNumbers = rnd({}, 100);
+val randomNumbers = rnd({}, 100)
 
 randomNumbers
     /> len 
-    /> assertEqual(10);
+    /> assertEqual(10)
 
 randomNumbers
     /> keys
     /> map(fn(k) {randomNumbers[k]})
     /> reduce(0, fn(a, b) {a + b})
-    /> assertEqual(100);
+    /> assertEqual(100)
 

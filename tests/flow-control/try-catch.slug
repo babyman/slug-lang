@@ -1,7 +1,7 @@
 var {*} = import(
 	"slug.std",
 	"slug.test",
-);
+)
 
 //
 // throwing a catching errors
@@ -12,15 +12,15 @@ var f1 = fn() {
 		"new return value"
 	}
 	println("  before throw")
-	throw "Failed to connect";
+	throw "Failed to connect"
 	println("  after throw")
 }
 
-println("before call");
+println("before call")
 
-f1() /> assertEqual("new return value");
+f1() /> assertEqual("new return value")
 
-println("after call");
+println("after call")
 
 
 

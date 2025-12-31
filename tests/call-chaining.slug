@@ -1,6 +1,6 @@
 var {*} = import(
     "slug.test"
-);
+)
 
 // Call Chaining Operator `/>`
 // The `/>`operator enables function call chaining by taking the value on its left side
@@ -13,46 +13,46 @@ var {*} = import(
 // The function call parentheses are optional when no additional arguments are needed.
 
 // double function for testing
-val timesTwo = fn(n) { n * 2 };
-val multiplyBy = fn(a, b) { a * b };
+val timesTwo = fn(n) { n * 2 }
+val multiplyBy = fn(a, b) { a * b }
 
 // unchained code
 assertEqual(timesTwo(10), 20)
 
 // chained calls
-10 /> timesTwo() /> assertEqual(20);
+10 /> timesTwo() /> assertEqual(20)
 
 // brackets optional for single parameter functions
-10 /> timesTwo /> assertEqual(20);
+10 /> timesTwo /> assertEqual(20)
 
 // brackets are required when more parameters are present
-10 /> multiplyBy(10) /> assertEqual(100);
+10 /> multiplyBy(10) /> assertEqual(100)
 
 // chaining with maps
 // ==================
 //
 // if a map contains a function it can be chained
 
-val m1 = { key: timesTwo };
-val m2 = { key: m1 };
-val m3 = { key: m2 };
+val m1 = { key: timesTwo }
+val m2 = { key: m1 }
+val m3 = { key: m2 }
 
-10 /> m1.key /> assertEqual(20);
-10 /> m2.key.key /> assertEqual(20);
-10 /> m3.key.key.key /> assertEqual(20);
+10 /> m1.key /> assertEqual(20)
+10 /> m2.key.key /> assertEqual(20)
+10 /> m3.key.key.key /> assertEqual(20)
 
-10 /> m1["key"] /> assertEqual(20);
-10 /> m3["key"].key["key"] /> assertEqual(20);
+10 /> m1["key"] /> assertEqual(20)
+10 /> m3["key"].key["key"] /> assertEqual(20)
 
 // chaining with lists
 //
 // if a list contains a function it can be chained as well
 
-val l1 = [timesTwo];
-val l2 = [l1];
+val l1 = [timesTwo]
+val l2 = [l1]
 
-10 /> l1[0]() /> assertEqual(20);
-10 /> l1[0] /> assertEqual(20);
-10 /> l2[0][0]() /> assertEqual(20);
-10 /> l2[0][0] /> assertEqual(20);
+10 /> l1[0]() /> assertEqual(20)
+10 /> l1[0] /> assertEqual(20)
+10 /> l2[0][0]() /> assertEqual(20)
+10 /> l2[0][0] /> assertEqual(20)
 

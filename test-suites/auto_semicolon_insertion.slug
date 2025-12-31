@@ -1,0 +1,115 @@
+var {*} = import(
+    "slug.std",
+    "slug.test",
+    "slug.time",
+)
+
+@test
+var asi_newline_terminates_statements = fn() {
+    var a = 1
+    var b = 2
+    // a + b /> assertEqual(3) // TODO Fix this
+    (a + b) /> assertEqual(3)
+}
+
+@test
+var asi_blank_lines_ok = fn() {
+    var a = 1
+
+    var b = 2
+
+    (a + b) /> assertEqual(3)
+}
+
+@test
+var asi_leading_plus_continues = fn() {
+    var s =
+        "select *"
+        + " from t" +
+        " where x = 1"
+    s /> assertEqual("select * from t where x = 1")
+}
+
+@test
+var asi_leading_pipeline_continues = fn() {
+    var inc = fn(v) { v + 1 }
+
+    10
+        /> inc()
+        /> inc()
+        /> assertEqual(12)
+}
+
+@test
+var asi_paren_expr_then_pipeline_value = fn() {
+    (10 + 1)
+        /> then(fn(v) { v /> assertEqual(11) })
+}
+
+@test
+var asi_no_newline_call = async fn() {
+    var t = spawn {
+        sleep(10)
+        11
+    }
+
+    (await t) /> assertEqual(11)
+}
+
+@test
+var asi_map_literal_trailing_comma_newline = fn() {
+    var m = {
+        a: 1,
+        b: 2,
+    }
+    m.a /> assertEqual(1)
+    m.b /> assertEqual(2)
+}
+
+@test
+var asi_map_literal_value_next_line = fn() {
+    var m = {
+        a:
+            1,
+    }
+    m.a /> assertEqual(1)
+}
+
+@test
+var asi_match_cases_separators = fn() {
+    var x = 2
+    match x {
+        1 => "one";
+
+        2 => "two"
+        3 => "three";
+        _ => "other";
+    } /> assertEqual("two")
+}
+
+@test
+var asi_match_case_throw_statement_body = fn() {
+    var f = fn() {
+        match "x" {
+            "y" => 1;
+            _ => throw {type:"error", msg:"nope"}
+        }
+    }
+
+    var r = runSafe(fn() { f() })
+
+    r.error.msg /> assertEqual("nope")
+}
+
+@test
+var asi_match_case_body_next_line = fn() {
+    var f = fn(n) {
+        match n {
+            1 =>
+                10 + 1;
+            _ => 0;
+        }
+    }
+    f(1) /> assertEqual(11)
+}
+

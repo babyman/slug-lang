@@ -1,6 +1,6 @@
 var {*} = import(
     "slug.test"
-);
+)
 
 //
 // matching on list values
@@ -8,21 +8,21 @@ var {*} = import(
 
 var f1 = fn(x) {
     match x {
-        [] => "empty list";
-        [a] => "list of one";
-        [a, b] => "list of two";
-        [a, b, c] => "list of three";
-        _ => "default";
+        [] => "empty list"
+        [a] => "list of one"
+        [a, b] => "list of two"
+        [a, b, c] => "list of three"
+        _ => "default"
     }
-};
+}
 
-[] /> f1 /> assertEqual("empty list");
+[] /> f1 /> assertEqual("empty list")
 
-[1] /> f1 /> assertEqual("list of one");
+[1] /> f1 /> assertEqual("list of one")
 
-[1, 2] /> f1 /> assertEqual("list of two");
+[1, 2] /> f1 /> assertEqual("list of two")
 
-[1, 2, 3] /> f1 /> assertEqual("list of three");
+[1, 2, 3] /> f1 /> assertEqual("list of three")
 
 //
 // matching list wildcards
@@ -30,21 +30,21 @@ var f1 = fn(x) {
 
 var f2 = fn(x) {
     match x {
-        [a, b, _] => "list of 3";
-        [a, _] => "list of 2";
-        [_] => "list of 1";
-        [] => "empty list";
-        _ => "default";
+        [a, b, _] => "list of 3"
+        [a, _] => "list of 2"
+        [_] => "list of 1"
+        [] => "empty list"
+        _ => "default"
     }
-};
+}
 
-[1, 2, 3, 4, 5] /> f2 /> assertEqual("default");
+[1, 2, 3, 4, 5] /> f2 /> assertEqual("default")
 
-[1, 2, 3] /> f2 /> assertEqual("list of 3");
+[1, 2, 3] /> f2 /> assertEqual("list of 3")
 
-[1] /> f2 /> assertEqual("list of 1");
+[1] /> f2 /> assertEqual("list of 1")
 
-[] /> f2 /> assertEqual("empty list");
+[] /> f2 /> assertEqual("empty list")
 
 
 //
@@ -53,22 +53,22 @@ var f2 = fn(x) {
 
 var f3 = fn(x) {
     match x {
-        [4, a, ...] => "" + a;
-        [h, _, ...t] => "list of two + " + len(t);
-        [_, ...] => "list of one+";
-        [...] => "any list";
-        _ => "default";
+        [4, a, ...] => "" + a
+        [h, _, ...t] => "list of two + " + len(t)
+        [_, ...] => "list of one+"
+        [...] => "any list"
+        _ => "default"
     }
-};
+}
 
-[1, 2] /> f3 /> assertEqual("list of two + 0");
+[1, 2] /> f3 /> assertEqual("list of two + 0")
 
-[1, 2, 3, 4] /> f3 /> assertEqual("list of two + 2");
+[1, 2, 3, 4] /> f3 /> assertEqual("list of two + 2")
 
-[1] /> f3 /> assertEqual("list of one+");
+[1] /> f3 /> assertEqual("list of one+")
 
-[4, 6, 1] /> f3 /> assertEqual("6");
+[4, 6, 1] /> f3 /> assertEqual("6")
 
-[] /> f3 /> assertEqual("any list");
+[] /> f3 /> assertEqual("any list")
 
 

@@ -1,4 +1,3 @@
-
 ## 2. Core Building Blocks
 
 ### Keywords in Slug
@@ -17,6 +16,7 @@ foundational building blocks of the language.
 - `map`: a collection of key-value pairs `{k:v, k:v, ...}`
 - `bytes`: a byte sequence `0x"ff00"`
 - `function`: a function `fn(){}`
+- `task`: a task handle, returned by `spawn`
 
 #### **Comments**
 
@@ -36,7 +36,8 @@ foundational building blocks of the language.
   provides the alternative block.
 - `match`: A powerful pattern-matching construct for handling various cases based on the structure of values.
 - `return`: Exits a function and optionally returns a value.
-- `recur` restarts the current function in tail position with a new set of arguments, providing loop-like control flow without growing the call stack.
+- `recur` restarts the current function in tail position with a new set of arguments, providing loop-like control flow
+  without growing the call stack.
 
 #### **Functionality**
 
@@ -44,14 +45,63 @@ foundational building blocks of the language.
 
 #### **Error Handling**
 
-- `try` / `catch`: Used for exception handling. Code within `try` is monitored for errors, and `catch` provides the
-  response logic.
 - `throw`: Explicitly raises an error within the program.
 - `defer`: Ensures a block of code runs after its enclosing scope exits, often used for cleanup tasks.
+- `defer onsuccess`: Runs the block of code only if the enclosing scope exits without error.
+- `defer onerror(err)`: Runs the block of code only if the enclosing scope throws with an error.
+
+#### **Semicolons Optional**
+
+Slug does **not require semicolons**.
+
+Statements are normally terminated by **newlines**, not `;`. You can write clean, line-oriented code without worrying
+about hidden rules or ambiguous formatting.
+
+```slug
+var a = 1
+var b = 2
+(a + b) /> println
+```
+
+Semicolons are still **allowed**, but they are never required.
+
+### When a line continues
+
+A newline does **not** end a statement when continuation is visually obvious, such as when a line starts with an
+operator:
+
+```slug
+var sql =
+    "select *"
+    + " from users"
+    + " where active = true"
+```
+
+or when using pipelines:
+
+```slug
+value
+    /> transform
+    /> validate
+    /> save
+```
+
+### When a line always ends
+
+To avoid ambiguity, some constructs must stay on the same line:
+
+```slug
+f(x)     // valid
+f
+(x)      // invalid
+```
+
+This rule prevents accidental or confusing parses and keeps Slug predictable. The result is code that’s concise,
+readable, and easy to reason about—without relying on punctuation to make it work.
 
 #### **Dangling Commas**
 
-Slug supports dangling commas in lists, maps, tag and function call parameter lists. This allows you to write code that
+Slug supports dangling commas in lists, maps, tag, and function call parameter lists. This allows you to write code that
 is easy to refactor and rearrange. Dangling commas are **NOT** allowed in function definitions (i.e `fn(a,b,)` is
 invalid).
 
@@ -214,6 +264,7 @@ objects with specific types.
 - `@map`: Matches objects of type `Map`.
 - `@bytes`: Matches objects of type `Bytes`.
 - `@fun`: Matches objects of type `Function`.
+- `@task`: Matches objects of type `Task`.
 
 **Example: Function with Type Hints**
 

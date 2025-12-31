@@ -1,35 +1,35 @@
 
 @export
-foreign request = fn(@str method, @str url, @str body = "", @map headers = {});
+foreign request = fn(@str method, @str url, @str body = "", @map headers = {})
 
 @export
 var get = fn(@str url, @map headers = {}) {
-  request("GET", url, "", headers);
+  request("GET", url, "", headers)
 }
 
 @export
 var post = fn(@str body, @str url, @map headers = {}) {
-  request("POST", url, body, headers);
+  request("POST", url, body, headers)
 }
 
 @export
 var put = fn(@str body, @str url, @map headers = {}) {
-  request("PUT", url, body, headers);
+  request("PUT", url, body, headers)
 }
 
 @export
 var patch = fn(@str body, @str url, @map headers = {}) {
-  request("PATCH", url, body, headers);
+  request("PATCH", url, body, headers)
 }
 
 @export
 var delete = fn(@str url, @map headers = {}) {
-  request("DELETE", url, "", headers);
+  request("DELETE", url, "", headers)
 }
 
 @export
 var urlDecode = fn(@str str) {
 
   // todo implement me!
-  str;
+  str
 }

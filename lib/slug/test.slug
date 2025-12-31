@@ -1,6 +1,6 @@
 var {*} = import(
     "slug.std",
-);
+)
 
 /// runSafe executes f() and returns a map:
 ///   {"ok": value} on normal return
@@ -29,9 +29,9 @@ var assertThrows = fn(@fun f, expected, @str msg = nil) {
     } else {
         if ( !msg ) {
             if ( r.error ) {
-                msg = "Caught error '{{ r.error }}' is not equal to '{{expected}}'";
+                msg = "Caught error '{{ r.error }}' is not equal to '{{expected}}'"
             } else {
-                msg = "No error was thrown";
+                msg = "No error was thrown"
             }
         }
         throw {type: "AssertionError", msg: msg}
@@ -46,9 +46,9 @@ var assertErrorType = fn(@fun f, @str expected, @str msg = nil) {
     } else {
         if ( !msg ) {
             if ( r.error ) {
-                msg = "Caught error of type '{{ r.error /> type() }}' type is not equal to '{{expected}}'";
+                msg = "Caught error of type '{{ r.error /> type() }}' type is not equal to '{{expected}}'"
             } else {
-                msg = "No error was thrown";
+                msg = "No error was thrown"
             }
         }
         throw {type: "AssertionError", msg: msg}
@@ -61,18 +61,18 @@ var assert = fn(a, msg = nil) {
         a
     } else {
         if ( !msg ) {
-            msg = "{{a}} ({{a /> type()}}) is not true";
+            msg = "{{a}} ({{a /> type()}}) is not true"
         }
         throw {type: "AssertionError", msg: msg}
     }
 }
 
 @export
-var assertTrue = assert;
+var assertTrue = assert
 
 @export
 var assertFalse = fn(a, msg = nil) {
-    assert( !a, msg);
+    assert( !a, msg)
 }
 
 @export
@@ -165,7 +165,7 @@ var assertNotNil = fn(value, msg = nil) {
 @export
 var fail = fn(msg = nil) {
     if ( !msg ) {
-        msg = "Test failed!";
+        msg = "Test failed!"
     }
     throw {type: "AssertionError", msg: msg}
 }
