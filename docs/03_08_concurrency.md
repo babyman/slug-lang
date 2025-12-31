@@ -1,4 +1,4 @@
-# 8. Concurrency in Slug (Structured, Explicit, Boring)
+## 8. Concurrency in Slug (Structured, Explicit, Boring)
 
 This document defines the **official concurrency model** for the Slug programming language.
 
@@ -7,7 +7,7 @@ parallelism or message-passing abstractions.
 
 ---
 
-## Core Principles
+### Core Principles
 
 1. **Concurrency is explicit**
 
@@ -32,9 +32,9 @@ parallelism or message-passing abstractions.
 
 ---
 
-## Language Constructs
+### Language Constructs
 
-### `async`
+#### `async`
 
 Marks a function (or block) as **suspending**.
 
@@ -65,7 +65,7 @@ error).
 
 ---
 
-### `spawn`
+#### `spawn`
 
 Creates a **child task** that runs concurrently.
 
@@ -91,7 +91,7 @@ Semantics:
 
 ---
 
-### `await`
+#### `await`
 
 Suspends the current task until a task handle completes.
 
@@ -113,7 +113,7 @@ Semantics:
 
 ---
 
-## Type Tags (Task Handles)
+### Type Tags (Task Handles)
 
 Task handles are first-class values and can be passed through lists/maps and into functions. When writing polymorphic
 functions that use type-tagged dispatch, Slug provides the `@task` type tag for task handles.
@@ -131,9 +131,9 @@ Notes:
 
 ---
 
-## Scoped Concurrency Policies
+### Scoped Concurrency Policies
 
-### Concurrency Limits
+#### Concurrency Limits
 
 `async limit N` limits the number of concurrently executing child tasks **within the nursery scope**.
 
@@ -152,7 +152,7 @@ Rules:
 
 ---
 
-### Timeouts
+#### Timeouts
 
 Timeouts are expressed at `await` points:
 
@@ -171,7 +171,7 @@ Timeout behavior:
 
 ---
 
-## Failure & Cancellation Semantics
+### Failure & Cancellation Semantics
 
 * **Deadlocks**: The runtime will attempt to detect circular dependencies (e.g., two tasks awaiting each other). If
   detected, a `Deadlock` error is raised. Otherwise, tasks will remain suspended until a timeout occurs.
@@ -188,7 +188,7 @@ This ensures **fail-fast, structured execution**.
 
 ---
 
-## Example: Parallel Fan-Out / Fan-In
+### Example: Parallel Fan-Out / Fan-In
 
 ```slug
 var fetchUser  = async fn(id) { ... }
@@ -215,7 +215,7 @@ Properties:
 
 ---
 
-## Idiomatic Helper for Pipelines
+### Idiomatic Helper for Pipelines
 
 Because `await` is syntax (not a function), pipelines should use small helpers:
 
@@ -231,7 +231,7 @@ This keeps pipelines readable while preserving explicit suspension.
 
 ---
 
-## What Slug Does *Not* Provide
+### What Slug Does *Not* Provide
 
 Slug intentionally does **not** include:
 
@@ -246,7 +246,7 @@ These are considered sources of hidden complexity and unpredictable lifetime.
 
 ---
 
-## Mental Model (Authoritative)
+### Mental Model (Authoritative)
 
 > * `async` — *this scope may pause*
 > * `spawn` — *do this in parallel*
@@ -257,7 +257,7 @@ If you remember only this, you understand Slug concurrency.
 
 ---
 
-## Summary
+### Summary
 
 Slug’s concurrency model is:
 
