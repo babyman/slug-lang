@@ -29,6 +29,7 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 		// Otherwise, collapse multiple newlines into a single NEWLINE token
 		for g.lexer.ch == '\n' || g.lexer.ch == '\r' || g.lexer.ch == ' ' || g.lexer.ch == '\t' {
 			g.lexer.readChar()
+			g.lexer.skipWhitespace() // consume whitespace including comments
 		}
 		return token.Token{Type: token.NEWLINE, Literal: "\n", Position: startPosition}
 	case '=':
