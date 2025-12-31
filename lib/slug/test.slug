@@ -126,6 +126,19 @@ var assertLessThan = fn(value, expected, msg = nil) {
     }
 }
 
+
+@export
+var assertLessThanOrEqual = fn(value, expected, msg = nil) {
+    if (value <= expected) {
+        value
+    } else {
+        if (!msg) {
+            msg = "Expected '{{value}}' is not less than or equal to '{{expected}}'"
+        }
+        throw {type: "AssertionError", msg: msg}
+    }
+}
+
 @export
 var assertGreaterThan = fn(value, expected, msg = nil) {
     if (value > expected) {
@@ -133,6 +146,18 @@ var assertGreaterThan = fn(value, expected, msg = nil) {
     } else {
         if (!msg) {
             msg = "Expected '{{value}}' is not greater than '{{expected}}'"
+        }
+        throw {type: "AssertionError", msg: msg}
+    }
+}
+
+@export
+var assertGreaterThanOrEqual = fn(value, expected, msg = nil) {
+    if (value >= expected) {
+        value
+    } else {
+        if (!msg) {
+            msg = "Expected '{{value}}' is not greater than or equal to '{{expected}}'"
         }
         throw {type: "AssertionError", msg: msg}
     }
@@ -172,7 +197,9 @@ var fail = fn(msg = nil) {
 
 @export var eq = assertEqual
 @export var lt = assertLessThan
+@export var lteq = assertLessThanOrEqual
 @export var gt = assertGreaterThan
+@export var gteq = assertGreaterThanOrEqual
 @export var throws = assertThrows
 @export var ok = assertTrue
 @export var not = assertFalse

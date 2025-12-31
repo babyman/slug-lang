@@ -43,7 +43,7 @@ var test_completed_tasks_are_idempotent_and_cached = async fn() {
     }
     (await t) /> assertEqual(11)
     var time = c()
-    time /> assertGreaterThan(99) /> assertLessThan(150)
+    time /> assertGreaterThanOrEqual(100) /> assertLessThan(150)
     assertEqual(await t, 11)
     (c() - time) /> assertLessThan(5)
 }
@@ -65,7 +65,7 @@ var test_limit_1_forces_sync_execution = fn() {
         i + j
     }
     f() /> assertEqual(111)
-    c() /> assertGreaterThan(200)
+    c() /> assertGreaterThanOrEqual(200)
 }
 
 @test
