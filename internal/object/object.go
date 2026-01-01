@@ -604,7 +604,7 @@ func (m *Map) SetTag(tag string, params List) {
 }
 
 type RuntimeError struct {
-	Payload    Object        // The error payload (must be a Map object)
+	Payload    Object
 	StackTrace []*StackFrame // Stack frames for error propagation
 	Cause      *RuntimeError // The error that caused this error (for chaining)
 }

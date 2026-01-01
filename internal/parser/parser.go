@@ -2064,6 +2064,9 @@ func (p *Parser) validateAwaitInStatement(stmt ast.Statement, functionDepth int,
 
 	case *ast.DeferStatement:
 		// Defer bodies can be a block or expression statement in this parser.
+		if s == nil || s.Call == nil {
+			return
+		}
 		switch call := s.Call.(type) {
 		case *ast.BlockStatement:
 			p.validateAwaitInBlock(call, functionDepth, inAsync)

@@ -1141,6 +1141,11 @@ func (e *Evaluator) ApplyFunction(pos int, fnName string, fnObj object.Object, a
 		for {
 			result = e.Eval(fn.Body)
 
+			_, ok := result.(*object.Error)
+			if ok {
+				break
+			}
+
 			// 1. Direct TailCall (e.g., from recur or tail-positioned call)
 			if tc, ok := result.(*object.TailCall); ok {
 				if tc.Function == fn {
@@ -1885,12 +1890,6 @@ func (e *Evaluator) GatherStackTrace(frame *object.StackFrame) []*object.StackFr
 	for i := len(e.envStack) - 1; i >= 0; i-- {
 		env := e.envStack[i]
 		if env.StackInfo != nil {
-			//sf := object.StackFrame{
-			//	Src:      env.Src,
-			//	File:     env.Path,
-			//	Position: env.StackInfo.Position,
-			//	Function: env.StackInfo.Function,
-			//}
 			trace = append(trace, env.StackInfo)
 		}
 	}
