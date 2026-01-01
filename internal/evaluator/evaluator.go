@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"slug/internal/ast"
 	"slug/internal/dec64"
+	"slug/internal/foreign"
 	"slug/internal/lexer"
 	"slug/internal/object"
 	"slug/internal/parser"
@@ -1185,6 +1186,17 @@ func (e *Evaluator) ApplyFunction(pos int, fnName string, fnObj object.Object, a
 			}()
 			result = fn.Fn(e, args...)
 		}()
+
+		// If a foreign function returns a plain Error, promote it to a RuntimeError payload so the language
+		// can handle it uniformly (defer onerror, etc).
+		if errObj, ok := result.(*object.Error); ok {
+			payload := &object.Map{Pairs: map[object.MapKey]object.MapPair{}}
+			foreign.PutString(payload, "type", "error")
+			foreign.PutString(payload, "foreign", fn.Name)
+			foreign.PutString(payload, "msg", errObj.Message)
+			return e.runtimeError(pos, "error", payload)
+		}
+
 		return result
 
 	default:
@@ -1840,6 +1852,18 @@ func (e *Evaluator) runtimeErrorAt(pos int, typ string, fields map[string]object
 		payload.Put(&object.String{Value: k}, v)
 	}
 
+	return e.runtimeError(pos, typ, payload)
+}
+
+func (e *Evaluator) evalThrowStatement(node *ast.ThrowStatement) object.Object {
+	val := e.Eval(node.Value)
+	if e.isError(val) {
+		return val
+	}
+	return e.runtimeError(node.Token.Position, "throw", val)
+}
+
+func (e *Evaluator) runtimeError(pos int, typ string, payload object.Object) *object.RuntimeError {
 	env := e.CurrentEnv()
 	return &object.RuntimeError{
 		Payload: payload,
@@ -1848,23 +1872,6 @@ func (e *Evaluator) runtimeErrorAt(pos int, typ string, fields map[string]object
 			File:     env.Path,
 			Src:      env.Src,
 			Position: pos,
-		}),
-	}
-}
-
-func (e *Evaluator) evalThrowStatement(node *ast.ThrowStatement) object.Object {
-	val := e.Eval(node.Value)
-	if e.isError(val) {
-		return val
-	}
-	env := e.CurrentEnv()
-	return &object.RuntimeError{
-		Payload: val,
-		StackTrace: e.GatherStackTrace(&object.StackFrame{
-			Function: "throw",
-			File:     env.Path,
-			Src:      env.Src,
-			Position: node.Token.Position,
 		}),
 	}
 }
