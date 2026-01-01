@@ -63,4 +63,8 @@ in an effort to keep it alive and useful.
 
 ---
 
-{% include_relative 03_09_reference.md %}
+{% include_relative 03_09_cookbook.md %}
+
+---
+
+{% include_relative 03_10_reference.md %}

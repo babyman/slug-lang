@@ -126,7 +126,7 @@ var test_defer_onerror_catches_timeouts = fn() {
 
 @test
 var test_errors_cause_incomplete_tasks_to_cancel = fn() {
-    var f = async fn() {
+    var f = async limit 10 fn() {
         var a = spawn {
             sleep(5)
             throw "err"
@@ -161,7 +161,7 @@ var test_errors_are_detected_during_await = fn() {
 
 @test
 var test_errors_are_detected_during_nursery_exit = fn() {
-    var f = async fn() {
+    var f = async limit 10 fn() {
         spawn {
             throw "err"
         }

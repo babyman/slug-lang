@@ -87,7 +87,7 @@ func (e *Evaluator) PopEnv(result object.Object) object.Object {
 
 	currentEnv := e.CurrentEnv()
 
-	if currentEnv.IsAsyncScope {
+	if currentEnv.IsThreadNurseryScope {
 		// If we are exiting early (return or error), cancel children downward.
 		switch result.(type) {
 		case *object.ReturnValue:
@@ -1223,8 +1223,8 @@ func (e *Evaluator) extendFunctionEnv(
 		Src:      fn.Env.Src,
 	})
 
-	// NEW: mark whether this call frame is an async scope
-	env.IsAsyncScope = fn.IsAsync
+	// nurseries are only created when concurrency limit is set
+	env.IsThreadNurseryScope = fn.Limit != nil
 
 	// Handle Concurrency Limit
 	if fn.Limit != nil {
@@ -2105,7 +2105,7 @@ func (e *Evaluator) evalSpawnExpression(node *ast.SpawnExpression) object.Object
 	// ownerEnv = nearest async nursery (or root) -- you already implemented this part
 	ownerEnv := currentEnv
 	for env := currentEnv; env != nil; env = env.Outer {
-		if env.IsAsyncScope || env.Outer == nil {
+		if env.IsThreadNurseryScope || env.Outer == nil {
 			ownerEnv = env
 			break
 		}

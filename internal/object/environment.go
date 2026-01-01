@@ -35,7 +35,7 @@ func NewRootEnvironment(limit int) *Environment {
 		slog.Int("gomaxprocs", runtime.GOMAXPROCS(0)),
 	)
 	env := NewEnvironment()
-	env.IsAsyncScope = true // root acts like an async scope for spawn ownership
+	env.IsThreadNurseryScope = true // root acts like an async scope for spawn ownership
 	if limit > 0 {
 		env.Limit = make(chan struct{}, limit)
 	}
@@ -52,10 +52,10 @@ type Environment struct {
 	Defers    []*ast.DeferStatement // Stack for deferred statements
 
 	// Concurrency tracking
-	Children     []*TaskHandle // Tasks owned by this scope
-	Limit        chan struct{} // Semaphore for 'async limit N'
-	IsAsyncScope bool          // marks a scope that can own spawned tasks
-	NurseryErr   *RuntimeError // fail-fast state (first failure wins)
+	Children             []*TaskHandle // Tasks owned by this scope
+	Limit                chan struct{} // Semaphore for 'async limit N'
+	IsThreadNurseryScope bool          // marks a scope that can own spawned tasks
+	NurseryErr           *RuntimeError // fail-fast state (first failure wins)
 
 	mu sync.RWMutex
 }
