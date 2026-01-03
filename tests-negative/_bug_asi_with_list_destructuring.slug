@@ -1,0 +1,15 @@
+var {*} = import(
+	"slug.string",
+)
+
+var part = ""
+var m = {}
+
+var percentDecode = fn(v) { v }
+var urlPlusToSpace = fn(v) { v }
+
+match part /> split("=", 2) {
+	[k, v] => m /> put(percentDecode(urlPlusToSpace(k)), percentDecode(urlPlusToSpace(v)))
+	[k] => m /> put(percentDecode(urlPlusToSpace(k)), "")
+	_ => m
+}

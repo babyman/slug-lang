@@ -12,7 +12,7 @@
 // Example:
 //   @test
 //   var simpleTest = fn() {
-//     assert(1 + 1 == 2);
+//     assert(1 + 1 == 2)
 //   }
 //
 //   @testWith(
@@ -31,19 +31,19 @@ var {*} = import(
 	"slug.time",
 	"slug.sys",
 	"slug.term.colour",
-);
+)
 
 // @test - Marks a function as a test case that takes no parameters
 // @testWith - Allows test inputs and expected outputs to be specified
 //
-val TestWithTag = "@testWith";
-val TestTag = "@test";
+val TestWithTag = "@testWith"
+val TestTag = "@test"
 
-val Fail = BrightColour.Red;
-val Pass = Colour.Green;
-val Reset = reset;
+val Fail = BrightColour.Red
+val Pass = Colour.Green
+val Reset = reset
 
-var timer = delta(clock);
+var timer = delta(clock)
 
 
 var runTestFn = fn(f, name, stats) {
@@ -51,45 +51,49 @@ var runTestFn = fn(f, name, stats) {
 		match err {
 			{type:"AssertionError", msg} => {
 				println("  [{{Fail}}FAIL{{Reset}}] {{name}}(): {{msg}}")
-				stats /> compute("fail", fn(k, v) { v + 1});
+				stats /> compute("fail", fn(k, v) { v + 1})
 			}
 			{type} => {
 				println("  [{{Fail}}ERROR{{Reset}}] {{name}}() threw {{type}}")
-				stats /> compute("error", fn(k, v) { v + 1});
+				stats /> compute("error", fn(k, v) { v + 1})
 			}
-		} /> compute("run", fn(k, v) { v + 1});
+			_ => {
+				println("  [{{Fail}}ERROR{{Reset}}] {{name}}() threw UNKNOWN error type '{{err}}'")
+				stats /> compute("error", fn(k, v) { v + 1})
+			}
+		} /> compute("run", fn(k, v) { v + 1})
 	}
 
-	f();
-	println("  [{{Pass}}PASS{{Reset}}] {{name}}()");
-	stats /> compute("run", fn(k, v) { v + 1});
+	f()
+	println("  [{{Pass}}PASS{{Reset}}] {{name}}()")
+	stats /> compute("run", fn(k, v) { v + 1})
 }
 
 var runTest = fn(f, name, params, expected, stats) {
 	defer onerror(err) {
 		println("  [{{Fail}}ERROR{{Reset}}] {{name}}({{params}}) == threw '{{err}}' expected '{{expected}}'")
-		stats /> compute("error", fn(k, v) { v + 1}) /> compute("run", fn(k, v) { v + 1});
+		stats /> compute("error", fn(k, v) { v + 1}) /> compute("run", fn(k, v) { v + 1})
 	}
 
-	val out = f(...params);
+	val out = f(...params)
 
 	match out /> type() {
-		^LIST_TYPE if out /> equals(expected) => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}");
-		^MAP_TYPE if out /> equals(expected) => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}");
-		_ if out == expected => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}");
+		^LIST_TYPE if out /> equals(expected) => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}")
+		^MAP_TYPE if out /> equals(expected)  => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}")
+		_ if out == expected => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}")
 		_ => {
-			stats = stats /> compute("fail", fn(k, v) { v + 1});
-			println("  [{{Fail}}FAIL{{Reset}}] {{name}}({{params}}) == '{{out}}' expected '{{expected}}'");
+			stats = stats /> compute("fail", fn(k, v) { v + 1})
+			println("  [{{Fail}}FAIL{{Reset}}] {{name}}({{params}}) == '{{out}}' expected '{{expected}}'")
 		}
 	}
-	stats /> compute("run", fn(k, v) { v + 1});
+	stats /> compute("run", fn(k, v) { v + 1})
 }
 
 var runTests = fn(f, name, args, stats) {
 	match args {
-		[] => stats;
+		[] => stats
 		[params, expected, ...t] => {
-			recur(f, name, t, runTest(f, name, params, expected, stats));
+			recur(f, name, t, runTest(f, name, params, expected, stats))
 		}
 	}
 }
@@ -103,17 +107,17 @@ var testRunner = fn(module, stats) {
 	var m = module /> searchModuleTags(TestWithTag, true)
 				/> union(module /> searchModuleTags(TestTag, true))
 	m /> keys /> sort /> map(fn(k) {
-		var args = m[k] /> getTag(TestWithTag);
+		var args = m[k] /> getTag(TestWithTag)
 		if(args) {
-			runTests(m[k], k, args, {run:0, fail:0, error:0});
+			runTests(m[k], k, args, {run:0, fail:0, error:0})
 		} else {
-			runTestFn(m[k], k, {run:0, fail:0, error:0});
+			runTestFn(m[k], k, {run:0, fail:0, error:0})
 		}
 	}) /> reduce(stats, fn(vs, new) {
 		vs /> compute("run", fn(k, v) {v + new[k]})
 			/> compute("fail", fn(k, v) {v + new[k]})
-			/> compute("error", fn(k, v) {v + new[k]});
-	});
+			/> compute("error", fn(k, v) {v + new[k]})
+	})
 }
 
 var renderResult = fn(stats) {
@@ -148,14 +152,14 @@ Total time {{timer()}}ms
 var run = fn(stats, ...modules) {
 	match modules {
 		[] => {
-			renderResult(stats) /> println();
+			renderResult(stats) /> println()
 			if (stats.fail > 0 || stats.error > 0) {
-				exit(1);
+				exit(1)
 			} else {
-				exit(0);
+				exit(0)
 			}
 		}
-		[h, ...t] => run(testRunner(h, stats), ...t);
+		[h, ...t] => run(testRunner(h, stats), ...t)
 		_ => "Unrecognized modules parameter!"
 	}
 }

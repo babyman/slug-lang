@@ -23,8 +23,12 @@ test:
 	# e.g. find . \( -name "*.slug" -o -name "*.go" \) | entr -r time make test
 	go test ./... || exit 1
 	@for file in $(shell find ./tests -name "*.slug" | sort); do \
-		echo "Running tests for $$file"; \
+		echo "Running test file $$file"; \
 		go run ./cmd/app/main.go -log-level error --root ./tests $$file || exit 1; \
+	done
+	@for file in $(shell find ./tests-negative -name "*.slug" | sort); do \
+		echo "Running negative test file $$file"; \
+		go run ./cmd/app/main.go -log-level error --root ./tests-negative $$file && exit 1 || true; \
 	done
 	go run ./cmd/app/main.go -log-level error --root . test \
 		$(shell find './lib' -name "*.slug" | sed -e 's/\.\/lib\///' -e 's/\//./g' -e 's/\.slug//' | sort) \
