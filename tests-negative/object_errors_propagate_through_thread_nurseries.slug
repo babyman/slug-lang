@@ -1,0 +1,26 @@
+var {*} = import (
+	"slug.std",
+	"slug.time",
+)
+
+// This loop function should fail to 'compile' because there is no `replace` function defined
+// in the standard library, this throws an object.Error, not a object.RuntimeError.
+//
+// The test ensures that when it fails the error is propagated correctly and causes the VM to
+// exit with an error status
+
+var loop = async limit 10 fn(cnt = 0) match {
+	10 => "DONE"
+	0 => {
+		spawn {
+			"a" /> replace("a", "-")
+		}
+		recur(cnt + 1)
+	}
+	_ => {
+		sleep(10)
+		recur(cnt + 1)
+	}
+}
+
+loop()
