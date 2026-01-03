@@ -46,6 +46,11 @@ val Reset = reset
 var timer = delta(clock)
 
 
+var passed = fn(@str msg) {
+	// todo make this a "verbose" commandline parameter
+	// println("  [{{Pass}}PASS{{Reset}}] {{msg}}")
+}
+
 var runTestFn = fn(f, name, stats) {
 	defer onerror(err) {
 		match err {
@@ -65,7 +70,7 @@ var runTestFn = fn(f, name, stats) {
 	}
 
 	f()
-	println("  [{{Pass}}PASS{{Reset}}] {{name}}()")
+	passed("{{name}}()")
 	stats /> compute("run", fn(k, v) { v + 1})
 }
 
@@ -78,9 +83,9 @@ var runTest = fn(f, name, params, expected, stats) {
 	val out = f(...params)
 
 	match out /> type() {
-		^LIST_TYPE if out /> equals(expected) => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}")
-		^MAP_TYPE if out /> equals(expected)  => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}")
-		_ if out == expected => println("  [{{Pass}}PASS{{Reset}}] {{name}}({{params}}) == {{out}}")
+		^LIST_TYPE if out /> equals(expected) => passed("{{name}}({{params}}) == {{out}}")
+		^MAP_TYPE if out /> equals(expected)  => passed("{{name}}({{params}}) == {{out}}")
+		_ if out == expected => passed("{{name}}({{params}}) == {{out}}")
 		_ => {
 			stats = stats /> compute("fail", fn(k, v) { v + 1})
 			println("  [{{Fail}}FAIL{{Reset}}] {{name}}({{params}}) == '{{out}}' expected '{{expected}}'")
@@ -138,20 +143,19 @@ var renderResult = fn(stats) {
 
 		} else {
 """
-
+{{Pass}}
 Results:
 
 Tests run: {{stats.run}}, Failures: {{stats.fail}}, Errors: {{stats.error}}
 
 Total time {{timer()}}ms
-
+{{Reset}}
 """
 		}
 }
 
-var run = fn(stats, ...modules) {
-	match modules {
-		[] => {
+var run = fn(stats, ...modules) match {
+	[_, [], ...] => {
 			renderResult(stats) /> println()
 			if (stats.fail > 0 || stats.error > 0) {
 				exit(1)
@@ -159,15 +163,13 @@ var run = fn(stats, ...modules) {
 				exit(0)
 			}
 		}
-		[h, ...t] => run(testRunner(h, stats), ...t)
-		_ => "Unrecognized modules parameter!"
-	}
+	[_, [h, ...t], ...] => run(testRunner(h, stats), ...t)
+	_ => "Unrecognized modules parameter!"
 }
 
-if (isDefined("args")) {
-	run({run:0, fail:0, error:0}, ...args);	
-} else {
-	"This is a command line tool, run with 'slug test ...'"
+match isDefined("args") {
+	true =>	run({run:0, fail:0, error:0}, ...args)
+	_    => "This is a command line tool, run with 'slug test ...'"
 }
 
 

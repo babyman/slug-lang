@@ -32,7 +32,7 @@ var testSqliteTransactions = fn() {
     val conn = connect(":memory:", SQLITE_DRIVER)
     defer close(conn)
 
-    exec(conn, "CREATE TABLE tokens (token TEXT)") /> println
+    exec(conn, "CREATE TABLE tokens (token TEXT)")
 
     // Test Rollback
     begin(conn)
