@@ -53,9 +53,9 @@ var checkTerminal = fn() {
 	[[0]], "0",
 )
 var combine = fn(@list i, acc = "") match {
-	[[], acc] => acc
-	[[h], acc] => acc + h
-	[[h, ...t], acc] => recur(t, acc + h + "" )
+	[[], ...] => acc
+	[[h], ...] => acc + h
+	[[h, ...t], ...] => recur(t, acc + h + ";" )
 }
 
 @testWith(

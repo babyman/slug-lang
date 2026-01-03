@@ -78,5 +78,3 @@ range(0, 256) /> map(fn(n) {
 	n /> toString /> padRight(" ", 4) /> bgVga(n) /> vgaOut(n)
 })
 
-""
-
