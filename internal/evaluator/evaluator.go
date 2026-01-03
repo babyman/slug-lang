@@ -80,6 +80,23 @@ func (e *Evaluator) CurrentEnv() *object.Environment {
 	return e.envStack[len(e.envStack)-1]
 }
 
+func (e *Evaluator) CurrentEnvStackSize() int {
+	return len(e.envStack)
+}
+
+func (e *Evaluator) CurrentNurseryEnv() *object.Environment {
+	// replace with a stack for performance
+	currentEnv := e.CurrentEnv()
+	ownerEnv := currentEnv
+	for env := currentEnv; env != nil; env = env.Outer {
+		if env.IsThreadNurseryScope || env.Outer == nil {
+			ownerEnv = env
+			break
+		}
+	}
+	return ownerEnv
+}
+
 func (e *Evaluator) PopEnv(result object.Object) object.Object {
 	if len(e.envStack) == 0 {
 		panic("Attempted to pop from an empty environment stack")
@@ -419,7 +436,6 @@ func (e *Evaluator) evalProgram(program *ast.Program) object.Object {
 		for {
 			if returnVal, ok := result.(*object.TailCall); ok {
 				result = e.ApplyFunction(0, returnVal.FnName, returnVal.Function, returnVal.Arguments)
-				//println("tail call", result.Type())
 			} else if returnVal, ok := result.(*object.ReturnValue); ok {
 				rv, ok := returnVal.Value.(*object.TailCall)
 				if ok {
@@ -465,6 +481,8 @@ func (e *Evaluator) LoadModule(modName string) (*object.Module, error) {
 	}
 
 	if mod, ok := e.Modules[modName]; ok {
+		slog.Info("Module loaded from cache",
+			slog.String("name", modName))
 		return mod, nil
 	}
 
@@ -500,6 +518,11 @@ func (e *Evaluator) LoadModule(modName string) (*object.Module, error) {
 	program := p.ParseProgram()
 
 	if len(p.Errors()) > 0 {
+		slog.Warn("Error loading module",
+			slog.String("name", modName),
+			slog.String("fullPath", fullPath),
+			slog.String("errors", strings.Join(p.Errors(), "\n")),
+		)
 		return nil, fmt.Errorf("parse errors in module %s:\n%s", modName, strings.Join(p.Errors(), "\n"))
 	}
 
@@ -540,6 +563,10 @@ func (e *Evaluator) LoadModule(modName string) (*object.Module, error) {
 	}
 
 	e.Modules[modName] = module
+	slog.Info("Module loaded, added to cache",
+		slog.String("name", modName),
+		slog.String("fullPath", fullPath),
+	)
 
 	// 5. Evaluate the module in its own environment
 	slog.Debug("loading module", slog.String("name", modName), slog.String("path", fullPath))
@@ -1079,7 +1106,7 @@ func (e *Evaluator) newErrorWithPos(pos int, m string) *object.Error {
 	line, col := util.GetLineAndColumn(env.Src, pos)
 
 	var errorMsg bytes.Buffer
-	errorMsg.WriteString(fmt.Sprintf("\nError: %s\n", m))
+	errorMsg.WriteString(fmt.Sprintf("Error: %s\n", m))
 	errorMsg.WriteString(fmt.Sprintf("    --> %s:%d:%d\n", env.Path, line, col))
 
 	lines := util.GetContextLines(env.Src, line, col)
@@ -1143,6 +1170,13 @@ func (e *Evaluator) ApplyFunction(pos int, fnName string, fnObj object.Object, a
 
 			_, ok := result.(*object.Error)
 			if ok {
+				break
+			}
+
+			nurseryEnv := e.CurrentNurseryEnv()
+			if nurseryEnv.NurseryErr != nil {
+				// if the current nursery is erroring break out
+				result = nurseryEnv.NurseryErr
 				break
 			}
 
@@ -2101,15 +2135,7 @@ func (e *Evaluator) evalDefer(deferStmt *ast.DeferStatement) object.Object {
 
 func (e *Evaluator) evalSpawnExpression(node *ast.SpawnExpression) object.Object {
 	currentEnv := e.CurrentEnv()
-
-	// ownerEnv = nearest async nursery (or root) -- you already implemented this part
-	ownerEnv := currentEnv
-	for env := currentEnv; env != nil; env = env.Outer {
-		if env.IsThreadNurseryScope || env.Outer == nil {
-			ownerEnv = env
-			break
-		}
-	}
+	ownerEnv := e.CurrentNurseryEnv()
 
 	handle := &object.TaskHandle{
 		ID:   e.NextHandleID(),
@@ -2123,8 +2149,7 @@ func (e *Evaluator) evalSpawnExpression(node *ast.SpawnExpression) object.Object
 		Config:  e.Config,
 		Modules: e.Modules,
 	}
-	newEnv := object.NewEnclosedEnvironment(currentEnv, nil)
-	taskEval.PushEnv(newEnv)
+	taskEnv := object.NewEnclosedEnvironment(currentEnv, nil)
 
 	go func() {
 		// lexical limit lookup (currentEnv chain)
@@ -2134,17 +2159,24 @@ func (e *Evaluator) evalSpawnExpression(node *ast.SpawnExpression) object.Object
 			defer func() { <-limitChan }()
 		}
 
+		taskEval.PushEnv(taskEnv)
 		result := taskEval.Eval(node.Body)
 
 		if fn, ok := result.(*object.Function); ok && len(fn.Parameters) == 0 {
 			result = taskEval.ApplyFunction(node.Token.Position, "spawned_task", fn, []object.Object{})
 		}
-
+		result = taskEval.PopEnv(result)
 		handle.Complete(result)
 
-		// NEW: fail-fast sibling cancellation
+		if taskEval.CurrentEnvStackSize() != 0 {
+			panic("task environment stack not empty after evaluation")
+		}
+
+		// Check for ANY error type to trigger fail-fast
 		if handle.Err != nil {
 			ownerEnv.NoteChildFailure(handle, handle.Err)
+		} else if e.isError(result) {
+			ownerEnv.NoteChildFailure(handle, result)
 		}
 	}()
 

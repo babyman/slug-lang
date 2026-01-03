@@ -55,7 +55,7 @@ type Environment struct {
 	Children             []*TaskHandle // Tasks owned by this scope
 	Limit                chan struct{} // Semaphore for 'async limit N'
 	IsThreadNurseryScope bool          // marks a scope that can own spawned tasks
-	NurseryErr           *RuntimeError // fail-fast state (first failure wins)
+	NurseryErr           Object        // fail-fast state (first failure wins)
 
 	mu sync.RWMutex
 }
@@ -96,7 +96,7 @@ func (e *Environment) CancelChildren(except *TaskHandle, cause *RuntimeError, re
 }
 
 // NoteChildFailure records the first failure and cancels siblings (fail-fast).
-func (e *Environment) NoteChildFailure(failed *TaskHandle, err *RuntimeError) {
+func (e *Environment) NoteChildFailure(failed *TaskHandle, err Object) {
 	e.mu.Lock()
 	alreadyFailed := e.NurseryErr != nil
 	if !alreadyFailed {
@@ -106,7 +106,13 @@ func (e *Environment) NoteChildFailure(failed *TaskHandle, err *RuntimeError) {
 
 	// Only the first failure triggers sibling cancellation
 	if !alreadyFailed {
-		e.CancelChildren(failed, err, "sibling cancelled due to fail-fast")
+		// If it's a RuntimeError, we can pass it as a cause.
+		// If it's a plain Error, we just cancel without a specific RT cause.
+		var rtCause *RuntimeError
+		if rt, ok := err.(*RuntimeError); ok {
+			rtCause = rt
+		}
+		e.CancelChildren(failed, rtCause, "sibling cancelled due to fail-fast")
 	}
 }
 
@@ -303,10 +309,6 @@ func (e *Environment) ExecuteDeferred(result Object, evalFunc func(stmt ast.Stat
 				isError = true
 				activeRuntimeErr = rtErr
 				errorPayload = rtErr.Payload
-			} else if _, ok := currentResult.(*Error); ok {
-				// Internal/Native errors are also errors
-				isError = true
-				errorPayload = currentResult
 			}
 		}
 

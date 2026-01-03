@@ -114,7 +114,7 @@ var test_timeout_throws = fn() {
 
 @test
 var test_defer_onerror_catches_timeouts = fn() {
-    var f = async fn() {
+    var f = async limit 10 fn() {
         defer onerror(err) "pass"
         var x = spawn {
             sleep(10)
@@ -126,26 +126,30 @@ var test_defer_onerror_catches_timeouts = fn() {
 
 @test
 var test_errors_cause_incomplete_tasks_to_cancel = fn() {
+    var b  = nil
     var f = async limit 10 fn() {
         var a = spawn {
             sleep(5)
             throw "err"
         }
-        var b = spawn {
+        b = spawn {
             sleep(10)
             10
         }
-        await b
     }
-    var r = runSafe(fn() { f() })
-    r.error.type /> eq("cancelled")
-    r.error.reason /> eq("sibling cancelled due to fail-fast")
+    var throwError = runSafe(fn() { f() })
+    var xldTask = runSafe(async fn() { await b })
+    
+    throwError.error /> eq("err")
+
+    xldTask.error.type /> eq("cancelled")
+    xldTask.error.reason /> eq("sibling cancelled due to fail-fast")
 }
 
 @test
 var test_errors_are_detected_during_await = fn() {
     var a = 0
-    var f = async fn() {
+    var f = async limit 10 fn() {
         var x = spawn {
             throw "err"
         }

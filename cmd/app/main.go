@@ -120,12 +120,15 @@ func main() {
 	// 6. Execute
 	result := eval.Eval(program)
 	// make sure defers execute
-	eval.PopEnv(nil)
+	result = eval.PopEnv(result)
+	if eval.CurrentEnvStackSize() != 0 {
+		panic("environment stack not empty after evaluation")
+	}
 
 	// 7. Handle Result/Errors
 	if result != nil {
 		if result.Type() == object.ERROR_OBJ {
-			fmt.Fprintf(os.Stderr, "Runtime Error: %s\n", result.Inspect())
+			fmt.Fprintf(os.Stderr, "Slug Error:\n%s\n", result.Inspect())
 			os.Exit(1)
 		}
 		// In non-REPL mode, we usually don't print the final expression result
