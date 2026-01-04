@@ -53,7 +53,7 @@ func fnStdPrintf() *object.Foreign {
 
 			fmtArgs := make([]interface{}, len(args)-1)
 			for i := 1; i < len(args); i++ {
-				fmtArgs[i-1] = args[i].Inspect()
+				fmtArgs[i-1] = ToNative(args[i])
 			}
 			fmt.Printf(format.Value, fmtArgs...)
 			return ctx.Nil()
@@ -75,7 +75,7 @@ func fnStdSprintf() *object.Foreign {
 
 			fmtArgs := make([]interface{}, len(args)-1)
 			for i := 1; i < len(args); i++ {
-				fmtArgs[i-1] = args[i].Inspect()
+				fmtArgs[i-1] = ToNative(args[i])
 			}
 
 			return &object.String{Value: fmt.Sprintf(format.Value, fmtArgs...)}

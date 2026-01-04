@@ -132,3 +132,40 @@ func PutList(resultMap *object.Map, key string, val []object.Object) {
 //		putObj(resultMap, key, evaluator.FALSE)
 //	}
 //}
+
+// ToNative converts a Slug object to its closest matching Go value.
+func ToNative(obj object.Object) interface{} {
+	switch o := obj.(type) {
+	case *object.Number:
+		// dec64 can be converted to float64 or int64 depending on needs
+		if o.Value.IsFloat() {
+			return o.Value.ToFloat64()
+		} else {
+			return o.Value.ToInt64()
+		}
+	case *object.Boolean:
+		return o.Value
+	case *object.String:
+		return o.Value
+	case *object.Bytes:
+		return o.Value
+	case *object.List:
+		res := make([]interface{}, len(o.Elements))
+		for i, el := range o.Elements {
+			res[i] = ToNative(el)
+		}
+		return res
+	case *object.Map:
+		res := make(map[interface{}]interface{})
+		for _, pair := range o.Pairs {
+			res[ToNative(pair.Key)] = ToNative(pair.Value)
+		}
+		return res
+	case *object.Nil:
+		return nil
+	default:
+		// For functions, modules, or errors, we return the object itself
+		// or its inspection string as a fallback.
+		return o
+	}
+}

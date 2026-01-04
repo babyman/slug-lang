@@ -133,6 +133,28 @@ func (a Dec64) Exponent() int8 {
 	return int8(a & 0xFF)
 }
 
+// IsFloat returns true if this Dec64 represents a floating-point number
+// (has a fractional part), false if it's an exact integer.
+func (a Dec64) IsFloat() bool {
+	if a.IsNaN() || a.IsZero() {
+		return false
+	}
+
+	exp := a.Exponent()
+
+	// If exponent is positive or zero, it's an integer
+	if exp >= 0 {
+		return false
+	}
+
+	// If exponent is negative, check if we can make it zero by dividing
+	// the coefficient by 10^(-exp) without remainder
+	coef := a.Coefficient()
+	divisor := pow10(int64(-exp))
+
+	return coef%divisor != 0
+}
+
 func (a Dec64) ToInt64() int64 {
 	return a.Coefficient() * int64(math.Pow10(int(a.Exponent())))
 }
