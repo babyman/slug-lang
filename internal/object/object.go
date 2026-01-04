@@ -298,8 +298,6 @@ type Function struct {
 	Body        *ast.BlockStatement
 	Env         *Environment
 	HasTailCall bool
-	Limit       ast.Expression
-	IsAsync     bool
 }
 
 func (f *Function) Type() ObjectType { return FUNCTION_OBJ }

@@ -1375,20 +1375,18 @@ func (p *Parser) parseAsyncExpression() ast.Expression {
 	// async can prefix a function or a block
 	expr := p.parseExpression(LOWEST)
 
-	switch fn := expr.(type) {
+	switch node := expr.(type) {
 	case *ast.FunctionLiteral:
-		fn.IsAsync = true
-		fn.Limit = limit
-		return fn
-	case *ast.BlockStatement:
-		// We might want a dedicated AsyncBlockStatement if we need to track limits on raw blocks
-		// For now, let's assume it's valid to mark a block as async
-		return &ast.FunctionLiteral{
-			Token:   token.Token{Type: token.FUNCTION, Literal: "fn"},
-			Body:    fn,
-			IsAsync: true,
-			Limit:   limit,
+		// Mark the function's body as the async scope
+		if node.Body != nil {
+			node.Body.IsAsync = true
+			node.Body.Limit = limit
 		}
+		return node
+	case *ast.BlockStatement:
+		node.IsAsync = true
+		node.Limit = limit
+		return node
 	default:
 		p.addErrorAt(tok.Position, "async must be followed by a function or block, got %v", expr)
 		return nil
@@ -2109,7 +2107,7 @@ func (p *Parser) validateAwaitInExpr(expr ast.Expression, functionDepth int, inA
 
 	case *ast.FunctionLiteral:
 		nextDepth := functionDepth + 1
-		nextAsync := e.IsAsync
+		nextAsync := e.Body != nil && e.Body.IsAsync
 		p.validateAwaitInBlock(e.Body, nextDepth, nextAsync)
 
 	case *ast.IfExpression:

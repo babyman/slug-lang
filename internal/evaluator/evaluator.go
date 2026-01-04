@@ -103,6 +103,7 @@ func (e *Evaluator) PopEnv(result object.Object) object.Object {
 	}
 
 	currentEnv := e.CurrentEnv()
+	nurseryInjected := false
 
 	if currentEnv.IsThreadNurseryScope {
 		// If we are exiting early (return or error), cancel children downward.
@@ -122,6 +123,7 @@ func (e *Evaluator) PopEnv(result object.Object) object.Object {
 		if currentEnv.NurseryErr != nil {
 			if result == nil || (result.Type() != object.ERROR_OBJ && result.Type() != object.RETURN_VALUE_OBJ) {
 				result = currentEnv.NurseryErr
+				nurseryInjected = true
 			}
 		}
 	}
@@ -131,9 +133,17 @@ func (e *Evaluator) PopEnv(result object.Object) object.Object {
 		return e.Eval(stmt)
 	})
 
+	if currentEnv.IsThreadNurseryScope {
+		// If the result is now "healthy",
+		// we MUST clear the NurseryErr so it doesn't leak to outer scopes.
+		currentEnv.NurseryErr = nil
+	}
+
 	e.envStack = e.envStack[:len(e.envStack)-1]
 	slog.Debug("pop stack frame",
-		slog.Int("stack-size", len(e.envStack)))
+		slog.Int("stack-size", len(e.envStack)),
+		slog.Bool("nursery-injected", nurseryInjected),
+	)
 
 	return finalResult
 }
@@ -290,8 +300,6 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 			Body:        body,
 			Signature:   node.Signature,
 			HasTailCall: node.HasTailCall,
-			Limit:       node.Limit,
-			IsAsync:     node.IsAsync,
 		}
 
 	case *ast.CallExpression:
@@ -600,6 +608,18 @@ func (e *Evaluator) evalBlockStatement(block *ast.BlockStatement) (result object
 		Src:      e.CurrentEnv().Src,
 		Position: block.Token.Position,
 	})
+
+	if block.Limit != nil {
+		blockEnv.IsThreadNurseryScope = true
+		limitVal := e.Eval(block.Limit)
+		if num, ok := limitVal.(*object.Number); ok {
+			n := num.Value.ToInt()
+			if n > 0 {
+				blockEnv.Limit = make(chan struct{}, n)
+			}
+		}
+	}
+
 	e.PushEnv(blockEnv)
 	result = NIL
 	defer func() { result = e.PopEnv(result) }()
@@ -1256,20 +1276,6 @@ func (e *Evaluator) extendFunctionEnv(
 		Position: fn.Body.Token.Position,
 		Src:      fn.Env.Src,
 	})
-
-	// nurseries are only created when concurrency limit is set
-	env.IsThreadNurseryScope = fn.Limit != nil
-
-	// Handle Concurrency Limit
-	if fn.Limit != nil {
-		limitVal := e.Eval(fn.Limit)
-		if num, ok := limitVal.(*object.Number); ok {
-			n := num.Value.ToInt()
-			if n > 0 {
-				env.Limit = make(chan struct{}, n)
-			}
-		}
-	}
 
 	numArgs := len(args)
 

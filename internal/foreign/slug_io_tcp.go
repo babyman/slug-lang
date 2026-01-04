@@ -102,7 +102,7 @@ func fnIoTcpRead() *object.Foreign {
 
 			max, err := unpackNumber(args[1], "")
 			if err != nil {
-				return ctx.NewError(err.Error())
+				return ctx.NewError(tcpErrorMessage(id, err))
 			}
 
 			conn, ok := ioTcpConns[id]
@@ -116,7 +116,7 @@ func fnIoTcpRead() *object.Foreign {
 				if err == io.EOF {
 					return ctx.Nil()
 				} else {
-					return ctx.NewError(err.Error())
+					return ctx.NewError(tcpErrorMessage(id, err))
 				}
 			}
 
@@ -136,7 +136,7 @@ func fnIoTcpWrite() *object.Foreign {
 
 			data, err := unpackString(args[1], "")
 			if err != nil {
-				return ctx.NewError(err.Error())
+				return ctx.NewError(tcpErrorMessage(id, err))
 			}
 
 			conn, ok := ioTcpConns[id]
@@ -146,7 +146,7 @@ func fnIoTcpWrite() *object.Foreign {
 
 			n, err := conn.Write([]byte(data))
 			if err != nil {
-				return ctx.NewError(err.Error())
+				return ctx.NewError(tcpErrorMessage(id, err))
 			}
 
 			return &object.Number{Value: dec64.FromInt64(int64(n))}
@@ -178,4 +178,8 @@ func fnIoTcpClose() *object.Foreign {
 			return ctx.Nil()
 		},
 	}
+}
+
+func tcpErrorMessage(id int64, err error) string {
+	return fmt.Sprintf("TCP error [%d] %s", id, err.Error())
 }

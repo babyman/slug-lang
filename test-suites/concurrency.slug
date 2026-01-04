@@ -15,6 +15,17 @@ var test_spawn_returns_task_handles = async fn() {
 }
 
 @test
+var test_await_is_valid_in_async_functions = async fn() {
+    var x = spawn {
+        sleep(100)
+        10 + 1
+    }
+
+    x /> type /> assertEqual(TASK_TYPE)
+    (await x) /> assertEqual(11)
+}
+
+@test
 var test_async_actions_run_in_parallel = fn() {
     var c = delta(clock)
     var f = async fn() {
@@ -172,5 +183,20 @@ var test_errors_are_detected_during_nursery_exit = fn() {
     }
     var r = runSafe(fn() { f() })
     r.error /> eq("err")
+}
+
+
+@test
+var test_errors_should_honour_local_defer_onerror = fn() {
+    var f = async limit 10 fn() {
+        var a = async limit 10 fn() {
+            defer onerror(e) "handled"
+            spawn {
+                throw "err"
+            }
+        }
+        a()
+    }
+    f() /> println /> assertEqual("handled")
 }
 

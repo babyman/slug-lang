@@ -184,6 +184,8 @@ func (es *ExpressionStatement) String() string {
 type BlockStatement struct {
 	Token      token.Token // the { token
 	Statements []Statement
+	IsAsync    bool       // handles async { ... }
+	Limit      Expression // handles limit N { ... }
 }
 
 func (bs *BlockStatement) statementNode()       {}
@@ -192,9 +194,19 @@ func (bs *BlockStatement) TokenLiteral() string { return bs.Token.Literal }
 func (bs *BlockStatement) String() string {
 	var out bytes.Buffer
 
+	if bs.IsAsync {
+		out.WriteString("async ")
+		if bs.Limit != nil {
+			out.WriteString("limit ")
+			out.WriteString(bs.Limit.String())
+			out.WriteString(" ")
+		}
+	}
+	out.WriteString("{")
 	for _, s := range bs.Statements {
 		out.WriteString(s.String())
 	}
+	out.WriteString("}")
 
 	return out.String()
 }
@@ -305,24 +317,13 @@ type FunctionLiteral struct {
 	Signature   FSig
 	Parameters  []*FunctionParameter
 	Body        *BlockStatement
-	HasTailCall bool       // Whether this function has tail calls
-	IsAsync     bool       // New field
-	Limit       Expression // New field (e.g., NumberLiteral)
+	HasTailCall bool // Whether this function has tail calls
 }
 
 func (fl *FunctionLiteral) expressionNode()      {}
 func (fl *FunctionLiteral) TokenLiteral() string { return fl.Token.Literal }
 func (fl *FunctionLiteral) String() string {
 	var out bytes.Buffer
-
-	if fl.IsAsync {
-		out.WriteString("async ")
-		if fl.Limit != nil {
-			out.WriteString("limit ")
-			out.WriteString(fl.Limit.String())
-			out.WriteString(" ")
-		}
-	}
 
 	params := []string{}
 	for _, p := range fl.Parameters {
