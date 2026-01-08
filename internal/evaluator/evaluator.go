@@ -133,7 +133,7 @@ func (e *Evaluator) PopEnv(result object.Object) object.Object {
 		return e.Eval(stmt)
 	})
 
-	if currentEnv.IsThreadNurseryScope {
+	if currentEnv.IsThreadNurseryScope && nurseryInjected {
 		// If the result is now "healthy",
 		// we MUST clear the NurseryErr so it doesn't leak to outer scopes.
 		currentEnv.NurseryErr = nil
@@ -599,9 +599,8 @@ func (e *Evaluator) mapIdentifiersToStrings(identifiers []*ast.Identifier) []str
 	return parts
 }
 
-func (e *Evaluator) evalBlockStatement(block *ast.BlockStatement) (result object.Object) {
+func (e *Evaluator) newBlockEnv(block *ast.BlockStatement) *object.Environment {
 	// Create a new environment with an associated stack frame
-	//println("block")
 	blockEnv := object.NewEnclosedEnvironment(e.CurrentEnv(), &object.StackFrame{
 		Function: "block",
 		File:     e.CurrentEnv().Path,
@@ -620,9 +619,21 @@ func (e *Evaluator) evalBlockStatement(block *ast.BlockStatement) (result object
 		}
 	}
 
+	return blockEnv
+}
+
+func (e *Evaluator) evalBlockStatement(block *ast.BlockStatement) (result object.Object) {
+
+	blockEnv := e.newBlockEnv(block)
 	e.PushEnv(blockEnv)
+
+	result = e.evalBlockStatementWithinEnv(block)
+	return e.PopEnv(result)
+}
+
+func (e *Evaluator) evalBlockStatementWithinEnv(block *ast.BlockStatement) (result object.Object) {
+
 	result = NIL
-	defer func() { result = e.PopEnv(result) }()
 
 	for _, statement := range block.Statements {
 
@@ -1180,13 +1191,17 @@ func (e *Evaluator) ApplyFunction(pos int, fnName string, fnObj object.Object, a
 		e.pushCallFrame(fnName, fn)
 		defer e.popCallFrame()
 
-		// Create the initial environment
-		currentEnv := e.extendFunctionEnv(fn, args)
-		e.PushEnv(currentEnv)
-
 		var result object.Object
+
+		// Create the initial environment
+		argsEnv := e.extendFunctionEnv(fn, args)
+		e.PushEnv(argsEnv)
+
+		blockEnv := e.newBlockEnv(fn.Body)
+		e.PushEnv(blockEnv)
+
 		for {
-			result = e.Eval(fn.Body)
+			result = e.evalBlockStatementWithinEnv(fn.Body)
 
 			_, ok := result.(*object.Error)
 			if ok {
@@ -1203,7 +1218,8 @@ func (e *Evaluator) ApplyFunction(pos int, fnName string, fnObj object.Object, a
 			// 1. Direct TailCall (e.g., from recur or tail-positioned call)
 			if tc, ok := result.(*object.TailCall); ok {
 				if tc.Function == fn {
-					e.rebindFunctionEnv(currentEnv, fn, tc.Arguments)
+					blockEnv.ResetForTCO()
+					e.rebindFunctionEnv(argsEnv, fn, tc.Arguments)
 					continue
 				}
 				// Call belongs to a different function. Resolve it now.
@@ -1215,7 +1231,8 @@ func (e *Evaluator) ApplyFunction(pos int, fnName string, fnObj object.Object, a
 			if rv, ok := result.(*object.ReturnValue); ok {
 				if tc, ok := rv.Value.(*object.TailCall); ok {
 					if tc.Function == fn {
-						e.rebindFunctionEnv(currentEnv, fn, tc.Arguments)
+						blockEnv.ResetForTCO()
+						e.rebindFunctionEnv(argsEnv, fn, tc.Arguments)
 						continue
 					}
 					// Resolve TailCall for a different function
@@ -1230,6 +1247,9 @@ func (e *Evaluator) ApplyFunction(pos int, fnName string, fnObj object.Object, a
 			// 3. Implicit return or Error
 			break
 		}
+
+		// pop the block environment
+		result = e.PopEnv(result)
 
 		// PopEnv runs defers and joins children for the finalized call frame
 		return e.PopEnv(result)
@@ -2221,9 +2241,10 @@ func (e *Evaluator) evalAwaitExpression(node *ast.AwaitExpression) object.Object
 			// Task finished in time
 		case <-timer.C:
 			// Timeout: cancel task + raise timeout error
-			handle.Cancel(nil, "cancelled due to await timeout")
+			handle.Cancel(nil, fmt.Sprintf("handle %d cancelled due to await timeout", handle.ID))
 			return e.runtimeErrorAt(node.Token.Position, "timeout", map[string]object.Object{
-				"ms": &object.Number{Value: dec64.FromInt(int(duration))},
+				"ms":     &object.Number{Value: dec64.FromInt(int(duration))},
+				"handle": &object.Number{Value: dec64.FromInt64(handle.ID)},
 			})
 		}
 	} else {

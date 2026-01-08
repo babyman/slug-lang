@@ -47,13 +47,13 @@ rf2(rfc2) /> assertEqual(0)
 
 var rfc3 = 5
 
-var rf3 = fn(a) {
+var fn_level_test_defer_block_runs_once_on_scope_exit = fn(a) {
 	defer {
 		rfc3 = rfc3 - 1
-		// println("<<< rf3 defer ", a, rfc3)
+		// println("<<< fn_level_test_defer_block_runs_once_on_scope_exit defer ", a, rfc3)
 	}
-	// println("    rf3 before", a, rfc3)
-	rfc3 /> assertEqual(a)
+	// println("    fn_level_test_defer_block_runs_once_on_scope_exit before", a, rfc3)
+	rfc3 /> assertEqual(5)
 	if(a > 0) {
 		recur(a - 1)
 	} else {
@@ -61,6 +61,5 @@ var rf3 = fn(a) {
 	}
 }
 
-rf3(rfc3) /> assertEqual(0)
-
-
+fn_level_test_defer_block_runs_once_on_scope_exit(rfc3) /> assertEqual(0)
+rfc3 /> assertEqual(4)

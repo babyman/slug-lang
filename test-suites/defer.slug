@@ -207,8 +207,8 @@ var test15 = fn() {
     assertEqual(r.error, "err", "Test 15 - throw bypasses onsuccess")
 }
 
-# 16. TCO: self-tail recursion with defers that must run each iteration
-# This test asserts that defers in self-tail recursion run and do not leak memory.
+# 16. TCO: self-tail recursion with defers that must only run on loop exit
+# This test asserts that defers in self-tail recursion run run only once when the loop exits.
 @test
 var test16 = fn() {
     var x = []
@@ -218,7 +218,7 @@ var test16 = fn() {
         recur(n - 1)
     }
     loop(3)
-    assertEqual(x, [3,2,1,0], "Test 16 - self-tail recursion defers terminate each iteration")
+    assertEqual(x, [0], "Test 16 - self-tail recursion defers terminate each iteration")
 }
 
 # 17. global scope defers run at program end (if harness supports it)
@@ -249,7 +249,7 @@ var test18 = fn() {
     assertEqual(x, [1], "Test 18 - defer only when block entered")
 }
 
-# 19. defer inside tail-call loop (recur) unrolled - each iteration defers run
+# 19. defer inside tail-call loop (recur) unrolled - defer only runs after it has been defined in the current iteration
 @test
 var test19 = fn() {
     var x = []
@@ -261,7 +261,7 @@ var test19 = fn() {
         recur(n-1, acc)
     }
     loop(3, [])
-    assertEqual(x, [3,2,1], "Test 19 - defer in tail loop unrolled")
+    assertEqual(x, [], "Test 19 - defer in tail loop unrolled")
 }
 
 # 20. defers registering defers during unwind

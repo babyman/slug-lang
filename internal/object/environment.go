@@ -137,6 +137,25 @@ func (e *Environment) WaitChildren() {
 	}
 }
 
+func (e *Environment) ResetForTCO() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	var active []*TaskHandle
+	for _, ch := range e.Children {
+		select {
+		case <-ch.Done:
+			active = append(active, ch)
+		default:
+			// Task is complete, skip it
+		}
+	}
+	e.Children = active
+	e.Bindings = make(map[string]*Binding)
+	e.Defers = nil
+	e.NurseryErr = nil
+}
+
 func (e *Environment) GetBinding(name string) (*Binding, bool) {
 	e.mu.RLock()
 	binding, ok := e.Bindings[name]

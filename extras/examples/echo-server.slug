@@ -12,23 +12,22 @@ defer {
 
 println("Server listening on 127.0.0.1:8080", listener)
 
-var serverLoop = fn(count = 1) {
-	var connection = listener /> accept()
+var handleConnection = fn(con, count) {
 	defer {
-		connection /> close()
-		println("<<< connection closed", connection)
+		con /> close()
+		println("<<< con closed", con)
 	}
-	var msg = connection /> read(1024)
-	println(count, "Connection received:", msg, listener, connection)
-	connection /> write(msg)
-	if (msg != "bye") {
-		recur(count + 1)
-	} else {
-		"Server loop exited"
+	var msg = con /> read(1024)
+	println(count, "con received:", msg, listener, con)
+	con /> write(msg)
+	msg
+}
+
+var serverLoop = fn(count = 1) {
+	match listener /> accept /> handleConnection(count) {
+		"bye" => "Server loop exited"
+		_ => recur(count + 1)
 	}
 }
 
 serverLoop() /> println
-
-
-
