@@ -6,7 +6,14 @@ import (
 	"runtime"
 	"slug/internal/ast"
 	"sync"
+	"sync/atomic"
 )
+
+var nextID atomic.Uint64
+
+func nextEnvID() uint64 {
+	return nextID.Add(1) // <<16 | int64(rand.Intn(0xFFFF))
+}
 
 // NewEnclosedEnvironment initializes an environment with a parent and optional stack frame.
 func NewEnclosedEnvironment(outer *Environment, stackFrame *StackFrame) *Environment {
@@ -22,6 +29,7 @@ func NewEnclosedEnvironment(outer *Environment, stackFrame *StackFrame) *Environ
 
 func NewEnvironment() *Environment {
 	return &Environment{
+		ID:       nextEnvID(),
 		Bindings: make(map[string]*Binding),
 		Defers:   make([]*ast.DeferStatement, 0),
 		Children: make([]*TaskHandle, 0),
@@ -43,6 +51,7 @@ func NewRootEnvironment(limit int) *Environment {
 }
 
 type Environment struct {
+	ID        uint64
 	Bindings  map[string]*Binding
 	Outer     *Environment
 	Src       string
