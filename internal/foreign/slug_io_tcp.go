@@ -163,15 +163,15 @@ func fnIoTcpClose() *object.Foreign {
 				return ctx.NewError(err.Error())
 			}
 
-			if l, ok := ioTcpListeners[id]; ok {
-				l.Close()
-				delete(ioTcpListeners, id)
-				return ctx.Nil()
-			}
-
 			if c, ok := ioTcpConns[id]; ok {
 				c.Close()
 				delete(ioTcpConns, id)
+				return ctx.Nil()
+			}
+
+			if l, ok := ioTcpListeners[id]; ok {
+				l.Close()
+				delete(ioTcpListeners, id)
 				return ctx.Nil()
 			}
 
