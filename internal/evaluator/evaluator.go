@@ -44,9 +44,9 @@ type Evaluator struct {
 	AllowedImports []string
 	Modules        map[string]*object.Module
 
-	envStack []*object.Environment // Environment stack encapsulated in an evaluator struct
+	envStack     []*object.Environment // Environment stack encapsulated in an evaluator struct
+	nurseryStack []*object.NurseryScope
 	// callStack keeps track of the current function for things like `recur`
-	// todo: fixme: this is a stack that will grow and eventually fail in a tailcall scenario.
 	callStack []struct {
 		FnName string
 		FnObj  object.Object
@@ -67,6 +67,11 @@ func (e *Evaluator) Nil() *object.Nil {
 }
 
 func (e *Evaluator) PushEnv(env *object.Environment) {
+	if env.IsThreadNurseryScope {
+		e.pushNurseryScope(&object.NurseryScope{
+			Limit: make(chan struct{}, env.Limit),
+		})
+	}
 	e.envStack = append(e.envStack, env)
 	slog.Debug("push stack frame",
 		slog.Int("stack-size", len(e.envStack)))
@@ -84,19 +89,6 @@ func (e *Evaluator) CurrentEnvStackSize() int {
 	return len(e.envStack)
 }
 
-func (e *Evaluator) CurrentNurseryEnv() *object.Environment {
-	// replace with a stack for performance
-	currentEnv := e.CurrentEnv()
-	ownerEnv := currentEnv
-	for env := currentEnv; env != nil; env = env.Outer {
-		if env.IsThreadNurseryScope || env.Outer == nil {
-			ownerEnv = env
-			break
-		}
-	}
-	return ownerEnv
-}
-
 func (e *Evaluator) PopEnv(result object.Object) object.Object {
 	if len(e.envStack) == 0 {
 		panic("Attempted to pop from an empty environment stack")
@@ -106,38 +98,13 @@ func (e *Evaluator) PopEnv(result object.Object) object.Object {
 	nurseryInjected := false
 
 	if currentEnv.IsThreadNurseryScope {
-		// If we are exiting early (return or error), cancel children downward.
-		switch result.(type) {
-		case *object.ReturnValue:
-			currentEnv.CancelChildren(nil, nil, "parent scope exited early")
-		case *object.RuntimeError:
-			currentEnv.CancelChildren(nil, result.(*object.RuntimeError), "parent scope failed")
-		case *object.Error:
-			currentEnv.CancelChildren(nil, nil, "parent scope failed")
-		}
-
-		// Wait for children (join nursery)
-		currentEnv.WaitChildren()
-
-		// If any child failed and the current result isn't already an error/return, propagate it upward.
-		if currentEnv.NurseryErr != nil {
-			if result == nil || (result.Type() != object.ERROR_OBJ && result.Type() != object.RETURN_VALUE_OBJ) {
-				result = currentEnv.NurseryErr
-				nurseryInjected = true
-			}
-		}
+		result, nurseryInjected = e.popNurseryScope(result)
 	}
 
 	// Execute deferred statements (cleanups)
 	finalResult := currentEnv.ExecuteDeferred(result, func(stmt ast.Statement) object.Object {
 		return e.Eval(stmt)
 	})
-
-	if currentEnv.IsThreadNurseryScope && nurseryInjected {
-		// If the result is now "healthy",
-		// we MUST clear the NurseryErr so it doesn't leak to outer scopes.
-		currentEnv.NurseryErr = nil
-	}
 
 	e.envStack = e.envStack[:len(e.envStack)-1]
 	slog.Debug("pop stack frame",
@@ -148,6 +115,48 @@ func (e *Evaluator) PopEnv(result object.Object) object.Object {
 	return finalResult
 }
 
+func (e *Evaluator) pushNurseryScope(scope *object.NurseryScope) {
+	e.nurseryStack = append(e.nurseryStack, scope)
+}
+
+func (e *Evaluator) currentNurseryScope() *object.NurseryScope {
+	if len(e.nurseryStack) == 0 {
+		panic("Nursery stack is empty in the current frame")
+	}
+	return e.nurseryStack[len(e.nurseryStack)-1]
+}
+
+func (e *Evaluator) popNurseryScope(result object.Object) (object.Object, bool) {
+	currentScope := e.currentNurseryScope()
+	nurseryInjected := false
+
+	// If we are exiting early (return or error), cancel children downward.
+	switch result.(type) {
+	case *object.ReturnValue:
+		currentScope.CancelChildren(nil, nil, "parent scope exited early")
+	case *object.RuntimeError:
+		currentScope.CancelChildren(nil, result.(*object.RuntimeError), "parent scope failed")
+	case *object.Error:
+		currentScope.CancelChildren(nil, nil, "parent scope failed")
+	}
+
+	// Wait for children (join nursery)
+	currentScope.WaitChildren()
+
+	// If any child failed and the current result isn't already an error/return, propagate it upward.
+	if currentScope.NurseryErr != nil {
+		if result == nil || (result.Type() != object.ERROR_OBJ && result.Type() != object.RETURN_VALUE_OBJ) {
+			result = currentScope.NurseryErr
+			currentScope.NurseryErr = nil
+			nurseryInjected = true
+		}
+	}
+
+	e.nurseryStack = e.nurseryStack[:len(e.nurseryStack)-1]
+
+	return result, nurseryInjected
+}
+
 // Helpers for tracking the current function (for `recur`)
 func (e *Evaluator) pushCallFrame(fnName string, fnObj object.Object) {
 	e.callStack = append(e.callStack, struct {
@@ -156,19 +165,19 @@ func (e *Evaluator) pushCallFrame(fnName string, fnObj object.Object) {
 	}{FnName: fnName, FnObj: fnObj})
 }
 
-func (e *Evaluator) popCallFrame() {
-	if len(e.callStack) == 0 {
-		return
-	}
-	e.callStack = e.callStack[:len(e.callStack)-1]
-}
-
 func (e *Evaluator) currentCallFrame() (string, object.Object, bool) {
 	if len(e.callStack) == 0 {
 		return "", nil, false
 	}
 	top := e.callStack[len(e.callStack)-1]
 	return top.FnName, top.FnObj, true
+}
+
+func (e *Evaluator) popCallFrame() {
+	if len(e.callStack) == 0 {
+		return
+	}
+	e.callStack = e.callStack[:len(e.callStack)-1]
 }
 
 func (e *Evaluator) Eval(node ast.Node) object.Object {
@@ -612,10 +621,7 @@ func (e *Evaluator) newBlockEnv(block *ast.BlockStatement) *object.Environment {
 		blockEnv.IsThreadNurseryScope = true
 		limitVal := e.Eval(block.Limit)
 		if num, ok := limitVal.(*object.Number); ok {
-			n := num.Value.ToInt()
-			if n > 0 {
-				blockEnv.Limit = make(chan struct{}, n)
-			}
+			blockEnv.Limit = num.Value.ToInt()
 		}
 	}
 
@@ -1208,17 +1214,22 @@ func (e *Evaluator) ApplyFunction(pos int, fnName string, fnObj object.Object, a
 				break
 			}
 
-			nurseryEnv := e.CurrentNurseryEnv()
-			if nurseryEnv.NurseryErr != nil {
-				// if the current nursery is erroring break out
-				result = nurseryEnv.NurseryErr
-				break
+			nurseryScope := e.currentNurseryScope()
+			if nurseryScope.NurseryErr != nil {
+				_, ok := nurseryScope.NurseryErr.(*object.Error)
+				if ok {
+					// if the current nursery is erroring break out
+					result = nurseryScope.NurseryErr
+					//nurseryScope.NurseryErr = nil
+					break
+				}
 			}
 
 			// 1. Direct TailCall (e.g., from recur or tail-positioned call)
 			if tc, ok := result.(*object.TailCall); ok {
 				if tc.Function == fn {
 					blockEnv.ResetForTCO()
+					nurseryScope.ResetForTCO()
 					e.rebindFunctionEnv(argsEnv, fn, tc.Arguments)
 					continue
 				}
@@ -1232,6 +1243,7 @@ func (e *Evaluator) ApplyFunction(pos int, fnName string, fnObj object.Object, a
 				if tc, ok := rv.Value.(*object.TailCall); ok {
 					if tc.Function == fn {
 						blockEnv.ResetForTCO()
+						nurseryScope.ResetForTCO()
 						e.rebindFunctionEnv(argsEnv, fn, tc.Arguments)
 						continue
 					}
@@ -2161,7 +2173,7 @@ func (e *Evaluator) evalDefer(deferStmt *ast.DeferStatement) object.Object {
 
 func (e *Evaluator) evalSpawnExpression(node *ast.SpawnExpression) object.Object {
 	currentEnv := e.CurrentEnv()
-	ownerEnv := e.CurrentNurseryEnv()
+	nurseryScope := e.currentNurseryScope()
 
 	handle := &object.TaskHandle{
 		ID:   e.NextHandleID(),
@@ -2169,17 +2181,18 @@ func (e *Evaluator) evalSpawnExpression(node *ast.SpawnExpression) object.Object
 	}
 
 	// IMPORTANT: register child on the owner scope, not necessarily currentEnv
-	ownerEnv.AddChild(handle)
+	nurseryScope.AddChild(handle)
 
 	taskEval := &Evaluator{
 		Config:  e.Config,
 		Modules: e.Modules,
 	}
+	taskEval.pushNurseryScope(nurseryScope)
 	taskEnv := object.NewEnclosedEnvironment(currentEnv, nil)
 
 	go func() {
 		// lexical limit lookup (currentEnv chain)
-		limitChan := ownerEnv.Limit
+		limitChan := nurseryScope.Limit
 		if limitChan != nil {
 			limitChan <- struct{}{}
 			defer func() { <-limitChan }()
@@ -2200,9 +2213,9 @@ func (e *Evaluator) evalSpawnExpression(node *ast.SpawnExpression) object.Object
 
 		// Check for ANY error type to trigger fail-fast
 		if handle.Err != nil {
-			ownerEnv.NoteChildFailure(handle, handle.Err)
+			nurseryScope.NoteChildFailure(handle, handle.Err)
 		} else if e.isError(result) {
-			ownerEnv.NoteChildFailure(handle, result)
+			nurseryScope.NoteChildFailure(handle, result)
 		}
 	}()
 

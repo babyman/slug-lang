@@ -11,6 +11,43 @@ import (
 
 var nextID atomic.Uint64
 
+type Environment struct {
+	ID        uint64
+	Bindings  map[string]*Binding
+	Outer     *Environment
+	Src       string
+	Path      string
+	ModuleFqn string
+	StackInfo *StackFrame           // Optional stack frame information
+	Defers    []*ast.DeferStatement // Stack for deferred statements
+
+	Limit                int
+	IsThreadNurseryScope bool // marks a scope that can own spawned tasks
+
+	mu sync.RWMutex
+}
+
+type NurseryScope struct {
+	// Concurrency tracking
+	Children   []*TaskHandle // Tasks owned by this scope
+	Limit      chan struct{} // Semaphore for 'async limit N'
+	NurseryErr Object        // fail-fast state (first failure wins)
+	mu         sync.RWMutex
+}
+
+type Binding struct {
+	Value Object // can be a FunctionGroup
+	Err   *RuntimeError
+	Meta  Meta
+	//MetaIndex map[string]Meta // todo add metadata for function group functions
+	IsMutable bool
+}
+
+type Meta struct {
+	IsImport bool
+	IsExport bool
+}
+
 func nextEnvID() uint64 {
 	return nextID.Add(1) // <<16 | int64(rand.Intn(0xFFFF))
 }
@@ -32,7 +69,6 @@ func NewEnvironment() *Environment {
 		ID:       nextEnvID(),
 		Bindings: make(map[string]*Binding),
 		Defers:   make([]*ast.DeferStatement, 0),
-		Children: make([]*TaskHandle, 0),
 	}
 }
 
@@ -44,57 +80,23 @@ func NewRootEnvironment(limit int) *Environment {
 	)
 	env := NewEnvironment()
 	env.IsThreadNurseryScope = true // root acts like an async scope for spawn ownership
-	if limit > 0 {
-		env.Limit = make(chan struct{}, limit)
-	}
+	env.Limit = limit
 	return env
 }
 
-type Environment struct {
-	ID        uint64
-	Bindings  map[string]*Binding
-	Outer     *Environment
-	Src       string
-	Path      string
-	ModuleFqn string
-	StackInfo *StackFrame           // Optional stack frame information
-	Defers    []*ast.DeferStatement // Stack for deferred statements
-
-	// Concurrency tracking
-	Children             []*TaskHandle // Tasks owned by this scope
-	Limit                chan struct{} // Semaphore for 'async limit N'
-	IsThreadNurseryScope bool          // marks a scope that can own spawned tasks
-	NurseryErr           Object        // fail-fast state (first failure wins)
-
-	mu sync.RWMutex
-}
-
-type Binding struct {
-	Value Object // can be a FunctionGroup
-	Err   *RuntimeError
-	Meta  Meta
-	//MetaIndex map[string]Meta // todo add metadata for function group functions
-	IsMutable bool
-}
-
-type Meta struct {
-	IsImport bool
-	IsExport bool
-}
-
 // AddChild registers a task handle with this environment
-func (e *Environment) AddChild(th *TaskHandle) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	e.Children = append(e.Children, th)
+func (n *NurseryScope) AddChild(th *TaskHandle) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	n.Children = append(n.Children, th)
 }
 
 // CancelChildren cancels all children except `except` (if non-nil).
-func (e *Environment) CancelChildren(except *TaskHandle, cause *RuntimeError, reason string) {
-	e.mu.Lock()
-	children := make([]*TaskHandle, len(e.Children))
-	copy(children, e.Children)
-	e.mu.Unlock()
+func (n *NurseryScope) CancelChildren(except *TaskHandle, cause *RuntimeError, reason string) {
+	n.mu.Lock()
+	children := make([]*TaskHandle, len(n.Children))
+	copy(children, n.Children)
+	n.mu.Unlock()
 
 	for _, ch := range children {
 		if except != nil && ch == except {
@@ -105,13 +107,13 @@ func (e *Environment) CancelChildren(except *TaskHandle, cause *RuntimeError, re
 }
 
 // NoteChildFailure records the first failure and cancels siblings (fail-fast).
-func (e *Environment) NoteChildFailure(failed *TaskHandle, err Object) {
-	e.mu.Lock()
-	alreadyFailed := e.NurseryErr != nil
+func (n *NurseryScope) NoteChildFailure(failed *TaskHandle, err Object) {
+	n.mu.Lock()
+	alreadyFailed := n.NurseryErr != nil
 	if !alreadyFailed {
-		e.NurseryErr = err
+		n.NurseryErr = err
 	}
-	e.mu.Unlock()
+	n.mu.Unlock()
 
 	// Only the first failure triggers sibling cancellation
 	if !alreadyFailed {
@@ -121,28 +123,29 @@ func (e *Environment) NoteChildFailure(failed *TaskHandle, err Object) {
 		if rt, ok := err.(*RuntimeError); ok {
 			rtCause = rt
 		}
-		e.CancelChildren(failed, rtCause, "sibling cancelled due to fail-fast")
+		n.CancelChildren(failed, rtCause, "sibling cancelled due to fail-fast")
 	}
 }
 
 // WaitChildren blocks until all direct children of this scope have settled
-func (e *Environment) WaitChildren() {
-	e.mu.RLock()
-	children := make([]*TaskHandle, len(e.Children))
-	copy(children, e.Children)
-	e.mu.RUnlock()
+func (n *NurseryScope) WaitChildren() {
+	n.mu.RLock()
+	children := make([]*TaskHandle, len(n.Children))
+	copy(children, n.Children)
+	n.mu.RUnlock()
 
 	for _, child := range children {
 		<-child.Done
+		println("child done", child.ID)
 	}
 }
 
-func (e *Environment) ResetForTCO() {
-	e.mu.Lock()
-	defer e.mu.Unlock()
+func (n *NurseryScope) ResetForTCO() {
+	n.mu.Lock()
+	defer n.mu.Unlock()
 
 	var active []*TaskHandle
-	for _, ch := range e.Children {
+	for _, ch := range n.Children {
 		select {
 		case <-ch.Done:
 			active = append(active, ch)
@@ -150,10 +153,15 @@ func (e *Environment) ResetForTCO() {
 			// Task is complete, skip it
 		}
 	}
-	e.Children = active
+	n.Children = active
+	//n.NurseryErr = nil
+}
+
+func (e *Environment) ResetForTCO() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	e.Bindings = make(map[string]*Binding)
 	e.Defers = nil
-	e.NurseryErr = nil
 }
 
 func (e *Environment) GetBinding(name string) (*Binding, bool) {

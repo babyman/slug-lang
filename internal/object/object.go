@@ -215,12 +215,13 @@ func (rv *ReturnValue) Inspect() string  { return rv.Value.Inspect() }
 
 // TaskHandle represents a concurrent task spawned via 'spawn'
 type TaskHandle struct {
-	ID         int64
-	Result     Object
-	Err        *RuntimeError
-	Done       chan struct{} // Closed when the task is finished
-	IsFinished bool
-	mu         sync.Mutex
+	ID           int64
+	OwnerNursery *NurseryScope
+	Result       Object
+	Err          *RuntimeError
+	Done         chan struct{} // Closed when the task is finished
+	IsFinished   bool
+	mu           sync.Mutex
 }
 
 func (th *TaskHandle) Type() ObjectType { return TASK_HANDLE_OBJ }
