@@ -6,4 +6,5 @@ type Configuration struct {
 	SlugHome     string
 	DebugJsonAST bool
 	DebugTxtAST  bool
+	DefaultLimit int
 }

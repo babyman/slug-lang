@@ -80,6 +80,7 @@ func main() {
 		SlugHome:     os.Getenv("SLUG_HOME"),
 		DebugJsonAST: debugJsonAST,
 		DebugTxtAST:  debugTxtAST,
+		DefaultLimit: max(runtime.NumCPU()*2, 4),
 	}
 
 	// 3. Tokenize & Parse
@@ -96,8 +97,7 @@ func main() {
 	}
 
 	// 5. Initialize Evaluator & Environment
-	defaultLimit := max(runtime.NumCPU()*2, 4)
-	env := object.NewRootEnvironment(defaultLimit)
+	env := object.NewRootEnvironment(config.DefaultLimit)
 
 	// Ensure stacktraces have file/source context for line/column lookup.
 	// Child environments inherit these via NewEnclosedEnvironment.
@@ -112,9 +112,15 @@ func main() {
 	}
 	env.Define("args", &object.List{Elements: programArgs}, false, false)
 
-	eval := &evaluator.Evaluator{
+	rt := &evaluator.Runtime{
 		Config: config,
 	}
+	eval := &evaluator.Evaluator{
+		Runtime: rt,
+	}
+	eval.PushNurseryScope(&object.NurseryScope{
+		Limit: make(chan struct{}, config.DefaultLimit),
+	})
 	eval.PushEnv(env)
 
 	// 6. Execute

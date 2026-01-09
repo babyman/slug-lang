@@ -6,14 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 	"math/rand"
-	"os"
-	"path/filepath"
 	"slug/internal/ast"
 	"slug/internal/dec64"
 	"slug/internal/foreign"
-	"slug/internal/lexer"
 	"slug/internal/object"
-	"slug/internal/parser"
 	"slug/internal/token"
 	"slug/internal/util"
 	"strings"
@@ -39,10 +35,7 @@ func OrBytes(a, b byte) byte  { return a | b }
 func XorBytes(a, b byte) byte { return a ^ b }
 
 type Evaluator struct {
-	Config         util.Configuration
-	Sandbox        bool
-	AllowedImports []string
-	Modules        map[string]*object.Module
+	Runtime *Runtime
 
 	envStack     []*object.Environment // Environment stack encapsulated in an evaluator struct
 	nurseryStack []*object.NurseryScope
@@ -59,7 +52,7 @@ func (e *Evaluator) NextHandleID() int64 {
 }
 
 func (e *Evaluator) GetConfiguration() util.Configuration {
-	return e.Config
+	return e.Runtime.Config
 }
 
 func (e *Evaluator) Nil() *object.Nil {
@@ -68,7 +61,7 @@ func (e *Evaluator) Nil() *object.Nil {
 
 func (e *Evaluator) PushEnv(env *object.Environment) {
 	if env.IsThreadNurseryScope {
-		e.pushNurseryScope(&object.NurseryScope{
+		e.PushNurseryScope(&object.NurseryScope{
 			Limit: make(chan struct{}, env.Limit),
 		})
 	}
@@ -115,7 +108,7 @@ func (e *Evaluator) PopEnv(result object.Object) object.Object {
 	return finalResult
 }
 
-func (e *Evaluator) pushNurseryScope(scope *object.NurseryScope) {
+func (e *Evaluator) PushNurseryScope(scope *object.NurseryScope) {
 	e.nurseryStack = append(e.nurseryStack, scope)
 }
 
@@ -479,125 +472,7 @@ func (e *Evaluator) evalProgram(program *ast.Program) object.Object {
 }
 
 func (e *Evaluator) LoadModule(modName string) (*object.Module, error) {
-
-	if e.Sandbox {
-		allowed := false
-		for _, m := range e.AllowedImports {
-			if m == modName {
-				allowed = true
-				break
-			}
-		}
-		if !allowed {
-			return nil, errors.New("module not allowed")
-		}
-	}
-
-	if e.Modules == nil {
-		e.Modules = make(map[string]*object.Module)
-	}
-
-	if mod, ok := e.Modules[modName]; ok {
-		slog.Info("Module loaded from cache",
-			slog.String("name", modName))
-		return mod, nil
-	}
-
-	// 1. Resolve module name to relative file path (e.g., "slug.std" -> "slug/std.slug")
-	pathParts := strings.Split(modName, ".")
-	relPath := filepath.Join(pathParts...) + ".slug"
-
-	// 2. Search Paths: Check local RootPath, then SLUG_HOME/lib
-	var fullPath string
-	var source []byte
-	var err error
-
-	// Try local RootPath (directory of the entry script)
-	fullPath = filepath.Join(e.Config.RootPath, relPath)
-	source, errFirst := os.ReadFile(fullPath)
-
-	if errFirst != nil {
-		//// Fallback to $SLUG_HOME/lib
-		if e.Config.SlugHome != "" {
-			fullPath = filepath.Join(e.Config.SlugHome, "lib", relPath)
-			source, err = os.ReadFile(fullPath)
-			if err != nil {
-				return nil, fmt.Errorf("could not load module %s: local error: %v, lib error: %v", modName, errFirst, err)
-			}
-		} else {
-			return nil, fmt.Errorf("could not load module %s: %v (SLUG_HOME not set)", modName, errFirst)
-		}
-	}
-
-	// 3. Tokenize and Parse
-	l := lexer.New(string(source))
-	p := parser.New(l, fullPath, string(source))
-	program := p.ParseProgram()
-
-	if len(p.Errors()) > 0 {
-		slog.Warn("Error loading module",
-			slog.String("name", modName),
-			slog.String("fullPath", fullPath),
-			slog.String("errors", strings.Join(p.Errors(), "\n")),
-		)
-		return nil, fmt.Errorf("parse errors in module %s:\n%s", modName, strings.Join(p.Errors(), "\n"))
-	}
-
-	if e.Config.DebugJsonAST {
-		json, err := parser.RenderASTAsJSON(program)
-		if err != nil {
-			slog.Error("Failed to render AST as JSON",
-				slog.Any("error", err))
-		} else {
-			jsonPath := fullPath + ".ast.json"
-			err = os.WriteFile(jsonPath, []byte(json), 0644)
-			if err != nil {
-				slog.Error("Failed to write AST as JSON")
-			}
-		}
-	}
-	if e.Config.DebugTxtAST {
-		txtPath := fullPath + ".ast.txt"
-		text := parser.RenderASTAsText(program, 0)
-		err = os.WriteFile(txtPath, []byte(text), 0644)
-		if err != nil {
-			slog.Error("Failed to write AST as JSON")
-		}
-	}
-
-	// 4. Setup Module Object and Environment
-	moduleEnv := object.NewEnvironment()
-	moduleEnv.Path = fullPath
-	moduleEnv.ModuleFqn = modName
-	moduleEnv.Src = string(source)
-
-	module := &object.Module{
-		Name:    modName,
-		Path:    fullPath,
-		Src:     string(source),
-		Program: program,
-		Env:     moduleEnv,
-	}
-
-	e.Modules[modName] = module
-	slog.Info("Module loaded, added to cache",
-		slog.String("name", modName),
-		slog.String("fullPath", fullPath),
-	)
-
-	// 5. Evaluate the module in its own environment
-	slog.Debug("loading module", slog.String("name", modName), slog.String("path", fullPath))
-
-	e.PushEnv(moduleEnv)
-	out := e.Eval(program)
-	// We pop the env, but the moduleEnv now contains all the defined bindings
-	e.PopEnv(out)
-
-	if e.isError(out) {
-		return nil, fmt.Errorf("runtime error while loading module %s: %s", modName, out.Inspect())
-	}
-
-	return module, nil
+	return e.Runtime.LoadModule(modName)
 }
 
 func (e *Evaluator) mapIdentifiersToStrings(identifiers []*ast.Identifier) []string {
@@ -2182,10 +2057,9 @@ func (e *Evaluator) evalSpawnExpression(node *ast.SpawnExpression) object.Object
 	nurseryScope.AddChild(handle)
 
 	taskEval := &Evaluator{
-		Config:  e.Config,
-		Modules: e.Modules,
+		Runtime: e.Runtime,
 	}
-	taskEval.pushNurseryScope(nurseryScope)
+	taskEval.PushNurseryScope(nurseryScope)
 	taskEnv := object.NewEnclosedEnvironment(currentEnv, nil)
 
 	go func() {
