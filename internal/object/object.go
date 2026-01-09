@@ -12,7 +12,6 @@ import (
 	"slug/internal/dec64"
 	"slug/internal/util"
 	"strings"
-	"sync"
 	"unicode/utf8"
 )
 
@@ -212,57 +211,6 @@ type ReturnValue struct {
 
 func (rv *ReturnValue) Type() ObjectType { return RETURN_VALUE_OBJ }
 func (rv *ReturnValue) Inspect() string  { return rv.Value.Inspect() }
-
-// TaskHandle represents a concurrent task spawned via 'spawn'
-type TaskHandle struct {
-	ID           int64
-	OwnerNursery *NurseryScope
-	Result       Object
-	Err          *RuntimeError
-	Done         chan struct{} // Closed when the task is finished
-	Observed     bool
-	IsFinished   bool
-	mu           sync.Mutex
-}
-
-func (th *TaskHandle) Type() ObjectType { return TASK_HANDLE_OBJ }
-func (th *TaskHandle) Inspect() string {
-	return fmt.Sprintf("<task %d>", th.ID)
-}
-
-// Complete sets the result and signals any waiters
-func (th *TaskHandle) Complete(res Object) {
-	th.mu.Lock()
-	defer th.mu.Unlock()
-
-	if th.IsFinished {
-		return
-	}
-
-	if rtErr, ok := res.(*RuntimeError); ok {
-		th.Err = rtErr
-	} else {
-		th.Result = res
-	}
-
-	th.IsFinished = true
-	close(th.Done)
-}
-
-// Cancel force-settles the task as cancelled (idempotent).
-// The underlying goroutine may continue running, but its result is ignored.
-func (th *TaskHandle) Cancel(cause *RuntimeError, reason string) {
-	payload := &Map{}
-	payload.Put(&String{Value: "type"}, &String{Value: "cancelled"})
-	payload.Put(&String{Value: "reason"}, &String{Value: reason})
-
-	rt := &RuntimeError{
-		Payload: payload,
-		Cause:   cause,
-	}
-
-	th.Complete(rt)
-}
 
 type Error struct {
 	Message string

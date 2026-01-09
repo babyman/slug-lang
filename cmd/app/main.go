@@ -96,7 +96,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// 5. Initialize Evaluator & Environment
+	// 5. Initialize Task & Environment
 	env := object.NewRootEnvironment(config.DefaultLimit)
 
 	// Ensure stacktraces have file/source context for line/column lookup.
@@ -113,10 +113,10 @@ func main() {
 	env.Define("args", &object.List{Elements: programArgs}, false, false)
 
 	rt := evaluator.NewRuntime(config)
-	eval := &evaluator.Evaluator{
+	eval := &evaluator.Task{
 		Runtime: rt,
 	}
-	eval.PushNurseryScope(&object.NurseryScope{
+	eval.PushNurseryScope(&evaluator.NurseryScope{
 		Limit: make(chan struct{}, config.DefaultLimit),
 	})
 	eval.PushEnv(env)

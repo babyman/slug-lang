@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"math/rand"
 	"slug/internal/ast"
 	"slug/internal/dec64"
 	"slug/internal/foreign"
@@ -13,7 +12,7 @@ import (
 	"slug/internal/token"
 	"slug/internal/util"
 	"strings"
-	"sync/atomic"
+	"sync"
 	"time"
 )
 
@@ -34,34 +33,41 @@ func AndBytes(a, b byte) byte { return a & b }
 func OrBytes(a, b byte) byte  { return a | b }
 func XorBytes(a, b byte) byte { return a ^ b }
 
-type Evaluator struct {
-	Runtime *Runtime
+type Task struct {
+	ID           int64
+	Runtime      *Runtime
+	OwnerNursery *NurseryScope
+	Result       object.Object
+	Err          *object.RuntimeError
+	Done         chan struct{} // Closed when the task is finished
+	Observed     bool
+	IsFinished   bool
+	mu           sync.Mutex
 
 	envStack     []*object.Environment // Environment stack encapsulated in an evaluator struct
-	nurseryStack []*object.NurseryScope
+	nurseryStack []*NurseryScope
 	// callStack keeps track of the current function for things like `recur`
 	callStack []struct {
 		FnName string
 		FnObj  object.Object
 	}
-	nextID atomic.Int64
 }
 
-func (e *Evaluator) NextHandleID() int64 {
-	return e.nextID.Add(1)<<16 | int64(rand.Intn(0xFFFF))
+func (e *Task) NextHandleID() int64 {
+	return e.Runtime.NextHandleID()
 }
 
-func (e *Evaluator) GetConfiguration() util.Configuration {
+func (e *Task) GetConfiguration() util.Configuration {
 	return e.Runtime.Config
 }
 
-func (e *Evaluator) Nil() *object.Nil {
+func (e *Task) Nil() *object.Nil {
 	return NIL
 }
 
-func (e *Evaluator) PushEnv(env *object.Environment) {
+func (e *Task) PushEnv(env *object.Environment) {
 	if env.IsThreadNurseryScope {
-		e.PushNurseryScope(&object.NurseryScope{
+		e.PushNurseryScope(&NurseryScope{
 			Limit: make(chan struct{}, env.Limit),
 		})
 	}
@@ -70,7 +76,7 @@ func (e *Evaluator) PushEnv(env *object.Environment) {
 		slog.Int("stack-size", len(e.envStack)))
 }
 
-func (e *Evaluator) CurrentEnv() *object.Environment {
+func (e *Task) CurrentEnv() *object.Environment {
 	// Access the current environment from the top frame
 	if len(e.envStack) == 0 {
 		panic("Environment stack is empty in the current frame")
@@ -78,11 +84,11 @@ func (e *Evaluator) CurrentEnv() *object.Environment {
 	return e.envStack[len(e.envStack)-1]
 }
 
-func (e *Evaluator) CurrentEnvStackSize() int {
+func (e *Task) CurrentEnvStackSize() int {
 	return len(e.envStack)
 }
 
-func (e *Evaluator) PopEnv(result object.Object) object.Object {
+func (e *Task) PopEnv(result object.Object) object.Object {
 	if len(e.envStack) == 0 {
 		panic("Attempted to pop from an empty environment stack")
 	}
@@ -108,18 +114,18 @@ func (e *Evaluator) PopEnv(result object.Object) object.Object {
 	return finalResult
 }
 
-func (e *Evaluator) PushNurseryScope(scope *object.NurseryScope) {
+func (e *Task) PushNurseryScope(scope *NurseryScope) {
 	e.nurseryStack = append(e.nurseryStack, scope)
 }
 
-func (e *Evaluator) currentNurseryScope() *object.NurseryScope {
+func (e *Task) currentNurseryScope() *NurseryScope {
 	if len(e.nurseryStack) == 0 {
 		panic("Nursery stack is empty in the current frame")
 	}
 	return e.nurseryStack[len(e.nurseryStack)-1]
 }
 
-func (e *Evaluator) popNurseryScope(result object.Object) (object.Object, bool) {
+func (e *Task) popNurseryScope(result object.Object) (object.Object, bool) {
 	currentScope := e.currentNurseryScope()
 	nurseryInjected := false
 
@@ -151,14 +157,14 @@ func (e *Evaluator) popNurseryScope(result object.Object) (object.Object, bool) 
 }
 
 // Helpers for tracking the current function (for `recur`)
-func (e *Evaluator) pushCallFrame(fnName string, fnObj object.Object) {
+func (e *Task) pushCallFrame(fnName string, fnObj object.Object) {
 	e.callStack = append(e.callStack, struct {
 		FnName string
 		FnObj  object.Object
 	}{FnName: fnName, FnObj: fnObj})
 }
 
-func (e *Evaluator) currentCallFrame() (string, object.Object, bool) {
+func (e *Task) currentCallFrame() (string, object.Object, bool) {
 	if len(e.callStack) == 0 {
 		return "", nil, false
 	}
@@ -166,14 +172,14 @@ func (e *Evaluator) currentCallFrame() (string, object.Object, bool) {
 	return top.FnName, top.FnObj, true
 }
 
-func (e *Evaluator) popCallFrame() {
+func (e *Task) popCallFrame() {
 	if len(e.callStack) == 0 {
 		return
 	}
 	e.callStack = e.callStack[:len(e.callStack)-1]
 }
 
-func (e *Evaluator) Eval(node ast.Node) object.Object {
+func (e *Task) Eval(node ast.Node) object.Object {
 	switch node := node.(type) {
 
 	// Statements
@@ -436,7 +442,7 @@ func (e *Evaluator) Eval(node ast.Node) object.Object {
 	return nil
 }
 
-func (e *Evaluator) evalProgram(program *ast.Program) object.Object {
+func (e *Task) evalProgram(program *ast.Program) object.Object {
 	//println("program")
 	var result object.Object
 
@@ -471,11 +477,11 @@ func (e *Evaluator) evalProgram(program *ast.Program) object.Object {
 	return result
 }
 
-func (e *Evaluator) LoadModule(modName string) (*object.Module, error) {
+func (e *Task) LoadModule(modName string) (*object.Module, error) {
 	return e.Runtime.LoadModule(modName)
 }
 
-func (e *Evaluator) mapIdentifiersToStrings(identifiers []*ast.Identifier) []string {
+func (e *Task) mapIdentifiersToStrings(identifiers []*ast.Identifier) []string {
 	parts := []string{}
 	for _, id := range identifiers {
 		parts = append(parts, id.Value)
@@ -483,7 +489,7 @@ func (e *Evaluator) mapIdentifiersToStrings(identifiers []*ast.Identifier) []str
 	return parts
 }
 
-func (e *Evaluator) newBlockEnv(block *ast.BlockStatement) *object.Environment {
+func (e *Task) newBlockEnv(block *ast.BlockStatement) *object.Environment {
 	// Create a new environment with an associated stack frame
 	blockEnv := object.NewEnclosedEnvironment(e.CurrentEnv(), &object.StackFrame{
 		Function: "block",
@@ -503,7 +509,7 @@ func (e *Evaluator) newBlockEnv(block *ast.BlockStatement) *object.Environment {
 	return blockEnv
 }
 
-func (e *Evaluator) evalBlockStatement(block *ast.BlockStatement) (result object.Object) {
+func (e *Task) evalBlockStatement(block *ast.BlockStatement) (result object.Object) {
 
 	blockEnv := e.newBlockEnv(block)
 	e.PushEnv(blockEnv)
@@ -512,7 +518,7 @@ func (e *Evaluator) evalBlockStatement(block *ast.BlockStatement) (result object
 	return e.PopEnv(result)
 }
 
-func (e *Evaluator) evalBlockStatementWithinEnv(block *ast.BlockStatement) (result object.Object) {
+func (e *Task) evalBlockStatementWithinEnv(block *ast.BlockStatement) (result object.Object) {
 
 	result = NIL
 
@@ -535,14 +541,14 @@ func (e *Evaluator) evalBlockStatementWithinEnv(block *ast.BlockStatement) (resu
 	return NIL
 }
 
-func (e *Evaluator) NativeBoolToBooleanObject(input bool) *object.Boolean {
+func (e *Task) NativeBoolToBooleanObject(input bool) *object.Boolean {
 	if input {
 		return TRUE
 	}
 	return FALSE
 }
 
-func (e *Evaluator) evalPrefixExpression(operator string, right object.Object) object.Object {
+func (e *Task) evalPrefixExpression(operator string, right object.Object) object.Object {
 	switch operator {
 	case "!":
 		return e.evalBangOperatorExpression(right)
@@ -556,7 +562,7 @@ func (e *Evaluator) evalPrefixExpression(operator string, right object.Object) o
 	}
 }
 
-func (e *Evaluator) evalInfixExpression(
+func (e *Task) evalInfixExpression(
 	operator string,
 	left, right object.Object,
 ) object.Object {
@@ -613,7 +619,7 @@ func (e *Evaluator) evalInfixExpression(
 	}
 }
 
-func (e *Evaluator) evalBangOperatorExpression(right object.Object) object.Object {
+func (e *Task) evalBangOperatorExpression(right object.Object) object.Object {
 	switch right {
 	case TRUE:
 		return FALSE
@@ -626,7 +632,7 @@ func (e *Evaluator) evalBangOperatorExpression(right object.Object) object.Objec
 	}
 }
 
-func (e *Evaluator) evalMinusPrefixOperatorExpression(right object.Object) object.Object {
+func (e *Task) evalMinusPrefixOperatorExpression(right object.Object) object.Object {
 	if right.Type() != object.NUMBER_OBJ {
 		return e.newErrorf("unknown operator: -%s", right.Type())
 	}
@@ -635,7 +641,7 @@ func (e *Evaluator) evalMinusPrefixOperatorExpression(right object.Object) objec
 	return &object.Number{Value: value.Neg()}
 }
 
-func (e *Evaluator) evalComplementPrefixOperatorExpression(right object.Object) object.Object {
+func (e *Task) evalComplementPrefixOperatorExpression(right object.Object) object.Object {
 	switch v := right.(type) {
 	case *object.Number:
 		value := v.Value
@@ -652,7 +658,7 @@ func (e *Evaluator) evalComplementPrefixOperatorExpression(right object.Object) 
 	}
 }
 
-func (e *Evaluator) evalShortCircuitInfixExpression(left object.Object, node *ast.InfixExpression) object.Object {
+func (e *Task) evalShortCircuitInfixExpression(left object.Object, node *ast.InfixExpression) object.Object {
 
 	// Short circuit based on left value and operator
 	switch node.Operator {
@@ -691,7 +697,7 @@ func (e *Evaluator) evalShortCircuitInfixExpression(left object.Object, node *as
 	}
 }
 
-func (e *Evaluator) evalBooleanInfixExpression(
+func (e *Task) evalBooleanInfixExpression(
 	operator string,
 	left, right object.Object,
 ) object.Object {
@@ -713,7 +719,7 @@ func (e *Evaluator) evalBooleanInfixExpression(
 	}
 }
 
-func (e *Evaluator) evalNumberInfixExpression(
+func (e *Task) evalNumberInfixExpression(
 	operator string,
 	left, right object.Object,
 ) object.Object {
@@ -759,7 +765,7 @@ func (e *Evaluator) evalNumberInfixExpression(
 	}
 }
 
-func (e *Evaluator) evalStringInfixExpression(
+func (e *Task) evalStringInfixExpression(
 	operator string,
 	left, right object.Object,
 ) object.Object {
@@ -788,7 +794,7 @@ func (e *Evaluator) evalStringInfixExpression(
 
 }
 
-func (e *Evaluator) evalStringPlusOtherInfixExpression(
+func (e *Task) evalStringPlusOtherInfixExpression(
 	operator string,
 	left, right object.Object,
 ) object.Object {
@@ -804,7 +810,7 @@ func (e *Evaluator) evalStringPlusOtherInfixExpression(
 	}
 }
 
-func (e *Evaluator) evalStringMultiplication(
+func (e *Task) evalStringMultiplication(
 	left, right object.Object,
 ) object.Object {
 	leftVal := left.(*object.String).Value
@@ -819,7 +825,7 @@ func (e *Evaluator) evalStringMultiplication(
 	return &object.String{Value: repeated}
 }
 
-func (e *Evaluator) evalListInfixExpression(
+func (e *Task) evalListInfixExpression(
 	operator string,
 	left, right object.Object,
 ) object.Object {
@@ -860,7 +866,7 @@ func (e *Evaluator) evalListInfixExpression(
 	}
 }
 
-func (e *Evaluator) evalBytesInfixExpression(
+func (e *Task) evalBytesInfixExpression(
 	operator string,
 	left, right object.Object,
 ) object.Object {
@@ -915,7 +921,7 @@ func (e *Evaluator) evalBytesInfixExpression(
 	}
 }
 
-func (e *Evaluator) doOp(right object.Object, left object.Object, op ByteOp) object.Object {
+func (e *Task) doOp(right object.Object, left object.Object, op ByteOp) object.Object {
 	bv, err := byteValue(right.(*object.Number))
 	if err != nil {
 		return e.newErrorf("cannot convert number to byte: %s", err.Error())
@@ -949,7 +955,7 @@ func performBitwiseByteOperation(leftVal, rightVal []byte, op ByteOp) object.Obj
 	return &object.Bytes{Value: out}
 }
 
-func (e *Evaluator) evalIfExpression(
+func (e *Task) evalIfExpression(
 	ie *ast.IfExpression,
 ) object.Object {
 	condition := e.Eval(ie.Condition)
@@ -966,7 +972,7 @@ func (e *Evaluator) evalIfExpression(
 	}
 }
 
-func (e *Evaluator) evalIdentifier(
+func (e *Task) evalIdentifier(
 	node *ast.Identifier,
 ) object.Object {
 
@@ -985,7 +991,7 @@ func (e *Evaluator) evalIdentifier(
 	return e.newErrorWithPos(node.Token.Position, "identifier not found: "+node.Value)
 }
 
-func (e *Evaluator) isTruthy(obj object.Object) bool {
+func (e *Task) isTruthy(obj object.Object) bool {
 	switch obj {
 	case NIL:
 		return false
@@ -998,16 +1004,16 @@ func (e *Evaluator) isTruthy(obj object.Object) bool {
 	}
 }
 
-func (e *Evaluator) NewError(format string, a ...interface{}) *object.Error {
+func (e *Task) NewError(format string, a ...interface{}) *object.Error {
 	return e.newErrorfWithPos(0, format, a...)
 }
 
-func (e *Evaluator) newErrorfWithPos(pos int, format string, a ...interface{}) *object.Error {
+func (e *Task) newErrorfWithPos(pos int, format string, a ...interface{}) *object.Error {
 	m := fmt.Sprintf(format, a...)
 	return e.newErrorWithPos(pos, m)
 }
 
-func (e *Evaluator) newErrorWithPos(pos int, m string) *object.Error {
+func (e *Task) newErrorWithPos(pos int, m string) *object.Error {
 
 	if pos == 0 {
 		return &object.Error{Message: m}
@@ -1027,19 +1033,19 @@ func (e *Evaluator) newErrorWithPos(pos int, m string) *object.Error {
 	return &object.Error{Message: errorMsg.String()}
 }
 
-func (e *Evaluator) newErrorf(format string, a ...interface{}) *object.Error {
+func (e *Task) newErrorf(format string, a ...interface{}) *object.Error {
 	msg := fmt.Sprintf(format, a...)
 	return &object.Error{Message: msg}
 }
 
-func (e *Evaluator) isError(obj object.Object) bool {
+func (e *Task) isError(obj object.Object) bool {
 	if obj != nil {
 		return obj.Type() == object.ERROR_OBJ
 	}
 	return false
 }
 
-func (e *Evaluator) evalExpressions(
+func (e *Task) evalExpressions(
 	exps []ast.Expression,
 ) []object.Object {
 	var result []object.Object
@@ -1055,7 +1061,7 @@ func (e *Evaluator) evalExpressions(
 	return result
 }
 
-func (e *Evaluator) ApplyFunction(pos int, fnName string, fnObj object.Object, args []object.Object) object.Object {
+func (e *Task) ApplyFunction(pos int, fnName string, fnObj object.Object, args []object.Object) object.Object {
 	switch fn := fnObj.(type) {
 	case *object.FunctionGroup:
 
@@ -1171,7 +1177,7 @@ func (e *Evaluator) ApplyFunction(pos int, fnName string, fnObj object.Object, a
 	}
 }
 
-func (e *Evaluator) extendFunctionEnv(
+func (e *Task) extendFunctionEnv(
 	fn *object.Function,
 	args []object.Object,
 ) *object.Environment {
@@ -1210,7 +1216,7 @@ func (e *Evaluator) extendFunctionEnv(
 	return env
 }
 
-func (e *Evaluator) rebindFunctionEnv(
+func (e *Task) rebindFunctionEnv(
 	env *object.Environment,
 	fn *object.Function,
 	args []object.Object,
@@ -1243,7 +1249,7 @@ func (e *Evaluator) rebindFunctionEnv(
 	}
 }
 
-func (e *Evaluator) unwrapReturnValue(obj object.Object) object.Object {
+func (e *Task) unwrapReturnValue(obj object.Object) object.Object {
 	if returnValue, ok := obj.(*object.ReturnValue); ok {
 		return returnValue.Value
 	}
@@ -1251,7 +1257,7 @@ func (e *Evaluator) unwrapReturnValue(obj object.Object) object.Object {
 	return obj
 }
 
-func (e *Evaluator) evalMapLiteral(
+func (e *Task) evalMapLiteral(
 	node *ast.MapLiteral,
 ) object.Object {
 	pairs := make(map[object.MapKey]object.MapPair)
@@ -1279,7 +1285,7 @@ func (e *Evaluator) evalMapLiteral(
 	return &object.Map{Pairs: pairs}
 }
 
-func (e *Evaluator) evalMatchExpression(node *ast.MatchExpression) object.Object {
+func (e *Task) evalMatchExpression(node *ast.MatchExpression) object.Object {
 	// Evaluate the match value if provided
 	var matchValue object.Object
 	if node.Value != nil {
@@ -1302,7 +1308,7 @@ func (e *Evaluator) evalMatchExpression(node *ast.MatchExpression) object.Object
 	return NIL
 }
 
-func (e *Evaluator) evalMatchCase(matchValue object.Object, matchCase *ast.MatchCase) (result object.Object, matched bool) {
+func (e *Task) evalMatchCase(matchValue object.Object, matchCase *ast.MatchCase) (result object.Object, matched bool) {
 	patternEnv := object.NewEnclosedEnvironment(e.CurrentEnv(), nil)
 	e.PushEnv(patternEnv)
 	result = nil
@@ -1346,7 +1352,7 @@ func (e *Evaluator) evalMatchCase(matchValue object.Object, matchCase *ast.Match
 
 // e.patternMatches checks if a value matches a pattern and binds variables.
 // pinEnv is the environment used for resolving pinned identifiers (^name); it must not include pattern bindings.
-func (e *Evaluator) patternMatches(
+func (e *Task) patternMatches(
 	pattern ast.MatchPattern,
 	value object.Object,
 	isConstant bool,
@@ -1550,7 +1556,7 @@ func (e *Evaluator) patternMatches(
 	return false, nil
 }
 
-func (e *Evaluator) patternMatchesList(
+func (e *Task) patternMatchesList(
 	env *object.Environment,
 	listPattern *ast.ListPattern,
 	list *object.List,
@@ -1614,7 +1620,7 @@ func (e *Evaluator) patternMatchesList(
 	return true, nil
 }
 
-func (e *Evaluator) patternMatchesBytes(
+func (e *Task) patternMatchesBytes(
 	env *object.Environment,
 	listPattern *ast.ListPattern,
 	bytes *object.Bytes,
@@ -1679,7 +1685,7 @@ func (e *Evaluator) patternMatchesBytes(
 }
 
 // evaluatePatternAsCondition evaluates patterns as conditions for valueless match
-func (e *Evaluator) evaluatePatternAsCondition(pattern ast.MatchPattern) bool {
+func (e *Task) evaluatePatternAsCondition(pattern ast.MatchPattern) bool {
 	switch p := pattern.(type) {
 	case *ast.WildcardPattern:
 		// Wildcard always matches
@@ -1715,7 +1721,7 @@ func (e *Evaluator) evaluatePatternAsCondition(pattern ast.MatchPattern) bool {
 }
 
 // objectsEqual compares two objects for equality
-func (e *Evaluator) objectsEqual(a, b object.Object) bool {
+func (e *Task) objectsEqual(a, b object.Object) bool {
 	if a.Type() != b.Type() {
 		return false
 	}
@@ -1779,7 +1785,7 @@ func (e *Evaluator) objectsEqual(a, b object.Object) bool {
 	return false
 }
 
-func (e *Evaluator) evalMapIndexExpression(pos int, obj, index object.Object) object.Object {
+func (e *Task) evalMapIndexExpression(pos int, obj, index object.Object) object.Object {
 	mapObj := obj.(*object.Map)
 
 	key, ok := index.(object.Hashable)
@@ -1795,7 +1801,7 @@ func (e *Evaluator) evalMapIndexExpression(pos int, obj, index object.Object) ob
 	return pair.Value
 }
 
-func (e *Evaluator) runtimeErrorAt(pos int, typ string, fields map[string]object.Object) *object.RuntimeError {
+func (e *Task) runtimeErrorAt(pos int, typ string, fields map[string]object.Object) *object.RuntimeError {
 	payload := &object.Map{}
 	payload.Put(&object.String{Value: "type"}, &object.String{Value: typ})
 	for k, v := range fields {
@@ -1805,7 +1811,7 @@ func (e *Evaluator) runtimeErrorAt(pos int, typ string, fields map[string]object
 	return e.runtimeError(pos, typ, payload)
 }
 
-func (e *Evaluator) evalThrowStatement(node *ast.ThrowStatement) object.Object {
+func (e *Task) evalThrowStatement(node *ast.ThrowStatement) object.Object {
 	val := e.Eval(node.Value)
 	if e.isError(val) {
 		return val
@@ -1813,7 +1819,7 @@ func (e *Evaluator) evalThrowStatement(node *ast.ThrowStatement) object.Object {
 	return e.runtimeError(node.Token.Position, "throw", val)
 }
 
-func (e *Evaluator) runtimeError(pos int, typ string, payload object.Object) *object.RuntimeError {
+func (e *Task) runtimeError(pos int, typ string, payload object.Object) *object.RuntimeError {
 	env := e.CurrentEnv()
 	return &object.RuntimeError{
 		Payload: payload,
@@ -1826,7 +1832,7 @@ func (e *Evaluator) runtimeError(pos int, typ string, payload object.Object) *ob
 	}
 }
 
-func (e *Evaluator) GatherStackTrace(frame *object.StackFrame) []*object.StackFrame {
+func (e *Task) GatherStackTrace(frame *object.StackFrame) []*object.StackFrame {
 	var trace []*object.StackFrame
 	if frame != nil {
 		trace = append(trace, frame)
@@ -1841,7 +1847,7 @@ func (e *Evaluator) GatherStackTrace(frame *object.StackFrame) []*object.StackFr
 	return trace // Already in correct order (most recent first)
 }
 
-func (e *Evaluator) evalIndexExpression(pos int, left, index object.Object) object.Object {
+func (e *Task) evalIndexExpression(pos int, left, index object.Object) object.Object {
 
 	switch {
 	case left.Type() == object.STRING_OBJ:
@@ -1874,7 +1880,7 @@ func (e *Evaluator) evalIndexExpression(pos int, left, index object.Object) obje
 	}
 }
 
-func (e *Evaluator) evalSliceExpression(node *ast.SliceExpression) object.Object {
+func (e *Task) evalSliceExpression(node *ast.SliceExpression) object.Object {
 	start := e.Eval(node.Start)
 	if e.isError(start) {
 		return start
@@ -1894,7 +1900,7 @@ func (e *Evaluator) evalSliceExpression(node *ast.SliceExpression) object.Object
 	}
 }
 
-func (e *Evaluator) evalListIndexExpression(pos int, list, index object.Object) object.Object {
+func (e *Task) evalListIndexExpression(pos int, list, index object.Object) object.Object {
 	listObject := list.(*object.List)
 	num, ok := index.(*object.Number)
 	if !ok {
@@ -1914,7 +1920,7 @@ func (e *Evaluator) evalListIndexExpression(pos int, list, index object.Object) 
 	return listObject.Elements[idx]
 }
 
-func (e *Evaluator) evalByteIndexExpression(list, index object.Object) object.Object {
+func (e *Task) evalByteIndexExpression(list, index object.Object) object.Object {
 	bytesObject := list.(*object.Bytes)
 	idx := index.(*object.Number).Value.ToInt64()
 	max := int64(len(bytesObject.Value) - 1)
@@ -1930,7 +1936,7 @@ func (e *Evaluator) evalByteIndexExpression(list, index object.Object) object.Ob
 	return &object.Number{Value: dec64.FromInt(int(bytesObject.Value[idx]))}
 }
 
-func (e *Evaluator) evalStringIndexExpression(pos int, str, index object.Object) object.Object {
+func (e *Task) evalStringIndexExpression(pos int, str, index object.Object) object.Object {
 	stringObject := str.(*object.String)
 	num, ok := index.(*object.Number)
 
@@ -1953,7 +1959,7 @@ func (e *Evaluator) evalStringIndexExpression(pos int, str, index object.Object)
 	return &object.String{Value: string(runes[idx])}
 }
 
-func (e *Evaluator) evalListSlice(elements []object.Object, slice *object.Slice) object.Object {
+func (e *Task) evalListSlice(elements []object.Object, slice *object.Slice) object.Object {
 	start, end, step := e.computeSliceIndices(len(elements), slice)
 	var result []object.Object
 	for i := start; i < end; i += step {
@@ -1962,7 +1968,7 @@ func (e *Evaluator) evalListSlice(elements []object.Object, slice *object.Slice)
 	return &object.List{Elements: result}
 }
 
-func (e *Evaluator) evalByteSlice(elements []byte, slice *object.Slice) object.Object {
+func (e *Task) evalByteSlice(elements []byte, slice *object.Slice) object.Object {
 	start, end, step := e.computeSliceIndices(len(elements), slice)
 	var result []byte
 	for i := start; i < end; i += step {
@@ -1971,7 +1977,7 @@ func (e *Evaluator) evalByteSlice(elements []byte, slice *object.Slice) object.O
 	return &object.Bytes{Value: result}
 }
 
-func (e *Evaluator) evalStringSlice(value string, slice *object.Slice) object.Object {
+func (e *Task) evalStringSlice(value string, slice *object.Slice) object.Object {
 	runes := []rune(value)
 	start, end, step := e.computeSliceIndices(len(runes), slice)
 	var b strings.Builder
@@ -1981,7 +1987,7 @@ func (e *Evaluator) evalStringSlice(value string, slice *object.Slice) object.Ob
 	return &object.String{Value: b.String()}
 }
 
-func (e *Evaluator) computeSliceIndices(length int, slice *object.Slice) (int, int, int) {
+func (e *Task) computeSliceIndices(length int, slice *object.Slice) (int, int, int) {
 	start := 0
 	end := length
 	step := 1
@@ -2016,14 +2022,14 @@ func (e *Evaluator) computeSliceIndices(length int, slice *object.Slice) (int, i
 	return start, end, step
 }
 
-func (e *Evaluator) evalForeignFunctionDeclaration(ff *ast.ForeignFunctionDeclaration) object.Object {
+func (e *Task) evalForeignFunctionDeclaration(ff *ast.ForeignFunctionDeclaration) object.Object {
 	env := e.CurrentEnv()
 	modulePath := env.ModuleFqn
 	functionName := ff.Name.Value
 
 	fqn := modulePath + "." + functionName
 
-	if foreignFn, exists := lookupForeign(fqn); exists {
+	if foreignFn, exists := e.Runtime.LookupForeign(fqn); exists {
 		foreignFn.Tags = e.evalTags(ff.Tags)
 		foreignFn.Parameters = ff.Parameters
 		foreignFn.Name = functionName
@@ -2038,27 +2044,23 @@ func (e *Evaluator) evalForeignFunctionDeclaration(ff *ast.ForeignFunctionDeclar
 	return e.newErrorfWithPos(ff.Token.Position, "unknown foreign function %s", fqn)
 }
 
-func (e *Evaluator) evalDefer(deferStmt *ast.DeferStatement) object.Object {
+func (e *Task) evalDefer(deferStmt *ast.DeferStatement) object.Object {
 	// Register the defer statement into the environment's defer stack
 	e.CurrentEnv().RegisterDefer(deferStmt)
 	return nil // Defer statements do not produce a direct result
 }
 
-func (e *Evaluator) evalSpawnExpression(node *ast.SpawnExpression) object.Object {
+func (e *Task) evalSpawnExpression(node *ast.SpawnExpression) object.Object {
 	currentEnv := e.CurrentEnv()
 	nurseryScope := e.currentNurseryScope()
 
-	handle := &object.TaskHandle{
-		ID:   e.NextHandleID(),
-		Done: make(chan struct{}),
-	}
-
-	// IMPORTANT: register child on the owner scope, not necessarily currentEnv
-	nurseryScope.AddChild(handle)
-
-	taskEval := &Evaluator{
+	taskEval := &Task{
 		Runtime: e.Runtime,
+		ID:      e.NextHandleID(),
+		Done:    make(chan struct{}),
 	}
+	// IMPORTANT: register child on the owner scope, not necessarily currentEnv
+	nurseryScope.AddChild(taskEval)
 	taskEval.PushNurseryScope(nurseryScope)
 	taskEnv := object.NewEnclosedEnvironment(currentEnv, nil)
 
@@ -2077,30 +2079,30 @@ func (e *Evaluator) evalSpawnExpression(node *ast.SpawnExpression) object.Object
 			result = taskEval.ApplyFunction(node.Token.Position, "spawned_task", fn, []object.Object{})
 		}
 		result = taskEval.PopEnv(result)
-		handle.Complete(result)
+		taskEval.Complete(result)
 
 		if taskEval.CurrentEnvStackSize() != 0 {
 			panic("task environment stack not empty after evaluation")
 		}
 
 		// Check for ANY error type to trigger fail-fast
-		if handle.Err != nil && !handle.Observed {
-			nurseryScope.NoteChildFailure(handle, handle.Err)
+		if taskEval.Err != nil && !taskEval.Observed {
+			nurseryScope.NoteChildFailure(taskEval, taskEval.Err)
 		} else if e.isError(result) {
-			nurseryScope.NoteChildFailure(handle, result)
+			nurseryScope.NoteChildFailure(taskEval, result)
 		}
 	}()
 
-	return handle
+	return taskEval
 }
 
-func (e *Evaluator) evalAwaitExpression(node *ast.AwaitExpression) object.Object {
+func (e *Task) evalAwaitExpression(node *ast.AwaitExpression) object.Object {
 	obj := e.Eval(node.Value)
 	if e.isError(obj) {
 		return obj
 	}
 
-	handle, ok := obj.(*object.TaskHandle)
+	handle, ok := obj.(*Task)
 	if !ok {
 		return e.newErrorfWithPos(node.Token.Position, "await expects a task handle, got %s", obj.Type())
 	}
@@ -2146,7 +2148,7 @@ func (e *Evaluator) evalAwaitExpression(node *ast.AwaitExpression) object.Object
 	return handle.Result
 }
 
-func (e *Evaluator) applyTagsIfPresent(tags []*ast.Tag, val object.Object) object.Object {
+func (e *Task) applyTagsIfPresent(tags []*ast.Tag, val object.Object) object.Object {
 	if tags != nil {
 		switch t := val.(type) {
 		case *object.Boolean:
@@ -2168,7 +2170,7 @@ func (e *Evaluator) applyTagsIfPresent(tags []*ast.Tag, val object.Object) objec
 	return val
 }
 
-func (e *Evaluator) evalTags(tags []*ast.Tag) map[string]object.List {
+func (e *Task) evalTags(tags []*ast.Tag) map[string]object.List {
 	result := make(map[string]object.List)
 	for _, tag := range tags {
 		var argList []object.Object
@@ -2197,4 +2199,43 @@ func byteValue(n *object.Number) (byte, error) {
 		return 0, errors.New("byte must be between 0 and 255, got " + n.Inspect())
 	}
 	return byte(value), nil
+}
+
+func (th *Task) Type() object.ObjectType { return object.TASK_HANDLE_OBJ }
+func (th *Task) Inspect() string {
+	return fmt.Sprintf("<task %d>", th.ID)
+}
+
+// Complete sets the result and signals any waiters
+func (th *Task) Complete(res object.Object) {
+	th.mu.Lock()
+	defer th.mu.Unlock()
+
+	if th.IsFinished {
+		return
+	}
+
+	if rtErr, ok := res.(*object.RuntimeError); ok {
+		th.Err = rtErr
+	} else {
+		th.Result = res
+	}
+
+	th.IsFinished = true
+	close(th.Done)
+}
+
+// Cancel force-settles the task as cancelled (idempotent).
+// The underlying goroutine may continue running, but its result is ignored.
+func (th *Task) Cancel(cause *object.RuntimeError, reason string) {
+	payload := &object.Map{}
+	payload.Put(&object.String{Value: "type"}, &object.String{Value: "cancelled"})
+	payload.Put(&object.String{Value: "reason"}, &object.String{Value: reason})
+
+	rt := &object.RuntimeError{
+		Payload: payload,
+		Cause:   cause,
+	}
+
+	th.Complete(rt)
 }

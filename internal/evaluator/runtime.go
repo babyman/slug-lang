@@ -3,19 +3,24 @@ package evaluator
 import (
 	"fmt"
 	"log/slog"
+	"math/rand"
 	"os"
 	"path/filepath"
+	"slug/internal/foreign"
 	"slug/internal/lexer"
 	"slug/internal/object"
 	"slug/internal/parser"
 	"slug/internal/util"
 	"strings"
+	"sync/atomic"
 )
 
 type Runtime struct {
-	Config   util.Configuration
-	Modules  map[string]*object.Module
-	Builtins map[string]*object.Foreign
+	Config           util.Configuration
+	Modules          map[string]*object.Module
+	Builtins         map[string]*object.Foreign
+	ForeignFunctions map[string]*object.Foreign
+	nextID           atomic.Int64
 }
 
 func NewRuntime(config util.Configuration) *Runtime {
@@ -28,10 +33,22 @@ func NewRuntime(config util.Configuration) *Runtime {
 	}
 
 	return &Runtime{
-		Config:   config,
-		Modules:  nil,
-		Builtins: builtinFunctions,
+		Config:           config,
+		Modules:          nil,
+		Builtins:         builtinFunctions,
+		ForeignFunctions: getForeignFunctions(),
 	}
+}
+
+func (r *Runtime) NextHandleID() int64 {
+	return r.nextID.Add(1)<<16 | int64(rand.Intn(0xFFFF))
+}
+
+func (r *Runtime) LookupForeign(name string) (*object.Foreign, bool) {
+	if fn, ok := r.ForeignFunctions[name]; ok {
+		return fn, true
+	}
+	return nil, false
 }
 
 func (r *Runtime) LoadModule(modName string) (*object.Module, error) {
@@ -131,10 +148,10 @@ func (r *Runtime) LoadModule(modName string) (*object.Module, error) {
 	// 5. Evaluate the module in its own environment
 	slog.Debug("loading module", slog.String("name", modName), slog.String("path", fullPath))
 
-	e := &Evaluator{
+	e := &Task{
 		Runtime: r,
 	}
-	e.PushNurseryScope(&object.NurseryScope{
+	e.PushNurseryScope(&NurseryScope{
 		Limit: make(chan struct{}, r.Config.DefaultLimit),
 	})
 	e.PushEnv(moduleEnv)
@@ -147,4 +164,12 @@ func (r *Runtime) LoadModule(modName string) (*object.Module, error) {
 	}
 
 	return module, nil
+}
+
+func getForeignFunctions() map[string]*object.Foreign {
+	foreignFunctions := map[string]*object.Foreign{}
+	for k, v := range foreign.GetForeignFunctions() {
+		foreignFunctions[k] = v
+	}
+	return foreignFunctions
 }
