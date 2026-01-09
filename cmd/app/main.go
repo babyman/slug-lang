@@ -112,9 +112,7 @@ func main() {
 	}
 	env.Define("args", &object.List{Elements: programArgs}, false, false)
 
-	rt := &evaluator.Runtime{
-		Config: config,
-	}
+	rt := evaluator.NewRuntime(config)
 	eval := &evaluator.Evaluator{
 		Runtime: rt,
 	}

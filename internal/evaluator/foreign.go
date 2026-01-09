@@ -5,14 +5,6 @@ import (
 	"slug/internal/object"
 )
 
-var builtins = map[string]*object.Foreign{
-	"import":     fnBuiltinImport(),
-	"len":        fnBuiltinLen(),
-	"print":      fnBuiltinPrint(),
-	"println":    fnBuiltinPrintLn(),
-	"stacktrace": fnBuiltinStacktrace(),
-}
-
 var foreignFunctions map[string]*object.Foreign
 
 func lookupForeign(name string) (*object.Foreign, bool) {

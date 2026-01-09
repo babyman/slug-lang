@@ -970,7 +970,7 @@ func (e *Evaluator) evalIdentifier(
 	node *ast.Identifier,
 ) object.Object {
 
-	if builtin, ok := builtins[node.Value]; ok {
+	if builtin, ok := e.Runtime.Builtins[node.Value]; ok {
 		return builtin
 	}
 

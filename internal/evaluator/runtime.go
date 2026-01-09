@@ -13,8 +13,25 @@ import (
 )
 
 type Runtime struct {
-	Config  util.Configuration
-	Modules map[string]*object.Module
+	Config   util.Configuration
+	Modules  map[string]*object.Module
+	Builtins map[string]*object.Foreign
+}
+
+func NewRuntime(config util.Configuration) *Runtime {
+	builtinFunctions := map[string]*object.Foreign{
+		"import":     fnBuiltinImport(),
+		"len":        fnBuiltinLen(),
+		"print":      fnBuiltinPrint(),
+		"println":    fnBuiltinPrintLn(),
+		"stacktrace": fnBuiltinStacktrace(),
+	}
+
+	return &Runtime{
+		Config:   config,
+		Modules:  nil,
+		Builtins: builtinFunctions,
+	}
 }
 
 func (r *Runtime) LoadModule(modName string) (*object.Module, error) {
