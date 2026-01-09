@@ -89,6 +89,18 @@ func (n *NurseryScope) AddChild(th *TaskHandle) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	n.Children = append(n.Children, th)
+	th.OwnerNursery = n
+}
+
+func (n *NurseryScope) RemoveChild(th *TaskHandle) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	for i, child := range n.Children {
+		if child == th {
+			n.Children = append(n.Children[:i], n.Children[i+1:]...)
+			break
+		}
+	}
 }
 
 // CancelChildren cancels all children except `except` (if non-nil).
@@ -136,25 +148,7 @@ func (n *NurseryScope) WaitChildren() {
 
 	for _, child := range children {
 		<-child.Done
-		println("child done", child.ID)
 	}
-}
-
-func (n *NurseryScope) ResetForTCO() {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-
-	var active []*TaskHandle
-	for _, ch := range n.Children {
-		select {
-		case <-ch.Done:
-			active = append(active, ch)
-		default:
-			// Task is complete, skip it
-		}
-	}
-	n.Children = active
-	//n.NurseryErr = nil
 }
 
 func (e *Environment) ResetForTCO() {

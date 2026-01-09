@@ -220,6 +220,7 @@ type TaskHandle struct {
 	Result       Object
 	Err          *RuntimeError
 	Done         chan struct{} // Closed when the task is finished
+	Observed     bool
 	IsFinished   bool
 	mu           sync.Mutex
 }

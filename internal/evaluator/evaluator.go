@@ -1229,7 +1229,6 @@ func (e *Evaluator) ApplyFunction(pos int, fnName string, fnObj object.Object, a
 			if tc, ok := result.(*object.TailCall); ok {
 				if tc.Function == fn {
 					blockEnv.ResetForTCO()
-					nurseryScope.ResetForTCO()
 					e.rebindFunctionEnv(argsEnv, fn, tc.Arguments)
 					continue
 				}
@@ -1243,7 +1242,6 @@ func (e *Evaluator) ApplyFunction(pos int, fnName string, fnObj object.Object, a
 				if tc, ok := rv.Value.(*object.TailCall); ok {
 					if tc.Function == fn {
 						blockEnv.ResetForTCO()
-						nurseryScope.ResetForTCO()
 						e.rebindFunctionEnv(argsEnv, fn, tc.Arguments)
 						continue
 					}
@@ -2212,7 +2210,7 @@ func (e *Evaluator) evalSpawnExpression(node *ast.SpawnExpression) object.Object
 		}
 
 		// Check for ANY error type to trigger fail-fast
-		if handle.Err != nil {
+		if handle.Err != nil && !handle.Observed {
 			nurseryScope.NoteChildFailure(handle, handle.Err)
 		} else if e.isError(result) {
 			nurseryScope.NoteChildFailure(handle, result)
@@ -2248,6 +2246,10 @@ func (e *Evaluator) evalAwaitExpression(node *ast.AwaitExpression) object.Object
 
 		timer := time.NewTimer(time.Duration(duration) * time.Millisecond)
 		defer timer.Stop()
+
+		handle.Observed = true
+		owner := handle.OwnerNursery
+		owner.RemoveChild(handle)
 
 		select {
 		case <-handle.Done:
