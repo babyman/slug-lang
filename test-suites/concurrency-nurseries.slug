@@ -1,0 +1,57 @@
+var {*} = import (
+    "slug.std",
+    "slug.time",
+    "slug.test",
+)
+
+var block = fn() {
+    sleep(50)
+}
+
+var a = async fn() {
+    await (spawn { block() })
+}
+
+@test
+var test_await_timeout_caught_by_defer_onerror = fn(){
+
+    var b = async fn() {
+        await (spawn { a() }) within 10
+    }
+
+    var f = async limit 10 fn(n) {
+        defer onerror(err) { "error handled" }
+        match n {
+            0 => "done"
+            a => {
+                spawn { b() }
+                sleep(20)
+                recur(n-1)
+            }
+        }
+    }
+
+    f(1) /> assertEqual("error handled")
+}
+
+@test
+var test_await_timeout_caught_by_defer_onerror_in_nested_function = fn(){
+
+    var b = async fn() {
+        defer onerror(err) { nil }
+        await (spawn { a() }) within 10
+    }
+
+    var f = async limit 10 fn(n) {
+        match n {
+            0 => "done"
+            a => {
+                spawn { b() }
+                sleep(20)
+                recur(n-1)
+            }
+        }
+    }
+
+    f(1) /> assertEqual("done")
+}
