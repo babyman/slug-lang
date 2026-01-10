@@ -1,16 +1,7 @@
-var {*} = import (
-    "slug.std"
-)
 
 var sayHi = fn(args) match {
     [] => println("Hello Slug!")
     [n, ...] => println("Hello {{n}}!")
 }
 
-//
-// if args is defined we have commandline params
-//
-match isDefined("args") {
-    true => args /> sayHi
-    _ => sayHi(nil)
-}
+sayHi(argv())

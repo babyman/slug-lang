@@ -165,3 +165,17 @@ func fnBuiltinStacktrace() *object.Foreign {
 		},
 	}
 }
+
+func fnBuiltinArgv() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			argv := ctx.GetConfiguration().Argv
+			elements := make([]object.Object, len(argv))
+			for i, arg := range argv {
+				elements[i] = &object.String{Value: arg}
+			}
+
+			return &object.List{Elements: elements}
+		},
+	}
+}

@@ -81,6 +81,7 @@ func main() {
 		DebugJsonAST: debugJsonAST,
 		DebugTxtAST:  debugTxtAST,
 		DefaultLimit: max(stdrt.NumCPU()*2, 4),
+		Argv:         flag.Args()[1:],
 	}
 
 	// 3. Tokenize & Parse
@@ -104,13 +105,6 @@ func main() {
 	env.Path = scriptPath
 	env.Src = string(source)
 	env.ModuleFqn = "<main>"
-
-	// Inject command line arguments into the environment as args[]
-	programArgs := []object.Object{}
-	for _, arg := range flag.Args()[1:] {
-		programArgs = append(programArgs, &object.String{Value: arg})
-	}
-	env.Define("args", &object.List{Elements: programArgs}, false, false)
 
 	rt := runtime.NewRuntime(config)
 	eval := &runtime.Task{
