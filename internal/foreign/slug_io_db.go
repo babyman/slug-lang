@@ -9,6 +9,7 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -211,8 +212,10 @@ func fnIoDbRollback() *object.Foreign {
 		},
 	}
 }
+
 func renderRows(rows *sql.Rows) object.Object {
 	columns, _ := rows.Columns()
+	types, _ := rows.ColumnTypes()
 	var resultRows []object.Object
 
 	for rows.Next() {
@@ -225,14 +228,19 @@ func renderRows(rows *sql.Rows) object.Object {
 
 		rowMap := &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}
 		for i, col := range columns {
-			rowMap.Put(&object.String{Value: col}, mapValue(values[i]))
+			// Pass column type info to help mapValue decide
+			var typeName string
+			if i < len(types) {
+				typeName = types[i].DatabaseTypeName()
+			}
+			rowMap.Put(&object.String{Value: col}, mapValue(values[i], typeName))
 		}
 		resultRows = append(resultRows, rowMap)
 	}
 	return &object.List{Elements: resultRows}
 }
 
-func mapValue(v interface{}) object.Object {
+func mapValue(v interface{}, dbType string) object.Object {
 	if v == nil {
 		return &object.Nil{}
 	}
@@ -243,7 +251,16 @@ func mapValue(v interface{}) object.Object {
 		d, _ := dec64.FromString(strconv.FormatFloat(x, 'f', -1, 64))
 		return &object.Number{Value: d}
 	case []byte:
-		return &object.Bytes{Value: x}
+		// If the DB type hints at text, or if it's not a BLOB-like type, treat as string
+		switch dbType {
+		case "TEXT", "VARCHAR", "CHAR", "LONGTEXT", "MEDIUMTEXT", "TINYTEXT":
+			return &object.String{Value: string(x)}
+		case "BLOB", "LONGBLOB", "MEDIUMBLOB", "TINYBLOB", "BINARY", "VARBINARY":
+			return &object.Bytes{Value: x}
+		default:
+			// Fallback: if it's valid UTF-8, it's probably a string the driver was being shy about
+			return &object.String{Value: string(x)}
+		}
 	case string:
 		return &object.String{Value: x}
 	case bool:
