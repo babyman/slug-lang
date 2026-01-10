@@ -1,4 +1,4 @@
-package evaluator
+package runtime
 
 import (
 	"slug/internal/object"

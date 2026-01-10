@@ -6,11 +6,11 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"runtime"
-	"slug/internal/evaluator"
+	stdrt "runtime"
 	"slug/internal/lexer"
 	"slug/internal/object"
 	"slug/internal/parser"
+	"slug/internal/runtime"
 	"slug/internal/util"
 )
 
@@ -80,7 +80,7 @@ func main() {
 		SlugHome:     os.Getenv("SLUG_HOME"),
 		DebugJsonAST: debugJsonAST,
 		DebugTxtAST:  debugTxtAST,
-		DefaultLimit: max(runtime.NumCPU()*2, 4),
+		DefaultLimit: max(stdrt.NumCPU()*2, 4),
 	}
 
 	// 3. Tokenize & Parse
@@ -112,11 +112,11 @@ func main() {
 	}
 	env.Define("args", &object.List{Elements: programArgs}, false, false)
 
-	rt := evaluator.NewRuntime(config)
-	eval := &evaluator.Task{
+	rt := runtime.NewRuntime(config)
+	eval := &runtime.Task{
 		Runtime: rt,
 	}
-	eval.PushNurseryScope(&evaluator.NurseryScope{
+	eval.PushNurseryScope(&runtime.NurseryScope{
 		Limit: make(chan struct{}, config.DefaultLimit),
 	})
 	eval.PushEnv(env)
