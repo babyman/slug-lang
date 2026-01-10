@@ -73,7 +73,7 @@ contexts:
       scope: keyword.control.concurrent.slug
 
     # Built-in functions
-    - match: \b(len|import|print|println|stacktrace|argv)\b
+    - match: \b(len|import|print|println|stacktrace|argv|cliArgs)\b
       scope: support.function.builtin.slug
 
     # Function calls
