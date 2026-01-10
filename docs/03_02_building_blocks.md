@@ -165,6 +165,109 @@ val textLength = len("hello");   // 5
   println("Welcome to Slug!");   // Outputs: Welcome to Slug!\n
 ```
 
+### Command-Line Arguments
+
+Slug provides two small, explicit builtins for working with command-line arguments:
+
+* `argv()` — raw arguments as a list (vector)
+* `argm()` — parsed arguments as a map
+
+These functions return **data only**. Slug does not impose schemas, validation rules, or side effects. Programs are
+expected to interpret arguments explicitly using normal language constructs such as `match`.
+
+---
+
+#### `argv()`
+
+```slug
+argv() -> list<string>
+```
+
+Returns the raw command-line arguments passed to the program, excluding the `slug` executable itself.
+
+##### Example
+
+```slug
+// slug playground.slug -abc --user john foo.txt
+
+argv()
+// => ["-abc", "--user", "john", "foo.txt"]
+```
+
+`argv()` is useful when:
+
+* you want full control over parsing
+* argument order matters
+* you are implementing custom or non-POSIX behavior
+
+---
+
+#### `argm()`
+
+```slug
+argm() -> { options: map, positional: list }
+```
+
+Returns a simple POSIX-style parse of the command-line arguments.
+
+##### Parsing behavior
+
+* Short flags are expanded:
+
+    * `-abc` → `{a: true, b: true, c: true}`
+* Long options capture values:
+
+    * `--user john` → `{user: "john"}`
+* Everything that is not an option is treated as positional
+* Order of positional arguments is preserved
+
+##### Example
+
+```slug
+// slug playground.slug -abc --user john foo.txt
+
+argm()
+// =>
+// {
+//   options: { a: true, b: true, c: true, user: "john" },
+//   positional: ["foo.txt"]
+// }
+```
+
+---
+
+#### Typical usage
+
+```slug
+var cli = argm()
+
+match cli.options {
+  {help: true} => showHelp()
+  {user: u} => run(u, cli.positional[0])
+  _ => fail("missing --user")
+}
+```
+
+This style keeps argument handling:
+
+* explicit
+* local to the program
+* easy to reason about
+* free of global state or hidden behavior
+
+---
+
+#### Design notes
+
+* `argv()` provides the lowest-level, raw view of arguments
+* `argm()` provides a small, opinion-free structural parse
+* No validation, defaults, aliases, or required fields are enforced
+* Higher-level argument specifications can be layered on later in the standard library
+
+This approach follows Slug’s philosophy:
+
+> **Small primitives, explicit data, no hidden control flow.**
+
 ---
 
 ### Variables in Slug
