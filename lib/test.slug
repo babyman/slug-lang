@@ -167,9 +167,5 @@ var run = fn(stats, ...modules) match {
 	_ => "Unrecognized modules parameter!"
 }
 
-match isDefined("args") {
-	true =>	run({run:0, fail:0, error:0}, ...args)
-	_    => "This is a command line tool, run with 'slug test ...'"
-}
-
+run({run:0, fail:0, error:0}, ...argv())
 

@@ -80,9 +80,9 @@ var assertEqual = fn(value, expected, msg = nil) {
     var t = value /> type()
 
     var same =
-        (t == LIST_TYPE   && equals(value, expected)) ||
-        (t == MAP_TYPE    && equals(value, expected)) ||
-        (value == expected)
+        (t == LIST_TYPE   && equals(value, expected))
+        || (t == MAP_TYPE    && equals(value, expected))
+        || (value == expected)
 
     if (same) {
         value
@@ -100,9 +100,9 @@ var assertNotEqual = fn(value, expected, msg = nil) {
     var t = value /> type()
 
     var same =
-        (t == LIST_TYPE   && equals(value, expected)) ||
-        (t == MAP_TYPE    && equals(value, expected)) ||
-        (value == expected)
+        (t == LIST_TYPE   && equals(value, expected))
+        || (t == MAP_TYPE    && equals(value, expected))
+        || (value == expected)
 
     if (!same) {
         value
