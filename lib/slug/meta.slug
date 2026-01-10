@@ -13,9 +13,3 @@ foreign searchModuleTags = fn(@str module, @str tag, @bool includePrivate = fals
 
 @export
 foreign searchScopeTags = fn(@str tag)
-
-@export
-foreign rebindScopeTags = fn(@str tag, @fun supplier = fn(name, value, tagParams) { value })
-
-@export
-foreign withEnv = fn(@fun f)

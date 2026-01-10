@@ -57,8 +57,6 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.meta.getTag":           fnMetaGetTag(),
 		"slug.meta.searchModuleTags": fnMetaSearchModuleTags(),
 		"slug.meta.searchScopeTags":  fnMetaSearchScopeTags(),
-		"slug.meta.rebindScopeTags":  fnMetaRebindScopeTags(),
-		"slug.meta.withEnv":          fnMetaWithEnv(),
 
 		"slug.regex.findAll":       fnRegexFindAll(),
 		"slug.regex.findAllGroups": fnRegexFindAllGroups(),
