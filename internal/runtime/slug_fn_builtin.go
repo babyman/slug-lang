@@ -182,7 +182,7 @@ func fnBuiltinArgv() *object.Foreign {
 	}
 }
 
-func fnBuiltinCliArgs() *object.Foreign {
+func fnBuiltinArgm() *object.Foreign {
 	return &object.Foreign{
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 

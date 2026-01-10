@@ -111,7 +111,7 @@ var map = fn(@list vs, @fun f, acc = []) match {
 	[[1,2,3,4], fn(v) { v % 2 == 0}], [2,4]
 )
 @export
-var filter = fn(@list vs, f, acc = []) match {
+var filter = fn(@list vs, @fun f, @list acc = []) match {
 	[[], ...] => acc
 	[[h, ...t], ...] if h /> f() => recur(t, f, acc :+ h)
 	[[h, ...t], ...] => recur(t, f, acc)
@@ -123,9 +123,21 @@ var filter = fn(@list vs, f, acc = []) match {
 	[[1,2,3], 9, fn(a,b) {a+b}], 15,
 )
 @export
-var reduce = fn(@list vs, v, f) match {
+var reduce = fn(@list vs, v, @fun f) match {
 	[[], ...] => v
 	[[h, ...t], ...] => recur(t, f(v, h), f)
+}
+
+@export
+var find = fn(@list xs, @fun f) match {
+	[[], ...] => nil
+	[[h, ...t], ...] => {
+		if (f(h)) {
+			h
+		} else {
+			recur(t, f)
+		}
+	}
 }
 
 @testWith(

@@ -26,7 +26,7 @@ type Runtime struct {
 func NewRuntime(config util.Configuration) *Runtime {
 	builtinFunctions := map[string]*object.Foreign{
 		"argv":       fnBuiltinArgv(),
-		"cliArgs":    fnBuiltinCliArgs(),
+		"argm":       fnBuiltinArgm(),
 		"import":     fnBuiltinImport(),
 		"len":        fnBuiltinLen(),
 		"print":      fnBuiltinPrint(),

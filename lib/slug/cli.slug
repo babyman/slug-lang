@@ -1,121 +1,14 @@
 var {*} = import(
 	"slug.std",
-	"slug.string",
-	"slug.list",
-	"slug.meta",
-	"slug.math",
-	"slug.string"
 )
 
-val SHORT_ARG = "-"
-val LONG_ARG = "--"
-
-val PARAM_TAG = "@parameters"
-val HELP_TAG = "@help"
-val OPTION_TAG = "@option"
-
 @export
-var applyOptions = fn(@list args) {
-	if(args && len(args) > 0) {
-		var [opts, params] = parseArgs(args)
-
-		if(len(params) > 0) {
-			rebindScopeTags(PARAM_TAG, fn(n, v, p) { params })
-		}
-		rebindScopeTags(OPTION_TAG, fn(name, value, tagParams) {
-			readValue(tagParams[0].arg, opts)
-				/> convertValue(value /> type())
-				/> ifNil(value)
-		})
-	}
-}
-
-@export
-var versionMessage = fn() {
-	var helpOpts = searchScopeTags(HELP_TAG)[0] /> nonNil(getBoundValue, "")
-	var name = helpOpts /> name
-	var version = helpOpts /> version
-	"{{name}} v{{version}}"
-}
-
-@export
-var helpMessage = fn() {
-	var helpTxt = searchScopeTags(HELP_TAG)[0] /> nonNil(getBoundValue, "")
-	var pairs = searchScopeTags(OPTION_TAG) /> map(fn(v) {
-			[argString(v[BINDING_PARAMS][0].arg), getDesc(v)]
-		})
-	var maxLen = max(...pairs /> map(fn(v) { len(v[0]) }))
-	var opts = pairs /> map(fn(v) {"  " + padRight(v[0], " ", maxLen) + "  " + v[1]})
-		/> sort()
-		/> join("\n")
-	if (len(opts) > 0) {
-		opts = "Options:\n" + opts
-	}
-	"{{helpTxt}}\n{{opts}}"
-}
-
-
-var getBoundValue = fn(v) {v[BINDING_VALUE]}
-
-
-@testWith(
-	[[]], [{}, []],
-	[["-a"]], [{a:true}, []],
-	[["-a", "1"]], [{a:"1"}, []],
-	[["-ab"]], [{a:true, b:true}, []],
-	[["--ab=1"]], [{ab:"1"}, []],
-	[["--ab", "1"]], [{ab:"1"}, []],
-	[["1"]], [{}, ["1"]],
-	[["-a", "true", "foo", "bar"]], [{a:"true"}, ["foo", "bar"]],
-	// -- reads remaining args as parameters
-	[["--", "-a", "1"]], [{}, ["-a", "1"]]
-)
-var parseArgs = fn(@list arguments, @num i = 0, @map opts = {}, @list params = []) {
-	if (len(arguments) > i) {
-		if (arguments[i] == LONG_ARG) {
-			[opts, params + arguments[i+1:]]
-		} else if (arguments[i] /> startsWith(LONG_ARG)) {
-			val k = arguments[i][2:] /> split("=", 2)
-			var v = true
-			if (len(k) > 1) {
-				v = k[1]
-			} else if (i + 1 < len(arguments) && !arguments[i + 1] /> startsWith(SHORT_ARG)) {
-				v = arguments[i + 1]
-				i = i + 1
-			}
-			recur(arguments, i + 1, opts /> put(k[0], v), params)
-		} else if (arguments[i] /> startsWith(SHORT_ARG)) {
-			val key = arguments[i][1:]
-			if(len(key) == 1 && i + 1 < len(arguments) && !arguments[i+1] /> startsWith(SHORT_ARG)) {
-				recur(arguments, i + 2, opts /> put(key, arguments[i+1]), params)
-			} else {
-				val newOpts = key /> asList() /> reduce(opts, fn(a,b) { a /> put(b, true) })
-				recur(arguments, i + 1, newOpts, params)
-			}
-		} else {
-			recur(arguments, i + 1, opts, params :+ arguments[i])
-		}
+var option = fn(...args) {
+	if ( len(args) == 0 ) {
+		nil
 	} else {
-		[opts, params]
-	}
-}
-
-@testWith(
-	["k", {}], nil,
-	["k", {k:1}], 1
-)
-var readValue = fn(@str arg, @map opts) {
-	opts[arg]
-}
-
-@testWith(
-	[["k"], {}], nil,
-	[["k"], {k:1}], 1
-)
-var readValue = fn(@list args, @map opts) {
-	match args {
-		nil, [] => nil
-		[h, ...t] => readValue(h, opts) /> ifNil(fn() {readValue(t, opts)})
+		var t = args[-1] /> type
+		args /> find(fn(v) { v != nil }) /> convertValue(t)
 	}
 }
 
@@ -130,27 +23,10 @@ var readValue = fn(@list args, @map opts) {
 	["123", STRING_TYPE], "123"
 )
 var convertValue = fn(newValue, targetType) match {
-	[nv, tt] if tt == nv /> type() => nv
-	[nv, ^NIL_TYPE]     => nv
+	[nv, tt] if type(nv) == tt => nv
+	[nv, ^NIL_TYPE]     => nil
 	[nv, ^BOOLEAN_TYPE] => toBoolean(nv)
 	[nv, ^NUMBER_TYPE]  => toNumber(nv)
 	[nv, ^STRING_TYPE]  => toString(nv)
 	[nv, tt] => throw {type: "error", msg:"Cannot convert '{{nv}}' to type {{tt}}"}
-}
-
-var argString = fn(@str arg) {
-	match len(arg) {
-		1 => SHORT_ARG + arg
-		_ => LONG_ARG + arg
-	}
-}
-
-var argString = fn(@list arg) {
-	arg /> map(argString) /> join(" ")
-}
-
-var getDesc = fn(tuple) {
-	val desc = tuple[BINDING_PARAMS][0].description /> ifNil("")
-	val default = "[default: {{ tuple[BINDING_VALUE] }}]."
-	"{{desc}} {{default}}" /> trim()
 }
