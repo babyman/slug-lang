@@ -125,13 +125,13 @@ func PutList(resultMap *object.Map, key string, val []object.Object) {
 	putObj(resultMap, key, &object.List{Elements: val})
 }
 
-//func PutBool(resultMap *object.Map, key string, val bool) {
-//	if val {
-//		putObj(resultMap, key, evaluator.TRUE)
-//	} else {
-//		putObj(resultMap, key, evaluator.FALSE)
-//	}
-//}
+func PutBool(resultMap *object.Map, key string, val bool) {
+	if val {
+		putObj(resultMap, key, object.TRUE)
+	} else {
+		putObj(resultMap, key, object.FALSE)
+	}
+}
 
 // ToNative converts a Slug object to its closest matching Go value.
 func ToNative(obj object.Object) interface{} {

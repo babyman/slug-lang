@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"slug/internal/dec64"
+	"slug/internal/foreign"
 	"slug/internal/object"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -176,6 +178,82 @@ func fnBuiltinArgv() *object.Foreign {
 			}
 
 			return &object.List{Elements: elements}
+		},
+	}
+}
+
+func fnBuiltinCliArgs() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+
+			argv := ctx.GetConfiguration().Argv
+			positionals := &object.List{Elements: []object.Object{}}
+			options := &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}
+
+			parsingOptions := true
+			i := 0
+			for i < len(argv) {
+				arg := argv[i]
+
+				if !parsingOptions {
+					positionals.Elements = append(positionals.Elements, &object.String{Value: arg})
+					i++
+					continue
+				}
+
+				if arg == "--" {
+					parsingOptions = false
+					i++
+					continue
+				}
+
+				if strings.HasPrefix(arg, "--") {
+					// Long option
+					name := arg[2:]
+
+					if idx := strings.IndexByte(name, '='); idx != -1 {
+						foreign.PutString(options, name, name[idx+1:])
+					} else {
+						resolvedName := name
+						// If next arg doesn't start with '-', it's a value
+						if i+1 < len(argv) && !strings.HasPrefix(argv[i+1], "-") {
+							foreign.PutString(options, resolvedName, argv[i+1])
+							i++
+						} else {
+							foreign.PutBool(options, resolvedName, true)
+						}
+					}
+					i++
+				} else if len(arg) > 1 && arg[0] == '-' {
+					// Short options
+					key := arg[1:]
+					if len(key) == 1 {
+						resolved := key
+						// If exactly one char and next arg isn't an option, it's a value
+						if i+1 < len(argv) && !strings.HasPrefix(argv[i+1], "-") {
+							foreign.PutString(options, resolved, argv[i+1])
+							i += 2
+						} else {
+							foreign.PutBool(options, resolved, true)
+							i++
+						}
+					} else {
+						// Multiple chars: treat all as boolean flags
+						for _, char := range key {
+							foreign.PutBool(options, string(char), true)
+						}
+						i++
+					}
+				} else {
+					positionals.Elements = append(positionals.Elements, &object.String{Value: arg})
+					i++
+				}
+			}
+
+			res := &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}
+			res.Put(&object.String{Value: "options"}, options)
+			res.Put(&object.String{Value: "positional"}, positionals)
+			return res
 		},
 	}
 }
