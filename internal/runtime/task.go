@@ -16,12 +16,6 @@ import (
 	"time"
 )
 
-var (
-	NIL   = &object.Nil{}
-	TRUE  = &object.Boolean{Value: true}
-	FALSE = &object.Boolean{Value: false}
-)
-
 const (
 	precision        = 14
 	roundingStrategy = dec64.RoundHalfUp
@@ -62,7 +56,7 @@ func (e *Task) GetConfiguration() util.Configuration {
 }
 
 func (e *Task) Nil() *object.Nil {
-	return NIL
+	return object.NIL
 }
 
 func (e *Task) PushEnv(env *object.Environment) {
@@ -241,7 +235,7 @@ func (e *Task) Eval(node ast.Node) object.Object {
 		return e.NativeBoolToBooleanObject(node.Value)
 
 	case *ast.Nil:
-		return NIL
+		return object.NIL
 
 	case *ast.PrefixExpression:
 		right := e.Eval(node.Right)
@@ -520,7 +514,7 @@ func (e *Task) evalBlockStatement(block *ast.BlockStatement) (result object.Obje
 
 func (e *Task) evalBlockStatementWithinEnv(block *ast.BlockStatement) (result object.Object) {
 
-	result = NIL
+	result = object.NIL
 
 	for _, statement := range block.Statements {
 
@@ -538,14 +532,14 @@ func (e *Task) evalBlockStatementWithinEnv(block *ast.BlockStatement) (result ob
 	if result != nil {
 		return result
 	}
-	return NIL
+	return object.NIL
 }
 
 func (e *Task) NativeBoolToBooleanObject(input bool) *object.Boolean {
 	if input {
-		return TRUE
+		return object.TRUE
 	}
-	return FALSE
+	return object.FALSE
 }
 
 func (e *Task) evalPrefixExpression(operator string, right object.Object) object.Object {
@@ -621,14 +615,14 @@ func (e *Task) evalInfixExpression(
 
 func (e *Task) evalBangOperatorExpression(right object.Object) object.Object {
 	switch right {
-	case TRUE:
-		return FALSE
-	case FALSE:
-		return TRUE
-	case NIL:
-		return TRUE
+	case object.TRUE:
+		return object.FALSE
+	case object.FALSE:
+		return object.TRUE
+	case object.NIL:
+		return object.TRUE
 	default:
-		return FALSE
+		return object.FALSE
 	}
 }
 
@@ -665,7 +659,7 @@ func (e *Task) evalShortCircuitInfixExpression(left object.Object, node *ast.Inf
 	case "&&":
 		// If left is false, return false without evaluating right
 		if !e.isTruthy(left) {
-			return FALSE
+			return object.FALSE
 		}
 		// Otherwise, evaluate and return right
 		right := e.Eval(node.Right)
@@ -673,14 +667,14 @@ func (e *Task) evalShortCircuitInfixExpression(left object.Object, node *ast.Inf
 			return right
 		}
 		if e.isTruthy(right) {
-			return TRUE
+			return object.TRUE
 		}
-		return FALSE
+		return object.FALSE
 
 	case "||":
 		// If left is true, return true without evaluating right
 		if e.isTruthy(left) {
-			return TRUE
+			return object.TRUE
 		}
 		// Otherwise, evaluate and return right
 		right := e.Eval(node.Right)
@@ -688,9 +682,9 @@ func (e *Task) evalShortCircuitInfixExpression(left object.Object, node *ast.Inf
 			return right
 		}
 		if e.isTruthy(right) {
-			return TRUE
+			return object.TRUE
 		}
-		return FALSE
+		return object.FALSE
 
 	default:
 		return e.newErrorfWithPos(node.Token.Position, "unknown operator for short-circuit evaluation: %s", node.Operator)
@@ -968,7 +962,7 @@ func (e *Task) evalIfExpression(
 	} else if ie.ElseBranch != nil {
 		return e.Eval(ie.ElseBranch)
 	} else {
-		return NIL
+		return object.NIL
 	}
 }
 
@@ -993,11 +987,11 @@ func (e *Task) evalIdentifier(
 
 func (e *Task) isTruthy(obj object.Object) bool {
 	switch obj {
-	case NIL:
+	case object.NIL:
 		return false
-	case TRUE:
+	case object.TRUE:
 		return true
-	case FALSE:
+	case object.FALSE:
 		return false
 	default:
 		return true
@@ -1206,7 +1200,7 @@ func (e *Task) extendFunctionEnv(
 				defaultValue := e.Eval(param.Default)
 				env.Define(param.Name.Value, defaultValue, false, false)
 			} else {
-				env.Define(param.Name.Value, NIL, false, false)
+				env.Define(param.Name.Value, object.NIL, false, false)
 			}
 		} else {
 			env.Define(param.Name.Value, args[i], false, false)
@@ -1238,7 +1232,7 @@ func (e *Task) rebindFunctionEnv(
 			if param.Default != nil {
 				val = e.Eval(param.Default)
 			} else {
-				val = NIL
+				val = object.NIL
 			}
 		} else {
 			val = args[i]
@@ -1305,7 +1299,7 @@ func (e *Task) evalMatchExpression(node *ast.MatchExpression) object.Object {
 	}
 
 	// No match found
-	return NIL
+	return object.NIL
 }
 
 func (e *Task) evalMatchCase(matchValue object.Object, matchCase *ast.MatchCase) (result object.Object, matched bool) {
@@ -1795,7 +1789,7 @@ func (e *Task) evalMapIndexExpression(pos int, obj, index object.Object) object.
 
 	pair, ok := mapObj.Pairs[key.MapKey()]
 	if !ok {
-		return NIL
+		return object.NIL
 	}
 
 	return pair.Value
@@ -1914,7 +1908,7 @@ func (e *Task) evalListIndexExpression(pos int, list, index object.Object) objec
 	}
 
 	if idx < 0 || idx > max {
-		return NIL
+		return object.NIL
 	}
 
 	return listObject.Elements[idx]
@@ -1930,7 +1924,7 @@ func (e *Task) evalByteIndexExpression(list, index object.Object) object.Object 
 	}
 
 	if idx < 0 || idx > max {
-		return NIL
+		return object.NIL
 	}
 
 	return &object.Number{Value: dec64.FromInt(int(bytesObject.Value[idx]))}
@@ -1953,7 +1947,7 @@ func (e *Task) evalStringIndexExpression(pos int, str, index object.Object) obje
 	}
 
 	if idx < 0 || idx > max {
-		return NIL
+		return object.NIL
 	}
 
 	return &object.String{Value: string(runes[idx])}
@@ -2039,7 +2033,7 @@ func (e *Task) evalForeignFunctionDeclaration(ff *ast.ForeignFunctionDeclaration
 		if err != nil {
 			return e.newErrorWithPos(ff.Token.Position, err.Error())
 		}
-		return NIL
+		return object.NIL
 	}
 	return e.newErrorfWithPos(ff.Token.Position, "unknown foreign function %s", fqn)
 }

@@ -54,6 +54,12 @@ var TypeTags = map[string]string{
 	TASK_TAG:     TASK_HANDLE_OBJ,
 }
 
+var (
+	NIL   = &Nil{}
+	TRUE  = &Boolean{Value: true}
+	FALSE = &Boolean{Value: false}
+)
+
 // EvaluatorContext provides the bridge between native Go code and the interpreter,
 // allowing Foreign Function Interface (FFI) implementations to access the current
 // execution context and helper methods.
@@ -537,6 +543,17 @@ func (m *Map) Put(k Hashable, v Object) *Map {
 		Value: v,
 	}
 	return m
+}
+func (m *Map) PutPair(k MapKey, v MapPair) *Map {
+	if m.Pairs == nil {
+		m.Pairs = map[MapKey]MapPair{}
+	}
+	m.Pairs[k] = v
+	return m
+}
+func (m *Map) Get(k Hashable) (Object, bool) {
+	pair, ok := m.Pairs[k.MapKey()]
+	return pair.Value, ok
 }
 func (m *Map) HasTag(tag string) bool {
 	return hasTag(tag, m.Tags)
