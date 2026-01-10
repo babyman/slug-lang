@@ -3,7 +3,7 @@ var {*} = import(
 )
 
 @export
-var option = fn(...args) {
+var opt = fn(...args) {
 	if ( len(args) == 0 ) {
 		nil
 	} else {
