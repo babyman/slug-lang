@@ -1,0 +1,70 @@
+# ADR 001: Unified Configuration via `cfg()` Builtin
+
+## Status
+
+Accepted
+
+## Context
+
+Slug modules frequently require configuration (ports, database URLs, feature flags). Traditionally, this involves manual
+handling of environment variables, parsing various config file formats, and managing CLI flags. This lack of a unified
+approach leads to inconsistent behavior across modules and makes deployment (especially in containers/CI) more complex
+than necessary.
+
+## Decision
+
+We will implement a unified, layered configuration system accessible via a single builtin function: `cfg(key, default)`.
+
+### 1. The `cfg()` API
+
+The API is designed to be minimal but enforce best practices:
+
+* **Signature**: `cfg(@str key, any default)`
+* **Mandatory Defaults**: The second argument is required. This ensures all configuration points are documented in the
+  source code and prevents "missing config" runtime crashes.
+* **Type Coercion**: If a configuration value is retrieved as a string (common for CLI/ENV), the system attempts to
+  coerce it into the type of the provided `default`.
+
+### 2. Precedence Layers
+
+Values are merged at startup in the following order (highest wins):
+
+1. **CLI Arguments**: `--key=value` or `-k=value`.
+2. **Environment Variables**: Prefixed with `SLUG__`, using `__` as a dot delimiter (e.g., `SLUG__db__port=5432` maps to
+   `db.port`).
+3. **Local Config**: `./slug.toml` in the execution directory.
+4. **Global Config**: `$SLUG_HOME/lib/slug.toml`.
+5. **In-code Default**: The second argument passed to the `cfg()` call.
+
+### 3. Key Resolution & Namespacing
+
+To avoid collisions and reduce verbosity, keys follow these resolution rules:
+
+* **Absolute Keys**: If the key contains a dot (e.g., `cfg("db.url", ...)`), it is treated as an absolute path in the
+  config store.
+* **Module-Local Keys**: If the key contains no dot (e.g., `cfg("port", ...)`), it is automatically prefixed with the
+  current module's FQN (e.g., `slug.http.port`).
+* **CLI Sugar**: CLI flags passed to the entry script (the "Main Module") without dots are automatically namespaced to
+  that module, allowing for clean syntax like `--port=8080`.
+
+## Consequences
+
+### Positive
+
+* **Consistency**: All Slug modules use the same configuration idioms.
+* **Visibility**: Developers can see intended configuration and fallback values directly in the source code.
+* **DevOps Friendly**: Every setting can be overridden via Environment Variables or CLI flags without modifying code or
+  files.
+* **Bootstrapping**: Applications can run with zero configuration files by relying on the mandatory in-code defaults.
+
+### Negative
+
+* **Implicit Magic**: New users might find the automatic module-prefixing of keys confusing until they understand the
+  namespacing convention.
+* **Startup Overhead**: Building the flattened configuration store adds a small, one-time latency at the start of the
+  process.
+
+### Neutral
+
+* **Static Configuration**: The configuration is "frozen" at startup. Changes to environment variables or TOML files
+  after the process has started will not be reflected until a restart.

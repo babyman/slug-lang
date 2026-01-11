@@ -3,6 +3,7 @@ package util
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 )
@@ -15,6 +16,7 @@ type Configuration struct {
 	DebugJsonAST bool
 	DebugTxtAST  bool
 	DefaultLimit int
+	MainModule   string // The entry point module name (e.g., "slug.server")
 	Store        *ConfigStore
 }
 
@@ -22,13 +24,12 @@ type ConfigStore struct {
 	Values map[string]interface{}
 }
 
-func NewConfigStore(rootPath, slugHome string) *ConfigStore {
+func NewConfigStore(rootPath, slugHome string, mainModule string, argv []string) *ConfigStore {
 	store := &ConfigStore{
 		Values: make(map[string]interface{}),
 	}
 
-	// Paths in precedence order (last one wins in a simple merge,
-	// but here we apply from least to most specific).
+	// Layer 1: Config Files (Lowest Precedence)
 	searchPaths := []string{}
 	if slugHome != "" {
 		searchPaths = append(searchPaths, filepath.Join(slugHome, "lib", "slug.toml"))
@@ -44,6 +45,30 @@ func NewConfigStore(rootPath, slugHome string) *ConfigStore {
 				mergeMaps(store.Values, data, "")
 			}
 		}
+	}
+
+	// Layer 2: Environment Variables (SLUG__ prefix)
+	for _, env := range os.Environ() {
+		if strings.HasPrefix(env, "SLUG__") {
+			pair := strings.SplitN(env, "=", 2)
+			if len(pair) == 2 {
+				// SLUG__slug__server__port -> slug.server.port
+				key := strings.TrimPrefix(pair[0], "SLUG__")
+				key = strings.ReplaceAll(key, "__", ".")
+				store.Values[key] = pair[1]
+			}
+		}
+	}
+
+	// Layer 3: CLI Parameters (using consistent parser)
+	options, _ := ParseArgs(argv)
+	for key, value := range options {
+		resolvedKey := key
+		// CLI Sugar: expand module-local keys if no dot is present
+		if !strings.Contains(key, ".") && mainModule != "" && mainModule != "<main>" {
+			resolvedKey = mainModule + "." + key
+		}
+		store.Values[resolvedKey] = value
 	}
 
 	return store

@@ -3,6 +3,7 @@ package util
 import (
 	"bytes"
 	"fmt"
+	"strings"
 )
 
 func GetLineAndColumn(src string, pos int) (line int, column int) {
@@ -84,4 +85,62 @@ func replaceVisibleWithSpaces(s string) string {
 		}
 	}
 	return buf.String()
+}
+
+func ParseArgs(argv []string) (map[string]string, []string) {
+	options := make(map[string]string)
+	positionals := []string{}
+
+	parsingOptions := true
+	i := 0
+	for i < len(argv) {
+		arg := argv[i]
+
+		if !parsingOptions {
+			positionals = append(positionals, arg)
+			i++
+			continue
+		}
+
+		if arg == "--" {
+			parsingOptions = false
+			i++
+			continue
+		}
+
+		if strings.HasPrefix(arg, "--") {
+			name := arg[2:]
+			if idx := strings.IndexByte(name, '='); idx != -1 {
+				options[name[:idx]] = name[idx+1:]
+			} else {
+				if i+1 < len(argv) && !strings.HasPrefix(argv[i+1], "-") {
+					options[name] = argv[i+1]
+					i++
+				} else {
+					options[name] = "true"
+				}
+			}
+			i++
+		} else if len(arg) > 1 && arg[0] == '-' {
+			key := arg[1:]
+			if len(key) == 1 {
+				if i+1 < len(argv) && !strings.HasPrefix(argv[i+1], "-") {
+					options[key] = argv[i+1]
+					i += 2
+				} else {
+					options[key] = "true"
+					i++
+				}
+			} else {
+				for _, char := range key {
+					options[string(char)] = "true"
+				}
+				i++
+			}
+		} else {
+			positionals = append(positionals, arg)
+			i++
+		}
+	}
+	return options, positionals
 }

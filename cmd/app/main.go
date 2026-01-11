@@ -12,6 +12,7 @@ import (
 	"slug/internal/parser"
 	"slug/internal/runtime"
 	"slug/internal/util"
+	"strings"
 )
 
 var (
@@ -74,6 +75,13 @@ func main() {
 	if rootPath != "" {
 		resolvedRootPath, _ = filepath.Abs(rootPath)
 	}
+
+	// Determine the main module name for CLI sugar
+	mainModule := targetName
+	if strings.HasSuffix(mainModule, ".slug") {
+		mainModule = strings.TrimSuffix(mainModule, ".slug")
+	}
+
 	config := util.Configuration{
 		Version:      Version,
 		RootPath:     resolvedRootPath,
@@ -82,6 +90,7 @@ func main() {
 		DebugTxtAST:  debugTxtAST,
 		DefaultLimit: max(stdrt.NumCPU()*2, 4),
 		Argv:         flag.Args()[1:],
+		MainModule:   mainModule,
 	}
 
 	// 3. Tokenize & Parse
@@ -104,7 +113,7 @@ func main() {
 	// Child environments inherit these via NewEnclosedEnvironment.
 	env.Path = scriptPath
 	env.Src = string(source)
-	env.ModuleFqn = "<main>"
+	env.ModuleFqn = mainModule
 
 	rt := runtime.NewRuntime(config)
 	eval := &runtime.Task{
