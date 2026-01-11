@@ -34,8 +34,7 @@ var delta = fn(f) {
 )
 @export
 var secsToMillis = fn(@num secs) {
-    // secs * 1000
-    secs * cfg("secs", 1000)
+    secs * 1000
 }
 
 // minsToMillis converts minutes to milliseconds 
