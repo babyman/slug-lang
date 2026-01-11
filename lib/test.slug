@@ -45,10 +45,10 @@ val Reset = reset
 
 var timer = delta(clock)
 
-
 var passed = fn(@str msg) {
-	// todo make this a "verbose" commandline parameter
-	// println("  [{{Pass}}PASS{{Reset}}] {{msg}}")
+	if (cfg("verbose", false)) {
+		println("  [{{Pass}}PASS{{Reset}}] {{msg}}")
+	}
 }
 
 var runTestFn = fn(f, name, stats) {
@@ -140,8 +140,7 @@ var renderResult = fn(stats) {
 *******************************************************************************
 {{Reset}}
 """
-
-		} else {
+	} else {
 """
 {{Pass}}
 Results:
@@ -151,7 +150,7 @@ Tests run: {{stats.run}}, Failures: {{stats.fail}}, Errors: {{stats.error}}
 Total time {{timer()}}ms
 {{Reset}}
 """
-		}
+	}
 }
 
 var run = fn(stats, ...modules) match {
