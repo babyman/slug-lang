@@ -24,9 +24,13 @@ type Runtime struct {
 }
 
 func NewRuntime(config util.Configuration) *Runtime {
+
+	config.Store = util.NewConfigStore(config.RootPath, config.SlugHome)
+
 	builtinFunctions := map[string]*object.Foreign{
 		"argv":       fnBuiltinArgv(),
 		"argm":       fnBuiltinArgm(),
+		"cfg":        fnBuiltinCfg(),
 		"import":     fnBuiltinImport(),
 		"len":        fnBuiltinLen(),
 		"print":      fnBuiltinPrint(),

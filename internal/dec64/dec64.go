@@ -69,6 +69,61 @@ func FromInt64(coef int64) Dec64 {
 	return normalizeTowardZero(coef, exp)
 }
 
+// FromFloat64 converts a float64 to Dec64.
+// It handles special cases (NaN, Inf, zero) and attempts to preserve precision
+// by scaling the float to an integer coefficient with appropriate exponent.
+func FromFloat64(f float64) Dec64 {
+	// Handle special cases
+	if math.IsNaN(f) {
+		return NAN
+	}
+	if math.IsInf(f, 0) {
+		return NAN // Or could return MAX/MIN based on sign
+	}
+	if f == 0.0 {
+		return ZERO
+	}
+
+	// Handle negative values
+	neg := f < 0
+	if neg {
+		f = -f
+	}
+
+	// Find appropriate scaling to convert to integer coefficient
+	// Start with the float as-is and adjust exponent
+	exp := int8(0)
+	coef := f
+
+	// Scale up to eliminate fractional part (up to a reasonable precision)
+	const maxPrecision = 15 // float64 has ~15-17 decimal digits of precision
+	for exp > -maxPrecision && coef != math.Floor(coef) {
+		coef *= 10
+		exp--
+	}
+
+	// Convert to int64
+	coefInt := int64(math.Round(coef))
+
+	// Apply sign
+	if neg {
+		coefInt = -coefInt
+	}
+
+	// Ensure coefficient fits in 56-bit range
+	for (coefInt > MAX_COEFF || coefInt < MIN_COEFF) && exp < 127 {
+		coefInt /= 10
+		exp++
+	}
+
+	// Check if still out of range
+	if coefInt > MAX_COEFF || coefInt < MIN_COEFF {
+		return NAN
+	}
+
+	return normalizeTowardZero(coefInt, exp)
+}
+
 func FromString(s string) (Dec64, error) {
 	s = strings.TrimSpace(s)
 	if s == "" {

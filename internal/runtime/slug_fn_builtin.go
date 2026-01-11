@@ -257,3 +257,64 @@ func fnBuiltinArgm() *object.Foreign {
 		},
 	}
 }
+
+func fnBuiltinCfg() *object.Foreign {
+	return &object.Foreign{
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			// Enforce exactly 2 arguments: key and default
+			if len(args) != 2 {
+				return ctx.NewError("cfg() requires 2 arguments: cfg(key, default). got=%d", len(args))
+			}
+
+			keyObj, ok := args[0].(*object.String)
+			if !ok {
+				return ctx.NewError("first argument to cfg() must be a string key")
+			}
+			key := keyObj.Value
+			defaultValue := args[1]
+
+			// Logic for local vs absolute keys
+			if !strings.Contains(key, ".") {
+				moduleName := ctx.CurrentEnv().ModuleFqn
+				if moduleName != "" && moduleName != "<main>" {
+					key = moduleName + "." + key
+				}
+			}
+
+			store := ctx.GetConfiguration().Store
+			val, found := store.Get(key)
+
+			if !found {
+				// Key not in TOML, use the required default
+				return defaultValue
+			}
+
+			// Convert Go type from TOML to Slug Object
+			return nativeToSlugObject(val)
+		},
+	}
+}
+
+func nativeToSlugObject(val interface{}) object.Object {
+	switch v := val.(type) {
+	case string:
+		return &object.String{Value: v}
+	case int64:
+		return &object.Number{Value: dec64.FromInt64(v)}
+	case float64:
+		return &object.Number{Value: dec64.FromFloat64(v)}
+	case bool:
+		if v {
+			return object.TRUE
+		}
+		return object.FALSE
+	case []interface{}:
+		elements := make([]object.Object, len(v))
+		for i, item := range v {
+			elements[i] = nativeToSlugObject(item)
+		}
+		return &object.List{Elements: elements}
+	default:
+		return object.NIL
+	}
+}

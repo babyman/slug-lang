@@ -11,7 +11,7 @@ run:
 
 live:
 	# requires `entr` see https://eradman.com/entrproject/
-	find . \( -name "*.slug" -o -name "*.go" \) | entr -r time go run ./cmd/app/ $(ARGS)
+	find . \( -name "*.slug" -o -name "*.go" -o -name "*.toml" \) | entr -r time go run ./cmd/app/ $(ARGS)
 
 stress:
 	@for i in `seq 1 100`; do \
