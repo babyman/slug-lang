@@ -2056,7 +2056,10 @@ func (e *Task) evalSpawnExpression(node *ast.SpawnExpression) object.Object {
 	// IMPORTANT: register child on the owner scope, not necessarily currentEnv
 	nurseryScope.AddChild(taskEval)
 	taskEval.PushNurseryScope(nurseryScope)
-	taskEnv := object.NewEnclosedEnvironment(currentEnv, nil)
+
+	// Use ShallowCopy to capture current local variables.
+	// This prevents ResetForTCO from wiping variables that the spawned task needs.
+	taskEnv := currentEnv.ShallowCopy()
 
 	go func() {
 		// lexical limit lookup (currentEnv chain)

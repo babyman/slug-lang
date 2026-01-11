@@ -83,6 +83,26 @@ func (e *Environment) ResetForTCO() {
 	e.Defers = nil
 }
 
+func (e *Environment) ShallowCopy() *Environment {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	newEnv := &Environment{
+		ID:        nextEnvID(),
+		Bindings:  make(map[string]*Binding, len(e.Bindings)),
+		Outer:     e.Outer,
+		Src:       e.Src,
+		Path:      e.Path,
+		ModuleFqn: e.ModuleFqn,
+	}
+
+	for k, v := range e.Bindings {
+		newEnv.Bindings[k] = v
+	}
+
+	return newEnv
+}
+
 func (e *Environment) GetBinding(name string) (*Binding, bool) {
 	e.mu.RLock()
 	binding, ok := e.Bindings[name]

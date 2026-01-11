@@ -55,3 +55,22 @@ var test_await_timeout_caught_by_defer_onerror_in_nested_function = fn(){
 
     f(1) /> assertEqual("done")
 }
+
+
+@test
+var test_await_timeout_caught_by_defer_onerror_in_nested_function = fn(){
+
+    var c = 0
+    var f = async limit 10 fn(n) {
+        match n {
+            0 => "done"
+            a => {
+                c = n
+                recur(n-1)
+            }
+        }
+    }
+
+    f(1) /> assertEqual("done")
+    c /> assertEqual(1)
+}
