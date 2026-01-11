@@ -1,4 +1,4 @@
-# ADR 004 - Environment Shallow Capture for Spawned Tasks
+# ADR 010 - Environment Shallow Capture for Spawned Tasks
 
 ## Status
 

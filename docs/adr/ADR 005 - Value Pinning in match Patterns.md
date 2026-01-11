@@ -1,0 +1,146 @@
+# ADR 005 – Value Pinning in `match` Patterns
+
+## Status
+
+Accepted
+
+## Context
+
+Slug supports structural pattern matching with variable binding, literal matching, and guard clauses.
+Identifiers in patterns currently **always bind**, while literal values match by equality.
+
+This creates a limitation: it is not possible to match against an **existing value from scope** without using a guard
+clause. While guards solve the problem functionally, they are verbose and separate value constraints from the pattern
+itself.
+
+Several alternative approaches were considered, including implicit constant matching and extended guard syntax, but
+these approaches introduce ambiguity, magic, or duplication.
+
+Slug’s design philosophy prioritizes:
+
+* Explicit over implicit behaviour
+* Lexical clarity
+* Simple, declarative pattern matching
+* Predictable semantics with minimal grammar expansion
+
+A clear, explicit mechanism is required to distinguish **binding** from **value comparison** within patterns.
+
+## Decision
+
+Introduce **value pinning** in `match` patterns using the `^` prefix.
+
+### Pinned Identifier Syntax
+
+```slug
+^name
+```
+
+A pinned identifier matches against the existing value of `name` in the current lexical scope instead of binding a new
+variable.
+
+### Pattern Semantics
+
+Within a pattern:
+
+| Form                           | Meaning                         |
+|--------------------------------|---------------------------------|
+| `name`                         | Bind a new variable             |
+| Literal (`"v"`, `123`, `true`) | Match by value                  |
+| `^name`                        | Match against an existing value |
+| `_`                            | Ignore                          |
+| `...`                          | Match remaining list elements   |
+
+Identifiers **always bind by default**.
+Pinning explicitly opts out of binding.
+
+### Scope Resolution Rules
+
+* Pinned identifiers must already exist in the enclosing lexical scope
+* Pinned identifiers are resolved **before** pattern bindings occur
+* Pinned identifiers cannot be shadowed by bindings in the same pattern
+* If a pinned identifier is undefined, the match arm is invalid
+
+### Map Patterns
+
+```slug
+val expected = "v1";
+
+match map {
+    {k1:^expected, k2} => ...
+    _ => ...
+}
+```
+
+The pattern matches only if `map.k1 == expected`.
+
+### List Patterns
+
+```slug
+val expected = "v1";
+
+match list {
+    [^expected, h2, ...] => ...
+    _ => ...
+}
+```
+
+The pattern matches only if the first list element equals `expected`.
+
+### Guards and Pinning
+
+Pinning complements guard clauses but does not replace them.
+
+* Patterns express **structure and fixed values**
+* Guards express **logical conditions**
+
+```slug
+{ k1:^expected, k2 } if k2 != "" => ...
+```
+
+### Restrictions
+
+To keep patterns declarative and predictable:
+
+* Pinned identifiers are atomic only
+
+    * No expressions: `^a + b` ❌
+    * No destructuring: `^x:y` ❌
+* `...` must remain the final element in list patterns
+* Pinning performs equality comparison only
+
+### Failure Behaviour
+
+If a pinned value comparison fails:
+
+* The pattern is considered non-matching
+* Evaluation continues to the next match arm
+* Guards for that arm are not evaluated
+
+## Consequences
+
+### Positive
+
+* Eliminates ambiguity between binding and comparison
+* Reduces guard verbosity
+* Preserves explicit and lexical semantics
+* Aligns with proven designs in Erlang and Elixir
+* Works uniformly across map and list patterns
+* Minimal parser and matcher changes
+
+### Negative
+
+* Introduces a new syntactic form (`^`)
+* Requires users to learn an additional pattern concept
+
+### Neutral
+
+* Does not change existing pattern behaviour
+* Does not deprecate guard clauses
+* Does not affect runtime evaluation model
+* Does not introduce implicit constant resolution
+
+## Summary
+
+Value pinning provides a clear, explicit, and minimal mechanism to match against existing values in Slug patterns.
+It preserves Slug’s declarative pattern model while significantly improving expressiveness and readability.
+

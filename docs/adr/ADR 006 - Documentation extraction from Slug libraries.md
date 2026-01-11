@@ -1,0 +1,109 @@
+# ADR 006 - Documentation extraction from Slug libraries (/// + @export → Markdown)
+
+## Status
+
+Proposed
+
+## Context
+
+Slug libraries are growing, and we want documentation to stay close to the code, remain easy to read in-source, and be
+trivial to publish (README / docs site / GitHub rendering).
+
+We also want the documentation system to:
+
+- Fit Slug’s “simple, explicit, minimal” philosophy.
+- Avoid a heavy annotation system or separate doc DSL.
+- Produce good-looking Markdown with minimal author effort.
+- Encourage small, runnable examples (especially using the new `/>` trail operator).
+- Keep implementation complexity low enough that `slugdoc` can be a small, reliable tool.
+
+## Decision
+
+We will extract Markdown documentation directly from Slug source files using a small set of conventions:
+
+### 1) Doc comment format: `///`
+
+Only triple-slash comments are considered documentation.
+
+- `///` lines immediately above a declaration attach to that declaration.
+- A contiguous block of `///` lines forms the doc block.
+- Regular comments (`//`, `#`, etc. if they exist) are ignored by the doc extractor.
+
+### 2) What gets documented: `@export` only
+
+The generated Markdown will include **only exported symbols**.
+
+- A declaration is included in docs if it is annotated with `@export`.
+- Non-exported declarations may still have `///` comments, but they are not emitted into docs.
+
+### 3) Module-level docs: file header doc block
+
+A `///` block at the top of the file (before the first declaration) is treated as the **module header**.
+
+- The module header may contain Markdown, including headings and fenced code blocks.
+- This block is emitted at the top of the generated `.md`.
+
+### 4) Markdown preservation
+
+Doc blocks are treated as **Markdown-first**.
+
+- The extractor preserves doc text “as written” (minus the leading `/// ` prefix).
+- Fenced code blocks (including ```slug) are preserved verbatim.
+- The extractor may normalize spacing (e.g., trimming trailing whitespace), but must not rewrite Markdown structure.
+
+### 5) Lightweight tags inside doc blocks
+
+Within doc blocks, these optional tags are recognized (as plain text lines):
+
+- `@since <version>`
+- `@deprecated <message?>`
+- `@see <symbol>`
+- `@note <text>`
+- `@warn <text>`
+- `@todo <text>`
+
+These tags are emitted in Markdown in a consistent, friendly format (e.g., “Since …”, “Deprecated …”, “See also …”).
+
+Unknown `@tag`s are preserved as plain text (not an error).
+
+### 6) Function signature display
+
+For each exported function, the extractor outputs a heading and a compact signature line:
+
+- Heading: `## <name>(<params...>)`
+- Signature line may include any available parameter names (and optional type tags if present in source).
+- The tool does not require type information; it must work with today’s Slug.
+
+### 7) Output structure
+
+Generated Markdown is:
+
+1. Module title/header (from file-level doc block, if present)
+2. One section per exported symbol, in source order:
+    - `## name(params)`
+    - Summary paragraph(s)
+    - Example blocks (if present)
+    - Tag output (`Since`, `Deprecated`, `See also`, notes/warnings)
+
+## Consequences
+
+### Positive
+
+- Documentation stays close to code and is hard to let drift.
+- Minimal author overhead: `///` + `@export` is enough for excellent docs.
+- Markdown output looks great in GitHub and docs sites without extra tooling.
+- Works immediately with Slug as it exists today (no modules/structs required).
+- Encourages consistent examples and showcases idioms like the `/>` trail operator.
+
+### Negative
+
+- `///` becomes reserved for documentation; alternative doc styles are not supported.
+- Only exported symbols are documented by default; documenting internals requires changing export status or adding a
+  future “internal docs” mode.
+- Without a richer type system, signatures may be shallow (names only) until Slug grows more metadata.
+
+### Neutral
+
+- Doc tags (`@since`, `@see`, etc.) are a convention inside Markdown, not “real” language annotations.
+- The doc extractor remains tolerant: unknown tags are not errors.
+- Formatting is intentionally simple and stable; “pretty printing” is out of scope.

@@ -1,0 +1,157 @@
+# ADR 001 - Function chaining with the trail operator (`/>`)
+
+## Status
+
+Accepted
+
+## Context
+
+Slug encourages clear, explicit code that is easy to read, reason about, and refactor.
+As Slug codebases grew, a recurring need emerged for readable function chaining and
+left-to-right data flow, especially when composing small, reusable functions.
+
+Using `.` for chaining (e.g. `"foo".len().println()`) introduced several issues:
+
+- Ambiguity between field access, function calls, and future namespaces.
+- Unintended behavior changes when maps contain functions with the same names as globals.
+- Poor readability when namespaces and chaining mix (e.g. `9.math.double().println()`).
+- Increased parser and evaluator complexity for what is fundamentally function composition.
+
+Slug needed a way to express *value flow* without overloading `.` or introducing implicit behavior.
+
+## Decision
+
+Slug introduces a new operator: the **trail operator** (`/>`).
+
+The trail operator expresses left-to-right function application, where the value on the
+left is passed as the first argument to the expression on the right.
+
+```slug
+a /> f
+````
+
+is equivalent to:
+
+```slug
+f(a)
+```
+
+Chained trails associate left-to-right:
+
+```slug
+a /> f /> g
+```
+
+is equivalent to:
+
+```slug
+g(f(a))
+```
+
+The operator is purely syntactic sugar and does not introduce new runtime semantics.
+
+## Examples
+
+```slug
+10 /> double /> println("is 20")
+
+[1, 2, 3]
+    /> sum
+    /> println("total")
+
+10 /> map.double /> lst[1] /> println("is 40")
+```
+
+These examples read in execution order, matching how values move through the program.
+
+## Semantics
+
+* `/>` is a binary operator.
+* The left-hand side is evaluated first.
+* The result is passed as the **first argument** to the right-hand expression.
+* The right-hand side must evaluate to a callable expression.
+* Additional arguments on the right-hand side are preserved.
+
+Example:
+
+```slug
+x /> f(a, b)
+```
+
+desugars to:
+
+```slug
+f(x, a, b)
+```
+
+## Desugaring
+
+The trail operator is desugared during parsing or an early AST-lowering phase.
+
+Example AST transformation:
+
+```slug
+a /> f /> g
+```
+
+↓
+
+```slug
+g(f(a))
+```
+
+No special handling is required in the evaluator beyond standard function calls.
+
+## Design Rationale
+
+### Why not `.` chaining?
+
+* `.` implies ownership, fields, or methods.
+* Slug currently has only maps and functions.
+* Overloading `.` introduced subtle and surprising behavior changes.
+* Future features (modules, structs, namespaces) would further complicate semantics.
+
+### Why not `|`?
+
+* Conflicts with bitwise OR.
+* Creates ambiguity with logical operators.
+* Harder to parse cleanly in expressions.
+
+### Why `/>`?
+
+* Visually conveys *flow* and *motion*.
+* Easy to type.
+* Does not conflict with existing operators.
+* Reads naturally left-to-right.
+* Distinctive and idiomatic to Slug.
+* Avoids semantic overloading of existing syntax.
+
+The operator also aligns aesthetically with Slug’s identity: a clear trail of transformations,
+rather than nested calls or object-style chaining.
+
+## Consequences
+
+### Positive
+
+* Greatly improves readability of composed function calls.
+* Eliminates ambiguity between chaining, lookup, and invocation.
+* Keeps the evaluator and runtime model simple.
+* Works uniformly with global functions, map lookups, and future constructs.
+* Encourages a functional, compositional style consistent with Slug’s philosophy.
+
+### Negative
+
+* Introduces a new operator users must learn.
+* Some users may initially look for `.`-style chaining out of habit.
+
+### Neutral
+
+* `/>` is optional; traditional function calls remain fully supported.
+* The operator is syntax-only and does not affect runtime performance.
+* Future language features (modules, structs, namespaces) can be added without redefining `/>`.
+
+## Notes
+
+The trail operator is intentionally limited to **value flow**, not function composition.
+Future operators (e.g. function-to-function composition) may be introduced separately
+if a clear use case emerges.
