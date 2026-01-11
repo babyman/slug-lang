@@ -270,6 +270,82 @@ This approach follows Slug’s philosophy:
 
 ---
 
+### Unified Configuration
+
+Slug provides a unified way to handle configuration through the `cfg()` builtin. Instead of manually parsing environment
+variables or configuration files, you use a single function to access settings with built-in support for layering and
+type coercion.
+
+---
+
+#### `cfg()`
+
+```
+cfg(key: string, default: any) -> any
+```
+
+Retrieves a configuration value for the given `key`. If the value is not found in any configuration layer, the `default`
+value is returned.
+
+##### Mandatory Defaults
+
+The `default` argument is **required**. This ensures that:
+
+* Every configuration point is explicitly documented in the source code.
+* The application has a safe fallback, preventing "missing config" crashes at runtime.
+* The system knows what type to expect (e.g., if the default is `8080`, an environment variable `"9000"` will be
+  automatically coerced to the number `9000`).
+
+---
+
+#### Precedence Layers
+
+Slug merges configuration from multiple sources at startup. If a key exists in multiple places, the highest layer wins:
+
+1. **CLI Arguments**: `--key=value` or `-k=value`.
+2. **Environment Variables**: Prefixed with `SLUG__`, using `__` as a dot delimiter (e.g., `SLUG__db__port=5432` maps to
+   `db.port`).
+3. **Local Config**: A `slug.toml` file in the current execution directory.
+4. **Global Config**: A `slug.toml` file located in `$SLUG_HOME/lib/`.
+5. **In-code Default**: The fallback value provided directly to the `cfg()` function.
+
+---
+
+#### Key Resolution and Namespacing
+
+To keep configuration organized and prevent collisions between different modules, Slug uses a simple namespacing rule:
+
+* **Module-Local Keys**: If the key contains no dots (e.g., `cfg("port", 80)`), it is automatically prefixed with the
+  current module's name (e.g., `my_app.port`).
+* **Absolute Keys**: If the key contains a dot (e.g., `cfg("db.url", "localhost")`), it is treated as an absolute path
+  in the configuration store.
+
+##### Example
+
+```
+// In a module named 'server'
+val port = cfg("port", 8080)
+val dbUrl = cfg("db.url", "postgres://localhost:5432")
+
+println("Starting server on {{port}} connecting to {{dbUrl}}")
+```
+
+To override these without changing code:
+
+* **CLI**: `slug main.slug --port=9000 --db.url=prod-db:5432`
+* **Env**: `export SLUG__server__port=9000`
+
+---
+
+#### Design Notes
+
+* **Frozen at Startup**: Configuration is read once when the program starts. Changing environment variables or TOML
+  files while the program is running will not affect existing `cfg()` calls until the program is restarted.
+* **Small Primitives**: `cfg()` replaces the need for boilerplate "config loader" logic, keeping your entry points clean
+  and declarative.
+* **Type Safety**: Because Slug uses the default value to determine the type, you don't need to manually call
+  `parseNumber` on environment variables.
+
 ### Variables in Slug
 
 Slug supports two types of variable declarations:
