@@ -1,4 +1,4 @@
-# ADR 001: Unified Configuration via `cfg()` Builtin
+# ADR 001 - Unified Configuration via `cfg()` Builtin
 
 ## Status
 
