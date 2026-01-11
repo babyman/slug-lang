@@ -1,4 +1,4 @@
-# ADR 009 – Structured Concurrency Model for Slug
+# ADR 010 – Structured Concurrency Model for Slug
 
 ## Status
 
