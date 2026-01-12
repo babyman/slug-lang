@@ -1,5 +1,5 @@
 ---
-title: Function chaining with the trail operator (`/>`)
+title: ADR 001 - Function chaining with the trail operator (`/>`)
 ---
 # ADR 001 - Function chaining with the trail operator (`/>`)
 
