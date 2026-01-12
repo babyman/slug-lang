@@ -2,6 +2,12 @@ remote_theme: dieghernan/chulapa
 
 plugins:
   - jekyll-remote-theme
+  - jekyll-paginate
+  - jekyll-sitemap
+  - jekyll-gist
+  - jekyll-feed
+  - jemoji
+  - jekyll-include-cache
 
 markdown: kramdown
 kramdown:
