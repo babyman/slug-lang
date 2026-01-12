@@ -1,4 +1,5 @@
-remote_theme: pages-themes/cayman@v0.2.0
+remote_theme: dieghernan/chulapa
+
 plugins:
   - jekyll-remote-theme
 
@@ -11,3 +12,13 @@ baseurl: ""
 
 title: Slug
 description: a small opinionated programming language!
+repository: https://github.com/babyman/slug-lang
+
+og_image: /assets/no_shell.jpeg
+
+author:
+  name: Knuckles
+
+chulapa-skin:
+  skin: twitter-dim
+  highlight:  github.dark
