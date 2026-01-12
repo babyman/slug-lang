@@ -27,4 +27,24 @@ author:
 
 chulapa-skin:
   skin: twitter-dim
-  highlight:  github.dark
+  highlight: coffee
+
+navbar:
+  style: dual
+  brand:
+    title: Slug
+    #    img: "./assets/img/site/brand-clear.png"
+    url: /
+  nav:
+    - title: ADRs #Label
+      url: /adr/  #url
+#    - title: Two-level link #Label
+#      child:
+#        - title: Second level first item
+#          url: /url2-1
+#        - title: Second level second item
+#          url: /url2-2
+#    - title: One-level link #Label
+#      url: /url1/  #url
+#        ... more levels
+
