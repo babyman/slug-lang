@@ -27,17 +27,17 @@ author:
 
 chulapa-skin:
   skin: twitter-dim
-  highlight: coffee
+#  highlight: coffee
 
 navbar:
-  style: dual
+  style: classic
   brand:
     title: Slug
     #    img: "./assets/img/site/brand-clear.png"
     url: /
   nav:
     - title: ADRs #Label
-      url: /adr/  #url
+      url: /adrs.html  #url
 #    - title: Two-level link #Label
 #      child:
 #        - title: Second level first item
@@ -48,3 +48,15 @@ navbar:
 #      url: /url1/  #url
 #        ... more levels
 
+collections:
+#  demo:
+#    output: true
+#    permalink: /demo/:name
+  adrs:
+    output: true
+#    permalink: /adr/:name
+#  skins:
+#    output: true
+#    permalink: /skins/:name
+#collections_dir     : docs/collections
+#permalink           : /:year:month:day_:title/

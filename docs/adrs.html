@@ -1,0 +1,13 @@
+---
+layout: default
+title: ADRs
+---
+<h1>ADRs</h1>
+
+<ul>
+    {% for adr in site.adrs %}
+    <li>
+        <a href="{{ adr.url }}">{{ adr.title }}</a>
+    </li>
+    {% endfor %}
+</ul>
