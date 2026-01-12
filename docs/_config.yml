@@ -60,3 +60,12 @@ collections:
 #    permalink: /skins/:name
 #collections_dir     : docs/collections
 #permalink           : /:year:month:day_:title/
+
+# Defaults https://jekyllrb.com/docs/configuration/front-matter-defaults/
+defaults:
+  -
+    scope:
+      path: ""
+    values:
+      layout: "default"
+      header_type: "base"

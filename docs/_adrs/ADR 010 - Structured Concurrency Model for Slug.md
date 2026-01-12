@@ -1,3 +1,7 @@
+---
+code: ADR010
+title: Structured Concurrency Model for Slug
+---
 # ADR 010 – Structured Concurrency Model for Slug
 
 ## Status

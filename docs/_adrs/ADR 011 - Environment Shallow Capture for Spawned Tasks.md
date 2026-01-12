@@ -1,3 +1,7 @@
+---
+code: ADR011
+title: Environment Shallow Capture for Spawned Tasks
+---
 # ADR 011 - Environment Shallow Capture for Spawned Tasks
 
 ## Status

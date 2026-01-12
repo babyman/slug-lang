@@ -7,7 +7,7 @@ title: ADRs
 <ul>
     {% for adr in site.adrs %}
     <li>
-        <a href="{{ adr.url }}">{{ adr.title }}</a>
+        <a href="{{ adr.url }}">{{ adr.code }}</a>: {{ adr.title }}
     </li>
     {% endfor %}
 </ul>

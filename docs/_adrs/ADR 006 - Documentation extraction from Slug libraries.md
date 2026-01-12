@@ -1,3 +1,7 @@
+---
+code: ADR006
+title: Documentation extraction from Slug libraries (/// + @export → Markdown)
+---
 # ADR 006 - Documentation extraction from Slug libraries (/// + @export → Markdown)
 
 ## Status

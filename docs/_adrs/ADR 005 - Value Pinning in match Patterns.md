@@ -1,3 +1,7 @@
+---
+code: ADR005
+title: Value Pinning in `match` Patterns
+---
 # ADR 005 – Value Pinning in `match` Patterns
 
 ## Status

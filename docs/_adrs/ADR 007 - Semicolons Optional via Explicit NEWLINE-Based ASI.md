@@ -1,3 +1,7 @@
+---
+code: ADR007
+title: Semicolons Optional via Explicit NEWLINE-Based ASI
+---
 # ADR 007 – Semicolons Optional via Explicit NEWLINE-Based ASI
 
 ## Status

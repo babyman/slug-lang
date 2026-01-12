@@ -1,3 +1,7 @@
+---
+code: ADR004
+title: Defer-Based Error Handling and `onerror` Semantics
+---
 # ADR 004 – Defer-Based Error Handling and `onerror` Semantics
 
 ## Status

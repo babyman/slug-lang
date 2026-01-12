@@ -1,3 +1,7 @@
+---
+code: ADR008
+title: Unified Configuration via `cfg()` Builtin
+---
 # ADR 008 - Unified Configuration via `cfg()` Builtin
 
 ## Status

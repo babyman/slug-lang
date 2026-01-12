@@ -1,3 +1,7 @@
+---
+code: ADR002
+title: Tail-position `recur` for Anonymous Recursion
+---
 # ADR 002 - Tail-position `recur` for Anonymous Recursion
 
 ## Status

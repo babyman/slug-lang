@@ -1,3 +1,7 @@
+---
+code: ADR003
+title: Extend `match` as the primary decision construct (functions, pipelines, and `onerror`)
+---
 # ADR 003 - Extend `match` as the primary decision construct (functions, pipelines, and `onerror`)
 
 ## Status

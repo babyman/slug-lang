@@ -1,3 +1,7 @@
+---
+code: ADR009
+title: Command-Line Argument Access (`argv()` and `argm()`)
+---
 # ADR 009 - Command-Line Argument Access (`argv()` and `argm()`)
 
 ## Status
