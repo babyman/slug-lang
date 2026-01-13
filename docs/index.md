@@ -1,70 +1,18 @@
 ---
 title: Slug
-layout: default
+layout: landingpage
+show_breadcrumb: false
+header_type: hero
 ---
 
-##  _"Perfect is the enemy of good."_
-{:.no_toc}
+> **Slug is a language for writing code you can understand tomorrow.**
+> Code is written once and read many times, so Slug optimizes for reading.
+> It favors explicit structure over cleverness, simplicity over feature count, and predictability over magic.
 
-```
-Slug will never end,
-but still I write and mend.
-Perfect waits and fades —
-good enough, again.
-```
 
-Slug is a work in progress, and may never reach a stable release. However I am using it for all of my personal projects
-in an effort to keep it alive and useful.
 
-# Contents
-{:.no_toc}
-* TOC
-{:toc}
+> Slug will never end,<br/>
+> but still I write and mend.<br/>
+> Perfect waits and fades —<br/>
+> good enough, again.<br/>
 
-{% include_relative 01_setup.md %}
-
-{% include_relative 02_command.md %}
-
----
-
-{% include_relative 03_00_introduction.md %}
-
----
-
-{% include_relative 03_01_getting_started.md %}
-
----
-
-{% include_relative 03_02_building_blocks.md %}
-
----
-
-{% include_relative 03_03_functional_programming.md %}
-
----
-
-{% include_relative 03_04_data_structures.md %}
-
----
-
-{% include_relative 03_05_flow_control.md %}
-
----
-
-{% include_relative 03_06_example.md %}
-
----
-
-{% include_relative 03_07_testing.md %}
-
----
-
-{% include_relative 03_08_concurrency.md %}
-
----
-
-{% include_relative 03_09_cookbook.md %}
-
----
-
-{% include_relative 03_10_reference.md %}

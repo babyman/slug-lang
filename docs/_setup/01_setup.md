@@ -1,5 +1,3 @@
-# Installing Slug
-
 ## Download a Precompiled Binary from GitHub
 
 You can download the latest release from the Slug [releases page](https://github.com/babyman/slug-lang/releases). Grab

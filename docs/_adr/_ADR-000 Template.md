@@ -1,4 +1,8 @@
-# ADR 000 - Title...
+---
+title: ADR-000 title...
+date: 2026-01-06
+show_author: true
+---
 
 ## Status
 
@@ -6,7 +10,7 @@ Accepted
 
 ## Context
 
-Describe the why this feature / decision is being considered.
+Describe why this feature / decision is being considered.
 
 ## Decision
 

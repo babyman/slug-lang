@@ -1,71 +1,83 @@
 remote_theme: dieghernan/chulapa
 
 plugins:
-  - jekyll-remote-theme
-  - jekyll-paginate
-  - jekyll-sitemap
-  - jekyll-gist
   - jekyll-feed
-  - jemoji
+  - jekyll-gist
   - jekyll-include-cache
+  - jekyll-paginate
+  - jekyll-remote-theme
+  - jekyll-sitemap
+  - jemoji
+
+title: Slug
+description: a small opinionated programming language!
+url: https://sluglang.org
+#baseurl: ""
+repository: babyman/slug-lang
+og_image: /assets/no_shell.jpeg
 
 markdown: kramdown
 kramdown:
   toc_levels: 1..3
 
-url: https://sluglang.org
-baseurl: ""
-
-title: Slug
-description: a small opinionated programming language!
-repository: https://github.com/babyman/slug-lang
-
-og_image: /assets/no_shell.jpeg
-
 author:
   name: Knuckles
+  avatar: /assets/knuckles-avatar.png
+  location: Toronto, Canada
 
-#chulapa-skin:
-#  skin: twitter-dim
-#  highlight: coffee
+chulapa-skin:
+  highlight: coffee
 
 navbar:
-  style: classic
+  style: dual
   brand:
     title: Slug
-    #    img: "./assets/img/site/brand-clear.png"
+#    img: "./assets/img/site/brand-clear.png"
     url: /
   nav:
-    - title: ADRs #Label
-      url: /adrs.html  #url
-#    - title: Two-level link #Label
-#      child:
-#        - title: Second level first item
-#          url: /url2-1
-#        - title: Second level second item
-#          url: /url2-2
-#    - title: One-level link #Label
-#      url: /url1/  #url
-#        ... more levels
+    - title: Setup
+      url: /setup/
+    - title: Developers Guide
+      url: /developers-guide.html
+    - title: ADRs
+      url: /adr/
+
+footer:
+  links:
+    - label: "RSS"
+      icon: "fa fa-rss"
+      url: "./atom.xml"
+    - label: "GitHub"
+      icon: "fab fa-github"
+      url: https://github.com/babyman/slug-lang/
 
 collections:
-#  demo:
-#    output: true
-#    permalink: /demo/:name
-  adrs:
+  adr:
     output: true
-#    permalink: /adr/:name
-#  skins:
+    permalink: /adr/:name
+#  setup:
 #    output: true
-#    permalink: /skins/:name
+#    permalink: /setup/:name
 #collections_dir     : docs/collections
 #permalink           : /:year:month:day_:title/
 
 # Defaults https://jekyllrb.com/docs/configuration/front-matter-defaults/
 defaults:
-  -
-    scope:
+  - scope:
       path: ""
     values:
       layout: "default"
       header_type: "base"
+      show_breadcrumb: true
+      breadcrumb_list:
+        - label: Home
+          url: /
+  - scope:
+      path: ""
+      type: "adr"
+    values:
+      breadcrumb_list:
+        - label: Home
+          url: /
+        - label: Architectural Design Records
+          url: /adr/
