@@ -1,11 +1,8 @@
 ---
 title: A Developers Guide
+show_sidetoc: true
+show_toc: false
 ---
-
-# Contents
-{:.no_toc}
-* TOC 
-{:toc}
 
 {% include_relative _developers-guide/03_00_introduction.md %}
 

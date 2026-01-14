@@ -26,12 +26,13 @@ author:
   location: Toronto, Canada
 
 chulapa-skin:
-  highlight: coffee
+  skin: butterfly
+  highlight: default
 
 navbar:
   style: dual
   brand:
-    title: Slug
+    title: Home
 #    img: "./assets/img/site/brand-clear.png"
     url: /
   nav:
@@ -55,11 +56,6 @@ collections:
   adr:
     output: true
     permalink: /adr/:name
-#  setup:
-#    output: true
-#    permalink: /setup/:name
-#collections_dir     : docs/collections
-#permalink           : /:year:month:day_:title/
 
 # Defaults https://jekyllrb.com/docs/configuration/front-matter-defaults/
 defaults:
@@ -76,6 +72,7 @@ defaults:
       path: ""
       type: "adr"
     values:
+      header_type: post
       breadcrumb_list:
         - label: Home
           url: /

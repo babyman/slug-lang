@@ -50,7 +50,7 @@ func main() {
 	flag.Parse()
 
 	if version {
-		fmt.Printf("slug version 'v%s' %s %s\n", Version, BuildDate, Commit)
+		fmt.Printf("Slug — No Shell. All Strength.\nversion 'v%s' %s %s\n", Version, BuildDate, Commit)
 		return
 	}
 
@@ -215,7 +215,9 @@ func configureLogWriter() *os.File {
 }
 
 func printHelp() {
-	fmt.Printf(`Usage: slug [options] <filename> <args>
+	fmt.Printf(`Slug — No Shell. All Strength.
+
+Usage: slug [options] <filename> <args>
 
 Options:
   -root <path>       Set the root context

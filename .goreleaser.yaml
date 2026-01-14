@@ -35,10 +35,12 @@ archives:
     files:
       - LICENSE.md
       - README.md
+      - docs/*
       - extras/*
       - lib/*
+      - test-suites/*
       - tests/*
-      - webroot/*
+      - tests-negative/*
 
 changelog:
   sort: asc

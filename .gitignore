@@ -18,3 +18,7 @@ dist/
 *.ast.txt
 
 *.log
+
+# jekyll
+/docs/_site/
+/docs/.jekyll-cache/
