@@ -40,8 +40,4 @@ show_toc: false
 
 ---
 
-{% include_relative _developers-guide/03_09_cookbook.md %}
-
----
-
 {% include_relative _developers-guide/03_10_reference.md %}

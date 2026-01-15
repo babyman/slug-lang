@@ -40,8 +40,12 @@ navbar:
       url: /setup/
     - title: Developers Guide
       url: /developers-guide.html
+    - title: Cookbook
+      url: /cookbook/
     - title: ADRs
       url: /adr/
+    - title: GitHub
+      url: https://github.com/babyman/slug-lang/
 
 footer:
   links:
@@ -56,6 +60,9 @@ collections:
   adr:
     output: true
     permalink: /adr/:name
+  cookbook:
+    output: true
+    permalink: /cookbook/:name
 
 # Defaults https://jekyllrb.com/docs/configuration/front-matter-defaults/
 defaults:
@@ -78,3 +85,25 @@ defaults:
           url: /
         - label: Architectural Design Records
           url: /adr/
+  - scope:
+      path: ""
+      type: "cookbook"
+    values:
+      header_type: post
+      include_on_search : true
+      include_on_feed   : true
+      show_date         : false
+      show_related      : true
+      show_tags         : false
+      show_author       : true
+      breadcrumb_list:
+        - label: Home
+          url: /
+        - label: Cookbook
+          url: /cookbook/
+
+
+# Exclude these files from production site
+exclude:
+  - README.md
+  - Gemfile
