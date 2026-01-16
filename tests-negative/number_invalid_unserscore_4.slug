@@ -1,0 +1,2 @@
+### Disallowed underscore placement
+1_.0 /> assertEqual(1)

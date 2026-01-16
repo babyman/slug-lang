@@ -102,7 +102,7 @@ contexts:
       scope: keyword.operator.arithmetic.slug
 
     # Hex numbers (even number of hex digits)
-    - match: \b0x(?:[0-9a-fA-F]{2})+\b
+    - match: \b0x(?:_?[0-9a-fA-F]{2})+\b
       scope: constant.numeric.hex.slug
 
     # Byte array literals 0x"...." with even number of hex digits
@@ -115,9 +115,11 @@ contexts:
       push: string
 
     # Numbers
-    - match: \b\d+\.\d+\b
+    - match: \b\d(?:[\d_]*\d)?(?:\.\d(?:[\d_]*\d)?)?[eE][+-]?\d(?:[\d_]*\d)?\b
       scope: constant.numeric.float.slug
-    - match: \b\d+\b
+    - match: \b\d(?:[\d_]*\d)?\.\d(?:[\d_]*\d)?\b
+      scope: constant.numeric.float.slug
+    - match: \b\d(?:[\d_]*\d)?\b
       scope: constant.numeric.integer.slug
 
     # Lists

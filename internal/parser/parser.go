@@ -153,6 +153,11 @@ func (p *Parser) nextToken() {
 	p.curToken = p.peekToken
 	p.peekToken = p.peek2Token
 	p.peek2Token = p.tokenizer.NextToken()
+
+	// check if the token we just grabbed is illegal
+	if p.curToken.Type == token.ILLEGAL {
+		p.addErrorAt(p.curToken.Position, "lexer error at position %d: %s", p.curToken.Position, p.curToken.Literal)
+	}
 }
 
 func (p *Parser) curTokenIs(t token.TokenType) bool {

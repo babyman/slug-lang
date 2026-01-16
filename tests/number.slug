@@ -28,3 +28,8 @@ var {*} = import(
 (0x0f << 5) /> assertEqual(0x01e0)
 (0x01e0 >> 5) /> assertEqual(0x0f)
 
+// support for _ as a number separator
+1_000 /> assertEqual(1000)
+10_000_000 /> assertEqual(10000000)
+3.141_592 /> assertEqual(3.141592)
+0xFF_EC_DE_5E /> assertEqual(4293713502)

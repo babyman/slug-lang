@@ -100,7 +100,7 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 			g.lexer.readChar()
 			g.lexer.readChar()
 		} else {
-			tok = newToken(token.ILLEGAL, g.lexer.ch, startPosition)
+			return newToken(token.ILLEGAL, g.lexer.ch, startPosition)
 		}
 	case '{':
 		tok = g.lexer.handleCompoundToken2(token.LBRACE, '{', token.INTERPOLATION_START, '|', token.MATCH_KEYS_EXACT)
@@ -170,15 +170,19 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 			if g.lexer.ch == '0' && g.lexer.peekChar() == 'x' {
 				tok.Type = token.NUMBER
 				tok.Position = startPosition
-				bytesLit, ok := g.lexer.readHexLiteral()
-				if ok {
-					tok.Literal = bytesLit
-					return tok
+				bytesLit, err := g.lexer.readHexLiteral()
+				if err != nil {
+					return token.Token{Type: token.ILLEGAL, Literal: err.Error(), Position: startPosition}
 				}
-				return token.Token{Type: token.ILLEGAL, Literal: "invalid HEX literal", Position: startPosition}
+				tok.Literal = bytesLit
+				return tok
+			}
+			l, err := g.lexer.readNumber()
+			if err != nil {
+				return token.Token{Type: token.ILLEGAL, Literal: err.Error(), Position: startPosition}
 			}
 			tok.Type = token.NUMBER
-			tok.Literal = g.lexer.readNumber()
+			tok.Literal = l
 			tok.Position = startPosition
 			return tok
 		} else {

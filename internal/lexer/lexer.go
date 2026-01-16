@@ -1,6 +1,7 @@
 package lexer
 
 import (
+	"errors"
 	"slug/internal/token"
 	"unicode"
 	"unicode/utf8"
@@ -156,57 +157,94 @@ func (l *Lexer) readIdentifier() string {
 }
 
 // readNumber keeps previous ASCII-based number rules; extends to Unicode digits for integer part
-func (l *Lexer) readNumber() string {
-	start := l.position
-	for isDigit(l.ch) {
+func (l *Lexer) readNumber() (string, error) {
+	numStr := ""
+	for isDigit(l.ch) || l.ch == '_' {
+		if l.ch == '_' {
+			peek := l.peekChar()
+			prev := l.input[l.position-1]
+			// Rule: _ must be between hex digits (or after prefix handled above)
+			if !isDigit(rune(prev)) || !isDigit(peek) {
+				return "", errors.New("underscore must be between digits in number literal")
+			}
+		} else {
+			numStr += string(l.ch)
+		}
 		l.readChar()
 	}
 	if l.ch == '.' && isDigit(l.peekChar()) {
+		numStr += string(l.ch)
 		l.readChar()
-		for isDigit(l.ch) {
+		for isDigit(l.ch) || l.ch == '_' {
+			if l.ch == '_' {
+				peek := l.peekChar()
+				prev := l.input[l.position-1]
+				// Rule: _ must be between hex digits (or after prefix handled above)
+				if !isDigit(rune(prev)) || !isDigit(peek) {
+					return "", errors.New("underscore must be between digits in number literal")
+				}
+			} else {
+				numStr += string(l.ch)
+			}
 			l.readChar()
 		}
 	}
 	if l.ch == 'e' || l.ch == 'E' {
+		numStr += string(l.ch)
 		l.readChar()
 		if l.ch == '+' || l.ch == '-' {
+			numStr += string(l.ch)
 			l.readChar()
 		}
 		for isDigit(l.ch) {
+			numStr += string(l.ch)
 			l.readChar()
 		}
 	}
-	return l.input[start:l.position]
+	return numStr, nil
 }
 
-func (l *Lexer) readHexLiteral() (string, bool) {
-	start := l.position
+func (l *Lexer) readHexLiteral() (string, error) {
+	hexStr := ""
+	hexStr += string(l.ch)
 	l.readChar() // consume '0'
 	if l.ch != 'x' {
-		return "", false
+		return "", errors.New("expected 'x' after '0'")
 	}
+	hexStr += string(l.ch)
 	l.readChar() // consume 'x'
 
-	digitStart := l.position
-	for {
-		if (l.ch >= '0' && l.ch <= '9') ||
-			(l.ch >= 'a' && l.ch <= 'f') ||
-			(l.ch >= 'A' && l.ch <= 'F') {
+	// Rule: _ allowed immediately after 0x if followed by a hex digit
+	if l.ch == '_' {
+		if isHexDigit(l.peekChar()) {
 			l.readChar()
-			continue
+		} else {
+			return "", errors.New("expected hex digit after '0x'")
 		}
-		break
 	}
-	// Must have at least one hex digit
-	if l.position == digitStart {
-		return "", false
+
+	if !isHexDigit(l.ch) {
+		return "", errors.New("expected hex digit after '0x'")
 	}
-	hexStr := l.input[start:l.position]
+
+	for isHexDigit(l.ch) || l.ch == '_' {
+		if l.ch == '_' {
+			peek := l.peekChar()
+			prev := l.input[l.position-1]
+			// Rule: _ must be between hex digits (or after prefix handled above)
+			if !isHexDigit(rune(prev)) || !isHexDigit(peek) {
+				break
+			}
+		} else {
+			hexStr += string(l.ch)
+		}
+		l.readChar()
+	}
 	// check even length
 	if len(hexStr)%2 != 0 {
-		return "", false
+		return "", errors.New("hex literal must have even length")
 	}
-	return hexStr, true
+	return hexStr, nil
 }
 
 func (l *Lexer) readByteArrayLiteral() (string, bool) {
@@ -251,6 +289,11 @@ func isLetter(ch rune) bool {
 func isDigit(ch rune) bool {
 	// Allow Unicode decimal digits
 	return unicode.IsDigit(ch)
+}
+
+func isHexDigit(ch rune) bool {
+	// Allow Unicode hex digits
+	return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')
 }
 
 func newToken(tokenType token.TokenType, ch rune, position int) token.Token {
