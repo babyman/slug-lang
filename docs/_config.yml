@@ -33,7 +33,7 @@ navbar:
   style: dual
   brand:
     title: Home
-#    img: "./assets/img/site/brand-clear.png"
+    #    img: "./assets/img/site/brand-clear.png"
     url: /
   nav:
     - title: Setup
@@ -80,6 +80,7 @@ defaults:
       type: "adr"
     values:
       header_type: post
+      show_author: true
       breadcrumb_list:
         - label: Home
           url: /
@@ -90,12 +91,12 @@ defaults:
       type: "cookbook"
     values:
       header_type: post
-      include_on_search : true
-      include_on_feed   : true
-      show_date         : false
-      show_related      : true
-      show_tags         : false
-      show_author       : true
+      include_on_search: true
+      include_on_feed: true
+      show_date: false
+      show_related: true
+      show_tags: false
+      show_author: true
       breadcrumb_list:
         - label: Home
           url: /

@@ -1,7 +1,6 @@
 ---
 title: ADR-000 title...
 date: 2026-01-06
-show_author: true
 ---
 
 ## Status
