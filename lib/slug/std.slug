@@ -108,6 +108,20 @@ var map = fn(@list vs, @fun f, acc = []) match {
 }
 
 @testWith(
+     [[1, 2, 3], fn(n) { [n, n] }], [1, 1, 2, 2, 3, 3],
+     [[1, 2, 3], fn(n) { if (n % 2 == 0) { [n] } else { [] } }], [2]
+ )
+ @export
+ var flatMap = fn(@list vs, @fun f) {
+ 	vs /> reduce([], fn(acc, v) {
+ 		match f(v) {
+ 			[...items] => acc + items
+ 			item => acc :+ item
+ 		}
+ 	})
+ }
+
+@testWith(
 	[[1,2,3,4], fn(v) { v % 2 == 0}], [2,4]
 )
 @export
