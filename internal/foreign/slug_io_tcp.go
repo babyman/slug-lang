@@ -6,9 +6,11 @@ import (
 	"net"
 	"slug/internal/dec64"
 	"slug/internal/object"
+	"sync"
 )
 
 var (
+	ioTcpMu        sync.RWMutex
 	ioTcpListeners = map[int64]net.Listener{}
 	ioTcpConns     = map[int64]net.Conn{}
 )
@@ -33,7 +35,9 @@ func fnIoTcpBind() *object.Foreign {
 			}
 
 			id := ctx.NextHandleID()
+			ioTcpMu.Lock()
 			ioTcpListeners[id] = listener
+			ioTcpMu.Unlock()
 			return &object.Number{Value: dec64.FromInt64(id)}
 		},
 	}
@@ -48,7 +52,9 @@ func fnIoTcpAccept() *object.Foreign {
 				return ctx.NewError(err.Error())
 			}
 
+			ioTcpMu.RLock()
 			listener, ok := ioTcpListeners[id]
+			ioTcpMu.RUnlock()
 			if !ok {
 				return ctx.NewError("invalid listener ID")
 			}
@@ -59,7 +65,9 @@ func fnIoTcpAccept() *object.Foreign {
 			}
 
 			connID := ctx.NextHandleID()
+			ioTcpMu.Lock()
 			ioTcpConns[connID] = conn
+			ioTcpMu.Unlock()
 			return &object.Number{Value: dec64.FromInt64(connID)}
 		},
 	}
@@ -85,7 +93,9 @@ func fnIoTcpConnect() *object.Foreign {
 			}
 
 			id := ctx.NextHandleID()
+			ioTcpMu.Lock()
 			ioTcpConns[id] = conn
+			ioTcpMu.Unlock()
 			return &object.Number{Value: dec64.FromInt64(id)}
 		},
 	}
@@ -105,7 +115,9 @@ func fnIoTcpRead() *object.Foreign {
 				return ctx.NewError(tcpErrorMessage(id, err))
 			}
 
+			ioTcpMu.RLock()
 			conn, ok := ioTcpConns[id]
+			ioTcpMu.RUnlock()
 			if !ok {
 				return ctx.NewError("invalid conn ID")
 			}
@@ -139,7 +151,9 @@ func fnIoTcpWrite() *object.Foreign {
 				return ctx.NewError(tcpErrorMessage(id, err))
 			}
 
+			ioTcpMu.RLock()
 			conn, ok := ioTcpConns[id]
+			ioTcpMu.RUnlock()
 			if !ok {
 				return ctx.NewError("invalid conn ID")
 			}
@@ -162,6 +176,9 @@ func fnIoTcpClose() *object.Foreign {
 			if err != nil {
 				return ctx.NewError(err.Error())
 			}
+
+			ioTcpMu.Lock()
+			defer ioTcpMu.Unlock()
 
 			if c, ok := ioTcpConns[id]; ok {
 				c.Close()
