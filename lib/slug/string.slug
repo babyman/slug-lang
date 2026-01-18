@@ -1,5 +1,6 @@
 var {*} = import (
-    "slug.std"
+    "slug.std",
+    "slug.math",
 )
 
 @testWith(
@@ -173,5 +174,18 @@ var padLeft = fn(@str str, @str with, @num length) {
 	} else {
 		recur(with + str, with, length)
 	}
+}
+
+var hexDigits= "0123456789abcdef"
+
+@export
+var randomString = fn(length, chars, acc = "") match {
+	[0, ...] => acc
+	_ => recur(length - 1, chars, acc + chars[rndRange(0, len(chars))])
+}
+
+@export
+var randomHexString = fn(length) {
+	randomString(length, hexDigits)
 }
 
