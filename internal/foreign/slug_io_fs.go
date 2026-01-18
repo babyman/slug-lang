@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"io"
 	"os"
+	"path/filepath"
 	"slug/internal/dec64"
 	"slug/internal/object"
 )
@@ -23,6 +24,10 @@ func fnIoFsReadFile() *object.Foreign {
 			path, err := unpackString(args[0], "path")
 			if err != nil {
 				return ctx.NewError(err.Error())
+			}
+
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(ctx.GetConfiguration().RootPath, path)
 			}
 
 			data, err := os.ReadFile(path)
@@ -52,6 +57,10 @@ func fnIoFsWriteFile() *object.Foreign {
 				return ctx.NewError(err.Error())
 			}
 
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(ctx.GetConfiguration().RootPath, path)
+			}
+
 			err = os.WriteFile(path, []byte(content), 0644)
 			if err != nil {
 				return ctx.NewError("failed to write file: %s", err.Error())
@@ -77,6 +86,10 @@ func fnIoFsAppendFile() *object.Foreign {
 			path, err := unpackString(args[1], "path")
 			if err != nil {
 				return ctx.NewError(err.Error())
+			}
+
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(ctx.GetConfiguration().RootPath, path)
 			}
 
 			f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
@@ -107,6 +120,10 @@ func fnIoFsExists() *object.Foreign {
 				return ctx.NewError(err.Error())
 			}
 
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(ctx.GetConfiguration().RootPath, path)
+			}
+
 			_, err = os.Stat(path)
 			if os.IsNotExist(err) {
 				return ctx.NativeBoolToBooleanObject(false)
@@ -127,6 +144,10 @@ func fnIoFsInfo() *object.Foreign {
 			path, err := unpackString(args[0], "path")
 			if err != nil {
 				return ctx.NewError(err.Error())
+			}
+
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(ctx.GetConfiguration().RootPath, path)
 			}
 
 			info, err := os.Stat(path)
@@ -156,6 +177,10 @@ func fnIoFsMkdirs() *object.Foreign {
 				return ctx.NewError(err.Error())
 			}
 
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(ctx.GetConfiguration().RootPath, path)
+			}
+
 			created := false
 			if _, err := os.Stat(path); os.IsNotExist(err) {
 				created = true
@@ -183,6 +208,10 @@ func fnIoFsIsDir() *object.Foreign {
 				return ctx.NewError(err.Error())
 			}
 
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(ctx.GetConfiguration().RootPath, path)
+			}
+
 			info, err := os.Stat(path)
 			if err != nil {
 				return ctx.NewError("failed to get file info: %s", err.Error())
@@ -203,6 +232,10 @@ func fnIoFsLs() *object.Foreign {
 			path, err := unpackString(args[0], "path")
 			if err != nil {
 				return ctx.NewError(err.Error())
+			}
+
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(ctx.GetConfiguration().RootPath, path)
 			}
 
 			files, err := os.ReadDir(path)
@@ -230,6 +263,10 @@ func fnIoFsOpenFile() *object.Foreign {
 			path, err := unpackString(args[0], "path")
 			if err != nil {
 				return ctx.NewError(err.Error())
+			}
+
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(ctx.GetConfiguration().RootPath, path)
 			}
 
 			mode, err := unpackString(args[1], "mode")
@@ -335,6 +372,10 @@ func fnIoFsRm() *object.Foreign {
 			path, err := unpackString(args[0], "path")
 			if err != nil {
 				return ctx.NewError(err.Error())
+			}
+
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(ctx.GetConfiguration().RootPath, path)
 			}
 
 			err = os.Remove(path)
