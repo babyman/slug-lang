@@ -76,8 +76,15 @@ func main() {
 		resolvedRootPath, _ = filepath.Abs(rootPath)
 	}
 
+	// Normalize paths
+	normalizedTargetName := targetName
+	if absTarget, err := filepath.Abs(targetName); err == nil {
+		normalizedTargetName = filepath.Clean(absTarget)
+	}
+	resolvedRootPath = filepath.Clean(resolvedRootPath)
+
 	// Determine the main module name for CLI sugar
-	mainModule := targetName
+	mainModule := filepath.Base(normalizedTargetName)
 	if strings.HasSuffix(mainModule, ".slug") {
 		mainModule = strings.TrimSuffix(mainModule, ".slug")
 	}
