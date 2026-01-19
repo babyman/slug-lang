@@ -1,0 +1,386 @@
+var {*} = import (
+	"slug.io.tcp",
+	"slug.std",
+	"slug.string",
+	"slug.time",
+	"slug.io.fs",
+	"slug.web.request",
+	"slug.web.response",
+)
+
+val RouterType = "WebRouter"
+
+
+// ------------------
+// Core constructors
+// ------------------
+
+@export
+var router = fn() {
+	{ type: RouterType, routes: [] } 
+}
+
+// ------------------
+// Introspection
+// ------------------
+
+@export var isRouter = fn(x) { get(x, "type") == RouterType }
+
+// ------------------
+// Basic modifiers
+// ------------------
+
+var addRoute = fn(@map r, @str method, @str pattern, @fun handler) {
+  r /> put("routes", r.routes :+ { method: method, pattern: pattern, handler: handler })
+}
+
+@export
+var head  = fn(@map r, @str pattern, @fun handler) { addRoute(r, "HEAD",  pattern, handler) }
+
+@export
+var get  = fn(@map r, @str pattern, @fun handler) { addRoute(r, "GET",  pattern, handler) }
+
+@export
+var post = fn(@map r, @str pattern, @fun handler) { addRoute(r, "POST", pattern, handler) }
+
+// mount = any method, prefix
+@export
+var mount = fn(@map r, @str prefix, @fun handler) { addRoute(r, "*", prefix + "/*", handler) }
+
+@export
+var mountRouter = fn(@map r, @str prefix, @map childRouter) { mount(r, prefix, subrouter(childRouter)) }
+
+// ------------------
+// Public
+// ------------------
+
+@export
+var handle = fn(@map request, @map r) {
+	match handleRequest(r.routes, request) {
+		nil => notFound()
+		response => response
+	}
+}
+
+// ------------------
+// Internals
+// ------------------
+
+var handleRequest = fn(@list routes, @map request) match {
+	[[], ...] => nil
+	[[route, ...t], ...] => {
+		if (route.method == request.method || route.method == "*") {
+			match matchRoutePattern(route.pattern, request.path) {
+				nil => recur(t, request)
+				params => request /> withParams(params) /> route.handler
+			}
+		} else {
+			recur(t, request)
+		}
+	}
+}
+
+var matchRoutePattern = fn(pattern, path) {
+	// prefix mount: "/static/*"
+	if (pattern /> endsWith("/*")) {
+		var base = pattern[:-2] // strip "/*"
+
+		if (path == base) {
+			{ "*": "" }
+		} else if (path /> startsWith(base + "/")) {
+			{ "*": path[len(base):] }          // remainder begins with "/..."
+		} else {
+			nil
+		}
+	} else {
+		// existing exact-segment matcher
+		var ps = pattern /> split("/")
+		var xs = path    /> split("/")
+
+		if (len(ps) != len(xs)) {
+			nil
+		} else {
+			ps /> zip(xs) /> reduce({}, fn(params, pair) {
+				var p = pair[0]
+				var x = pair[1]
+				if (p == nil) {
+					params
+				} else if (p /> startsWith(":")) {
+					params /> put(p[1:], x)
+				} else if (p == x) {
+					params
+				} else {
+					nil
+				}
+			})
+		}
+	}
+}
+
+// ------------------
+// subrouters, allows router nesting
+// ------------------
+
+@export
+var subrouter = fn(@map router) {
+  fn(@map req) {
+	// remainder captured by mount "/prefix/*"
+	var rest = req.params["*"]
+	if (rest == nil || rest == "") {
+		rest = "/"
+	}
+
+	// normalize so inner routes can be defined like "/users/:id"
+	if (rest[0:1] != "/") {
+		rest = "/" + rest
+	}
+
+	req /> withPath(rest)
+		// IMPORTANT: clear the "*" param so it doesn't leak into inner router
+		// (optional, but usually nicer)
+		/> withoutParam("*")
+		/> handle(router) 
+  }
+}
+
+
+// ------------------
+// static file handler
+// ------------------
+
+@export
+var static = fn(dir, cacheTimeSeconds = 3600) {
+	fn(@map req) {
+		defer onerror(err) notFound()
+		
+		if (req.method != "GET" && req.method != "HEAD") {
+			nil
+		} else {
+			// remainder supplied by mount("/static", ...)
+			var rel = req.params["*"]
+
+			// mount captured remainder like "/app.css" (or "")
+			if (rel == nil || rel == "" || rel == "/") {
+				rel = "/index.html"
+			}
+			
+			if (rel[0:1] == "/") {
+				rel = rel[1:]
+			}
+
+			if (!isSafeRelPath(rel)) {
+				notFound()
+			} else {
+				var full = joinPath(dir, rel)
+				var body = readFile(full)
+
+				match req.method {
+					"HEAD" => html("")
+					_ => html(body)
+				}
+					/> withContentType(rel /> ext /> contentType)
+					/> cacheSeconds(cacheTimeSeconds)
+			}
+		}
+	}
+}
+
+var ext = fn(path) {
+	var i = path /> lastIndexOf(".")
+	if (i < 0) {
+		"" 
+	} else {
+		path[i:] 
+	}
+}
+
+var contentType = fn(path) match {
+	".css"  => "text/css; charset=utf-8";
+	".js"   => "text/javascript; charset=utf-8";
+	".html" => "text/html; charset=utf-8";
+	".htm"  => "text/html; charset=utf-8";
+	".txt"  => "text/plain; charset=utf-8";
+	".svg"  => "image/svg+xml";
+	".json" => "application/json; charset=utf-8";
+	".png"  => "image/png";
+	".jpg"  => "image/jpeg";
+	".jpeg" => "image/jpeg";
+	".gif"  => "image/gif";
+	".ico"  => "image/x-icon";
+	_       => "application/octet-stream";
+}
+
+
+// prevent .. traversal (v0: simple + effective)
+var isSafeRelPath = fn(p) {
+	// normalize separators first if you have that; this covers the common case
+	!(p /> contains(".."))
+}
+
+// join dir + rel path (assumes dir has no trailing slash issues; adjust if needed)
+var joinPath = fn(dir, rel) {
+	if (dir /> endsWith("/")) { dir + rel } else { dir + "/" + rel }
+}
+
+
+// ------------------
+// logging wrapper
+// ------------------
+
+@export
+var withLog = fn(handler) {
+	fn(@map req) {
+		var d = delta(clock)
+
+		var res = handler(req)
+
+		var ts = fmtClock(clock(), "2006-01-02 15:04:05.000")
+		var msg = []
+		if (req.requestId) { msg = msg :+ req.requestId }
+		if (req.traceId) { msg = msg :+ req.traceId }
+		if (req.spanId) { msg = msg :+ req.spanId }
+		msg = msg :+ req.path
+		printf("%s [ %-4s ] %dms %d %s\n", ts, req.method, d(), res.status, msg /> join(" "));
+		res
+	}
+}
+
+// ------------------
+// timeout wrapper
+// ------------------
+
+@export
+var withTimeout = fn(h, ms) {
+	async fn(@map req) {
+		var task = spawn { h(req) }
+		await task within ms
+	}
+}
+
+// ------------------
+// simple error handling wrapper
+// ------------------
+
+@export
+var withRecover = fn(h) {
+	fn(@map req) {
+		defer onerror(err) {
+			serverError()
+		}
+		h(req)
+	}
+}
+
+// ------------------
+// add a response header
+// ------------------
+
+@export
+var withHeader = fn(@fun handler, @str header, @str value) {
+	fn(@map req) {
+		req /> handler /> withHeader(header, value)
+	}
+}
+
+// ------------------
+// add a request id for logging
+// ------------------
+
+@export
+var withRequestId = fn(@fun handler, @fun newRequestId = nil) {
+	newRequestId = if (newRequestId) {newRequestId} else {fn() { randomHexString(32) }}
+	fn(@map req) {
+		var rid = req.headers["x-request-id"]
+
+		if (rid == nil) {
+			rid = newRequestId()
+		}
+
+		// attach to request
+		req = req /> put("requestId", rid)
+
+		var res = handler(req)
+
+		if (res != nil) {
+			res /> withHeader("X-Request-Id", rid)
+		} else {
+			res
+		}
+	}
+}
+
+// ------------------
+// add trace and span ids for logging
+// ------------------
+
+@export
+var withTraceContext = fn(handler, @fun newTraceId = nil, @fun newSpanId = nil) {
+	newTraceId = if (newTraceId) {newTraceId} else {fn() { randomHexString(32) }}
+	newSpanId = if (newSpanId) {newSpanId} else {fn() { randomHexString(16) }}
+	fn(@map req) {
+
+		var hs = req.headers /> ifNil({})
+		var tp = hs["traceparent"]
+
+		var traceId = ""
+		var parentId = ""
+
+		if (tp != nil) {
+			// Parse existing: 00-traceid-spanid-flags
+			var parts = tp /> split("-")
+			if (len(parts) >= 3) {
+				traceId = parts[1]
+				parentId = parts[2]
+			}
+		}
+
+		// If no incoming trace, start a new one
+		if (traceId == "") {
+			traceId = newTraceId()
+		}
+
+		// Generate a new span ID for this specific execution unit
+		var currentSpanId = newSpanId()
+
+		// Construct the new traceparent for downstream/response
+		// 00 is the version, 01 means "sampled" (recorded)
+		var newTraceParent = "00-" + traceId + "-" + currentSpanId + "-01"
+
+		// Attach to request context so internal logic can use it
+		var res = req
+			/> put("traceId", traceId)
+			/> put("spanId", currentSpanId)
+			/> handler
+
+		if (res != nil) {
+			res /> withHeader("traceparent", newTraceParent)
+		} else{
+			res
+		}
+	}
+}
+
+
+// ------------------
+// enforce a maximum request body size
+// ------------------
+
+@export
+var withMaxBody = fn(h, maxBytes = 1_048_576) {
+	fn(@map req) {
+		// only enforce for methods that may have bodies
+		if (req.method == "POST" || req.method == "PUT" || req.method == "PATCH") {
+			var cl = req.headers["content-length"]
+
+			if (cl != nil) {
+				var n = cl /> toNumber
+				if (n > maxBytes) {
+					return payloadTooLarge()
+				}
+			}
+		}
+
+		h(req)
+	}
+}
+

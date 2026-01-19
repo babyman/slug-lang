@@ -1,0 +1,388 @@
+var {*} = import (
+	"slug.std",
+	"slug.string",
+	"slug.map",
+	"slug.list",
+)
+var json = import("slug.json")
+
+// ------------------------------------
+// Response shape (tagged immutable map)
+// ------------------------------------
+//
+// {
+//   type: "HttpResponse",
+//   status: number,
+//   headers: map[string] -> string | list[string],
+//   body: string | bytes | {type:"Stream", ...} (future)
+// }
+//
+// Header keys are normalized to lowercase.
+//
+// ------------------------------------
+
+val responseType = "HttpResponse"
+val formattedResponseType = "FormattedHttpResponse"
+
+// ------------------
+// Core constructors
+// ------------------
+
+@export
+var response = fn(@num status, @str body) {
+	{
+		type: responseType,
+		status: status,
+		headers: {},
+		body: body,
+	}
+}
+
+@export var ok = fn(@str body) { response(200, body) }
+@export var created = fn(@str body) { response(201, body) }
+@export var accepted = fn(@str body) { response(202, body) }
+@export var noContent = fn() { response(204, "") }
+
+@export var badRequest = fn(@str body) { response(400, body) }
+@export var unauthorized = fn(@str body) { response(401, body) }
+@export var forbidden = fn(@str body) { response(403, body) }
+@export var notFound = fn(@str body = "404 Not Found") { response(404, body) }
+@export var conflict = fn(@str body) { response(409, body) }
+@export var payloadTooLarge = fn(@str body = "413 Payload Too Large") { response(413, body) /> withHeader("Connection", "close") }
+
+@export var serverError = fn(@str body = "500 Server Error") { response(500, body) }
+
+
+// ------------------
+// Basic modifiers
+// ------------------
+
+@export
+var withStatus = fn(@map res, @num status) {
+  with(res, { status: status })
+}
+
+@export
+var withBody = fn(@map res, @str body) {
+  with(res, { body: body })
+}
+
+@export
+var hasHeader = fn(res, key) {
+  res.headers[normKey(key)] != nil
+}
+
+// Replace a header (single-value semantics)
+@export
+var withHeader = fn(@map res, @str key, @str value) {
+  var k = normKey(key)
+  var v = normVal(value)
+  var hs = res.headers /> put(k, v)
+  with(res, { headers: hs })
+}
+
+// Replace many headers from a map
+@export
+var withHeaders = fn(@map res, @map headersMap) {
+  // fold over keys so we normalize each header name
+  headersMap /> keys /> reduce(res, fn(acc, rawKey) {
+	acc /> withHeader(rawKey, headersMap[rawKey])
+  })
+}
+
+// Remove a header entirely
+@export
+var withoutHeader = fn(@map res, @str key) {
+  var k = normKey(key)
+  var hs = remove(res.headers, k)
+  with(res, { headers: hs })
+}
+
+
+// ------------------
+// Repeated headers
+// ------------------
+
+// Add a header value without clobbering existing values.
+// Upgrades string -> list[string] when needed.
+@export
+var addHeader = fn(@map res, @str key, @str value) {
+  var k = normKey(key)
+  var v = normVal(value)
+
+  var cur = res.headers /> get(k)
+  var next = toList(cur) :+ v
+
+  var hs = res.headers /> put(k, next)
+  with(res, { headers: hs })
+}
+
+var addSetCookie = fn(@map res, @str cookieStr) {
+  addHeader(res, "set-cookie", cookieStr)
+}
+
+
+// ------------------
+// Content helpers
+// ------------------
+
+@export
+var withContentType = fn(@map res, @str ct) {
+  withHeader(res, "content-type", ct)
+}
+
+@export
+var html = fn(@str markup) {
+  ok(markup)
+  /> withContentType("text/html; charset=utf-8")
+}
+
+@export
+var text = fn(@str txt) {
+  ok(txt)
+  /> withContentType("text/plain; charset=utf-8")
+}
+
+@export
+var jsonOk = fn(value) {
+  ok(json.encode(value))
+  /> withContentType("application/json; charset=utf-8")
+}
+
+
+// ------------------
+// Redirects
+// ------------------
+
+@export
+var redirect = fn(@str location) {
+  response(302, "")
+  /> withHeader("location", location)
+}
+
+@export
+var redirectPermanent = fn(@str location) {
+  response(301, "")
+  /> withHeader("location", location)
+}
+
+
+// ------------------
+// Cache control
+// ------------------
+
+@export
+var noCache = fn(@map res) {
+  res
+  /> withHeader("cache-control", "no-store, no-cache, must-revalidate")
+  /> withHeader("pragma", "no-cache")
+  /> withHeader("expires", "0")
+}
+
+@export
+var cacheSeconds = fn(@map res, @num seconds) {
+  withHeader(res, "cache-control", "public, max-age=" + seconds)
+}
+
+
+// ------------------
+// connection
+// ------------------
+
+@export
+var withConnClose = fn(@map res) {
+  res /> withHeader("Connection", "close")
+}
+
+@export
+var withConnKeepAlive = fn(@map res) {
+  res /> withHeader("Connection", "keep-alive")
+}
+
+// ------------------
+// HTMX helpers
+// ------------------
+
+@export
+var hxTrigger = fn(@map res, @str eventName) {
+  withHeader(res, "hx-trigger", eventName)
+}
+
+@export
+var hxRedirect = fn(@map res, @str location) {
+  withHeader(res, "hx-redirect", location)
+}
+
+@export
+var hxRetarget = fn(@map res, @str selector) {
+  withHeader(res, "hx-retarget", selector)
+}
+
+
+// ------------------
+// Cookies (string builder + helpers)
+// ------------------
+
+@export
+var cookie = fn(@str name, @str value, @map opts) {
+  // opts (all optional):
+  // {path, domain, maxAge, expires, secure, httpOnly, sameSite}
+  // sameSite: "Lax" | "Strict" | "None"
+
+  var parts = [ name + "=" + value ]
+
+  if (get(opts, "path") != nil)      { parts :+ append(parts, "Path=" + get(opts, "path")) }
+  if (get(opts, "domain") != nil)    { parts :+ append(parts, "Domain=" + get(opts, "domain")) }
+  if (get(opts, "maxAge") != nil)    { parts :+ append(parts, "Max-Age=" + get(opts, "maxAge")) }
+  if (get(opts, "expires") != nil)   { parts :+ append(parts, "Expires=" + get(opts, "expires")) } // format upstream
+  if (get(opts, "secure") == true)   { parts :+ append(parts, "Secure") }
+  if (get(opts, "httpOnly") == true) { parts :+ append(parts, "HttpOnly") }
+  if (get(opts, "sameSite") != nil)  { parts :+ append(parts, "SameSite=" + get(opts, "sameSite")) }
+
+  string.join(parts, "; ")
+}
+
+@export
+var setCookie = fn(@map res, @str name, @str value, @map opts) {
+  addSetCookie(res, cookie(name, value, opts))
+}
+
+@export
+var clearCookie = fn(@map res, @str name, @map opts) {
+  // expire immediately
+  setCookie(res, name, "", put(opts, "maxAge", 0))
+}
+
+
+// ------------------
+// Introspection
+// ------------------
+
+@export var isResponse = fn(x) { get(x, "type") == responseType }
+@export var isFormattedResponse = fn(x) { get(x, "type") == formattedResponseType }
+
+@export var status = fn(@map res) { res.status }
+@export var headers = fn(@map res) { res.headers }
+@export var body = fn(@map res) { res.body }
+
+
+// -------------------------
+// Public: formatHead / formatResponse
+// -------------------------
+
+@export
+var formatHead = fn(res) {
+
+  var r = ensureContentLength(res)
+
+  var statusLine =
+	"HTTP/1.1 " + r.status + " " + reasonPhrase(r.status) + "\r\n"
+
+  var headerLines = formatAllHeaderLines(r)
+  var headersText = join(headerLines, "")
+
+  statusLine + headersText + "\r\n"
+}
+
+@export
+var formatResponse = fn(res) {
+  // keep response shaping separate from formatting (adds content-length)
+  var r = ensureContentLength(res)
+
+  {
+	type: formattedResponseType,
+	head: formatHead(r),
+	body: r.body,
+  }
+}
+
+
+// ----------
+// Internals
+// ----------
+
+// Merge a patch map into the response 
+var with = fn(res, patch) {
+  res /> merge(patch)
+}
+
+var normKey = fn(k) {
+  k /> toLower /> trim
+}
+
+var normVal = fn(v) {
+  // Keep strict: expect string. If you want coercion, do it explicitly.
+  v
+}
+
+// Convert header value to list form for appending
+var toList = fn(x) {
+  match x /> type {
+	^NIL_TYPE  => []
+	^LIST_TYPE => x
+	_          => [x]
+  }
+}
+
+// Keep it small; fall back to empty/unknown if missing.
+var reasonPhrase = fn(status) match {
+  200 => "OK"
+  201 => "Created"
+  202 => "Accepted"
+  204 => "No Content"
+
+  301 => "Moved Permanently"
+  302 => "Found"
+
+  400 => "Bad Request"
+  401 => "Unauthorized"
+  403 => "Forbidden"
+  404 => "Not Found"
+  409 => "Conflict"
+
+  500 => "Internal Server Error"
+  _   => ""
+}
+
+// -------------------------
+// Header formatting helpers
+// -------------------------
+
+// Ensure Content-Length exists for string bodies (unless already provided).
+var ensureContentLength = fn(res) {
+  if (hasHeader(res, "content-length")) {
+	res
+  } else {
+	// If you later support bytes, compute byte length, not char length.
+	var n = len(res.body) /> toString
+	withHeader(res, "content-length", n)
+  }
+}
+
+// Convert one header entry into one-or-many header lines (with CRLF).
+var formatHeaderLines = fn(key, rawVal) {
+  var k = normKey(key)
+
+  match rawVal /> type {
+	^LIST_TYPE => {
+	  // each value becomes its own header line
+	  rawVal /> map(fn(v) { k + ": " + v + "\r\n" })
+	}
+	^NIL_TYPE => {
+	  []
+	}
+	_ => {
+	  [ k + ": " + rawVal + "\r\n" ]
+	}
+  }
+}
+
+// Return a list of header lines, deterministically ordered by key.
+var formatAllHeaderLines = fn(res) {
+  var ks = res.headers /> keys /> sort
+
+  // flatten list[list[string]] -> list[string]
+  ks /> flatMap(fn(k) {
+	formatHeaderLines(k, get(res.headers, k))
+  })
+}

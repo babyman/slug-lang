@@ -1,0 +1,148 @@
+var {*} = import (
+    "slug.std",
+    "slug.string",
+    "slug.map",
+    "slug.list",
+)
+
+val RequestType = "HttpRequest"
+
+// -------------------------
+// Core Data Structure
+// -------------------------
+
+@export
+var request = fn(method, path, version = "HTTP/1.1", headers = {}, body = "") {
+    {
+        type:    RequestType,
+        method:  method,
+        path:    path,
+        version: version,
+        headers: headers,
+        body:    body,    // can be string, bytes, etc
+        query:   {},
+        form:    {},
+        files:   [],
+        params:  {},
+    }
+}
+
+// -------------------------
+// Parsing logic
+// -------------------------
+
+// Returns: [request_meta, rest_of_buffer]
+// Note: This now only parses the HEADERS and returns metadata.
+// The body is handled by the caller (the server).
+@export
+var parseRequestHeaders = fn(buf) {
+    var i = buf /> indexOf("\r\n\r\n")
+    if (i < 0) { throw { type: "http", msg: "Incomplete headers" } }
+
+    var head = buf[:i]
+    var rest = buf[i + 4:] // This is the start of the body
+
+    var lines = head /> split("\r\n")
+    var first = lines[0] /> split(" ")
+    if (len(first) < 3) { throw { type: "http", msg: "Bad request line" } }
+
+    var headers = parseHeaders(lines[1:])
+    var [cleanPath, query] = parseQuery(first[1])
+
+    var req = request(first[0], cleanPath, first[2], headers, "")
+        /> withQuery(query)
+
+    [req, rest]
+}
+
+@export
+var withBody = fn(req, body) {
+    req /> put("body", body) /> parseForm
+}
+
+// -------------------------
+// Accessors & Modifiers
+// -------------------------
+
+@export
+var withPath = fn(req, path) {
+    req /> put("path", path)
+}
+
+@export
+var withQuery = fn(req, query) {
+    req /> put("query", query)
+}
+
+@export
+var withParams = fn(@map request, @map params) {
+  request /> put("params", params)
+}
+
+@export
+var withoutParam = fn(@map request, param) {
+	request /> compute("params", fn(k, v) {req.params /> remove(param)})
+}
+
+@export
+var shouldKeepAlive = fn(req) {
+    var c = req.headers["connection"]
+    match req.version {
+        "HTTP/1.0" => c == "keep-alive"
+        _          => c != "close"
+    }
+}
+
+@export var isRequest = fn(x) { get(x, "type") == RequestType }
+
+// -------------------------
+// Internals
+// -------------------------
+
+var parseHeaders = fn(lines, headers = {}) match {
+    [[], ...] => headers
+    [[line, ...rest], ...] => {
+        match line /> split(":", 2) {
+            [k, v] => recur(rest, headers /> put(k /> trim /> toLower, v /> trim))
+            _ => recur(rest, headers)
+        }
+    }
+}
+
+var parseQuery = fn(path) {
+    match path /> split("?", 2) {
+        [p] => [p, {}]
+        [p, qs] => [p, parseUrlEncoded(qs)]
+        _ => [path, {}]
+    }
+}
+
+var parseUrlEncoded = fn(s) {
+    if (s == nil || s == "") {
+        {}
+    } else {
+        s
+        /> split("&")
+        /> reduce({}, fn(m, part) {
+            match part /> split("=", 2) {
+                [k, v] => m /> put(percentDecode(urlPlusToSpace(k)), percentDecode(urlPlusToSpace(v)));
+                [k] => m /> put(percentDecode(urlPlusToSpace(k)), "")
+                _ => m
+            }
+        })
+    }
+}
+
+var urlPlusToSpace = fn(s) { s /> replaceAll("+", " ") }
+
+var percentDecode = fn(s) { s }
+
+var parseForm = fn(req) {
+    var ct = req.headers["content-type"]
+    // Only parse form automatically if body is already a string (small payload)
+    if (type(req.body) == "string" && ct != nil && ct /> startsWith("application/x-www-form-urlencoded")) {
+        req /> put("form", parseUrlEncoded(req.body))
+    } else {
+        req
+    }
+}

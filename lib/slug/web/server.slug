@@ -1,0 +1,145 @@
+var {*} = import (
+	"slug.io.tcp",
+	"slug.std",
+	"slug.string",
+	"slug.time",
+	"slug.web.request",
+	"slug.web.response",
+)
+
+
+@export
+var serve = async limit 1000 fn(app, addr = "0.0.0.0", port = 8080) {
+"""
+#
+# Server started on {{addr}}:{{port}}
+#
+""" /> println
+	var listener = bind(addr, port)
+	defer { close(listener) }
+
+	acceptLoop(listener, app)
+}
+
+var acceptLoop = fn(listener, app) {
+	var conn = accept(listener)
+	spawn { handleConn(conn, app) }
+	recur(listener, app)
+}
+
+var handleConn = fn(conn, app) {
+	defer { close(conn) }
+	defer onerror (err) { println("error:", conn, err); nil }
+
+	var maxReq = 100
+	var idleMs = secsToMillis(10)
+
+	connLoop(conn, app, "", 0, maxReq, idleMs)
+}
+
+var connLoop = async fn(conn, app, buf, n, maxReq, idleMs) {
+	if (n >= maxReq) {
+		nil
+	} else {
+		match getNextRequest(conn, buf, idleMs) {
+			nil => nil
+			[req, rest] => {
+				var keep = shouldKeepAlive(req)
+
+				var res = req /> app
+
+				if (res.headers.connection == nil) {
+					res = if (keep && (n + 1) < maxReq) {
+						res /> withConnKeepAlive
+					} else {
+						res /> withConnClose
+					}
+				}
+
+				write(conn, res /> renderResponse)
+
+				if (keep && (n + 1) < maxReq) {
+					recur(conn, app, rest, n + 1, maxReq, idleMs)
+				} else {
+					nil
+				}
+			}
+		}
+	}
+}
+
+var getNextRequest = fn(conn, buf, idleMs) {
+		var headBuf = readUntilHeaders(conn, 64_000, 4_096, idleMs, buf)
+		if (headBuf == nil || len(headBuf) == 0) {
+			return nil
+		}
+
+		// 1. Parse just the headers first
+		var [req, bodyStart] = parseRequestHeaders(headBuf)
+
+		var cl = req.headers["content-length"] /> match {
+			nil => 0
+			v   => v /> toNumber
+		}
+
+		// 2. Decide how to handle the body
+		var maxInMemoryBody = 2 * 1024 * 1024 // 2MB limit for auto-stringification
+
+		if (cl > maxInMemoryBody) {
+			// For large bodies, we don't read it all.
+			throw { type: "http", msg: "Content-Length to large: {{cl}}" }
+		} else {
+			// For small bodies, keep the convenience of a string
+			var bodyAlreadyRead = len(bodyStart)
+			var bodyNeeded = cl - bodyAlreadyRead
+
+			var fullBody = if (bodyNeeded <= 0) {
+				bodyStart[:cl]
+			} else {
+				bodyStart + readExact(conn, bodyNeeded, 4_096, idleMs)
+			}
+
+			var rest = if (len(bodyStart) > cl) {
+				bodyStart[cl:]
+			} else {
+				""
+			}
+
+			[req /> withBody(fullBody), rest]
+		}
+}
+
+var readWithin = async fn(conn, n, ms) {
+	await (spawn { read(conn, n) }) within ms
+}
+
+var readUntilHeaders = fn(conn, maxBytes, chunkSize, timeoutMs, buf = "") {
+	if (buf /> indexOf("\r\n\r\n") >= 0) {
+		buf
+	} else if (len(buf) >= maxBytes) {
+		throw { type: "http", msg: "Request headers too large" }
+	} else {
+		match readWithin(conn, chunkSize, timeoutMs) {
+			nil => buf
+			chunk => recur(conn, maxBytes, chunkSize, timeoutMs, buf + chunk)
+		}
+	}
+}
+
+var readExact = fn(conn, n, chunkSize, timeoutMs, buf = "") {
+	if (n <= 0) {
+		buf
+	} else {
+		var want = if (n < chunkSize) { n } else { chunkSize }
+		match readWithin(conn, want, timeoutMs) {
+			nil => buf
+			chunk => recur(conn, n - len(chunk), chunkSize, timeoutMs, buf + chunk)
+		}
+	}
+}
+
+var renderResponse = fn(res) {
+	res /> formatResponse /> match {
+		{head, body} => head + body
+	}
+}
