@@ -1,0 +1,14 @@
+var {*} = import(
+    "slug.test"
+)
+
+// Raw strings can be defined with single quotes
+// -----------------------
+
+'Hello Slug!' /> assertEqual("Hello Slug!")
+
+'''
+Hello
+Slug!
+''' /> assertEqual("Hello\nSlug!")
+

@@ -8,10 +8,16 @@ import (
 
 type MultiLineStringTokenizer struct {
 	lexer *Lexer
+	quote rune
+	isRaw bool
 }
 
 func NewMultiLineStringTokenizer(lexer *Lexer) *MultiLineStringTokenizer {
-	return &MultiLineStringTokenizer{lexer: lexer}
+	return &MultiLineStringTokenizer{lexer: lexer, quote: '"', isRaw: false}
+}
+
+func NewMultiLineRawStringTokenizer(lexer *Lexer) *MultiLineStringTokenizer {
+	return &MultiLineStringTokenizer{lexer: lexer, quote: '\'', isRaw: true}
 }
 
 func (m *MultiLineStringTokenizer) NextToken() token.Token {
@@ -23,18 +29,18 @@ func (m *MultiLineStringTokenizer) NextToken() token.Token {
 			return newToken(token.ILLEGAL, m.lexer.ch, startPosition)
 		}
 
-		if m.lexer.ch == '{' && m.lexer.peekChar() == '{' {
+		if !m.isRaw && m.lexer.ch == '{' && m.lexer.peekChar() == '{' {
 			m.lexer.switchMode(NewGeneralTokenizer(m.lexer))
 			break
 		}
 
-		if m.lexer.ch == '"' && m.lexer.peekChar() == '"' && m.lexer.peekTwoChars() == '"' {
-			// Handle the closing `\n"""`
+		if m.lexer.ch == m.quote && m.lexer.peekChar() == m.quote && m.lexer.peekTwoChars() == m.quote {
+			// Handle the closing triple quote
 			for i := 0; i < 3; i++ {
 				m.lexer.readChar()
 			}
 			original := result.String()
-			// Trim the last rune (the newline before closing """)
+			// For multi-line strings, we trim the last newline if it immediately precedes the closing quotes
 			if original != "" {
 				_, size := utf8.DecodeLastRuneInString(original)
 				if size > 0 {
@@ -47,7 +53,7 @@ func (m *MultiLineStringTokenizer) NextToken() token.Token {
 			break
 		}
 
-		if m.lexer.ch == '\\' {
+		if !m.isRaw && m.lexer.ch == '\\' {
 			// Handle escape sequences
 			m.lexer.readChar() // Move to the escaped character
 			switch m.lexer.ch {

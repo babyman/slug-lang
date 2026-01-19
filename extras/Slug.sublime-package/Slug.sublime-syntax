@@ -109,7 +109,15 @@ contexts:
     - match: \b0x"\s*(?:[0-9a-fA-F]{2})*\s*"
       scope: constant.numeric.byte-array.hex.slug
 
-    # Strings
+    # Raw Strings (Single Quotes)
+    - match: "'''"
+      scope: punctuation.definition.string.begin.slug
+      push: raw_string_multi
+    - match: "'"
+      scope: punctuation.definition.string.begin.slug
+      push: raw_string_single
+
+    # Interpreted Strings (Double Quotes)
     - match: '"'
       scope: punctuation.definition.string.begin.slug
       push: string
@@ -175,6 +183,22 @@ contexts:
       scope: punctuation.section.braces.begin.slug
     - match: .
       scope: string.quoted.double.slug
+
+  raw_string_single:
+    - meta_scope: string.quoted.single.raw.slug
+    - match: "'"
+      scope: punctuation.definition.string.end.slug
+      pop: true
+    - match: .
+      scope: string.quoted.single.raw.slug
+
+  raw_string_multi:
+    - meta_scope: string.quoted.single.multi.raw.slug
+    - match: "'''"
+      scope: punctuation.definition.string.end.slug
+      pop: true
+    - match: .
+      scope: string.quoted.single.multi.raw.slug
 
   list:
     - meta_scope: meta.structure.list.slug

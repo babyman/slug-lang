@@ -7,37 +7,43 @@ import (
 
 type SingleLineStringTokenizer struct {
 	lexer *Lexer
+	quote rune
+	isRaw bool
 }
 
 func NewSingleLineStringTokenizer(lexer *Lexer) *SingleLineStringTokenizer {
-	return &SingleLineStringTokenizer{lexer: lexer}
+	return &SingleLineStringTokenizer{lexer: lexer, quote: '"', isRaw: false}
+}
+
+func NewSingleLineRawStringTokenizer(lexer *Lexer) *SingleLineStringTokenizer {
+	return &SingleLineStringTokenizer{lexer: lexer, quote: '\'', isRaw: true}
 }
 
 func (s *SingleLineStringTokenizer) NextToken() token.Token {
 	var result strings.Builder
 	startPosition := s.lexer.position
 
-	// start reading the string right away, assume the opening `"` has already been read
+	// start reading the string right away, assume the opening quote has already been read
 
 	for {
 		if s.lexer.ch == 0 {
 			return newToken(token.ILLEGAL, s.lexer.ch, startPosition)
 		}
 
-		if s.lexer.ch == '{' && s.lexer.peekChar() == '{' {
+		if !s.isRaw && s.lexer.ch == '{' && s.lexer.peekChar() == '{' {
 			// Switch to interpolation mode
 			s.lexer.switchMode(NewGeneralTokenizer(s.lexer))
 			break
 		}
 
-		if s.lexer.ch == '"' {
-			// End of the single-line string
-			s.lexer.readChar() // Consume the closing `"`
+		if s.lexer.ch == s.quote {
+			// End of the string
+			s.lexer.readChar() // Consume the closing quote
 			s.lexer.setMode(NewGeneralTokenizer(s.lexer))
 			break
 		}
 
-		if s.lexer.ch == '\\' {
+		if !s.isRaw && s.lexer.ch == '\\' {
 			// Handle escape sequences
 			s.lexer.readChar() // Move to the escaped character
 			switch s.lexer.ch {

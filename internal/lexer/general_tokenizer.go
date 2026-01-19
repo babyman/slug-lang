@@ -144,6 +144,21 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 			g.lexer.switchMode(NewSingleLineStringTokenizer(g.lexer))
 		}
 		return g.lexer.currentMode.NextToken()
+	case '\'':
+		if g.lexer.peekChar() == '\'' && g.lexer.peekTwoChars() == '\'' {
+			g.lexer.readChar() // Consume the first ''
+			g.lexer.readChar() // Consume the second ''
+			g.lexer.readChar() // Consume the third ''
+			// For multi-line, we optionally consume a leading newline if present
+			if g.lexer.ch == '\n' {
+				g.lexer.readChar()
+			}
+			g.lexer.switchMode(NewMultiLineRawStringTokenizer(g.lexer))
+		} else {
+			g.lexer.readChar() // consume the opening '
+			g.lexer.switchMode(NewSingleLineRawStringTokenizer(g.lexer))
+		}
+		return g.lexer.currentMode.NextToken()
 	case '@':
 		tok = newToken(token.AT, g.lexer.ch, startPosition)
 	case 0:
