@@ -48,7 +48,7 @@ var connLoop = async fn(conn, app, buf, n, maxReq, idleMs) {
 
 				var res = req /> app
 
-				if (res.headers.connection == nil) {
+				if (res.headers["connection"] == nil) {
 					res = if (keep && (n + 1) < maxReq) {
 						res /> withConnKeepAlive
 					} else {
@@ -138,8 +138,3 @@ var readExact = fn(conn, n, chunkSize, timeoutMs, buf = "") {
 	}
 }
 
-var renderResponse = fn(res) {
-	res /> formatResponse /> match {
-		{head, body} => head + body
-	}
-}

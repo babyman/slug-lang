@@ -231,13 +231,13 @@ var cookie = fn(@str name, @str value, @map opts) {
 
   var parts = [ name + "=" + value ]
 
-  if (get(opts, "path") != nil)      { parts :+ append(parts, "Path=" + get(opts, "path")) }
-  if (get(opts, "domain") != nil)    { parts :+ append(parts, "Domain=" + get(opts, "domain")) }
-  if (get(opts, "maxAge") != nil)    { parts :+ append(parts, "Max-Age=" + get(opts, "maxAge")) }
-  if (get(opts, "expires") != nil)   { parts :+ append(parts, "Expires=" + get(opts, "expires")) } // format upstream
-  if (get(opts, "secure") == true)   { parts :+ append(parts, "Secure") }
-  if (get(opts, "httpOnly") == true) { parts :+ append(parts, "HttpOnly") }
-  if (get(opts, "sameSite") != nil)  { parts :+ append(parts, "SameSite=" + get(opts, "sameSite")) }
+  if (get(opts, "path") != nil)      { parts = parts :+ "Path=" + get(opts, "path") }
+  if (get(opts, "domain") != nil)    { parts = parts :+ "Domain=" + get(opts, "domain") }
+  if (get(opts, "maxAge") != nil)    { parts = parts :+ "Max-Age=" + get(opts, "maxAge") }
+  if (get(opts, "expires") != nil)   { parts = parts :+ "Expires=" + get(opts, "expires") } // format upstream
+  if (get(opts, "secure") == true)   { parts = parts :+ "Secure" }
+  if (get(opts, "httpOnly") == true) { parts = parts :+ "HttpOnly" }
+  if (get(opts, "sameSite") != nil)  { parts = parts :+ "SameSite=" + get(opts, "sameSite") }
 
   string.join(parts, "; ")
 }
@@ -294,6 +294,13 @@ var formatResponse = fn(res) {
 	head: formatHead(r),
 	body: r.body,
   }
+}
+
+@export
+var renderResponse = fn(res) {
+	res /> formatResponse /> match {
+		{head, body} => head + body
+	}
 }
 
 

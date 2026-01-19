@@ -319,8 +319,7 @@ var withTraceContext = fn(handler, @fun newTraceId = nil, @fun newSpanId = nil) 
 	newSpanId = if (newSpanId) {newSpanId} else {fn() { randomHexString(16) }}
 	fn(@map req) {
 
-		var hs = req.headers /> ifNil({})
-		var tp = hs["traceparent"]
+		var tp = req.headers["traceparent"]
 
 		var traceId = ""
 		var parentId = ""

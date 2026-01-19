@@ -81,7 +81,7 @@ var withParams = fn(@map request, @map params) {
 
 @export
 var withoutParam = fn(@map request, param) {
-	request /> compute("params", fn(k, v) {req.params /> remove(param)})
+	request /> put("params", request.params /> remove(param))
 }
 
 @export
