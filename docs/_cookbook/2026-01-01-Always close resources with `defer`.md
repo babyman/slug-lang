@@ -1,10 +1,10 @@
 ---
 title: Always close resources with `defer`
-tags: [async, spawn, await, defer]
+tags: [nursery, spawn, await, defer]
 ---
 
 ```slug
-async fn handleConn(conn, app) {
+nursery fn handleConn(conn, app) {
     defer { close(conn) }
 
     var rawT = spawn { read(conn, 64_000) }

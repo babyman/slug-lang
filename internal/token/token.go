@@ -87,7 +87,7 @@ const (
 	DEFER     = "DEFER"
 	ONSUCCESS = "ONSUCCESS"
 	ONERROR   = "ONERROR"
-	ASYNC     = "ASYNC"
+	NURSERY   = "NURSERY"
 	SPAWN     = "SPAWN"
 	AWAIT     = "AWAIT"
 	LIMIT     = "LIMIT"
@@ -125,11 +125,11 @@ var keywords = map[string]TokenType{
 	"onsuccess": ONSUCCESS,
 	"onerror":   ONERROR,
 
-	"async":  ASYNC,
-	"spawn":  SPAWN,
-	"await":  AWAIT,
-	"limit":  LIMIT,
-	"within": WITHIN,
+	"nursery": NURSERY,
+	"limit":   LIMIT,
+	"spawn":   SPAWN,
+	"await":   AWAIT,
+	"within":  WITHIN,
 }
 
 func LookupIdent(ident string) TokenType {

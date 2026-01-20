@@ -34,31 +34,25 @@ parallelism or message-passing abstractions.
 
 ### Language Constructs
 
-#### `async`
+#### `nursery`
 
 Marks a function (or block) as **suspending**.
 
 ```slug
-var fetchUser = async fn(id) {
+var fetchUser = nursery fn(id) {
     ...
 }
 ```
 
-Rules:
-
-* Only `async` functions and blocks may use `await`
-* Calling an `async fn` does **not** start parallelism by itself
-* `async` means “this scope may suspend”
-
-**Nursery ownership:** Each executing task has a `currentNursery` pointer. Entering an `async` *nursery scope* (e.g.,
-`async limit N fn` or `async {}`) pushes a new nursery; leaving it joins/cancels its children. Ordinary function calls
-do not create a nursery.
+**Nursery ownership:** Each executing task has a `currentNursery` pointer. Entering a `nursery` *nursery scope* (e.g.,
+`nursery limit N fn` or `nursery {}`) pushes a new nursery; leaving it joins/cancels its children. Ordinary function
+calls do not create a nursery.
 
 **Spawn registration:** `spawn { ... }` registers the child task with `currentNursery` (the nearest enclosing nursery),
 not with the immediate call frame or block scope.
 
 **Escaping task handles:** A task handle may be stored in values (lists/maps) and returned from functions. If a task
-handle escapes its nursery scope (for example, it is returned from an `async` nursery scope), it is guaranteed to be
+handle escapes its nursery scope (for example, it is returned from a `nursery` scope), it is guaranteed to be
 **settled** (completed, failed, or cancelled), because the nursery cannot exit until all its children settle. As a
 result, `await` on an escaped handle is always **idempotent** and will return immediately (or re-throw the stored
 error).
@@ -81,12 +75,12 @@ Semantics:
 * The child task is owned by the current scope
 * **Execution**: Spawned tasks are executed on a managed worker pool.
 * A **nursery scope** cannot exit until all its spawned children settle
-* `spawn` registers its child task with the nearest enclosing async nursery scope (or root), not the immediate
+* `spawn` registers its child task with the nearest enclosing nursery scope (or root), not the immediate
   function-call environment.
 
 `spawn` may execute:
 
-* `async fn` bodies (cooperative suspension)
+* `nursery fn` bodies (cooperative suspension)
 * plain `fn` bodies (blocking or CPU work)
 
 ---
@@ -119,8 +113,8 @@ Task handles are first-class values and can be passed through lists/maps and int
 functions that use type-tagged dispatch, Slug provides the `@task` type tag for task handles.
 
 ```slug
-var awaitAll = async fn(@list hs) {
-    hs /> map(async fn(@task h) { await h })
+var awaitAll = fn(@list hs) {
+    hs /> map(fn(@task h) { await h })
 }
 ```
 
@@ -135,10 +129,10 @@ Notes:
 
 #### Concurrency Limits
 
-`async limit N` limits the number of concurrently executing child tasks **within the nursery scope**.
+`nursery limit N` limits the number of concurrently executing child tasks **within the nursery scope**.
 
 ```slug
-var handler = async limit 10 fn() {
+var handler = nursery limit 10 fn() {
     ...
 }
 ```
@@ -191,11 +185,11 @@ This ensures **fail-fast, structured execution**.
 ### Example: Parallel Fan-Out / Fan-In
 
 ```slug
-var fetchUser  = async fn(id) { ... }
+var fetchUser  = nursery fn(id) { ... }
 var fetchPosts = fn(id) { ... }
 var renderProfile = fn(user, posts) { ... }
 
-var showProfile = async limit 10 fn(id) {
+var showProfile = nursery limit 10 fn(id) {
     var userT  = spawn { id /> fetchUser }
     var postsT = spawn { id /> fetchPosts }
 
@@ -220,7 +214,7 @@ Properties:
 Because `await` is syntax (not a function), pipelines should use small helpers:
 
 ```slug
-var awaitWithin = async fn(v, dur) {
+var awaitWithin = fn(v, dur) {
     await v within dur
 }
 
@@ -248,10 +242,9 @@ These are considered sources of hidden complexity and unpredictable lifetime.
 
 ### Mental Model (Authoritative)
 
-> * `async` — *this scope may pause*
+> * `nursery` — *I will not leave until my children are done*
 > * `spawn` — *do this in parallel*
 > * `await` — *pause here*
-> * scope — *I will not leave until my children are done*
 
 If you remember only this, you understand Slug concurrency.
 

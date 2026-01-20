@@ -1,12 +1,12 @@
 ---
 title: Pipeline-friendly timeout helper
-tags: [async, spawn, await]
+tags: [spawn, await]
 ---
 
 If you like keeping the spawn+await pattern tidy:
 
 ```slug
-var withTimeout = async fn(ms, f) {
+var withTimeout = fn(ms, f) {
     await (spawn { f() }) within ms
 }
 ```

@@ -251,7 +251,7 @@ var withLog = fn(handler) {
 
 @export
 var withTimeout = fn(h, ms) {
-	async fn(@map req) {
+	fn(@map req) {
 		var task = spawn { h(req) }
 		await task within ms
 	}

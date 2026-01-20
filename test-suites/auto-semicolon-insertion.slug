@@ -47,7 +47,7 @@ var asi_paren_expr_then_pipeline_value = fn() {
 }
 
 @test
-var asi_no_newline_call = async fn() {
+var asi_no_newline_call = nursery fn() {
     var t = spawn {
         sleep(10)
         11

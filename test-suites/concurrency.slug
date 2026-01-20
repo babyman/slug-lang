@@ -5,7 +5,7 @@ var {*} = import(
 )
 
 @test
-var test_spawn_returns_task_handles = async fn() {
+var test_spawn_returns_task_handles = fn() {
     var x = spawn {
         sleep(100)
         10 + 1
@@ -15,7 +15,7 @@ var test_spawn_returns_task_handles = async fn() {
 }
 
 @test
-var test_await_is_valid_in_async_functions = async fn() {
+var test_await_is_valid_in_functions = fn() {
     var x = spawn {
         sleep(100)
         10 + 1
@@ -26,9 +26,9 @@ var test_await_is_valid_in_async_functions = async fn() {
 }
 
 @test
-var test_async_actions_run_in_parallel = fn() {
+var test_nursery_actions_run_in_parallel = fn() {
     var c = delta(clock)
-    var f = async fn() {
+    var f = nursery fn() {
         var x = spawn {
             sleep(100)
             10 + 1
@@ -46,7 +46,7 @@ var test_async_actions_run_in_parallel = fn() {
 }
 
 @test
-var test_completed_tasks_are_idempotent_and_cached = async fn() {
+var test_completed_tasks_are_idempotent_and_cached = fn() {
     var c = delta(clock)
     var t = spawn {
         sleep(100)
@@ -60,9 +60,9 @@ var test_completed_tasks_are_idempotent_and_cached = async fn() {
 }
 
 @test
-var test_limit_1_forces_sync_execution = fn() {
+var test_limit_1_forces_nursery_execution = fn() {
     var c = delta(clock)
-    var f = async limit 1 fn() {
+    var f = nursery limit 1 fn() {
         var x = spawn {
             sleep(100)
             10 + 1
@@ -82,13 +82,13 @@ var test_limit_1_forces_sync_execution = fn() {
 @test
 var test_map_reduce_operate_in_the_same_thread_nursery = fn() {
     var c = delta(clock)
-    var f = async fn(xs) {
+    var f = nursery fn(xs) {
         xs /> map(fn(x) {
             spawn {
                 sleep(100)
                 x
             }
-        }) /> reduce(0, async fn(a, h) {
+        }) /> reduce(0, fn(a, h) {
             a + await h
         })
     }
@@ -100,19 +100,19 @@ var test_map_reduce_operate_in_the_same_thread_nursery = fn() {
 @test
 var test_recur_does_not_join_threads = fn() {
     var c = delta(clock)
-    var f = async fn(xs, acc = []) match {
+    var f = nursery fn(xs, acc = []) match {
         [[], ...] => acc
         [[h, ...t], ...] => recur(t, acc :+ spawn { sleep(100); h*2 })
     }
     f([1,2,3])
-        /> reduce(0, async fn(a, h) { a + await h })
+        /> reduce(0, fn(a, h) { a + await h })
         /> assertEqual(12)
     assertLessThan(c(), 150)
 }
 
 @test
 var test_timeout_throws = fn() {
-    var f = async fn() {
+    var f = nursery fn() {
         var x = spawn {
             sleep(10)
         }
@@ -125,7 +125,7 @@ var test_timeout_throws = fn() {
 
 @test
 var test_defer_onerror_catches_timeouts = fn() {
-    var f = async limit 10 fn() {
+    var f = nursery limit 10 fn() {
         defer onerror(err) "pass"
         var x = spawn {
             sleep(10)
@@ -138,7 +138,7 @@ var test_defer_onerror_catches_timeouts = fn() {
 @test
 var test_errors_cause_incomplete_tasks_to_cancel = fn() {
     var b  = nil
-    var f = async limit 10 fn() {
+    var f = nursery limit 10 fn() {
         var a = spawn {
             sleep(5)
             throw "err"
@@ -149,7 +149,7 @@ var test_errors_cause_incomplete_tasks_to_cancel = fn() {
         }
     }
     var throwError = runSafe(fn() { f() })
-    var xldTask = runSafe(async fn() { await b })
+    var xldTask = runSafe(fn() { await b })
     
     throwError.error /> eq("err")
 
@@ -160,7 +160,7 @@ var test_errors_cause_incomplete_tasks_to_cancel = fn() {
 @test
 var test_errors_are_detected_during_await = fn() {
     var a = 0
-    var f = async limit 10 fn() {
+    var f = nursery limit 10 fn() {
         var x = spawn {
             throw "err"
         }
@@ -176,7 +176,7 @@ var test_errors_are_detected_during_await = fn() {
 
 @test
 var test_errors_are_detected_during_nursery_exit = fn() {
-    var f = async limit 10 fn() {
+    var f = nursery limit 10 fn() {
         spawn {
             throw "err"
         }
@@ -188,8 +188,8 @@ var test_errors_are_detected_during_nursery_exit = fn() {
 
 @test
 var test_errors_should_honour_local_defer_onerror = fn() {
-    var f = async limit 10 fn() {
-        var a = async limit 10 fn() {
+    var f = nursery limit 10 fn() {
+        var a = nursery limit 10 fn() {
             defer onerror(e) "handled"
             spawn {
                 throw "err"

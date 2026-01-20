@@ -9,7 +9,7 @@ var {*} = import (
 // The test ensures that when it fails the error is propagated correctly and causes the VM to
 // exit with an error status
 
-var loop = async limit 10 fn(cnt = 0) match {
+var loop = nursery limit 10 fn(cnt = 0) match {
 	10 => "DONE"
 	0 => {
 		spawn {

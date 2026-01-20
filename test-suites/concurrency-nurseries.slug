@@ -8,18 +8,18 @@ var block = fn() {
     sleep(50)
 }
 
-var a = async fn() {
+var a = fn() {
     await (spawn { block() })
 }
 
 @test
 var test_await_timeout_caught_by_defer_onerror = fn(){
 
-    var b = async fn() {
+    var b = fn() {
         await (spawn { a() }) within 10
     }
 
-    var f = async limit 10 fn(n) {
+    var f = nursery limit 10 fn(n) {
         defer onerror(err) { "error handled" }
         match n {
             0 => "done"
@@ -37,12 +37,12 @@ var test_await_timeout_caught_by_defer_onerror = fn(){
 @test
 var test_await_timeout_caught_by_defer_onerror_in_nested_function = fn(){
 
-    var b = async fn() {
+    var b = fn() {
         defer onerror(err) { nil }
         await (spawn { a() }) within 10
     }
 
-    var f = async limit 10 fn(n) {
+    var f = nursery limit 10 fn(n) {
         match n {
             0 => "done"
             a => {
@@ -61,7 +61,7 @@ var test_await_timeout_caught_by_defer_onerror_in_nested_function = fn(){
 var test_await_timeout_caught_by_defer_onerror_in_nested_function = fn(){
 
     var c = 0
-    var f = async limit 10 fn(n) {
+    var f = nursery limit 10 fn(n) {
         match n {
             0 => "done"
             a => {

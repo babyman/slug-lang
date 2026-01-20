@@ -184,7 +184,7 @@ func (es *ExpressionStatement) String() string {
 type BlockStatement struct {
 	Token      token.Token // the { token
 	Statements []Statement
-	IsAsync    bool       // handles async { ... }
+	IsNursery  bool       // handles nursery { ... }
 	Limit      Expression // handles limit N { ... }
 }
 
@@ -194,8 +194,8 @@ func (bs *BlockStatement) TokenLiteral() string { return bs.Token.Literal }
 func (bs *BlockStatement) String() string {
 	var out bytes.Buffer
 
-	if bs.IsAsync {
-		out.WriteString("async ")
+	if bs.IsNursery {
+		out.WriteString("nursery ")
 		if bs.Limit != nil {
 			out.WriteString("limit ")
 			out.WriteString(bs.Limit.String())

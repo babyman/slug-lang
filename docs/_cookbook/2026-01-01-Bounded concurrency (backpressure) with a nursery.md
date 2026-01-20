@@ -1,15 +1,15 @@
 ---
 title: Bounded concurrency (backpressure) with a nursery
-tags: [async, limit, spawn, await]
+tags: [nursery, limit, spawn, await]
 ---
 
 Create a nursery to limit concurrent spawns:
 
 ```slug
-var loadUsers = async limit 10 fn(ids) {
+var loadUsers = nursery limit 10 fn(ids) {
     ids
         /> map(fn(id) { spawn { fetchUser(id) } })
-        /> map(async fn(t) { await t })  // join handles
+        /> map(fn(t) { await t })  // join handles
 }
 ```
 

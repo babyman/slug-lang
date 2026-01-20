@@ -1,12 +1,12 @@
 ---
 title: Timeout any work (the canonical pattern)
-tags: [async, spawn, await]
+tags: [nursery, spawn, await]
 ---
 
-Timeouts apply to `await`, so to timeout a call (sync or async), wrap it in a spawn:
+Timeouts apply to `await`, so to timeout a call (sync or nursery), wrap it in a spawn:
 
 ```slug
-async fn handler(req) {
+nursery fn handler(req) {
     var resT = spawn { doWork(req) }
     var res  = await resT within 2000
     res
@@ -16,5 +16,5 @@ async fn handler(req) {
 This works for:
 
 * normal `fn`
-* `async fn`
+* `nursery fn`
 * blocking foreign calls (FFI)

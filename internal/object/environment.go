@@ -71,7 +71,7 @@ func NewRootEnvironment(limit int) *Environment {
 		slog.Int("gomaxprocs", runtime.GOMAXPROCS(0)),
 	)
 	env := NewEnvironment()
-	env.IsThreadNurseryScope = true // root acts like an async scope for spawn ownership
+	env.IsThreadNurseryScope = true // root acts like a nursery scope for spawn ownership
 	env.Limit = limit
 	return env
 }

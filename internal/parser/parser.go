@@ -109,7 +109,7 @@ func New(l lexer.Tokenizer, path, source string) *Parser {
 	p.registerPrefix(token.VAR, p.parseVarStatement)
 	p.registerPrefix(token.VAL, p.parseValStatement)
 	p.registerPrefix(token.RECUR, p.parseRecurExpression)
-	p.registerPrefix(token.ASYNC, p.parseAsyncExpression)
+	p.registerPrefix(token.NURSERY, p.parseNurseryExpression)
 	p.registerPrefix(token.SPAWN, p.parseSpawnExpression)
 	p.registerPrefix(token.AWAIT, p.parseAwaitExpression)
 
@@ -227,7 +227,6 @@ func (p *Parser) ParseProgram() *ast.Program {
 		p.skipStatementSeparators()
 	}
 
-	p.validateAwaitUsage(program)
 	return program
 }
 
@@ -1365,7 +1364,7 @@ func (p *Parser) parseRecurExpression() ast.Expression {
 	return expr
 }
 
-func (p *Parser) parseAsyncExpression() ast.Expression {
+func (p *Parser) parseNurseryExpression() ast.Expression {
 	tok := p.curToken
 	var limit ast.Expression
 
@@ -1377,23 +1376,23 @@ func (p *Parser) parseAsyncExpression() ast.Expression {
 		p.nextToken()
 	}
 
-	// async can prefix a function or a block
+	// nursery can prefix a function or a block
 	expr := p.parseExpression(LOWEST)
 
 	switch node := expr.(type) {
 	case *ast.FunctionLiteral:
-		// Mark the function's body as the async scope
+		// Mark the function's body as the nursery scope
 		if node.Body != nil {
-			node.Body.IsAsync = true
+			node.Body.IsNursery = true
 			node.Body.Limit = limit
 		}
 		return node
 	case *ast.BlockStatement:
-		node.IsAsync = true
+		node.IsNursery = true
 		node.Limit = limit
 		return node
 	default:
-		p.addErrorAt(tok.Position, "async must be followed by a function or block, got %v", expr)
+		p.addErrorAt(tok.Position, "nursery must be followed by a function or block, got %v", expr)
 		return nil
 	}
 }
@@ -2022,153 +2021,5 @@ func (p *Parser) validateRecurInExpr(expr ast.Expression, inTail bool) {
 
 	default:
 		// For literals, identifiers, etc., there is nothing to check.
-	}
-}
-
-// validateAwaitUsage enforces that `await` is only used inside async functions/blocks,
-// or in the top-level script (i.e., not inside a non-async function).
-func (p *Parser) validateAwaitUsage(program *ast.Program) {
-	if program == nil {
-		return
-	}
-
-	// Top-level script: functionDepth==0 means "not inside any function".
-	functionDepth := 0
-	inAsync := false
-
-	for _, stmt := range program.Statements {
-		p.validateAwaitInStatement(stmt, functionDepth, inAsync)
-	}
-}
-
-func (p *Parser) validateAwaitInBlock(block *ast.BlockStatement, functionDepth int, inAsync bool) {
-	if block == nil {
-		return
-	}
-	for _, stmt := range block.Statements {
-		p.validateAwaitInStatement(stmt, functionDepth, inAsync)
-	}
-}
-
-func (p *Parser) validateAwaitInStatement(stmt ast.Statement, functionDepth int, inAsync bool) {
-	if stmt == nil {
-		return
-	}
-
-	switch s := stmt.(type) {
-	case *ast.ExpressionStatement:
-		p.validateAwaitInExpr(s.Expression, functionDepth, inAsync)
-
-	case *ast.ReturnStatement:
-		p.validateAwaitInExpr(s.ReturnValue, functionDepth, inAsync)
-
-	case *ast.ThrowStatement:
-		p.validateAwaitInExpr(s.Value, functionDepth, inAsync)
-
-	case *ast.DeferStatement:
-		// Defer bodies can be a block or expression statement in this parser.
-		if s == nil || s.Call == nil {
-			return
-		}
-		switch call := s.Call.(type) {
-		case *ast.BlockStatement:
-			p.validateAwaitInBlock(call, functionDepth, inAsync)
-		case *ast.ExpressionStatement:
-			p.validateAwaitInExpr(call.Expression, functionDepth, inAsync)
-		default:
-			// Unknown defer call shape; nothing to validate here.
-		}
-
-	default:
-		// If additional statement types are added later, add cases as needed.
-	}
-}
-
-func (p *Parser) validateAwaitInExpr(expr ast.Expression, functionDepth int, inAsync bool) {
-	if expr == nil {
-		return
-	}
-
-	switch e := expr.(type) {
-	case *ast.AwaitExpression:
-		// Allowed:
-		//   - top-level script (functionDepth == 0)
-		//   - inside async function/block (inAsync == true)
-		if !(inAsync || functionDepth == 0) {
-			p.addErrorAt(e.Token.Position, "cannot use 'await' outside of an async function or block")
-		}
-		p.validateAwaitInExpr(e.Value, functionDepth, inAsync)
-		p.validateAwaitInExpr(e.Timeout, functionDepth, inAsync)
-
-	case *ast.VarExpression:
-		p.validateAwaitInExpr(e.Value, functionDepth, inAsync)
-
-	case *ast.ValExpression:
-		p.validateAwaitInExpr(e.Value, functionDepth, inAsync)
-
-	case *ast.SpawnExpression:
-		// spawn is implicitly async: await is allowed within its body.
-		p.validateAwaitInExpr(e.Body, functionDepth, true)
-
-	case *ast.FunctionLiteral:
-		nextDepth := functionDepth + 1
-		nextAsync := e.Body != nil && e.Body.IsAsync
-		p.validateAwaitInBlock(e.Body, nextDepth, nextAsync)
-
-	case *ast.IfExpression:
-		p.validateAwaitInExpr(e.Condition, functionDepth, inAsync)
-		p.validateAwaitInBlock(e.ThenBranch, functionDepth, inAsync)
-		if e.ElseBranch != nil {
-			p.validateAwaitInBlock(e.ElseBranch, functionDepth, inAsync)
-		}
-
-	case *ast.MatchExpression:
-		p.validateAwaitInExpr(e.Value, functionDepth, inAsync)
-		for _, c := range e.Cases {
-			if c == nil {
-				continue
-			}
-			p.validateAwaitInExpr(c.Guard, functionDepth, inAsync)
-			p.validateAwaitInBlock(c.Body, functionDepth, inAsync)
-		}
-
-	case *ast.CallExpression:
-		p.validateAwaitInExpr(e.Function, functionDepth, inAsync)
-		for _, arg := range e.Arguments {
-			p.validateAwaitInExpr(arg, functionDepth, inAsync)
-		}
-
-	case *ast.PrefixExpression:
-		p.validateAwaitInExpr(e.Right, functionDepth, inAsync)
-
-	case *ast.InfixExpression:
-		p.validateAwaitInExpr(e.Left, functionDepth, inAsync)
-		p.validateAwaitInExpr(e.Right, functionDepth, inAsync)
-
-	case *ast.IndexExpression:
-		p.validateAwaitInExpr(e.Left, functionDepth, inAsync)
-		p.validateAwaitInExpr(e.Index, functionDepth, inAsync)
-
-	case *ast.SliceExpression:
-		p.validateAwaitInExpr(e.Start, functionDepth, inAsync)
-		p.validateAwaitInExpr(e.End, functionDepth, inAsync)
-		p.validateAwaitInExpr(e.Step, functionDepth, inAsync)
-
-	case *ast.ListLiteral:
-		for _, el := range e.Elements {
-			p.validateAwaitInExpr(el, functionDepth, inAsync)
-		}
-
-	case *ast.MapLiteral:
-		for k, v := range e.Pairs {
-			p.validateAwaitInExpr(k, functionDepth, inAsync)
-			p.validateAwaitInExpr(v, functionDepth, inAsync)
-		}
-
-	case *ast.SpreadExpression:
-		p.validateAwaitInExpr(e.Value, functionDepth, inAsync)
-
-	default:
-		// Identifiers, literals, etc.
 	}
 }

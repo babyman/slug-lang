@@ -8,7 +8,7 @@ import (
 type NurseryScope struct {
 	// Concurrency tracking
 	Children   []*Task       // Tasks owned by this scope
-	Limit      chan struct{} // Semaphore for 'async limit N'
+	Limit      chan struct{} // Semaphore for 'nursery limit N'
 	NurseryErr object.Object // fail-fast state (first failure wins)
 	mu         sync.RWMutex
 }

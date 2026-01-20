@@ -9,7 +9,7 @@ var {*} = import (
 
 
 @export
-var serve = async limit 1000 fn(app, addr = "0.0.0.0", port = 8080) {
+var serve = nursery limit 1000 fn(app, addr = "0.0.0.0", port = 8080) {
 """
 #
 # Server started on {{addr}}:{{port}}
@@ -37,7 +37,7 @@ var handleConn = fn(conn, app) {
 	connLoop(conn, app, "", 0, maxReq, idleMs)
 }
 
-var connLoop = async fn(conn, app, buf, n, maxReq, idleMs) {
+var connLoop = fn(conn, app, buf, n, maxReq, idleMs) {
 	if (n >= maxReq) {
 		nil
 	} else {
@@ -109,7 +109,7 @@ var getNextRequest = fn(conn, buf, idleMs) {
 		}
 }
 
-var readWithin = async fn(conn, n, ms) {
+var readWithin = fn(conn, n, ms) {
 	await (spawn { read(conn, n) }) within ms
 }
 

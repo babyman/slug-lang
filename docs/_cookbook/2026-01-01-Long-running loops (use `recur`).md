@@ -1,10 +1,10 @@
 ---
 title: Long-running loops (use `recur`)
-tags: [async, await, recur]
+tags: [nursery, await, recur]
 ---
 
 ```slug
-async fn acceptLoop(listener, app) {
+nursery fn acceptLoop(listener, app) {
     var conn = accept(listener)
     spawn { handleConn(conn, app) }
     recur(listener, app)

@@ -492,11 +492,15 @@ func (e *Task) newBlockEnv(block *ast.BlockStatement) *object.Environment {
 		Position: block.Token.Position,
 	})
 
-	if block.Limit != nil {
+	if block.IsNursery {
 		blockEnv.IsThreadNurseryScope = true
-		limitVal := e.Eval(block.Limit)
-		if num, ok := limitVal.(*object.Number); ok {
-			blockEnv.Limit = num.Value.ToInt()
+		if block.Limit != nil {
+			limitVal := e.Eval(block.Limit)
+			if num, ok := limitVal.(*object.Number); ok {
+				blockEnv.Limit = num.Value.ToInt()
+			}
+		} else {
+			blockEnv.Limit = e.Runtime.Config.DefaultLimit
 		}
 	}
 

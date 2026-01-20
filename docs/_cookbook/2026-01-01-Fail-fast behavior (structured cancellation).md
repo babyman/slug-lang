@@ -1,6 +1,6 @@
 ---
 title: Fail-fast behavior (structured cancellation)
-tags: [async, spawn, await]
+tags: [nursery, spawn, await]
 ---
 
 By default, if a task fails and you `await` it:
@@ -11,7 +11,7 @@ By default, if a task fails and you `await` it:
 Typical pattern:
 
 ```slug
-async fn handler(req) {
+nursery fn handler(req) {
     var aT = spawn { taskA() }
     var bT = spawn { taskB() }
 
