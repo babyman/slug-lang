@@ -1,6 +1,6 @@
 ---
 title: Inline Unit Testing with `@testWith`
-tags: [ test, @testWith ]
+tags: [ test, testWith ]
 ---
 
 ### **Problem**
