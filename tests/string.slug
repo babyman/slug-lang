@@ -31,6 +31,23 @@ ms /> assertEqual("Hello\nSlug!")
 
 " é " /> trim() /> assertEqual("é")
 
+
+// multi-line new-line removal
+// -----------------------
+
+'''inside''' /> assertEqual("inside")
+
+'''
+inside
+''' /> assertEqual("inside")
+
+"""inside""" /> assertEqual("inside")
+
+"""
+inside
+""" /> assertEqual("inside")
+
+
 // length
 // -----------------------
 

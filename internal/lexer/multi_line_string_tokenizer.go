@@ -3,7 +3,6 @@ package lexer
 import (
 	"slug/internal/token"
 	"strings"
-	"unicode/utf8"
 )
 
 type MultiLineStringTokenizer struct {
@@ -41,13 +40,9 @@ func (m *MultiLineStringTokenizer) NextToken() token.Token {
 			}
 			original := result.String()
 			// For multi-line strings, we trim the last newline if it immediately precedes the closing quotes
-			if original != "" {
-				_, size := utf8.DecodeLastRuneInString(original)
-				if size > 0 {
-					trimmed := original[:len(original)-size]
-					result.Reset()
-					result.WriteString(trimmed)
-				}
+			if original != "" && original[len(original)-1] == '\n' {
+				result.Reset()
+				result.WriteString(original[:len(original)-1])
 			}
 			m.lexer.setMode(NewGeneralTokenizer(m.lexer))
 			break

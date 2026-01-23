@@ -137,7 +137,9 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 			g.lexer.readChar() // Consume the first ""
 			g.lexer.readChar() // Consume the second ""
 			g.lexer.readChar() // Consume the third ""
-			g.lexer.readChar() // Consume the \n
+			if g.lexer.ch == '\n' {
+				g.lexer.readChar() // Consume the \n
+			}
 			g.lexer.switchMode(NewMultiLineStringTokenizer(g.lexer))
 		} else {
 			g.lexer.readChar() // consume the opening "
