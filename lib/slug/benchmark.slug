@@ -1,0 +1,275 @@
+///
+/// slug.bench
+/// Slug-native micro benchmarking (no opts maps)
+///
+
+var {*} = import(
+	"slug.std",
+	"slug.time",
+	"slug.math",
+)
+
+@export val UnitNs = "ns"
+@export val UnitUs = "us"
+@export val UnitMs = "ms"
+
+val msToNs = fn(@num ms) { ms * 1_000_000 }
+
+val scaleDivisor = fn(unit) match {
+	^UnitNs => 1
+	^UnitUs => 1_000
+	^UnitMs => 1_000_000
+	_ => 1
+}
+
+val scale = fn(xs, unit) {
+	val div = scaleDivisor(unit)
+	xs /> map(fn(x) { x / div })
+}
+
+/// insertion sort (ascending) — good enough for small sample counts
+val sortAsc = fn(xs, acc = []) match {
+	[[], ...] => acc
+	[[h, ...t], ...] => recur(t, insertAsc(acc, h))
+}
+
+val insertAsc = fn(sorted, x, acc = []) match {
+	[[], ...] => acc :+ x
+	[[h, ...t], ...] if x <= h => (acc :+ x :+ h) + t
+	[[h, ...t], ...] => recur(t, x, acc :+ h)
+}
+
+val average = fn(xs) match {
+	[] => 0
+	_ => (xs /> reduce(0, fn(a, x) { a + x })) / (len(xs))
+}
+
+val stdev = fn(xs, mean) match {
+	[] => 0
+	[_] => 0
+	_ => {
+		val n = len(xs)
+		val acc = xs /> reduce(0, fn(a, x) {
+			val d = x - mean
+			a + (d * d)
+		})
+		val v = acc / (n - 1)
+		sqrt(if (v < 0) { 0 } else { v })
+	}
+}
+
+/// percentileSorted: xs must be ascending
+val percentileSorted = fn(xs, p) match {
+	[[], ...] => 0
+	[[x], ...] => x
+	_ => {
+		val n = len(xs)
+		val pos = (p / 100) * (n - 1)
+		val lo = floor(pos)
+		val hi = ceil(pos)
+
+		if (lo == hi) {
+			xs[lo]
+		} else {
+			val frac = pos - lo
+			xs[lo] + (xs[hi] - xs[lo]) * frac
+		}
+	}
+}
+
+val computeStats = fn(xs) {
+	val ys = sortAsc(xs)
+	val mean = average(ys)
+	val sd = stdev(ys, mean)
+	{
+		min: ys[0],
+		p50: percentileSorted(ys, 50),
+		p90: percentileSorted(ys, 90),
+		p99: percentileSorted(ys, 99),
+		max: ys[(len(ys) - 1)],
+		mean: mean,
+		stdev: sd,
+	}
+}
+
+// ---------------- Timing core ----------------
+
+val measureWork = fn(workFn, iters) {
+	val start = clockNanos()
+
+	val loop = fn(n) match {
+		0 => nil
+		_ => { workFn(); recur(n - 1) }
+	}
+
+	loop(iters)
+	clockNanos() - start
+}
+
+val warmup = fn(workFn, warmupNs) {
+	val start = clockNanos()
+	val spin = fn() {
+		if ((clockNanos() - start) < warmupNs) {
+			workFn()
+			recur()
+		} else { nil }
+	}
+	spin()
+}
+
+val calibrateIters = fn(workFn, targetNs, minIters, maxIters) {
+	val step = fn(iters) {
+		if (iters >= maxIters) {
+			maxIters
+		} else {
+			val t = measureWork(workFn, iters)
+			if (t >= targetNs) { iters } else { recur(iters * 2) }
+		}
+	}
+	step(max(1, minIters))
+}
+
+val measureOverheadPerIter = fn(iters, samples) {
+	val emptyFn = fn() { nil }
+
+	val collect = fn(n, xs) match {
+		[0, ...] => xs
+		[...] => {
+			val t = measureWork(emptyFn, iters)
+			recur(n - 1, xs :+ (t / iters))
+		}
+	}
+
+	val xs = collect(samples, [])
+	// median overhead in ns
+	percentileSorted(sortAsc(xs), 50)
+}
+
+val sampleTimesPerIter = fn(workFn, iters, samples, overheadPerIter) {
+	val loop = fn(n, xs) match {
+		[0, ...] => xs
+		_ => {
+			val t = measureWork(workFn, iters)
+			val per = clampZero((t / iters) - overheadPerIter)
+			recur(n - 1, xs :+ per)
+		}
+	}
+	loop(samples, [])
+}
+
+// ---------------- Public API ----------------
+
+///
+/// micro(name, workFn, warmupMs=100, sampleMs=200, samples=20, minIters=1, maxIters=10000000, subtractOverhead=true, unit="ns")
+///
+/// returns:
+/// { name, unit, itersPerSample, samples, stats:{...}, raw:{timesPerIter:[...] } }
+///
+@export
+var micro = fn(
+	@str name,
+	@fun workFn,
+	@num warmupMs = 100,
+	@num sampleMs = 200,
+	@num samples = 20,
+	@num minIters = 1,
+	@num maxIters = 10_000_000,
+	@bool subtractOverhead = true,
+	@str unit = UnitNs
+) {
+	val warmupNs = msToNs(warmupMs)
+	val sampleNs = msToNs(sampleMs)
+
+	warmup(workFn, warmupNs)
+
+	val iters = calibrateIters(workFn, sampleNs, minIters, maxIters)
+
+	val overhead =
+		if (subtractOverhead) { measureOverheadPerIter(iters, samples) } else { 0 }
+
+	val nsPerIter = sampleTimesPerIter(workFn, iters, samples, overhead)
+	val scaled = scale(nsPerIter, unit)
+	val stats = computeStats(scaled)
+
+	{
+		name: name,
+		unit: unit,
+		itersPerSample: iters,
+		samples: samples,
+		stats: stats,
+		raw: { timesPerIter: scaled },
+	}
+}
+
+@export
+var printResult = fn(res) {
+	val s = res.stats
+	println(res.name)
+	printf("  p50: %0.0f %s  p90: %0.0f  p99: %0.0f\n", s.p50, res.unit, s.p90, s.p99)
+	printf("  mean: %0.0f  stdev: %0.0f  min: %0.0f  max: %0.0f\n", s.mean, s.stdev, s.min, s.max)
+	printf("  iters/sample: %d  samples: %d\n", res.itersPerSample, res.samples)
+}
+
+/// compare(work, benches, ...same defaults...)
+/// benches: [ {name:"x", fun: fn(){...}}, ... ]
+@export
+var compare = fn(
+	@list benches,
+	@num warmupMs = 100,
+	@num sampleMs = 200,
+	@num samples = 20,
+	@num minIters = 1,
+	@num maxIters = 10_000_000,
+	@bool subtractOverhead = true,
+	@str unit = UnitNs
+) {
+	val results =
+		benches /> map(fn(b) {
+			micro(
+				b.name,
+				b.fun,
+				warmupMs,
+				sampleMs,
+				samples,
+				minIters,
+				maxIters,
+				subtractOverhead,
+				unit
+			)
+		})
+	// sort by p50
+	val sorted = sortByP50(results)
+
+	val base = sorted[0].stats.p50
+
+	val withRatio =
+		sorted /> map(fn(r) {
+			r /> put("ratio", r.stats.p50 / base)
+		})
+
+	{ results: withRatio }
+}
+
+val sortByP50 = fn(results) {
+	// insertion sort on results by stats.p50
+	val insert = fn(sorted, r, acc = []) match {
+		[[], ...] => acc :+ r
+		[[h, ...t], ...] if (r.stats.p50 <= h.stats.p50) => (acc :+ r :+ h) + t
+		[[h, ...t], ...] => recur(t, r, acc :+ h)
+	}
+
+	val go = fn(xs, acc = []) match {
+		[[], ...] => acc
+		[[h, ...t], ...] => recur(t, insert(acc, h))
+	}
+
+	go(results, [])
+}
+
+@export
+var printCompareReport = fn(report) {
+	println("Benchmark report")
+	report.results /> map(fn(r) {
+		printf("  %-15s: p50 %0.0f %s  x%s\n", r.name, r.stats.p50, r.unit, toString(r.ratio))
+	})
+}

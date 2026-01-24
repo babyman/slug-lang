@@ -1,14 +1,7 @@
 var {*} = import(
-	"slug.std"
+	"slug.std",
 )
 
-var searchList = fn(vals, result, f, idx = 0) {
-	if(len(vals) > idx) {
-		recur(vals, f(vals[idx], result), f, idx + 1)
-	} else {
-		result
-	}
-}
 
 @testWith(
 	[1, 2, 3], 3,
@@ -16,10 +9,17 @@ var searchList = fn(vals, result, f, idx = 0) {
 	[4, 5, 3], 5
 )
 @export
-var max = fn(a, ...b) {
+var max = fn(@num a, ...b) {
 	val _max = fn(x, y) {if (x > y) {x} else {y}}
 	searchList(b, a, _max)
 }
+
+
+@export
+var max = fn(@num a, @num b) {
+	if (a > b) { a } else { b }
+}
+
 
 @testWith(
 	[1, 2, 3], 1,
@@ -27,10 +27,17 @@ var max = fn(a, ...b) {
 	[6, 5, 4], 4
 )
 @export
-var min = fn(a, ...b) {
+var min = fn(@num a, ...b) {
 	val _min = fn(x, y) {if (x < y) {x} else {y}}
 	searchList(b, a, _min)
 }
+
+
+@export
+var clampZero = fn(@num n) {
+	if (n < 0) { 0 } else { n }
+}
+
 
 // floor returns the greatest integer less than or equal to n.
 @testWith(
@@ -39,7 +46,8 @@ var min = fn(a, ...b) {
 	[-1.2], -2,
 )
 @export
-foreign floor = fn(n)
+foreign floor = fn(@num n)
+
 
 // ceil returns the least integer greater than or equal to n.
 @testWith(
@@ -48,7 +56,8 @@ foreign floor = fn(n)
 	[-1.2], -1,
 )
 @export
-foreign ceil = fn(n)
+foreign ceil = fn(@num n)
+
 
 // sqrt returns the square root of n.
 // For n < 0, it returns NaN.
@@ -58,11 +67,67 @@ foreign ceil = fn(n)
 	[9], 3,
 )
 @export
-foreign sqrt = fn(n)
+foreign sqrt = fn(@num n)
+
 
 // random_range generates a random integer in the range [min, max] (exclusive).
 // min: Minimum value of the range (integer).
 // max: Maximum value of the range (integer).
 // Returns: a random integer in the specified range.
 @export
-foreign rndRange = fn(min, max)
+foreign rndRange = fn(@num min, @num max)
+
+
+// @export
+// var average = fn(xs) match {
+// 	[] => 0
+// 	_ => {
+// 		(xs /> reduce(0, fn(a, x) { a + x })) / (len(xs))
+// 	}
+// }
+
+
+// @export
+// var stdev = fn(xs, mean) match {
+// 	[] => 0
+// 	[_] => 0
+// 	_ => {
+// 		val n = len(xs)
+// 		val acc = xs /> reduce(0, fn(a, x) {
+// 			val d = x - mean
+// 			a + (d * d)
+// 		})
+// 		val v = acc / (n - 1)
+// 		sqrt(if (v < 0) { 0 } else { v })
+// 	}
+// }
+
+
+// /// percentileSorted: xs must be ascending
+// @export
+// var percentileSorted = fn(xs, p) match {
+// 	[[], ...] => 0
+// 	[[x], ...] => x
+// 	_ => {
+// 		val n = len(xs)
+// 		val pos = (p / 100) * (n - 1)
+// 		val lo = floor(pos)
+// 		val hi = ceil(pos)
+
+// 		if (lo == hi) {
+// 			xs[lo]
+// 		} else {
+// 			val frac = pos - lo
+// 			xs[lo] + (xs[hi] - xs[lo]) * frac
+// 		}
+// 	}
+// }
+
+
+var searchList = fn(vals, result, f, idx = 0) {
+	if(len(vals) > idx) {
+		recur(vals, f(vals[idx], result), f, idx + 1)
+	} else {
+		result
+	}
+}
