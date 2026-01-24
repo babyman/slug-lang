@@ -1,9 +1,0 @@
-var {*} = import(
-    "slug.test",
-);
-
-///
-/// 1000000 / 6 should not be -26.x
-///
-(1000000 / 6)
-    /> assertEqual(166666.6666666667) // ish , but not -26.56754107329195 for sure

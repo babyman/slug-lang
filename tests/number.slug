@@ -7,6 +7,10 @@ var {*} = import(
 // fractions round half up
 (1 / 6) /> assertEqual(0.16666666666667)
 
+(201_555_334 / 2) /> assertEqual(100_777_667)
+
+(1_000_000 / 6) /> assertEqual(166666.66666666667)
+
 // slug uses decimal floating point math to avoid the pitfalls of floating point arithmetic
 // in JavaScript this would evaluate to 0.30000000000000004
 // --------------------------------------

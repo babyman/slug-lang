@@ -61,7 +61,9 @@ func FromInt64(coef int64) Dec64 {
 
 	exp := int8(0)
 
-	for coef%10 == 0 && coef > MAX_COEFF && exp < 127 {
+	// Ensure the coefficient fits in signed 56-bit domain by scaling down.
+	// (The previous logic only scaled when coef%10==0, which fails for values like UnixNano().)
+	for (coef > MAX_COEFF || coef < MIN_COEFF) && exp < 127 {
 		coef /= 10
 		exp++
 	}
@@ -237,9 +239,40 @@ func (a Dec64) Neg() Dec64 {
 }
 
 func (a Dec64) Mul(b Dec64) Dec64 {
-	ea, eb := a.Exponent(), b.Exponent()
 	ca, cb := a.Coefficient(), b.Coefficient()
-	return normalizeTowardZero(ca*cb, ea+eb)
+	ea, eb := a.Exponent(), b.Exponent()
+
+	// Fast path
+	if ca == 0 || cb == 0 {
+		return ZERO
+	}
+
+	sign := int64(1)
+	if (ca < 0) != (cb < 0) {
+		sign = -1
+	}
+
+	ua := abs64(ca)
+	ub := abs64(cb)
+
+	exp := int(ea + eb)
+
+	const maxInt64 = int64(^uint64(0) >> 1)
+
+	// Scale down to prevent overflow
+	for ua > maxInt64/ub {
+		// Drop one decimal digit from the larger side
+		if ua >= ub {
+			ua /= 10
+		} else {
+			ub /= 10
+		}
+		exp++
+	}
+
+	coef := sign * (ua * ub)
+
+	return normalizeTowardZero(coef, int8(exp))
 }
 
 func (a Dec64) Div(b Dec64, precision int, rounding RoundingMode) Dec64 {
@@ -247,42 +280,40 @@ func (a Dec64) Div(b Dec64, precision int, rounding RoundingMode) Dec64 {
 	ca, cb := a.Coefficient(), b.Coefficient()
 
 	if cb == 0 {
-		return NAN // Prevent division by zero
+		return NAN
+	}
+	if precision < 0 {
+		precision = 0
 	}
 
-	// Scale to achieve the desired precision
-	scale := pow10(int64(precision))
-	ca *= scale
+	// NEW: pick a scale that is safe for int64 AND keeps the quotient within MAX_COEFF.
+	caScaled, usedPrecision := scaleForDiv(ca, cb, precision)
 
-	quotient := ca / cb
-	remainder := ca % cb
+	quotient := caScaled / cb
+	remainder := caScaled % cb
 
-	// Apply rounding based on the specified rounding mode
 	if remainder != 0 {
 		switch rounding {
 		case RoundHalfUp:
-			// Round up if the remainder * 2 >= cb
 			if abs64(remainder)*2 >= abs64(cb) {
-				if (ca > 0) == (cb > 0) { // Same sign
+				if (caScaled > 0) == (cb > 0) {
 					quotient++
 				} else {
 					quotient--
 				}
 			}
 		case RoundHalfEven:
-			// Banker's rounding: round to the nearest even number
 			if abs64(remainder)*2 > abs64(cb) || (abs64(remainder)*2 == abs64(cb) && quotient%2 != 0) {
-				if (ca > 0) == (cb > 0) {
+				if (caScaled > 0) == (cb > 0) {
 					quotient++
 				} else {
 					quotient--
 				}
 			}
 		case RoundDown:
-			// Truncate toward zero, do nothing
+			// toward zero
 		case RoundUp:
-			// Always round away from zero
-			if (ca > 0) == (cb > 0) {
+			if (caScaled > 0) == (cb > 0) {
 				quotient++
 			} else {
 				quotient--
@@ -290,8 +321,58 @@ func (a Dec64) Div(b Dec64, precision int, rounding RoundingMode) Dec64 {
 		}
 	}
 
-	// Adjust the exponent to account for precision scaling
-	return normalizeTowardZero(quotient, ea-eb-int8(precision))
+	return normalizeTowardZero(quotient, ea-eb-int8(usedPrecision))
+}
+
+// scaleForDiv chooses the largest p <= requestedP such that:
+//  1. abs(ca)*10^p fits in int64
+//  2. (abs(ca)*10^p)/abs(cb) fits in MAX_COEFF
+//
+// This maximizes usable digits while ensuring the result coefficient can be represented.
+func scaleForDiv(ca, cb int64, requestedP int) (scaled int64, usedP int) {
+	if ca == 0 || requestedP <= 0 {
+		return ca, 0
+	}
+
+	// Work with magnitudes; reapply sign at the end.
+	neg := (ca < 0) != (cb < 0)
+
+	aca := abs64(ca)
+	acb := abs64(cb)
+
+	// If cb is MIN_INT64, abs64 overflows; with your Dec64 coefficient limits this shouldn't happen,
+	// but guard anyway.
+	if acb < 0 {
+		return NAN.Coefficient(), 0 // will become NaN downstream; conservative fail-safe
+	}
+
+	const maxInt64 = int64(^uint64(0) >> 1)
+
+	cur := aca
+	p := 0
+
+	// Greedily increase p while it remains safe and the resulting quotient fits MAX_COEFF.
+	for p < requestedP {
+		// Check cur*10 fits in int64
+		if cur > maxInt64/10 {
+			break
+		}
+		next := cur * 10
+
+		// Check resulting quotient fits coefficient domain
+		// (division before compare avoids MAX_COEFF*acb overflow).
+		if acb != 0 && next/acb > MAX_COEFF {
+			break
+		}
+
+		cur = next
+		p++
+	}
+
+	if neg {
+		return -cur, p
+	}
+	return cur, p
 }
 
 func (a Dec64) Mod(b Dec64) Dec64 {
@@ -443,6 +524,17 @@ func Min(values ...Dec64) Dec64 {
 func normalizeTowardZero(coef int64, exp int8) Dec64 {
 	if coef == 0 {
 		return ZERO
+	}
+
+	// Scale the coefficient down by powers of 10 and compensate by increasing exponent.
+	for (coef > MAX_COEFF || coef < MIN_COEFF) && exp < 127 {
+		coef /= 10 // toward zero (Go int division truncates toward zero)
+		exp++
+	}
+
+	// If we still can't fit, give up.
+	if coef > MAX_COEFF || coef < MIN_COEFF {
+		return NAN
 	}
 
 	const maxDigits = 16
