@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+var clockNanosStart = time.Now()
+
 func fnTimeClock() *object.Foreign {
 	return &object.Foreign{
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
@@ -27,7 +29,10 @@ func fnTimeClockNanos() *object.Foreign {
 					len(args))
 			}
 
-			return &object.Number{Value: dec64.FromInt64(time.Now().UnixNano())}
+			// Use monotonic elapsed time to make benchmarking correct and stable.
+			// (UnixNano drops the monotonic component and is also too large for precise dec64 deltas.)
+			nanos := time.Since(clockNanosStart).Nanoseconds()
+			return &object.Number{Value: dec64.FromInt64(nanos)}
 		},
 	}
 }

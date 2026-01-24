@@ -51,7 +51,10 @@ func GetForeignFunctions() map[string]*object.Foreign {
 
 		"slug.list.sortWithComparator": fnListSortWithComparator(),
 
+		"slug.math.ceil":     fnMathCeil(),
+		"slug.math.floor":    fnMathFloor(),
 		"slug.math.rndRange": fnMathRndRange(),
+		"slug.math.sqrt":     fnMathSqrt(),
 
 		"slug.meta.hasTag":           fnMetaHasTag(),
 		"slug.meta.getTag":           fnMetaGetTag(),

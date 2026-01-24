@@ -18,7 +18,7 @@ import (
 
 const (
 	precision        = 14
-	roundingStrategy = dec64.RoundHalfUp
+	roundingStrategy = dec64.RoundHalfEven
 )
 
 type ByteOp func(a, b byte) byte

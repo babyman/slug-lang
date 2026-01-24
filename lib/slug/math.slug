@@ -32,6 +32,34 @@ var min = fn(a, ...b) {
 	searchList(b, a, _min)
 }
 
+// floor returns the greatest integer less than or equal to n.
+@testWith(
+	[1.0], 1,
+	[1.2], 1,
+	[-1.2], -2,
+)
+@export
+foreign floor = fn(n)
+
+// ceil returns the least integer greater than or equal to n.
+@testWith(
+	[1.0], 1,
+	[1.2], 2,
+	[-1.2], -1,
+)
+@export
+foreign ceil = fn(n)
+
+// sqrt returns the square root of n.
+// For n < 0, it returns NaN.
+@testWith(
+	[0], 0,
+	[4], 2,
+	[9], 3,
+)
+@export
+foreign sqrt = fn(n)
+
 // random_range generates a random integer in the range [min, max] (exclusive).
 // min: Minimum value of the range (integer).
 // max: Maximum value of the range (integer).
