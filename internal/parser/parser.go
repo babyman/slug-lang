@@ -1358,7 +1358,7 @@ func (p *Parser) parseRecurExpression() ast.Expression {
 	}
 
 	// Reuse generic expression list parsing until ')'
-	args := p.parseExpressionList(token.RPAREN)
+	args := p.parseCallArguments(token.RPAREN)
 	expr.Arguments = args
 
 	return expr
@@ -1432,8 +1432,62 @@ func (p *Parser) parseAwaitExpression() ast.Expression {
 
 func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression {
 	exp := &ast.CallExpression{Token: p.curToken, Function: function}
-	exp.Arguments = p.parseExpressionList(token.RPAREN)
+	exp.Arguments = p.parseCallArguments(token.RPAREN)
 	return exp
+}
+
+func (p *Parser) parseCallArguments(end token.TokenType) []ast.Expression {
+	var list []ast.Expression
+
+	if p.peekTokenIs(end) {
+		p.nextToken()
+		return list
+	}
+
+	p.nextToken()
+	list = append(list, p.parseCallArgument())
+
+	for p.peekTokenIs(token.COMMA) {
+		p.nextToken() // consume comma
+
+		// Allow a dangling/trailing comma before the closing token
+		if p.peekTokenIs(end) {
+			p.nextToken() // consume end
+			return list
+		}
+
+		p.nextToken() // move to next element
+		list = append(list, p.parseCallArgument())
+	}
+
+	if !p.expectPeek(end) {
+		return nil
+	}
+
+	return list
+}
+
+func (p *Parser) parseCallArgument() ast.Expression {
+	if p.curTokenIs(token.ELLIPSIS) {
+		p.nextToken()
+		return &ast.SpreadExpression{
+			Token: p.curToken,
+			Value: p.parseExpression(LOWEST),
+		}
+	}
+
+	if p.curTokenIs(token.IDENT) && p.peekTokenIs(token.ASSIGN) {
+		name := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		p.nextToken() // consume '='
+		p.nextToken() // move to value
+		return &ast.NamedArgument{
+			Token: name.Token,
+			Name:  name,
+			Value: p.parseExpression(LOWEST),
+		}
+	}
+
+	return p.parseExpression(LOWEST)
 }
 
 func (p *Parser) parseExpressionList(end token.TokenType) []ast.Expression {

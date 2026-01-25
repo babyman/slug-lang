@@ -29,18 +29,21 @@ assert(out == 16, "got:" + out)
 //
 // default parameter value
 // -----------------------
-var f1 = fn(a, b = 1) { a + b }
-var out = 1 /> f1()
-assert(out == 2, "expected 2, got " + out)
-var out = 1 /> f1(10)
-assert(out == 11, "expected 11, got " + out)
+var f1 = fn(a, b = 1, c = 1) { a + b + c }
+1 /> f1() /> assertEqual(3)
+1 /> f1(10) /> assertEqual(12)
+1 /> f1(10, c = 2) /> assertEqual(13)
+f1(a = 10, c = 2) /> assertEqual(13)
+f1(c = 10, a = 2) /> assertEqual(13)
 
 
 // variadic function example
 // -------------------------
-var f2 = fn(a, ...b) { a + b /> len() }
-var out = 1 /> f2(0, 0, 0)
-assert(out == 4, "expected 4, got " + out)
+var f2 = fn(a, ...b) { (a +: b) /> len }
+f2(1, 0, 0, 0) /> assertEqual(4)
+f2(a = 1, b = [0, 0, 0]) /> assertEqual(4)
+f2(b = [0, 0, 0], a = 1) /> assertEqual(4)
+
 
 // variadic spread example
 // -----------------------

@@ -13,7 +13,7 @@ func ToFunctionArgument(obj object.Object, args []object.Object) (*object.Functi
 
 	functionGroup, ok := obj.(*object.FunctionGroup)
 	if ok {
-		toFunction, err := functionGroup.DispatchToFunction("", args)
+		toFunction, err := functionGroup.DispatchToFunction("", args, nil)
 		if err != nil {
 			return nil, err
 		}

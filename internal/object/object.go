@@ -67,7 +67,7 @@ var (
 // execution context and helper methods.
 type EvaluatorContext interface {
 	CurrentEnv() *Environment
-	ApplyFunction(pos int, fnName string, fnObj Object, args []Object) Object
+	ApplyFunction(pos int, fnName string, fnObj Object, positional []Object, named map[string]Object) Object
 	NewError(message string, a ...interface{}) *Error
 	Nil() *Nil
 	NativeBoolToBooleanObject(input bool) *Boolean
@@ -275,6 +275,7 @@ type Function struct {
 	Signature   ast.FSig
 	Tags        map[string]List
 	Parameters  []*ast.FunctionParameter
+	ParamIndex  map[string]int
 	Body        *ast.BlockStatement
 	Env         *Environment
 	HasTailCall bool
@@ -393,16 +394,121 @@ func (fg *FunctionGroup) SetTag(tag string, params List) {
 		}
 	}
 }
-func (fg *FunctionGroup) DispatchToFunction(fnName string, args []Object) (Object, error) {
+
+type BoundArguments struct {
+	Values   []Object
+	Provided []bool
+}
+
+func bindArgumentsForDispatch(params []*ast.FunctionParameter, positional []Object, named map[string]Object) (*BoundArguments, error) {
+	if params == nil {
+		if len(named) > 0 {
+			return nil, fmt.Errorf("named arguments are not supported for this function")
+		}
+		provided := make([]bool, len(positional))
+		for i := range provided {
+			provided[i] = true
+		}
+		return &BoundArguments{Values: positional, Provided: provided}, nil
+	}
+
+	paramCount := len(params)
+	values := make([]Object, paramCount)
+	provided := make([]bool, paramCount)
+
+	hasVariadic := paramCount > 0 && params[paramCount-1].IsVariadic
+	variadicIndex := paramCount - 1
+
+	if len(named) > 0 {
+		paramIndex := make(map[string]int, paramCount)
+		for i, param := range params {
+			paramIndex[param.Name.Value] = i
+		}
+		for name, val := range named {
+			idx, ok := paramIndex[name]
+			if !ok {
+				return nil, fmt.Errorf("unknown named parameter: %s", name)
+			}
+			if provided[idx] {
+				return nil, fmt.Errorf("duplicate assignment to parameter: %s", name)
+			}
+			if params[idx].IsVariadic {
+				if _, ok := val.(*List); !ok {
+					return nil, fmt.Errorf("variadic parameter '%s' must be a list when passed by name", name)
+				}
+			}
+			values[idx] = val
+			provided[idx] = true
+		}
+	}
+
+	posIndex := 0
+	if hasVariadic {
+		for i := 0; i < variadicIndex; i++ {
+			if posIndex >= len(positional) {
+				break
+			}
+			if provided[i] {
+				continue
+			}
+			values[i] = positional[posIndex]
+			provided[i] = true
+			posIndex++
+		}
+
+		remaining := positional[posIndex:]
+		if provided[variadicIndex] {
+			if len(remaining) > 0 {
+				return nil, fmt.Errorf("too many positional arguments")
+			}
+		} else {
+			values[variadicIndex] = &List{Elements: remaining}
+			provided[variadicIndex] = true
+		}
+	} else {
+		for i := 0; i < paramCount; i++ {
+			if posIndex >= len(positional) {
+				break
+			}
+			if provided[i] {
+				continue
+			}
+			values[i] = positional[posIndex]
+			provided[i] = true
+			posIndex++
+		}
+		if posIndex < len(positional) {
+			return nil, fmt.Errorf("too many positional arguments")
+		}
+	}
+
+	for i, param := range params {
+		if provided[i] {
+			continue
+		}
+		if param.IsVariadic {
+			continue
+		}
+		if param.Default != nil {
+			continue
+		}
+		return nil, fmt.Errorf("missing required parameter: %s", param.Name.Value)
+	}
+
+	return &BoundArguments{Values: values, Provided: provided}, nil
+}
+
+func (fg *FunctionGroup) DispatchToFunction(fnName string, positional []Object, named map[string]Object) (Object, error) {
 	slog.Debug("dispatching to function group",
 		slog.Any("group-size", len(fg.Functions)),
-		slog.Any("parameter-count", len(args)))
+		slog.Any("parameter-count", len(positional)+len(named)))
 
-	n := len(args)
+	n := len(positional) + len(named)
 	var bestMatch Object
 	var bestMax = math.MaxInt
 	var bestScore = -1
 	var foundNonVariadic bool
+	var firstBindErr error
 
 	for _, g := range fg.allGroups() {
 		for sig, fn := range g.Functions {
@@ -412,9 +518,23 @@ func (fg *FunctionGroup) DispatchToFunction(fnName string, args []Object) (Objec
 				score := 0
 				switch f := fn.(type) {
 				case *Function:
-					score = evaluateFunctionMatch(f.Parameters, args)
+					bound, err := bindArgumentsForDispatch(f.Parameters, positional, named)
+					if err != nil {
+						if firstBindErr == nil {
+							firstBindErr = err
+						}
+						continue
+					}
+					score = evaluateFunctionMatch(f.Parameters, bound)
 				case *Foreign:
-					score = evaluateFunctionMatch(f.Parameters, args)
+					bound, err := bindArgumentsForDispatch(f.Parameters, positional, named)
+					if err != nil {
+						if firstBindErr == nil {
+							firstBindErr = err
+						}
+						continue
+					}
+					score = evaluateFunctionMatch(f.Parameters, bound)
 				}
 
 				if (score >= 0 && sig.Max < bestMax) ||
@@ -437,10 +557,14 @@ func (fg *FunctionGroup) DispatchToFunction(fnName string, args []Object) (Objec
 
 	slog.Debug("no match found", slog.Any("parameter-count", n))
 
+	if firstBindErr != nil {
+		return &Error{Message: firstBindErr.Error()}, firstBindErr
+	}
+
 	var a strings.Builder
-	for i, arg := range args {
+	for i, arg := range positional {
 		a.WriteString(string(arg.Type()))
-		if i < len(args)-1 {
+		if i < len(positional)-1 {
 			a.WriteString(", ")
 		}
 	}
@@ -451,13 +575,16 @@ func (fg *FunctionGroup) DispatchToFunction(fnName string, args []Object) (Objec
 	return &Error{Message: err}, errors.New(err)
 }
 
-func evaluateFunctionMatch(params []*ast.FunctionParameter, args []Object) int {
+func evaluateFunctionMatch(params []*ast.FunctionParameter, bound *BoundArguments) int {
 	score := 0 // Start with zero matches
 	for i, param := range params {
-		if i >= len(args) {
+		if i >= len(bound.Values) {
 			break
 		}
-		arg := args[i]
+		if !bound.Provided[i] {
+			continue
+		}
+		arg := bound.Values[i]
 		// Check for matching tags
 		for _, tag := range param.Tags {
 			if tagType, exists := TypeTags[tag.Name]; exists {
@@ -485,6 +612,7 @@ type Foreign struct {
 	Signature  ast.FSig
 	Tags       map[string]List
 	Parameters []*ast.FunctionParameter
+	ParamIndex map[string]int
 	Fn         ForeignFunction
 	Name       string
 }
@@ -656,9 +784,10 @@ func (s *Slice) Inspect() string {
 
 // TailCall is a special object used for tail call optimization
 type TailCall struct {
-	FnName    string
-	Function  Object
-	Arguments []Object
+	FnName         string
+	Function       Object
+	Arguments      []Object
+	NamedArguments map[string]Object
 }
 
 func (tc *TailCall) Type() ObjectType { return TAIL_CALL_OBJ }
@@ -673,6 +802,17 @@ func (tc *TailCall) Inspect() string {
 		args = append(args, arg.Inspect())
 	}
 	out.WriteString(strings.Join(args, ", "))
+
+	if len(tc.NamedArguments) > 0 {
+		if len(args) > 0 {
+			out.WriteString(", ")
+		}
+		named := []string{}
+		for name, arg := range tc.NamedArguments {
+			named = append(named, name+" = "+arg.Inspect())
+		}
+		out.WriteString(strings.Join(named, ", "))
+	}
 
 	out.WriteString("])")
 	return out.String()

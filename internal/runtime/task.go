@@ -298,6 +298,7 @@ func (e *Task) Eval(node ast.Node) object.Object {
 
 		return &object.Function{
 			Parameters:  params,
+			ParamIndex:  buildParamIndex(params),
 			Env:         e.CurrentEnv(),
 			Body:        body,
 			Signature:   node.Signature,
@@ -310,72 +311,36 @@ func (e *Task) Eval(node ast.Node) object.Object {
 			return function
 		}
 
-		var args []object.Object
-		for _, arg := range node.Arguments {
-			if spreadExpr, ok := arg.(*ast.SpreadExpression); ok {
-				spreadValue := e.Eval(spreadExpr.Value)
-				if e.isError(spreadValue) {
-					return spreadValue
-				}
-
-				// Ensure the spread value is a list
-				list, ok := spreadValue.(*object.List)
-				if !ok {
-					return e.newErrorfWithPos(spreadExpr.Token.Position, "spread operator can only be used on lists, got %s", spreadValue.Type())
-				}
-
-				// Append all elements of the list to args
-				args = append(args, list.Elements...)
-			} else {
-				evaluatedArg := e.Eval(arg)
-				if e.isError(evaluatedArg) {
-					return evaluatedArg
-				}
-				args = append(args, evaluatedArg)
-			}
+		positional, named, err := e.evalCallArguments(node.Token.Position, node.Arguments)
+		if err != nil {
+			return err
 		}
 
 		// If this is a tail call, wrap it in a TailCall object instead of evaluating
 		if node.IsTailCall {
 			slog.Debug("Tail call",
 				slog.Any("function", node.Token.Literal),
-				slog.Any("argument-count", len(args)))
+				slog.Any("argument-count", len(positional)+len(named)))
 
 			return &object.TailCall{
-				FnName:    node.Token.Literal,
-				Function:  function,
-				Arguments: args,
+				FnName:         node.Token.Literal,
+				Function:       function,
+				Arguments:      positional,
+				NamedArguments: named,
 			}
 		}
 
 		slog.Debug("Function call",
 			slog.Any("function", node.Token.Literal),
-			slog.Any("argument-count", len(args)))
+			slog.Any("argument-count", len(positional)+len(named)))
 		// For non-tail calls, invoke the function directly
-		return e.ApplyFunction(node.Token.Position, node.Token.Literal, function, args)
+		return e.ApplyFunction(node.Token.Position, node.Token.Literal, function, positional, named)
 
 	case *ast.RecurExpression:
-		// Evaluate arguments (respecting spread, same as call)
-		var args []object.Object
-		for _, arg := range node.Arguments {
-			if spreadExpr, ok := arg.(*ast.SpreadExpression); ok {
-				spreadValue := e.Eval(spreadExpr.Value)
-				if e.isError(spreadValue) {
-					return spreadValue
-				}
-
-				list, ok := spreadValue.(*object.List)
-				if !ok {
-					return e.newErrorfWithPos(spreadExpr.Token.Position, "spread operator can only be used on lists, got %s", spreadValue.Type())
-				}
-				args = append(args, list.Elements...)
-			} else {
-				evaluatedArg := e.Eval(arg)
-				if e.isError(evaluatedArg) {
-					return evaluatedArg
-				}
-				args = append(args, evaluatedArg)
-			}
+		// Evaluate arguments (respecting spread and named args, same as call)
+		positional, named, err := e.evalCallArguments(node.Token.Position, node.Arguments)
+		if err != nil {
+			return err
 		}
 
 		fnName, fnObj, ok := e.currentCallFrame()
@@ -387,13 +352,14 @@ func (e *Task) Eval(node ast.Node) object.Object {
 
 		slog.Debug("Tail recur",
 			slog.Any("function", fnName),
-			slog.Any("argument-count", len(args)))
+			slog.Any("argument-count", len(positional)+len(named)))
 
 		// Map directly to TailCall for the current function
 		return &object.TailCall{
-			FnName:    fnName,
-			Function:  fnObj,
-			Arguments: args,
+			FnName:         fnName,
+			Function:       fnObj,
+			Arguments:      positional,
+			NamedArguments: named,
 		}
 
 	case *ast.ListLiteral:
@@ -449,7 +415,7 @@ func (e *Task) evalProgram(program *ast.Program) object.Object {
 
 		for {
 			if returnVal, ok := result.(*object.TailCall); ok {
-				result = e.ApplyFunction(0, returnVal.FnName, returnVal.Function, returnVal.Arguments)
+				result = e.ApplyFunction(0, returnVal.FnName, returnVal.Function, returnVal.Arguments, returnVal.NamedArguments)
 			} else if returnVal, ok := result.(*object.ReturnValue); ok {
 				rv, ok := returnVal.Value.(*object.TailCall)
 				if ok {
@@ -1087,7 +1053,190 @@ func (e *Task) evalExpressions(
 	return result
 }
 
-func (e *Task) ApplyFunction(pos int, fnName string, fnObj object.Object, args []object.Object) object.Object {
+type boundArguments struct {
+	Values   []object.Object
+	Provided []bool
+}
+
+func (e *Task) evalCallArguments(pos int, args []ast.Expression) ([]object.Object, map[string]object.Object, object.Object) {
+	var positional []object.Object
+	var named map[string]object.Object
+	sawNamed := false
+
+	for _, arg := range args {
+		switch node := arg.(type) {
+		case *ast.NamedArgument:
+			sawNamed = true
+			if named == nil {
+				named = make(map[string]object.Object)
+			}
+			if _, exists := named[node.Name.Value]; exists {
+				return nil, nil, e.newErrorfWithPos(node.Token.Position, "duplicate named argument: %s", node.Name.Value)
+			}
+			value := e.Eval(node.Value)
+			if e.isError(value) {
+				return nil, nil, value
+			}
+			named[node.Name.Value] = value
+		case *ast.SpreadExpression:
+			if sawNamed {
+				return nil, nil, e.newErrorWithPos(node.Token.Position, "positional arguments must appear before named arguments")
+			}
+			spreadValue := e.Eval(node.Value)
+			if e.isError(spreadValue) {
+				return nil, nil, spreadValue
+			}
+			list, ok := spreadValue.(*object.List)
+			if !ok {
+				return nil, nil, e.newErrorfWithPos(node.Token.Position, "spread operator can only be used on lists, got %s", spreadValue.Type())
+			}
+			positional = append(positional, list.Elements...)
+		default:
+			if sawNamed {
+				return nil, nil, e.newErrorWithPos(pos, "positional arguments must appear before named arguments")
+			}
+			evaluated := e.Eval(arg)
+			if e.isError(evaluated) {
+				return nil, nil, evaluated
+			}
+			positional = append(positional, evaluated)
+		}
+	}
+
+	return positional, named, nil
+}
+
+func buildParamIndex(params []*ast.FunctionParameter) map[string]int {
+	index := make(map[string]int, len(params))
+	for i, param := range params {
+		index[param.Name.Value] = i
+	}
+	return index
+}
+
+func (e *Task) bindArguments(
+	pos int,
+	fnObj object.Object,
+	params []*ast.FunctionParameter,
+	positional []object.Object,
+	named map[string]object.Object,
+) (*boundArguments, object.Object) {
+	if params == nil {
+		if len(named) > 0 {
+			return nil, e.newErrorWithPos(pos, "named arguments are not supported for this function")
+		}
+		provided := make([]bool, len(positional))
+		for i := range provided {
+			provided[i] = true
+		}
+		return &boundArguments{Values: positional, Provided: provided}, nil
+	}
+
+	paramCount := len(params)
+	values := make([]object.Object, paramCount)
+	provided := make([]bool, paramCount)
+
+	hasVariadic := paramCount > 0 && params[paramCount-1].IsVariadic
+	variadicIndex := paramCount - 1
+
+	if len(named) > 0 {
+		var paramIndex map[string]int
+		switch f := fnObj.(type) {
+		case *object.Function:
+			if f.ParamIndex == nil {
+				f.ParamIndex = buildParamIndex(params)
+			}
+			paramIndex = f.ParamIndex
+		case *object.Foreign:
+			if f.ParamIndex == nil {
+				f.ParamIndex = buildParamIndex(params)
+			}
+			paramIndex = f.ParamIndex
+		default:
+			paramIndex = buildParamIndex(params)
+		}
+
+		for name, val := range named {
+			idx, ok := paramIndex[name]
+			if !ok {
+				return nil, e.newErrorfWithPos(pos, "unknown named parameter: %s", name)
+			}
+			if provided[idx] {
+				return nil, e.newErrorfWithPos(pos, "duplicate assignment to parameter: %s", name)
+			}
+			if params[idx].IsVariadic {
+				if _, ok := val.(*object.List); !ok {
+					return nil, e.newErrorfWithPos(pos, "variadic parameter '%s' must be a list when passed by name", name)
+				}
+			}
+			values[idx] = val
+			provided[idx] = true
+		}
+	}
+
+	posIndex := 0
+	if hasVariadic {
+		for i := 0; i < variadicIndex; i++ {
+			if posIndex >= len(positional) {
+				break
+			}
+			if provided[i] {
+				continue
+			}
+			values[i] = positional[posIndex]
+			provided[i] = true
+			posIndex++
+		}
+
+		remaining := positional[posIndex:]
+		if provided[variadicIndex] {
+			if len(remaining) > 0 {
+				return nil, e.newErrorfWithPos(pos, "too many positional arguments")
+			}
+		} else {
+			values[variadicIndex] = &object.List{Elements: remaining}
+			provided[variadicIndex] = true
+		}
+	} else {
+		for i := 0; i < paramCount; i++ {
+			if posIndex >= len(positional) {
+				break
+			}
+			if provided[i] {
+				continue
+			}
+			values[i] = positional[posIndex]
+			provided[i] = true
+			posIndex++
+		}
+		if posIndex < len(positional) {
+			return nil, e.newErrorfWithPos(pos, "too many positional arguments")
+		}
+	}
+
+	for i, param := range params {
+		if provided[i] {
+			continue
+		}
+		if param.IsVariadic {
+			values[i] = &object.List{Elements: []object.Object{}}
+			continue
+		}
+		if param.Default != nil {
+			defaultValue := e.evalDefaultParam(fnObj, param.Default)
+			if e.isError(defaultValue) {
+				return nil, defaultValue
+			}
+			values[i] = defaultValue
+			continue
+		}
+		return nil, e.newErrorfWithPos(pos, "missing required parameter: %s", param.Name.Value)
+	}
+
+	return &boundArguments{Values: values, Provided: provided}, nil
+}
+
+func (e *Task) ApplyFunction(pos int, fnName string, fnObj object.Object, positional []object.Object, named map[string]object.Object) object.Object {
 	fnObj = e.resolveValue(pos, fnObj)
 	if e.isError(fnObj) {
 		return fnObj
@@ -1095,11 +1244,11 @@ func (e *Task) ApplyFunction(pos int, fnName string, fnObj object.Object, args [
 	switch fn := fnObj.(type) {
 	case *object.FunctionGroup:
 
-		f, err := fn.DispatchToFunction(fnName, args)
+		f, err := fn.DispatchToFunction(fnName, positional, named)
 		if err != nil {
 			return e.newErrorfWithPos(pos, "error calling function '%s': %s", fnName, err.Error())
 		} else {
-			return e.ApplyFunction(pos, fnName, f, args)
+			return e.ApplyFunction(pos, fnName, f, positional, named)
 		}
 
 	case *object.Function:
@@ -1111,7 +1260,10 @@ func (e *Task) ApplyFunction(pos int, fnName string, fnObj object.Object, args [
 		var result object.Object
 
 		// Create the initial environment
-		argsEnv := e.extendFunctionEnv(fn, args)
+		argsEnv, errObj := e.extendFunctionEnv(pos, fn, positional, named)
+		if errObj != nil {
+			return errObj
+		}
 		e.PushEnv(argsEnv)
 
 		blockEnv := e.newBlockEnv(fn.Body)
@@ -1140,11 +1292,14 @@ func (e *Task) ApplyFunction(pos int, fnName string, fnObj object.Object, args [
 			if tc, ok := result.(*object.TailCall); ok {
 				if tc.Function == fn {
 					blockEnv.ResetForTCO()
-					e.rebindFunctionEnv(argsEnv, fn, tc.Arguments)
+					if errObj := e.rebindFunctionEnv(pos, argsEnv, fn, tc.Arguments, tc.NamedArguments); errObj != nil {
+						result = errObj
+						break
+					}
 					continue
 				}
 				// Call belongs to a different function. Resolve it now.
-				result = e.ApplyFunction(pos, tc.FnName, tc.Function, tc.Arguments)
+				result = e.ApplyFunction(pos, tc.FnName, tc.Function, tc.Arguments, tc.NamedArguments)
 				break
 			}
 
@@ -1153,11 +1308,14 @@ func (e *Task) ApplyFunction(pos int, fnName string, fnObj object.Object, args [
 				if tc, ok := rv.Value.(*object.TailCall); ok {
 					if tc.Function == fn {
 						blockEnv.ResetForTCO()
-						e.rebindFunctionEnv(argsEnv, fn, tc.Arguments)
+						if errObj := e.rebindFunctionEnv(pos, argsEnv, fn, tc.Arguments, tc.NamedArguments); errObj != nil {
+							result = errObj
+							break
+						}
 						continue
 					}
 					// Resolve TailCall for a different function
-					result = e.ApplyFunction(pos, tc.FnName, tc.Function, tc.Arguments)
+					result = e.ApplyFunction(pos, tc.FnName, tc.Function, tc.Arguments, tc.NamedArguments)
 					break
 				}
 				// Unwrap the final value
@@ -1177,6 +1335,20 @@ func (e *Task) ApplyFunction(pos int, fnName string, fnObj object.Object, args [
 
 	case *object.Foreign:
 		var result object.Object
+		bound, errObj := e.bindArguments(pos, fn, fn.Parameters, positional, named)
+		if errObj != nil {
+			return errObj
+		}
+		callArgs := bound.Values
+		if fn.Parameters != nil && len(fn.Parameters) > 0 && fn.Parameters[len(fn.Parameters)-1].IsVariadic {
+			variadicIndex := len(fn.Parameters) - 1
+			callArgs = append([]object.Object{}, bound.Values[:variadicIndex]...)
+			if variadicVal, ok := bound.Values[variadicIndex].(*object.List); ok {
+				callArgs = append(callArgs, variadicVal.Elements...)
+			} else if bound.Values[variadicIndex] != nil {
+				callArgs = append(callArgs, bound.Values[variadicIndex])
+			}
+		}
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
@@ -1184,7 +1356,7 @@ func (e *Task) ApplyFunction(pos int, fnName string, fnObj object.Object, args [
 					result = e.newErrorfWithPos(pos, "error calling foreign function '%s'", fn.Name)
 				}
 			}()
-			result = fn.Fn(e, args...)
+			result = fn.Fn(e, callArgs...)
 		}()
 
 		// If a foreign function returns a plain Error, promote it to a RuntimeError payload so the language
@@ -1208,9 +1380,11 @@ func (e *Task) ApplyFunction(pos int, fnName string, fnObj object.Object, args [
 }
 
 func (e *Task) extendFunctionEnv(
+	pos int,
 	fn *object.Function,
-	args []object.Object,
-) *object.Environment {
+	positional []object.Object,
+	named map[string]object.Object,
+) (*object.Environment, object.Object) {
 	env := object.NewEnclosedEnvironment(fn.Env, &object.StackFrame{
 		Function: "call: " + e.callStack[len(e.callStack)-1].FnName,
 		File:     fn.Env.Path,
@@ -1218,65 +1392,35 @@ func (e *Task) extendFunctionEnv(
 		Src:      fn.Env.Src,
 	})
 
-	numArgs := len(args)
-
-	for i, param := range fn.Parameters {
-
-		// Handle variadic arguments
-		if param.IsVariadic && len(args) >= i {
-			env.Define(param.Name.Value, &object.List{
-				Elements: args[i:], // Remaining args as a list
-			}, false, false)
-			break
-		}
-
-		// Handle default values
-		if i >= numArgs {
-			if param.Default != nil {
-				defaultValue := e.evalDefaultParam(fn, param.Default)
-				env.Define(param.Name.Value, defaultValue, false, false)
-			} else {
-				env.Define(param.Name.Value, object.NIL, false, false)
-			}
-		} else {
-			env.Define(param.Name.Value, args[i], false, false)
-		}
+	bound, errObj := e.bindArguments(pos, fn, fn.Parameters, positional, named)
+	if errObj != nil {
+		return nil, errObj
 	}
 
-	return env
+	for i, param := range fn.Parameters {
+		env.Define(param.Name.Value, bound.Values[i], false, false)
+	}
+
+	return env, nil
 }
 
 func (e *Task) rebindFunctionEnv(
+	pos int,
 	env *object.Environment,
 	fn *object.Function,
-	args []object.Object,
-) {
-	numArgs := len(args)
+	positional []object.Object,
+	named map[string]object.Object,
+) object.Object {
+	bound, errObj := e.bindArguments(pos, fn, fn.Parameters, positional, named)
+	if errObj != nil {
+		return errObj
+	}
 
 	for i, param := range fn.Parameters {
-		var val object.Object
-
-		// Handle variadic arguments
-		if param.IsVariadic && len(args) >= i {
-			val = &object.List{Elements: args[i:]}
-			env.Define(param.Name.Value, val, false, false)
-			break
-		}
-
-		// Handle default values
-		if i >= numArgs {
-			if param.Default != nil {
-				val = e.evalDefaultParam(fn, param.Default)
-			} else {
-				val = object.NIL
-			}
-		} else {
-			val = args[i]
-		}
-
-		// Use Define to reset the binding in the function's local scope
-		env.Define(param.Name.Value, val, false, false)
+		env.Define(param.Name.Value, bound.Values[i], false, false)
 	}
+
+	return nil
 }
 
 func (e *Task) unwrapReturnValue(obj object.Object) object.Object {
@@ -2108,6 +2252,7 @@ func (e *Task) evalForeignFunctionDeclaration(ff *ast.ForeignFunctionDeclaration
 	if foreignFn, exists := e.Runtime.LookupForeign(fqn); exists {
 		foreignFn.Tags = e.evalTags(ff.Tags)
 		foreignFn.Parameters = ff.Parameters
+		foreignFn.ParamIndex = buildParamIndex(ff.Parameters)
 		foreignFn.Name = functionName
 		foreignFn.Signature = ff.Signature
 		isExported := hasExportTag(ff.Tags)
@@ -2155,7 +2300,7 @@ func (e *Task) evalSpawnExpression(node *ast.SpawnExpression) object.Object {
 		result := taskEval.Eval(node.Body)
 
 		if fn, ok := result.(*object.Function); ok && len(fn.Parameters) == 0 {
-			result = taskEval.ApplyFunction(node.Token.Position, "spawned_task", fn, []object.Object{})
+			result = taskEval.ApplyFunction(node.Token.Position, "spawned_task", fn, []object.Object{}, nil)
 		}
 		result = taskEval.PopEnv(result)
 		taskEval.Complete(result)

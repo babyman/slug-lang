@@ -417,6 +417,22 @@ func (ce *CallExpression) String() string {
 	return out.String()
 }
 
+type NamedArgument struct {
+	Token token.Token // The identifier token
+	Name  *Identifier
+	Value Expression
+}
+
+func (na *NamedArgument) expressionNode()      {}
+func (na *NamedArgument) TokenLiteral() string { return na.Token.Literal }
+func (na *NamedArgument) String() string {
+	var out bytes.Buffer
+	out.WriteString(na.Name.String())
+	out.WriteString(" = ")
+	out.WriteString(na.Value.String())
+	return out.String()
+}
+
 type FunctionParameter struct {
 	Tags       []*Tag
 	Name       *Identifier // Parameter name
