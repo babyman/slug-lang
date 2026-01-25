@@ -1,0 +1,126 @@
+{
+  "name": "Slug",
+  "scopeName": "source.slug",
+  "fileTypes": ["slug"],
+  "patterns": [
+    {"include": "#comments"},
+    {"include": "#strings"},
+    {"include": "#numbers"},
+    {"include": "#keywords"},
+    {"include": "#tags"},
+    {"include": "#operators"},
+    {"include": "#function_calls"},
+    {"include": "#identifiers"}
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {"name": "comment.line.documentation.slug", "match": "///.*$"},
+        {"name": "comment.line.double-slash.slug", "match": "//.*$"},
+        {"name": "comment.line.number-sign.slug", "match": "#.*$"}
+      ]
+    },
+    "tags": {
+      "patterns": [
+        {"name": "entity.name.tag.slug", "match": "@[A-Za-z_][A-Za-z0-9_]*"}
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {"name": "storage.type.slug", "match": "\\b(var|val)\\b"},
+        {"name": "keyword.control.slug", "match": "\\b(fn|foreign|match|struct|copy)\\b"},
+        {"name": "keyword.control.conditional.slug", "match": "\\b(if|else)\\b"},
+        {"name": "keyword.control.flow.slug", "match": "\\b(return|recur|throw|defer|onsuccess|onerror)\\b"},
+        {"name": "keyword.control.concurrent.slug", "match": "\\b(nursery|limit|spawn|await|within)\\b"},
+        {"name": "constant.language.boolean.slug", "match": "\\b(true|false)\\b"},
+        {"name": "constant.language.nil.slug", "match": "\\bnil\\b"}
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {"name": "keyword.operator.slug", "match": "(/>|=>|\\.\\.\\.|\\?\\?\\?|:\\+|\\+:)"},
+        {"name": "keyword.operator.comparison.slug", "match": "(==|!=|<=|>=|<|>)"},
+        {"name": "keyword.operator.logical.slug", "match": "(&&|\\|\\||!)"},
+        {"name": "keyword.operator.bitwise.slug", "match": "(<<|>>|&|\\||\\^|~)"},
+        {"name": "keyword.operator.assignment.slug", "match": "="},
+        {"name": "keyword.operator.arithmetic.slug", "match": "(\\+|-|\\*|/|%)"}
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {"name": "constant.numeric.byte-array.hex.slug", "match": "\\b0x\"\\s*(?:[0-9a-fA-F]{2})*\\s*\""},
+        {"name": "constant.numeric.hex.slug", "match": "\\b0x(?:_?[0-9a-fA-F]{2})+\\b"},
+        {"name": "constant.numeric.float.slug", "match": "\\b\\d(?:[\\d_]*\\d)?(?:\\.\\d(?:[\\d_]*\\d)?)?[eE][+-]?\\d(?:[\\d_]*\\d)?\\b"},
+        {"name": "constant.numeric.float.slug", "match": "\\b\\d(?:[\\d_]*\\d)?\\.\\d(?:[\\d_]*\\d)?\\b"},
+        {"name": "constant.numeric.integer.slug", "match": "\\b\\d(?:[\\d_]*\\d)?\\b"}
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {"include": "#string_triple"},
+        {"include": "#string_double"},
+        {"include": "#string_triple_raw"},
+        {"include": "#string_raw"}
+      ]
+    },
+    "string_double": {
+      "name": "string.quoted.double.slug",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {"name": "constant.character.escape.slug", "match": "\\\\[\\\\\"'nrt\\{]"},
+        {"name": "constant.character.escape.slug", "match": "\\\\[0-7]{1,3}"},
+        {"include": "#interpolation"}
+      ]
+    },
+    "string_triple": {
+      "name": "string.quoted.double.multi.slug",
+      "begin": "\"\"\"",
+      "end": "\"\"\"",
+      "patterns": [
+        {"name": "constant.character.escape.slug", "match": "\\\\[\\\\\"'nrt\\{]"},
+        {"name": "constant.character.escape.slug", "match": "\\\\[0-7]{1,3}"},
+        {"include": "#interpolation"}
+      ]
+    },
+    "string_raw": {
+      "name": "string.quoted.single.raw.slug",
+      "begin": "'",
+      "end": "'"
+    },
+    "string_triple_raw": {
+      "name": "string.quoted.single.multi.raw.slug",
+      "begin": "'''",
+      "end": "'''"
+    },
+    "interpolation": {
+      "name": "meta.interpolation.slug",
+      "begin": "\\{\\{",
+      "end": "\\}\\}",
+      "patterns": [
+        {"include": "#comments"},
+        {"include": "#strings"},
+        {"include": "#numbers"},
+        {"include": "#keywords"},
+        {"include": "#tags"},
+        {"include": "#operators"},
+        {"include": "#function_calls"},
+        {"include": "#identifiers"}
+      ]
+    },
+    "function_calls": {
+      "patterns": [
+        {
+          "name": "meta.function-call.slug",
+          "match": "\\b([A-Za-z_][A-Za-z0-9_]*)\\s*(?=\\()",
+          "captures": {"1": {"name": "variable.function.slug"}}
+        }
+      ]
+    },
+    "identifiers": {
+      "patterns": [
+        {"name": "variable.other.slug", "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b"}
+      ]
+    }
+  }
+}

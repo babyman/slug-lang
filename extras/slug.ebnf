@@ -1,0 +1,211 @@
+(*
+   Slug Language Grammar (EBNF)
+   Derived from lexer/parser in internal/lexer and internal/parser.
+*)
+
+program = { statement_sep } , { statement , { statement_sep } } , EOF ;
+
+(* NEWLINE acts as a separator when ASI rules say it terminates the statement. *)
+statement_sep = ";" | NEWLINE ;
+
+(* Tags can prefix var/val/foreign declarations. Tags also appear in parameter lists. *)
+statement = tag_prefixed_decl
+          | foreign_decl
+          | return_stmt
+          | throw_stmt
+          | defer_stmt
+          | not_implemented_stmt
+          | expression_stmt
+          ;
+
+tag_prefixed_decl = tag_prefix , ( var_expr | val_expr | foreign_decl ) ;
+tag_prefix = tag , { { statement_sep } , tag } , { statement_sep } ;
+
+return_stmt = "return" , expression ;
+throw_stmt = "throw" , expression ;
+not_implemented_stmt = "???" ;
+
+(* Defer may wrap a block, match, or expression. onerror(...) optionally binds an error name. *)
+defer_stmt = "defer" , [ "onsuccess" | ( "onerror" , "(" , identifier , ")" ) ] ,
+             ( block | match_expr | expression_stmt ) ;
+
+foreign_decl = "foreign" , identifier , "=" , "fn" , "(" , [ parameters ] , ")" , [ ";" ] ;
+
+expression_stmt = expression ;
+
+expression = assignment ;
+assignment = identifier , "=" , assignment | logical_or ;
+
+logical_or = logical_and , { "||" , logical_and } ;
+logical_and = equality , { "&&" , equality } ;
+equality = comparison , { ( "==" | "!=" ) , comparison } ;
+comparison = bitwise_or , { ( "<" | "<=" | ">" | ">=" ) , bitwise_or } ;
+bitwise_or = bitwise_xor , { "|" , bitwise_xor } ;
+bitwise_xor = bitwise_and , { "^" , bitwise_and } ;
+bitwise_and = shift , { "&" , shift } ;
+shift = sum , { ( "<<" | ">>" ) , sum } ;
+sum = product , { ( "+" | "-" ) , product } ;
+product = list_concat , { ( "*" | "/" | "%" ) , list_concat } ;
+list_concat = prefix , { ( ":+" | "+:" ) , prefix } ;
+
+prefix = ( "!" | "-" | "~" ) , prefix
+       | call_chain
+       ;
+
+call_chain = postfix , { "/>" , postfix } ;
+
+postfix = primary , { postfix_op } ;
+postfix_op = call_suffix | index_suffix | dot_suffix | struct_init | struct_copy ;
+call_suffix = "(" , [ call_args ] , ")" ;
+index_suffix = "[" , index_args , "]" ;
+dot_suffix = "." , identifier ;
+
+(* Struct init and copy are postfix forms. *)
+struct_init = "{" , [ struct_init_fields ] , "}" ;
+struct_copy = "copy" , "{" , [ struct_init_fields ] , "}" ;
+
+primary = literal
+        | identifier
+        | grouped
+        | if_expr
+        | match_expr
+        | function_literal
+        | list_literal
+        | map_literal
+        | struct_schema
+        | recur_expr
+        | nursery_expr
+        | spawn_expr
+        | await_expr
+        | var_expr
+        | val_expr
+        ;
+
+var_expr = "var" , match_pattern , "=" , expression ;
+val_expr = "val" , match_pattern , "=" , expression ;
+
+recur_expr = "recur" , "(" , [ call_args ] , ")" ;
+
+nursery_expr = "nursery" , [ "limit" , expression ] , ( function_literal | block ) ;
+
+spawn_expr = "spawn" , ( block | prefix ) ;
+
+await_expr = "await" , prefix , [ "within" , expression ] ;
+
+grouped = "(" , expression , ")" ;
+
+if_expr = "if" , "(" , expression , ")" , block ,
+          [ "else" , ( block | if_expr ) ] ;
+
+function_literal = "fn" , "(" , [ parameters ] , ")" , ( block | match_body ) ;
+match_body = "match" , "{" , [ match_case , { case_sep , match_case } ] , "}" ;
+
+(* Variadic parameters use "..." and must be last. *)
+parameters = parameter , { "," , parameter } ;
+parameter = { tag } , [ "..." ] , identifier , [ "=" , expression ] ;
+tag = "@" , identifier , [ "(" , [ expression_list ] , ")" ] ;
+
+call_args = call_arg , { "," , call_arg } , [ "," ] ;
+call_arg = spread_expr | named_arg | expression ;
+spread_expr = "..." , expression ;
+named_arg = identifier , "=" , expression ;
+
+list_literal = "[" , [ expression_list ] , "]" ;
+expression_list = expression_item , { "," , expression_item } , [ "," ] ;
+expression_item = [ "..." ] , expression ;
+
+index_args = expression
+           | [ expression ] , ":" , [ expression ] , [ ":" , [ expression ] ]
+           ;
+
+map_literal = "{" , [ map_entries ] , "}" ;
+map_entries = map_entry , { "," , map_entry } , [ "," ] ;
+map_entry = map_key , ":" , expression ;
+(* Bare identifiers are coerced to string keys unless bracketed. *)
+map_key = expression | "[" , expression , "]" ;
+
+struct_schema = "struct" , "{" , [ struct_schema_fields ] , "}" ;
+struct_schema_fields = struct_schema_field , { "," , struct_schema_field } , [ "," ] ;
+struct_schema_field = [ "@" , identifier ] , identifier , [ "=" , expression ] ;
+
+struct_init_fields = struct_init_field , { "," , struct_init_field } , [ "," ] ;
+struct_init_field = identifier , ":" , expression ;
+
+match_expr = "match" , [ expression ] , "{" , [ match_case , { case_sep , match_case } ] , "}" ;
+case_sep = statement_sep , { statement_sep } ;
+
+match_case = match_pattern_list , [ "if" , expression ] , "=>" , ( block | statement ) ;
+
+(* Multi-pattern alternatives must be non-binding (see parser restrictions). *)
+match_pattern_list = match_pattern
+                   | match_pattern , "," , match_pattern , { "," , match_pattern }
+                   ;
+
+match_pattern = "_"
+              | spread_pattern
+              | pinned_identifier
+              | struct_pattern
+              | list_pattern
+              | map_pattern
+              | literal
+              | identifier
+              ;
+
+spread_pattern = "..." , [ identifier ] ;
+pinned_identifier = "^" , identifier ;
+
+(* Spread patterns must be final in list patterns. *)
+list_pattern = "[" , [ match_pattern , { "," , match_pattern } ] , "]" ;
+
+map_pattern = "{" , [ map_pattern_body ] , "}"
+            | "{|" , [ map_pattern_body ] , "|}"
+            ;
+
+(* Exact map patterns ("{| ... |}") disallow spread entries. *)
+map_pattern_body = "*" | map_pattern_entry , { "," , map_pattern_entry } , [ "," ] ;
+map_pattern_entry = spread_pattern | map_pattern_key , [ ":" , match_pattern ] ;
+map_pattern_key = expression | "[" , expression , "]" ;
+
+struct_pattern = identifier , "{" , [ struct_pattern_fields ] , "}" ;
+struct_pattern_fields = struct_pattern_field , { "," , struct_pattern_field } , [ "," ] ;
+struct_pattern_field = identifier , [ ":" , match_pattern ] ;
+
+block = "{" , { statement_sep } , { statement , { statement_sep } } , "}" ;
+
+literal = number | string | bytes | boolean | nil ;
+boolean = "true" | "false" ;
+nil = "nil" ;
+
+(* Lexical forms (simplified): *)
+identifier = letter , { letter | digit } ;
+letter = "_" | LETTER ;
+digit = DIGIT ;
+
+number = decimal | hex ;
+decimal = DIGIT , { DIGIT | "_" } ,
+          [ "." , DIGIT , { DIGIT | "_" } ] ,
+          [ ( "e" | "E" ) , [ "+" | "-" ] , DIGIT , { DIGIT } ] ;
+hex = "0" , "x" , [ "_" ] , HEXDIGIT , { HEXDIGIT | "_" } ;
+
+bytes = "0x" , '"' , HEXDIGIT , { HEXDIGIT } , '"' ;
+
+string = double_string | raw_string | triple_string | triple_raw_string | interpolated_string ;
+
+(* Interpolation uses {{ expr }} in non-raw strings. *)
+interpolated_string = string_segment , { "{{" , expression , "}}" , string_segment } ;
+string_segment = double_string | triple_string ;
+
+double_string = '"' , { string_char } , '"' ;
+raw_string = "'" , { raw_char } , "'" ;
+triple_string = '"""' , { string_char } , '"""' ;
+triple_raw_string = "'''" , { raw_char } , "'''" ;
+
+(* Escapes: \n \r \t \\ \" \{ and octal (0-7 up to 3 digits). Raw strings have no escapes. *)
+string_char = ANY_CHAR_EXCEPT_QUOTE_OR_BACKSLASH | escape_seq ;
+raw_char = ANY_CHAR_EXCEPT_SINGLE_QUOTE ;
+
+escape_seq = "\\" , ( "n" | "r" | "t" | "\\" | '"' | "{" | octal ) ;
+octal = oct_digit , [ oct_digit ] , [ oct_digit ] ;
+oct_digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" ;
+
+(* NEWLINE tokens are emitted outside ()/[]; comments start with # or // to end of line. *)

@@ -1,0 +1,75 @@
+// SYNTAX TEST "Slug.sublime-syntax"
+
+@export
+//^^^^^^ entity.name.tag.slug
+var x = 1
+//^^^ storage.type.slug
+//    ^ variable.other.slug
+//        ^ constant.numeric.integer.slug
+
+@tag(1, "ok")
+//^^^ entity.name.tag.slug
+
+val hex = 0x_1a2b
+//^^^ storage.type.slug
+//         ^^^^^^ constant.numeric.hex.slug
+val bytes = 0x"414243"
+//         ^^^^^^^^^^ constant.numeric.byte-array.hex.slug
+val num = 10_000.5e-2
+//        ^^^^^^^^^^^ constant.numeric.float.slug
+
+var s = "hi {{name}}"
+//      ^^^^^^^^^^^^^^ string.quoted.double.slug
+//         ^^ punctuation.section.braces.begin.slug
+//           ^^^^ variable.other.slug
+//               ^^ punctuation.section.braces.end.slug
+
+var m = """multi {{x}} line"""
+//      ^^^^^^^^^^^^^^^^^^^^^^^ string.quoted.double.multi.slug
+//              ^^ punctuation.section.braces.begin.slug
+//                ^ variable.other.slug
+//                 ^^ punctuation.section.braces.end.slug
+
+var raw = 'raw {{not_interp}}'
+//        ^^^^^^^^^^^^^^^^^^^^ string.quoted.single.raw.slug
+
+var esc = "a\\n\"b\"\{c\123"
+//        ^^^^^^^^^^^^^^^^^^^^^ string.quoted.double.slug
+
+struct { @str name = "x" }
+//^^^^^^ keyword.control.slug
+
+var person = Person{ name: "a" }
+//^^^ storage.type.slug
+//                ^ punctuation.section.braces.begin.slug
+//                          ^ punctuation.section.braces.end.slug
+
+var updated = person copy { name: "b" }
+//                     ^^^^ keyword.control.slug
+
+var xs = [1, ...rest]
+//        ^ punctuation.section.brackets.begin.slug
+//            ^^^ keyword.operator.spread.slug
+
+match x {
+//^^^^^ keyword.control.slug
+  {| "a": v |} => v
+//^^ punctuation.section.braces.begin.slug
+//           ^^ punctuation.section.braces.end.slug
+//               ^^ keyword.operator.arrow.slug
+}
+
+var f = nursery limit 10 fn(x, y = 2) {
+//      ^^^^^^^ keyword.control.concurrent.slug
+//              ^^^^^ keyword.control.concurrent.slug
+//                        ^^ keyword.control.slug
+  spawn { recur(x, y) }
+//^^^^^ keyword.control.concurrent.slug
+//        ^^^^^ keyword.control.flow.slug
+}
+
+await (spawn { x }) within 5
+//^^^^^ keyword.control.concurrent.slug
+//       ^^^^^ keyword.control.concurrent.slug
+//                  ^^^^^^ keyword.control.concurrent.slug
+
