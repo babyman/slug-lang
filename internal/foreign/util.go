@@ -169,3 +169,27 @@ func ToNative(obj object.Object) interface{} {
 		return o
 	}
 }
+
+func NativeToSlugObject(val interface{}) object.Object {
+	switch v := val.(type) {
+	case string:
+		return &object.String{Value: v}
+	case int64:
+		return &object.Number{Value: dec64.FromInt64(v)}
+	case float64:
+		return &object.Number{Value: dec64.FromFloat64(v)}
+	case bool:
+		if v {
+			return object.TRUE
+		}
+		return object.FALSE
+	case []interface{}:
+		elements := make([]object.Object, len(v))
+		for i, item := range v {
+			elements[i] = NativeToSlugObject(item)
+		}
+		return &object.List{Elements: elements}
+	default:
+		return object.NIL
+	}
+}

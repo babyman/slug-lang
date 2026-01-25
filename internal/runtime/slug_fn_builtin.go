@@ -261,31 +261,7 @@ func fnBuiltinCfg() *object.Foreign {
 				}
 			}
 
-			return nativeToSlugObject(val)
+			return foreign.NativeToSlugObject(val)
 		},
-	}
-}
-
-func nativeToSlugObject(val interface{}) object.Object {
-	switch v := val.(type) {
-	case string:
-		return &object.String{Value: v}
-	case int64:
-		return &object.Number{Value: dec64.FromInt64(v)}
-	case float64:
-		return &object.Number{Value: dec64.FromFloat64(v)}
-	case bool:
-		if v {
-			return object.TRUE
-		}
-		return object.FALSE
-	case []interface{}:
-		elements := make([]object.Object, len(v))
-		for i, item := range v {
-			elements[i] = nativeToSlugObject(item)
-		}
-		return &object.List{Elements: elements}
-	default:
-		return object.NIL
 	}
 }
