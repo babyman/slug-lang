@@ -1,0 +1,8 @@
+val User = struct {
+    name,
+}
+
+var u = User {
+    name: "Slug",
+    extra: 1,
+}

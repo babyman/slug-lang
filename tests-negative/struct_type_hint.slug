@@ -1,0 +1,5 @@
+val User = struct {
+    @num age,
+}
+
+var u = User { age: "42" }

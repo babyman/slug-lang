@@ -1,0 +1,33 @@
+var {*} = import(
+    "slug.test"
+)
+
+val User = struct {
+    name,
+    @num age,
+    active = true,
+}
+
+var u = User {
+    name: "Slug",
+    age: 42,
+}
+
+u.name /> assertEqual("Slug")
+u.age /> assertEqual(42)
+u.active /> assertEqual(true)
+
+u = u copy { age: 43 }
+
+u.age /> assertEqual(43)
+u.active /> assertEqual(true)
+
+var matched = false
+match u {
+    User { age: 43, name } => {
+        matched = true
+        name /> assertEqual("Slug")
+    }
+}
+
+matched /> assertTrue()

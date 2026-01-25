@@ -571,6 +571,104 @@ func (hl *MapLiteral) String() string {
 	return out.String()
 }
 
+type StructField struct {
+	Token   token.Token
+	Name    string
+	Hint    string
+	Default Expression
+}
+
+func (sf *StructField) String() string {
+	var out bytes.Buffer
+	if sf.Hint != "" {
+		out.WriteString(sf.Hint)
+		out.WriteString(" ")
+	}
+	out.WriteString(sf.Name)
+	if sf.Default != nil {
+		out.WriteString(" = ")
+		out.WriteString(sf.Default.String())
+	}
+	return out.String()
+}
+
+type StructSchemaExpression struct {
+	Token  token.Token // the 'struct' token
+	Fields []*StructField
+}
+
+func (ss *StructSchemaExpression) expressionNode()      {}
+func (ss *StructSchemaExpression) TokenLiteral() string { return ss.Token.Literal }
+func (ss *StructSchemaExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString("struct {")
+	parts := []string{}
+	for _, f := range ss.Fields {
+		parts = append(parts, f.String())
+	}
+	out.WriteString(strings.Join(parts, ", "))
+	out.WriteString("}")
+	return out.String()
+}
+
+type StructInitField struct {
+	Token token.Token
+	Name  string
+	Value Expression
+}
+
+func (sf *StructInitField) String() string {
+	var out bytes.Buffer
+	out.WriteString(sf.Name)
+	out.WriteString(": ")
+	if sf.Value != nil {
+		out.WriteString(sf.Value.String())
+	}
+	return out.String()
+}
+
+type StructInitExpression struct {
+	Token  token.Token // the '{' token
+	Schema Expression
+	Fields []*StructInitField
+}
+
+func (si *StructInitExpression) expressionNode()      {}
+func (si *StructInitExpression) TokenLiteral() string { return si.Token.Literal }
+func (si *StructInitExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString(si.Schema.String())
+	out.WriteString(" {")
+	parts := []string{}
+	for _, f := range si.Fields {
+		parts = append(parts, f.String())
+	}
+	out.WriteString(strings.Join(parts, ", "))
+	out.WriteString("}")
+	return out.String()
+}
+
+type StructCopyExpression struct {
+	Token  token.Token // the 'copy' token
+	Source Expression
+	Fields []*StructInitField
+}
+
+func (sc *StructCopyExpression) expressionNode()      {}
+func (sc *StructCopyExpression) TokenLiteral() string { return sc.Token.Literal }
+func (sc *StructCopyExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString(sc.Source.String())
+	out.WriteString(" copy {")
+	parts := []string{}
+	for _, f := range sc.Fields {
+		parts = append(parts, f.String())
+	}
+	out.WriteString(strings.Join(parts, ", "))
+	out.WriteString("}")
+	return out.String()
+}
+
 type MatchExpression struct {
 	Token token.Token // The 'match' token
 	Value Expression  // The value to match against
@@ -796,6 +894,33 @@ func (mp *MapPattern) String() string {
 	}
 	out.WriteString("}")
 
+	return out.String()
+}
+
+type StructPatternField struct {
+	Name    string
+	Pattern MatchPattern
+}
+
+type StructPattern struct {
+	Token  token.Token // The schema identifier token
+	Schema *Identifier
+	Fields []*StructPatternField
+}
+
+func (sp *StructPattern) expressionNode()      {}
+func (sp *StructPattern) patternNode()         {}
+func (sp *StructPattern) TokenLiteral() string { return sp.Token.Literal }
+func (sp *StructPattern) String() string {
+	var out bytes.Buffer
+	out.WriteString(sp.Schema.String())
+	out.WriteString(" {")
+	parts := []string{}
+	for _, f := range sp.Fields {
+		parts = append(parts, f.Name+": "+f.Pattern.String())
+	}
+	out.WriteString(strings.Join(parts, ", "))
+	out.WriteString("}")
 	return out.String()
 }
 

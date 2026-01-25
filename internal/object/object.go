@@ -22,8 +22,10 @@ const (
 	STRING_OBJ  = "STRING"
 	BYTE_OBJ    = "BYTES"
 
-	LIST_OBJ = "LIST"
-	MAP_OBJ  = "MAP"
+	LIST_OBJ          = "LIST"
+	MAP_OBJ           = "MAP"
+	STRUCT_SCHEMA_OBJ = "STRUCT_SCHEMA"
+	STRUCT_OBJ        = "STRUCT"
 
 	MODULE_OBJ         = "MODULE"
 	FUNCTION_OBJ       = "FUNCTION"
@@ -739,6 +741,75 @@ func (m *Map) GetTags() map[string]List {
 }
 func (m *Map) SetTag(tag string, params List) {
 	setTag(&m.Tags, tag, params)
+}
+
+type StructSchemaField struct {
+	Name    string
+	Default ast.Expression
+	Hint    string
+}
+
+type StructSchema struct {
+	Name       string
+	Fields     []StructSchemaField
+	FieldIndex map[string]int
+	Env        *Environment
+}
+
+func (s *StructSchema) Type() ObjectType { return STRUCT_SCHEMA_OBJ }
+func (s *StructSchema) Inspect() string {
+	var out bytes.Buffer
+	if s.Name != "" {
+		out.WriteString(s.Name)
+		out.WriteString(" ")
+	}
+	out.WriteString("struct {")
+	parts := []string{}
+	for _, field := range s.Fields {
+		var b strings.Builder
+		if field.Hint != "" {
+			b.WriteString(field.Hint)
+			b.WriteString(" ")
+		}
+		b.WriteString(field.Name)
+		if field.Default != nil {
+			b.WriteString(" = ")
+			b.WriteString(field.Default.String())
+		}
+		parts = append(parts, b.String())
+	}
+	out.WriteString(strings.Join(parts, ", "))
+	out.WriteString("}")
+	return out.String()
+}
+
+type StructValue struct {
+	Schema *StructSchema
+	Fields map[string]Object
+}
+
+func (s *StructValue) Type() ObjectType { return STRUCT_OBJ }
+func (s *StructValue) Inspect() string {
+	var out bytes.Buffer
+	if s.Schema != nil && s.Schema.Name != "" {
+		out.WriteString(s.Schema.Name)
+	} else {
+		out.WriteString("struct")
+	}
+	out.WriteString(" {")
+	parts := []string{}
+	if s.Schema != nil {
+		for _, field := range s.Schema.Fields {
+			val, ok := s.Fields[field.Name]
+			if !ok {
+				continue
+			}
+			parts = append(parts, field.Name+": "+val.Inspect())
+		}
+	}
+	out.WriteString(strings.Join(parts, ", "))
+	out.WriteString("}")
+	return out.String()
 }
 
 type RuntimeError struct {

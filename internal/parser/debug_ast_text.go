@@ -171,6 +171,35 @@ func RenderASTAsText(node ast.Node, indent int) string {
 		}
 		return "{" + strings.Join(pairs, ", ") + "}"
 
+	case *ast.StructSchemaExpression:
+		fields := []string{}
+		for _, f := range n.Fields {
+			field := ""
+			if f.Hint != "" {
+				field = f.Hint + " "
+			}
+			field += f.Name
+			if f.Default != nil {
+				field += " = " + RenderASTAsText(f.Default, 0)
+			}
+			fields = append(fields, field)
+		}
+		return "struct {" + strings.Join(fields, ", ") + "}"
+
+	case *ast.StructInitExpression:
+		fields := []string{}
+		for _, f := range n.Fields {
+			fields = append(fields, fmt.Sprintf("%s: %s", f.Name, RenderASTAsText(f.Value, 0)))
+		}
+		return fmt.Sprintf("%s {%s}", RenderASTAsText(n.Schema, 0), strings.Join(fields, ", "))
+
+	case *ast.StructCopyExpression:
+		fields := []string{}
+		for _, f := range n.Fields {
+			fields = append(fields, fmt.Sprintf("%s: %s", f.Name, RenderASTAsText(f.Value, 0)))
+		}
+		return fmt.Sprintf("%s copy {%s}", RenderASTAsText(n.Source, 0), strings.Join(fields, ", "))
+
 	case *ast.WildcardPattern:
 		return "_"
 	case *ast.AllPattern:
@@ -211,6 +240,13 @@ func RenderASTAsText(node ast.Node, indent int) string {
 			delim = "|"
 		}
 		return "{" + delim + strings.Join(pairs, ", ") + delim + "}"
+
+	case *ast.StructPattern:
+		fields := []string{}
+		for _, f := range n.Fields {
+			fields = append(fields, fmt.Sprintf("%s: %s", f.Name, RenderASTAsText(f.Pattern, 0)))
+		}
+		return fmt.Sprintf("%s {%s}", RenderASTAsText(n.Schema, 0), strings.Join(fields, ", "))
 
 	case *ast.DeferStatement:
 		mode := ""

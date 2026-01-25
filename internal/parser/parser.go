@@ -55,10 +55,12 @@ var precedences = map[token.TokenType]int{
 	token.APPEND_ITEM:         LIST_CONCAT,
 	token.PREPEND_ITEM:        LIST_CONCAT,
 	token.CALL_CHAIN:          CALL_CHAIN,
+	token.COPY:                CALL,
 	token.PERIOD:              CALL,
 	token.LPAREN:              CALL,
 	token.INTERPOLATION_START: CALL,
 	token.LBRACKET:            INDEX,
+	token.LBRACE:              CALL,
 }
 
 type (
@@ -67,11 +69,12 @@ type (
 )
 
 type Parser struct {
-	tokenizer   lexer.Tokenizer
-	Path        string
-	src         string // source code here
-	errors      []string
-	pendingTags []*ast.Tag
+	tokenizer       lexer.Tokenizer
+	Path            string
+	src             string // source code here
+	errors          []string
+	pendingTags     []*ast.Tag
+	allowStructInit bool
 
 	curToken   token.Token
 	peekToken  token.Token
@@ -83,10 +86,11 @@ type Parser struct {
 
 func New(l lexer.Tokenizer, path, source string) *Parser {
 	p := &Parser{
-		tokenizer: l,
-		Path:      path,
-		src:       source,
-		errors:    []string{},
+		tokenizer:       l,
+		Path:            path,
+		src:             source,
+		errors:          []string{},
+		allowStructInit: true,
 	}
 
 	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
@@ -112,6 +116,7 @@ func New(l lexer.Tokenizer, path, source string) *Parser {
 	p.registerPrefix(token.NURSERY, p.parseNurseryExpression)
 	p.registerPrefix(token.SPAWN, p.parseSpawnExpression)
 	p.registerPrefix(token.AWAIT, p.parseAwaitExpression)
+	p.registerPrefix(token.STRUCT, p.parseStructSchemaExpression)
 
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
@@ -136,9 +141,11 @@ func New(l lexer.Tokenizer, path, source string) *Parser {
 	p.registerInfix(token.PREPEND_ITEM, p.parseInfixExpression)
 
 	p.registerInfix(token.CALL_CHAIN, p.parseCallChainExpression)
+	p.registerInfix(token.COPY, p.parseStructCopyExpression)
 	p.registerInfix(token.PERIOD, p.parseDotIdentifierToIndexExpression)
 	p.registerInfix(token.LPAREN, p.parseCallExpression)
 	p.registerInfix(token.LBRACKET, p.parseIndexExpression)
+	p.registerInfix(token.LBRACE, p.parseStructInitExpression)
 	p.registerInfix(token.INTERPOLATION_START, p.parseInterpolationExpression)
 
 	// Read two tokens, so curToken and peekToken are both set
@@ -226,6 +233,8 @@ func (p *Parser) ParseProgram() *ast.Program {
 		p.nextToken()
 		p.skipStatementSeparators()
 	}
+
+	p.validateStructSchemaUsage(program)
 
 	return program
 }
@@ -396,6 +405,10 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 			continue
 		}
 
+		if !p.allowStructInit && p.peekTokenIs(token.LBRACE) {
+			return leftExp
+		}
+
 		// 3) Normal Pratt precedence gate
 		if precedence >= p.peekPrecedence() {
 			return leftExp
@@ -548,7 +561,10 @@ func (p *Parser) parseMatchExpression() ast.Expression {
 	// If it's part of a pipeline (val /> match { ... }), the value will be injected later.
 	if !p.peekTokenIs(token.LBRACE) {
 		p.nextToken()
+		prevAllowStructInit := p.allowStructInit
+		p.allowStructInit = false
 		match.Value = p.parseExpression(LOWEST)
+		p.allowStructInit = prevAllowStructInit
 	}
 
 	if !p.expectPeek(token.LBRACE) {
@@ -673,6 +689,10 @@ func (p *Parser) parseMatchPattern() ast.MatchPattern {
 		}
 
 	case token.IDENT:
+		if p.peekTokenIs(token.LBRACE) {
+			schema := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+			return p.parseStructPattern(schema)
+		}
 		return &ast.IdentifierPattern{
 			Token: p.curToken,
 			Value: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
@@ -950,6 +970,89 @@ func (p *Parser) parseMapPatternPair(hp *ast.MapPattern) bool {
 	return true
 }
 
+func (p *Parser) parseStructPattern(schema *ast.Identifier) ast.MatchPattern {
+	pattern := &ast.StructPattern{
+		Token:  schema.Token,
+		Schema: schema,
+		Fields: []*ast.StructPatternField{},
+	}
+
+	if !p.expectPeek(token.LBRACE) {
+		return nil
+	}
+
+	if p.peekTokenIs(token.RBRACE) {
+		p.nextToken()
+		return pattern
+	}
+
+	seen := make(map[string]struct{})
+
+	for !p.peekTokenIs(token.RBRACE) {
+		p.nextToken()
+		p.skipLeadingNewlines()
+
+		if p.curTokenIs(token.RBRACE) {
+			return pattern
+		}
+
+		if !p.curTokenIs(token.IDENT) {
+			p.addErrorAt(p.curToken.Position, "expected identifier in struct pattern, got %s", p.curToken.Type)
+			return nil
+		}
+
+		name := p.curToken.Literal
+		if _, ok := seen[name]; ok {
+			p.addErrorAt(p.curToken.Position, "duplicate field in struct pattern: %s", name)
+			return nil
+		}
+		seen[name] = struct{}{}
+
+		var fieldPattern ast.MatchPattern
+		if p.peekTokenIs(token.COLON) {
+			p.nextToken()
+			p.nextToken()
+			fieldPattern = p.parseMatchPattern()
+			if fieldPattern == nil {
+				return nil
+			}
+		} else {
+			fieldPattern = &ast.IdentifierPattern{
+				Token: p.curToken,
+				Value: &ast.Identifier{Token: p.curToken, Value: name},
+			}
+		}
+
+		pattern.Fields = append(pattern.Fields, &ast.StructPatternField{
+			Name:    name,
+			Pattern: fieldPattern,
+		})
+
+		if p.peekTokenIs(token.RBRACE) {
+			break
+		}
+
+		if !p.expectPeek(token.COMMA) {
+			return nil
+		}
+
+		for p.peekTokenIs(token.NEWLINE) {
+			p.nextToken()
+		}
+
+		if p.peekTokenIs(token.RBRACE) {
+			p.nextToken()
+			return pattern
+		}
+	}
+
+	if !p.expectPeek(token.RBRACE) {
+		return nil
+	}
+
+	return pattern
+}
+
 func (p *Parser) parseBoolean() ast.Expression {
 	return &ast.Boolean{Token: p.curToken, Value: p.curTokenIs(token.TRUE)}
 }
@@ -957,7 +1060,10 @@ func (p *Parser) parseBoolean() ast.Expression {
 func (p *Parser) parseGroupedExpression() ast.Expression {
 	p.nextToken()
 
+	prevAllowStructInit := p.allowStructInit
+	p.allowStructInit = true
 	exp := p.parseExpression(LOWEST)
+	p.allowStructInit = prevAllowStructInit
 
 	if !p.expectPeek(token.RPAREN) {
 		return nil
@@ -1702,6 +1808,177 @@ func (p *Parser) parseMapLiteral() ast.Expression {
 	return mapLit
 }
 
+func (p *Parser) parseStructSchemaExpression() ast.Expression {
+	schema := &ast.StructSchemaExpression{Token: p.curToken}
+
+	if !p.expectPeek(token.LBRACE) {
+		return nil
+	}
+
+	schema.Fields = []*ast.StructField{}
+
+	for p.peekTokenIs(token.NEWLINE) {
+		p.nextToken()
+	}
+
+	for !p.peekTokenIs(token.RBRACE) {
+		p.nextToken()
+		p.skipLeadingNewlines()
+
+		if p.curTokenIs(token.RBRACE) {
+			return schema
+		}
+
+		field := p.parseStructSchemaField()
+		if field != nil {
+			schema.Fields = append(schema.Fields, field)
+		}
+
+		if p.peekTokenIs(token.RBRACE) {
+			break
+		}
+
+		if !p.expectPeek(token.COMMA) {
+			return nil
+		}
+
+		for p.peekTokenIs(token.NEWLINE) {
+			p.nextToken()
+		}
+
+		if p.peekTokenIs(token.RBRACE) {
+			p.nextToken()
+			return schema
+		}
+	}
+
+	if !p.expectPeek(token.RBRACE) {
+		return nil
+	}
+
+	return schema
+}
+
+func (p *Parser) parseStructSchemaField() *ast.StructField {
+	field := &ast.StructField{Token: p.curToken}
+
+	if p.curTokenIs(token.AT) {
+		if !p.expectPeek(token.IDENT) {
+			return nil
+		}
+		field.Hint = "@" + p.curToken.Literal
+		if p.peekTokenIs(token.LPAREN) {
+			p.addErrorAt(p.peekToken.Position, "struct field type hints do not accept arguments")
+			return nil
+		}
+		if !p.expectPeek(token.IDENT) {
+			return nil
+		}
+		field.Token = p.curToken
+	} else if !p.curTokenIs(token.IDENT) {
+		p.addErrorAt(p.curToken.Position, "expected identifier for struct field, got %s", p.curToken.Type)
+		return nil
+	}
+
+	field.Name = p.curToken.Literal
+
+	if p.peekTokenIs(token.ASSIGN) {
+		p.nextToken()
+		p.nextToken()
+		field.Default = p.parseExpression(LOWEST)
+	}
+
+	return field
+}
+
+func (p *Parser) parseStructInitExpression(left ast.Expression) ast.Expression {
+	startToken := p.curToken
+	fields := p.parseStructInitFields()
+	if fields == nil {
+		return nil
+	}
+
+	return &ast.StructInitExpression{
+		Token:  startToken,
+		Schema: left,
+		Fields: fields,
+	}
+}
+
+func (p *Parser) parseStructCopyExpression(left ast.Expression) ast.Expression {
+	copyExpr := &ast.StructCopyExpression{Token: p.curToken, Source: left}
+	if !p.expectPeek(token.LBRACE) {
+		return nil
+	}
+
+	fields := p.parseStructInitFields()
+	if fields == nil {
+		return nil
+	}
+	copyExpr.Fields = fields
+	return copyExpr
+}
+
+func (p *Parser) parseStructInitFields() []*ast.StructInitField {
+	fields := []*ast.StructInitField{}
+
+	if p.peekTokenIs(token.RBRACE) {
+		p.nextToken()
+		return fields
+	}
+
+	for !p.peekTokenIs(token.RBRACE) {
+		p.nextToken()
+		p.skipLeadingNewlines()
+
+		if p.curTokenIs(token.RBRACE) {
+			return fields
+		}
+
+		if !p.curTokenIs(token.IDENT) {
+			p.addErrorAt(p.curToken.Position, "expected identifier for struct field, got %s", p.curToken.Type)
+			return nil
+		}
+
+		field := &ast.StructInitField{
+			Token: p.curToken,
+			Name:  p.curToken.Literal,
+		}
+
+		if !p.expectPeek(token.COLON) {
+			return nil
+		}
+
+		p.nextToken()
+		p.skipLeadingNewlines()
+		field.Value = p.parseExpression(LOWEST)
+		fields = append(fields, field)
+
+		if p.peekTokenIs(token.RBRACE) {
+			break
+		}
+
+		if !p.expectPeek(token.COMMA) {
+			return nil
+		}
+
+		for p.peekTokenIs(token.NEWLINE) {
+			p.nextToken()
+		}
+
+		if p.peekTokenIs(token.RBRACE) {
+			p.nextToken()
+			return fields
+		}
+	}
+
+	if !p.expectPeek(token.RBRACE) {
+		return nil
+	}
+
+	return fields
+}
+
 func (p *Parser) registerPrefix(tokenType token.TokenType, fn prefixParseFn) {
 	p.prefixParseFns[tokenType] = fn
 }
@@ -2075,5 +2352,190 @@ func (p *Parser) validateRecurInExpr(expr ast.Expression, inTail bool) {
 
 	default:
 		// For literals, identifiers, etc., there is nothing to check.
+	}
+}
+
+func (p *Parser) validateStructSchemaUsage(program *ast.Program) {
+	for _, stmt := range program.Statements {
+		p.validateStructSchemaInStatement(stmt)
+	}
+}
+
+func (p *Parser) validateStructSchemaInStatement(stmt ast.Statement) {
+	switch s := stmt.(type) {
+	case *ast.ExpressionStatement:
+		switch expr := s.Expression.(type) {
+		case *ast.VarExpression:
+			if _, ok := expr.Value.(*ast.StructSchemaExpression); ok {
+				return
+			}
+			if p.containsStructSchema(expr.Value) {
+				p.addErrorAt(expr.Token.Position, "struct schemas are only allowed on the right-hand side of val/var bindings")
+			}
+		case *ast.ValExpression:
+			if _, ok := expr.Value.(*ast.StructSchemaExpression); ok {
+				return
+			}
+			if p.containsStructSchema(expr.Value) {
+				p.addErrorAt(expr.Token.Position, "struct schemas are only allowed on the right-hand side of val/var bindings")
+			}
+		default:
+			if p.containsStructSchema(s.Expression) {
+				p.addErrorAt(s.Token.Position, "struct schemas are only allowed on the right-hand side of val/var bindings")
+			}
+		}
+	case *ast.ReturnStatement:
+		if p.containsStructSchema(s.ReturnValue) {
+			p.addErrorAt(s.Token.Position, "struct schemas are only allowed on the right-hand side of val/var bindings")
+		}
+	case *ast.ThrowStatement:
+		if p.containsStructSchema(s.Value) {
+			p.addErrorAt(s.Token.Position, "struct schemas are only allowed on the right-hand side of val/var bindings")
+		}
+	case *ast.BlockStatement:
+		for _, child := range s.Statements {
+			p.validateStructSchemaInStatement(child)
+		}
+	case *ast.DeferStatement:
+		if p.containsStructSchemaInStatement(s.Call) {
+			p.addErrorAt(s.Token.Position, "struct schemas are only allowed on the right-hand side of val/var bindings")
+		}
+	default:
+		// No-op for other statements.
+	}
+}
+
+func (p *Parser) containsStructSchema(expr ast.Expression) bool {
+	if expr == nil {
+		return false
+	}
+
+	switch e := expr.(type) {
+	case *ast.StructSchemaExpression:
+		return true
+	case *ast.StructInitExpression:
+		if p.containsStructSchema(e.Schema) {
+			return true
+		}
+		for _, field := range e.Fields {
+			if p.containsStructSchema(field.Value) {
+				return true
+			}
+		}
+		return false
+	case *ast.StructCopyExpression:
+		if p.containsStructSchema(e.Source) {
+			return true
+		}
+		for _, field := range e.Fields {
+			if p.containsStructSchema(field.Value) {
+				return true
+			}
+		}
+		return false
+	case *ast.FunctionLiteral:
+		if e.Body != nil {
+			for _, stmt := range e.Body.Statements {
+				if p.containsStructSchemaInStatement(stmt) {
+					return true
+				}
+			}
+		}
+		return false
+	case *ast.BlockStatement:
+		for _, stmt := range e.Statements {
+			if p.containsStructSchemaInStatement(stmt) {
+				return true
+			}
+		}
+		return false
+	case *ast.CallExpression:
+		if p.containsStructSchema(e.Function) {
+			return true
+		}
+		for _, arg := range e.Arguments {
+			if p.containsStructSchema(arg) {
+				return true
+			}
+		}
+		return false
+	case *ast.InfixExpression:
+		return p.containsStructSchema(e.Left) || p.containsStructSchema(e.Right)
+	case *ast.PrefixExpression:
+		return p.containsStructSchema(e.Right)
+	case *ast.IfExpression:
+		if p.containsStructSchema(e.Condition) {
+			return true
+		}
+		if e.ThenBranch != nil && p.containsStructSchema(e.ThenBranch) {
+			return true
+		}
+		if e.ElseBranch != nil && p.containsStructSchema(e.ElseBranch) {
+			return true
+		}
+		return false
+	case *ast.MatchExpression:
+		if p.containsStructSchema(e.Value) {
+			return true
+		}
+		for _, c := range e.Cases {
+			if c == nil {
+				continue
+			}
+			if p.containsStructSchema(c.Guard) {
+				return true
+			}
+			if c.Body != nil && p.containsStructSchema(c.Body) {
+				return true
+			}
+		}
+		return false
+	case *ast.ListLiteral:
+		for _, el := range e.Elements {
+			if p.containsStructSchema(el) {
+				return true
+			}
+		}
+		return false
+	case *ast.MapLiteral:
+		for k, v := range e.Pairs {
+			if p.containsStructSchema(k) || p.containsStructSchema(v) {
+				return true
+			}
+		}
+		return false
+	case *ast.IndexExpression:
+		return p.containsStructSchema(e.Left) || p.containsStructSchema(e.Index)
+	case *ast.SliceExpression:
+		return p.containsStructSchema(e.Start) || p.containsStructSchema(e.End) || p.containsStructSchema(e.Step)
+	case *ast.SpreadExpression:
+		return p.containsStructSchema(e.Value)
+	default:
+		return false
+	}
+}
+
+func (p *Parser) containsStructSchemaInStatement(stmt ast.Statement) bool {
+	if stmt == nil {
+		return false
+	}
+	switch s := stmt.(type) {
+	case *ast.ExpressionStatement:
+		return p.containsStructSchema(s.Expression)
+	case *ast.ReturnStatement:
+		return p.containsStructSchema(s.ReturnValue)
+	case *ast.ThrowStatement:
+		return p.containsStructSchema(s.Value)
+	case *ast.BlockStatement:
+		for _, child := range s.Statements {
+			if p.containsStructSchemaInStatement(child) {
+				return true
+			}
+		}
+		return false
+	case *ast.DeferStatement:
+		return p.containsStructSchemaInStatement(s.Call)
+	default:
+		return false
 	}
 }

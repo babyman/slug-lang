@@ -200,6 +200,51 @@ func WalkAST(node ast.Node) interface{} {
 			"pairs": pairs,
 		}
 
+	case *ast.StructSchemaExpression:
+		fields := make([]interface{}, len(n.Fields))
+		for i, f := range n.Fields {
+			fields[i] = map[string]interface{}{
+				"name":    f.Name,
+				"hint":    f.Hint,
+				"default": WalkAST(f.Default),
+			}
+		}
+		return map[string]interface{}{
+			"type":   "StructSchemaExpression",
+			"token":  n.TokenLiteral(),
+			"fields": fields,
+		}
+
+	case *ast.StructInitExpression:
+		fields := make([]interface{}, len(n.Fields))
+		for i, f := range n.Fields {
+			fields[i] = map[string]interface{}{
+				"name":  f.Name,
+				"value": WalkAST(f.Value),
+			}
+		}
+		return map[string]interface{}{
+			"type":   "StructInitExpression",
+			"token":  n.TokenLiteral(),
+			"schema": WalkAST(n.Schema),
+			"fields": fields,
+		}
+
+	case *ast.StructCopyExpression:
+		fields := make([]interface{}, len(n.Fields))
+		for i, f := range n.Fields {
+			fields[i] = map[string]interface{}{
+				"name":  f.Name,
+				"value": WalkAST(f.Value),
+			}
+		}
+		return map[string]interface{}{
+			"type":   "StructCopyExpression",
+			"token":  n.TokenLiteral(),
+			"source": WalkAST(n.Source),
+			"fields": fields,
+		}
+
 	case *ast.IndexExpression:
 		return map[string]interface{}{
 			"type":  "IndexExpression",
@@ -272,6 +317,21 @@ func WalkAST(node ast.Node) interface{} {
 			"exact":     n.Exact,
 			"selectAll": n.SelectAll,
 			"spread":    n.Spread,
+		}
+
+	case *ast.StructPattern:
+		fields := make([]interface{}, len(n.Fields))
+		for i, f := range n.Fields {
+			fields[i] = map[string]interface{}{
+				"name":    f.Name,
+				"pattern": WalkAST(f.Pattern),
+			}
+		}
+		return map[string]interface{}{
+			"type":   "StructPattern",
+			"token":  n.TokenLiteral(),
+			"schema": WalkAST(n.Schema),
+			"fields": fields,
 		}
 
 	case *ast.FunctionParameter:

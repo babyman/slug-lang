@@ -87,6 +87,8 @@ const (
 	DEFER     = "DEFER"
 	ONSUCCESS = "ONSUCCESS"
 	ONERROR   = "ONERROR"
+	STRUCT    = "STRUCT"
+	COPY      = "COPY"
 	NURSERY   = "NURSERY"
 	SPAWN     = "SPAWN"
 	AWAIT     = "AWAIT"
@@ -111,6 +113,8 @@ var keywords = map[string]TokenType{
 	"foreign": FOREIGN,
 	"val":     VAL,
 	"var":     VAR,
+	"struct":  STRUCT,
+	"copy":    COPY,
 
 	// flow control
 	"if":     IF,

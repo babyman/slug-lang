@@ -369,6 +369,9 @@ func (e *Task) Eval(node ast.Node) object.Object {
 		}
 		return &object.List{Elements: elements}
 
+	case *ast.StructSchemaExpression:
+		return e.evalStructSchemaExpression(node)
+
 	case *ast.IndexExpression:
 		left := e.Eval(node.Left)
 		if e.isError(left) {
@@ -389,6 +392,12 @@ func (e *Task) Eval(node ast.Node) object.Object {
 
 	case *ast.MapLiteral:
 		return e.evalMapLiteral(node)
+
+	case *ast.StructInitExpression:
+		return e.evalStructInitExpression(node)
+
+	case *ast.StructCopyExpression:
+		return e.evalStructCopyExpression(node)
 
 	case *ast.ThrowStatement:
 		return e.evalThrowStatement(node)
@@ -1497,6 +1506,195 @@ func (e *Task) evalMapLiteral(
 	return &object.Map{Pairs: pairs}
 }
 
+func (e *Task) evalStructSchemaExpression(node *ast.StructSchemaExpression) object.Object {
+	schema := &object.StructSchema{
+		Fields:     make([]object.StructSchemaField, 0, len(node.Fields)),
+		FieldIndex: make(map[string]int, len(node.Fields)),
+		Env:        e.CurrentEnv(),
+	}
+
+	for _, field := range node.Fields {
+		if _, exists := schema.FieldIndex[field.Name]; exists {
+			return e.newErrorfWithPos(field.Token.Position, "duplicate struct field: %s", field.Name)
+		}
+		if field.Hint != "" {
+			if _, ok := object.TypeTags[field.Hint]; !ok {
+				return e.newErrorfWithPos(field.Token.Position, "unknown struct field type hint: %s", field.Hint)
+			}
+		}
+
+		schema.FieldIndex[field.Name] = len(schema.Fields)
+		schema.Fields = append(schema.Fields, object.StructSchemaField{
+			Name:    field.Name,
+			Default: field.Default,
+			Hint:    field.Hint,
+		})
+	}
+
+	return schema
+}
+
+func (e *Task) evalStructInitExpression(node *ast.StructInitExpression) object.Object {
+	schemaObj := e.Eval(node.Schema)
+	if e.isError(schemaObj) {
+		return schemaObj
+	}
+	schemaObj = e.resolveValue(node.Token.Position, schemaObj)
+	if e.isError(schemaObj) {
+		return schemaObj
+	}
+
+	schema, ok := schemaObj.(*object.StructSchema)
+	if !ok {
+		return e.newErrorfWithPos(node.Token.Position, "expected struct schema, got %s", schemaObj.Type())
+	}
+
+	values := make(map[string]object.Object, len(schema.Fields))
+	for _, field := range node.Fields {
+		if _, ok := schema.FieldIndex[field.Name]; !ok {
+			return e.newErrorfWithPos(field.Token.Position, "unknown field '%s' for struct %s", field.Name, e.structSchemaName(schema))
+		}
+		if _, ok := values[field.Name]; ok {
+			return e.newErrorfWithPos(field.Token.Position, "duplicate field '%s' in struct initializer", field.Name)
+		}
+		val := e.Eval(field.Value)
+		if e.isError(val) {
+			return val
+		}
+		values[field.Name] = val
+	}
+
+	for _, field := range schema.Fields {
+		if _, ok := values[field.Name]; ok {
+			continue
+		}
+		if field.Default != nil {
+			val := e.evalStructDefault(schema, field.Default)
+			if e.isError(val) {
+				return val
+			}
+			values[field.Name] = val
+		} else {
+			values[field.Name] = object.NIL
+		}
+	}
+
+	if err := e.validateStructHints(node.Token.Position, schema, values); err != nil {
+		return err
+	}
+
+	return &object.StructValue{
+		Schema: schema,
+		Fields: values,
+	}
+}
+
+func (e *Task) evalStructCopyExpression(node *ast.StructCopyExpression) object.Object {
+	source := e.Eval(node.Source)
+	if e.isError(source) {
+		return source
+	}
+	source = e.resolveValue(node.Token.Position, source)
+	if e.isError(source) {
+		return source
+	}
+
+	structVal, ok := source.(*object.StructValue)
+	if !ok {
+		return e.newErrorfWithPos(node.Token.Position, "copy expects a struct value, got %s", source.Type())
+	}
+
+	values := make(map[string]object.Object, len(structVal.Fields))
+	for name, value := range structVal.Fields {
+		values[name] = value
+	}
+
+	seen := make(map[string]struct{}, len(node.Fields))
+	for _, field := range node.Fields {
+		if _, ok := seen[field.Name]; ok {
+			return e.newErrorfWithPos(field.Token.Position, "duplicate field '%s' in struct copy", field.Name)
+		}
+		seen[field.Name] = struct{}{}
+
+		if _, ok := structVal.Schema.FieldIndex[field.Name]; !ok {
+			return e.newErrorfWithPos(field.Token.Position, "unknown field '%s' for struct %s", field.Name, e.structSchemaName(structVal.Schema))
+		}
+		val := e.Eval(field.Value)
+		if e.isError(val) {
+			return val
+		}
+		values[field.Name] = val
+	}
+
+	if err := e.validateStructHints(node.Token.Position, structVal.Schema, values); err != nil {
+		return err
+	}
+
+	return &object.StructValue{
+		Schema: structVal.Schema,
+		Fields: values,
+	}
+}
+
+func (e *Task) evalStructDefault(schema *object.StructSchema, expr ast.Expression) object.Object {
+	if expr == nil {
+		return object.NIL
+	}
+
+	defEnv := schema.Env
+	if defEnv == nil {
+		defEnv = e.CurrentEnv()
+	}
+	for defEnv != nil && defEnv.Outer != nil {
+		defEnv = defEnv.Outer
+	}
+
+	tmp := object.NewEnclosedEnvironment(defEnv, nil)
+	e.PushEnv(tmp)
+	val := e.Eval(expr)
+	e.PopEnv(val)
+	return val
+}
+
+func (e *Task) validateStructHints(pos int, schema *object.StructSchema, values map[string]object.Object) object.Object {
+	for _, field := range schema.Fields {
+		if field.Hint == "" {
+			continue
+		}
+		value := values[field.Name]
+		if value == nil {
+			value = object.NIL
+		}
+		if value.Type() == object.NIL_OBJ {
+			continue
+		}
+
+		expected, ok := object.TypeTags[field.Hint]
+		if !ok {
+			return e.newErrorfWithPos(pos, "unknown struct field type hint: %s", field.Hint)
+		}
+
+		if field.Hint == object.FUNCTION_TAG {
+			if value.Type() == object.FUNCTION_OBJ || value.Type() == object.FUNCTION_GROUP_OBJ {
+				continue
+			}
+		}
+
+		if string(value.Type()) != expected {
+			return e.newErrorfWithPos(pos, "struct %s field %s expected %s, got %s", e.structSchemaName(schema), field.Name, field.Hint, value.Type())
+		}
+	}
+
+	return nil
+}
+
+func (e *Task) structSchemaName(schema *object.StructSchema) string {
+	if schema != nil && schema.Name != "" {
+		return schema.Name
+	}
+	return "<anonymous>"
+}
+
 func (e *Task) evalMatchExpression(node *ast.MatchExpression) object.Object {
 	// Evaluate the match value if provided
 	var matchValue object.Object
@@ -1616,6 +1814,11 @@ func (e *Task) patternMatches(
 
 	case *ast.IdentifierPattern:
 		// Bind the value to the identifier
+		if schema, ok := value.(*object.StructSchema); ok {
+			if schema.Name == "" {
+				schema.Name = p.Value.Value
+			}
+		}
 		if isConstant {
 			_, err := env.DefineConstant(p.Value.Value, value, isExport, isImport)
 			return err == nil, err
@@ -1750,6 +1953,67 @@ func (e *Task) patternMatches(
 		}
 
 		// Copy bindings to parent env
+		for name, binding := range scoped.Bindings {
+			value, _ := scoped.Get(name)
+			if binding.IsMutable {
+				_, err := env.Define(name, value, isExport, isImport)
+				if err != nil {
+					return false, err
+				}
+			} else {
+				_, err := env.DefineConstant(name, value, isExport, isImport)
+				if err != nil {
+					return false, err
+				}
+			}
+		}
+
+		return true, nil
+
+	case *ast.StructPattern:
+		structVal, ok := value.(*object.StructValue)
+		if !ok {
+			return false, nil
+		}
+
+		lookupEnv := pinEnv
+		if lookupEnv == nil {
+			lookupEnv = env
+		}
+		schemaObj, ok := lookupEnv.Get(p.Schema.Value)
+		if !ok {
+			return false, fmt.Errorf("struct schema not found: %s", p.Schema.Value)
+		}
+		schemaObj = e.resolveValue(0, schemaObj)
+		if e.isError(schemaObj) {
+			return false, fmt.Errorf("struct schema could not be resolved: %s", p.Schema.Value)
+		}
+		schema, ok := schemaObj.(*object.StructSchema)
+		if !ok {
+			return false, fmt.Errorf("pattern schema is not a struct: %s", p.Schema.Value)
+		}
+		if structVal.Schema != schema {
+			return false, nil
+		}
+
+		scoped := object.NewEnclosedEnvironment(env, nil)
+		e.PushEnv(scoped)
+		defer func() { e.PopEnv(nil) }()
+
+		for _, field := range p.Fields {
+			if _, ok := schema.FieldIndex[field.Name]; !ok {
+				return false, fmt.Errorf("unknown field in struct pattern: %s", field.Name)
+			}
+			val, ok := structVal.Fields[field.Name]
+			if !ok {
+				val = object.NIL
+			}
+			matched, err := e.patternMatches(field.Pattern, val, isConstant, isExport, isImport, pinEnv)
+			if !matched || err != nil {
+				return false, err
+			}
+		}
+
 		for name, binding := range scoped.Bindings {
 			value, _ := scoped.Get(name)
 			if binding.IsMutable {
@@ -2000,6 +2264,29 @@ func (e *Task) objectsEqual(a, b object.Object) bool {
 		}
 
 		return true
+
+	case *object.StructValue:
+		other := b.(*object.StructValue)
+		if aVal.Schema != other.Schema {
+			return false
+		}
+		if aVal.Schema == nil {
+			return false
+		}
+		for _, field := range aVal.Schema.Fields {
+			leftVal, ok := aVal.Fields[field.Name]
+			if !ok {
+				leftVal = object.NIL
+			}
+			rightVal, ok := other.Fields[field.Name]
+			if !ok {
+				rightVal = object.NIL
+			}
+			if !e.objectsEqual(leftVal, rightVal) {
+				return false
+			}
+		}
+		return true
 	}
 
 	return false
@@ -2019,6 +2306,25 @@ func (e *Task) evalMapIndexExpression(pos int, obj, index object.Object) object.
 	}
 
 	return pair.Value
+}
+
+func (e *Task) evalStructIndexExpression(pos int, obj, index object.Object) object.Object {
+	structObj := obj.(*object.StructValue)
+	key, ok := index.(*object.String)
+	if !ok {
+		return e.newErrorfWithPos(pos, "struct field access expects string, got %s", index.Type())
+	}
+	if structObj.Schema == nil {
+		return e.newErrorfWithPos(pos, "struct has no schema")
+	}
+	if _, ok := structObj.Schema.FieldIndex[key.Value]; !ok {
+		return e.newErrorfWithPos(pos, "unknown field '%s' for struct %s", key.Value, e.structSchemaName(structObj.Schema))
+	}
+	val, ok := structObj.Fields[key.Value]
+	if !ok {
+		return object.NIL
+	}
+	return val
 }
 
 func (e *Task) runtimeErrorAt(pos int, typ string, fields map[string]object.Object) *object.RuntimeError {
@@ -2095,6 +2401,8 @@ func (e *Task) evalIndexExpression(pos int, left, index object.Object) object.Ob
 		return e.evalByteIndexExpression(left, index)
 	case left.Type() == object.MAP_OBJ:
 		return e.evalMapIndexExpression(pos, left, index)
+	case left.Type() == object.STRUCT_OBJ:
+		return e.evalStructIndexExpression(pos, left, index)
 	default:
 		return e.newErrorfWithPos(pos, "index operator not supported: %s", left.Type())
 	}
