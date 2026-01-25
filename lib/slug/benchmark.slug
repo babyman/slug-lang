@@ -39,55 +39,17 @@ val insertAsc = fn(sorted, x, acc = []) match {
 	[[h, ...t], ...] => recur(t, x, acc :+ h)
 }
 
-val average = fn(xs) match {
-	[] => 0
-	_ => (xs /> reduce(0, fn(a, x) { a + x })) / (len(xs))
-}
-
-val stdev = fn(xs, mean) match {
-	[] => 0
-	[_] => 0
-	_ => {
-		val n = len(xs)
-		val acc = xs /> reduce(0, fn(a, x) {
-			val d = x - mean
-			a + (d * d)
-		})
-		val v = acc / (n - 1)
-		sqrt(if (v < 0) { 0 } else { v })
-	}
-}
-
-/// percentileSorted: xs must be ascending
-val percentileSorted = fn(xs, p) match {
-	[[], ...] => 0
-	[[x], ...] => x
-	_ => {
-		val n = len(xs)
-		val pos = (p / 100) * (n - 1)
-		val lo = floor(pos)
-		val hi = ceil(pos)
-
-		if (lo == hi) {
-			xs[lo]
-		} else {
-			val frac = pos - lo
-			xs[lo] + (xs[hi] - xs[lo]) * frac
-		}
-	}
-}
-
 val computeStats = fn(xs) {
 	val ys = sortAsc(xs)
-	val mean = average(ys)
-	val sd = stdev(ys, mean)
+	val ave = mean(ys)
+	val sd = stdev(ys, ave)
 	{
 		min: ys[0],
 		p50: percentileSorted(ys, 50),
 		p90: percentileSorted(ys, 90),
 		p99: percentileSorted(ys, 99),
 		max: ys[(len(ys) - 1)],
-		mean: mean,
+		mean: ave,
 		stdev: sd,
 	}
 }

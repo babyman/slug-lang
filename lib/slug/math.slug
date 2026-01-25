@@ -78,50 +78,50 @@ foreign sqrt = fn(@num n)
 foreign rndRange = fn(@num min, @num max)
 
 
-// @export
-// var average = fn(xs) match {
-// 	[] => 0
-// 	_ => {
-// 		(xs /> reduce(0, fn(a, x) { a + x })) / (len(xs))
-// 	}
-// }
+@export
+var mean = fn(xs) match {
+	[] => 0
+	_ => {
+		(xs /> reduce(0, fn(a, x) { a + x })) / (len(xs))
+	}
+}
 
 
-// @export
-// var stdev = fn(xs, mean) match {
-// 	[] => 0
-// 	[_] => 0
-// 	_ => {
-// 		val n = len(xs)
-// 		val acc = xs /> reduce(0, fn(a, x) {
-// 			val d = x - mean
-// 			a + (d * d)
-// 		})
-// 		val v = acc / (n - 1)
-// 		sqrt(if (v < 0) { 0 } else { v })
-// 	}
-// }
+@export
+var stdev = fn(xs, mean) match {
+	[] => 0
+	[_] => 0
+	_ => {
+		val n = len(xs)
+		val acc = xs /> reduce(0, fn(a, x) {
+			val d = x - mean
+			a + (d * d)
+		})
+		val v = acc / (n - 1)
+		sqrt(if (v < 0) { 0 } else { v })
+	}
+}
 
 
-// /// percentileSorted: xs must be ascending
-// @export
-// var percentileSorted = fn(xs, p) match {
-// 	[[], ...] => 0
-// 	[[x], ...] => x
-// 	_ => {
-// 		val n = len(xs)
-// 		val pos = (p / 100) * (n - 1)
-// 		val lo = floor(pos)
-// 		val hi = ceil(pos)
+/// percentileSorted: xs must be ascending
+@export
+var percentileSorted = fn(xs, p) match {
+	[[], ...] => 0
+	[[x], ...] => x
+	_ => {
+		val n = len(xs)
+		val pos = (p / 100) * (n - 1)
+		val lo = floor(pos)
+		val hi = ceil(pos)
 
-// 		if (lo == hi) {
-// 			xs[lo]
-// 		} else {
-// 			val frac = pos - lo
-// 			xs[lo] + (xs[hi] - xs[lo]) * frac
-// 		}
-// 	}
-// }
+		if (lo == hi) {
+			xs[lo]
+		} else {
+			val frac = pos - lo
+			xs[lo] + (xs[hi] - xs[lo]) * frac
+		}
+	}
+}
 
 
 var searchList = fn(vals, result, f, idx = 0) {

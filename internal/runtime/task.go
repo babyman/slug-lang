@@ -408,6 +408,10 @@ func (e *Task) Eval(node ast.Node) object.Object {
 		if e.isError(left) {
 			return left
 		}
+		left = e.resolveValue(node.Token.Position, left)
+		if e.isError(left) {
+			return left
+		}
 		index := e.Eval(node.Index)
 		if e.isError(index) {
 			return index
@@ -979,6 +983,10 @@ func (e *Task) evalIdentifier(
 	}
 
 	if val, ok := e.CurrentEnv().Get(node.Value); ok {
+		val = e.resolveValue(node.Token.Position, val)
+		if e.isError(val) {
+			return val
+		}
 		// If it is a Module, return the Module object itself
 		if module, ok := val.(*object.Module); ok {
 			return module
@@ -987,6 +995,26 @@ func (e *Task) evalIdentifier(
 	}
 
 	return e.newErrorWithPos(node.Token.Position, "identifier not found: "+node.Value)
+}
+
+func (e *Task) resolveValue(pos int, obj object.Object) object.Object {
+	for {
+		ref, ok := obj.(*object.BindingRef)
+		if !ok {
+			return obj
+		}
+		if ref.Env == nil {
+			return e.newErrorfWithPos(pos, "invalid binding reference: %s", ref.Inspect())
+		}
+		val, _, ok := ref.Env.GetLocalBindingValue(ref.Name)
+		if !ok {
+			return e.newErrorfWithPos(pos, "binding reference not found: %s", ref.Name)
+		}
+		if val == object.BINDING_UNINITIALIZED {
+			return e.newErrorfWithPos(pos, "%s used before initialization (likely circular import)", ref.Name)
+		}
+		obj = val
+	}
 }
 
 func (e *Task) isTruthy(obj object.Object) bool {
@@ -1060,6 +1088,10 @@ func (e *Task) evalExpressions(
 }
 
 func (e *Task) ApplyFunction(pos int, fnName string, fnObj object.Object, args []object.Object) object.Object {
+	fnObj = e.resolveValue(pos, fnObj)
+	if e.isError(fnObj) {
+		return fnObj
+	}
 	switch fn := fnObj.(type) {
 	case *object.FunctionGroup:
 
@@ -1372,6 +1404,10 @@ func (e *Task) patternMatches(
 		expected, ok := pinEnv.Get(p.Value.Value)
 		if !ok {
 			return false, fmt.Errorf("pinned identifier is undefined: %s", p.Value.Value)
+		}
+		expected = e.resolveValue(0, expected)
+		if e.isError(expected) {
+			return false, fmt.Errorf("pinned identifier could not be resolved: %s", p.Value.Value)
 		}
 		return e.objectsEqual(expected, value), nil
 
@@ -1701,6 +1737,10 @@ func (e *Task) evaluatePatternAsCondition(pattern ast.MatchPattern) bool {
 		// Look up identifier and check if truthy
 		value, ok := e.CurrentEnv().Get(p.Value.Value)
 		if !ok {
+			return false
+		}
+		value = e.resolveValue(0, value)
+		if e.isError(value) {
 			return false
 		}
 		return e.isTruthy(value)
@@ -2182,15 +2222,6 @@ func (e *Task) evalTags(tags []*ast.Tag) map[string]object.List {
 		result[tag.Name] = object.List{Elements: argList}
 	}
 	return result
-}
-
-func hasExportTag(tags []*ast.Tag) bool {
-	for _, tag := range tags {
-		if tag.Name == object.EXPORT_TAG {
-			return true
-		}
-	}
-	return false
 }
 
 func byteValue(n *object.Number) (byte, error) {

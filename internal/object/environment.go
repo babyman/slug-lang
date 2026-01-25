@@ -117,6 +117,29 @@ func (e *Environment) GetBinding(name string) (*Binding, bool) {
 	return nil, false
 }
 
+// GetLocalBinding returns a binding from this environment only (it does not walk outers).
+// This is useful for module-level binding references which should not be affected by shadowing.
+func (e *Environment) GetLocalBinding(name string) (*Binding, bool) {
+	e.mu.RLock()
+	binding, ok := e.Bindings[name]
+	e.mu.RUnlock()
+	return binding, ok
+}
+
+// GetLocalBindingValue returns the current value of a local binding under a read lock.
+// It does not walk outers. The returned *Binding is the same instance stored in the env.
+func (e *Environment) GetLocalBindingValue(name string) (Object, *Binding, bool) {
+	e.mu.RLock()
+	binding, ok := e.Bindings[name]
+	if !ok {
+		e.mu.RUnlock()
+		return nil, nil, false
+	}
+	val := binding.Value
+	e.mu.RUnlock()
+	return val, binding, true
+}
+
 func (e *Environment) Get(name string) (Object, bool) {
 	binding, ok := e.GetBinding(name)
 	if !ok {
@@ -145,19 +168,34 @@ func (e *Environment) define(name string, val Object, isMutable bool, isExported
 	if isMutable {
 		declaration = "var"
 	}
+
 	binding, exists := e.Bindings[name]
 	if exists && !binding.IsMutable {
-		return nil, fmt.Errorf("%s `%s` is already defined as a 'val' and cannot be reassigned", declaration, name)
+		// Allow the second phase of two-pass module loading to initialize a predeclared name.
+		// Predeclare binds names to BINDING_UNINITIALIZED; the later `val/var` should set it once.
+		if binding.Value == BINDING_UNINITIALIZED {
+			// ok: initialization, not reassignment
+		} else if binding.Meta.IsImport {
+			// devx: allow locals to override imported bindings (warn instead of error).
+			slog.Warn("imported name shadowed by local definition",
+				slog.String("name", name),
+				slog.String("module", e.ModuleFqn),
+			)
+		} else {
+			return nil, fmt.Errorf("%s `%s` is already defined as a 'val' and cannot be reassigned", declaration, name)
+		}
 	} else if !exists {
 		binding = &Binding{
 			Value:     nil,
 			IsMutable: isMutable,
 		}
 	}
+
 	binding.Meta = Meta{
 		IsImport: isImport,
 		IsExport: isExported,
 	}
+
 	switch val := val.(type) {
 	case *Function:
 		fg, ok := binding.Value.(*FunctionGroup)
@@ -192,10 +230,16 @@ func (e *Environment) define(name string, val Object, isMutable bool, isExported
 	default:
 		binding.Value = val
 	}
+
 	e.Bindings[name] = binding
-	//fmt.Printf("binding: %v %v %v %v\n", binding.Value.Type(), name, val.Inspect(), binding.Meta)
+
+	var typ ObjectType = "<nil>"
+	if binding.Value != nil {
+		typ = binding.Value.Type()
+	}
+
 	slog.Debug("binding value",
-		slog.Any("type", binding.Value.Type()),
+		slog.Any("type", typ),
 		slog.Any("name", name),
 		slog.Any("meta", binding.Meta))
 	return val, nil

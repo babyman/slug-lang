@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"slug/internal/ast"
 	"slug/internal/foreign"
 	"slug/internal/lexer"
 	"slug/internal/object"
@@ -146,6 +147,9 @@ func (r *Runtime) LoadModule(modName string) (*object.Module, error) {
 	}
 
 	r.Modules[modName] = module
+
+	// Declare pass: prebind top-level names to support circular imports.
+	predeclareTopLevel(program, moduleEnv)
 	slog.Info("Module loaded, added to cache",
 		slog.String("name", modName),
 		slog.String("fullPath", fullPath),
@@ -170,6 +174,96 @@ func (r *Runtime) LoadModule(modName string) (*object.Module, error) {
 	}
 
 	return module, nil
+}
+
+func predeclareTopLevel(program *ast.Program, env *object.Environment) error {
+	for _, stmt := range program.Statements {
+		// Statements may be wrapped in ExpressionStatement
+		var expr ast.Expression
+		if exprStmt, ok := stmt.(*ast.ExpressionStatement); ok {
+			expr = exprStmt.Expression
+		}
+
+		switch s := expr.(type) {
+		case *ast.ValExpression:
+			if err := predeclarePattern(s.Pattern, true, hasExportTag(s.Tags), env); err != nil {
+				return err
+			}
+		case *ast.VarExpression:
+			if err := predeclarePattern(s.Pattern, false, hasExportTag(s.Tags), env); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func predeclarePattern(pat ast.MatchPattern, isConst bool, isExport bool, env *object.Environment) error {
+	switch p := pat.(type) {
+
+	case *ast.IdentifierPattern:
+		name := p.Value.Value
+		if isConst {
+			_, err := env.DefineConstant(name, object.BINDING_UNINITIALIZED, isExport, false)
+			return err
+		}
+		_, err := env.Define(name, object.BINDING_UNINITIALIZED, isExport, false)
+		return err
+
+	case *ast.SpreadPattern:
+		// spread can bind a name: var {..rest} = ...
+		if p.Value == nil {
+			return nil
+		}
+		name := p.Value.Value
+		if isConst {
+			_, err := env.DefineConstant(name, object.BINDING_UNINITIALIZED, isExport, false)
+			return err
+		}
+		_, err := env.Define(name, object.BINDING_UNINITIALIZED, isExport, false)
+		return err
+
+	case *ast.ListPattern:
+		for _, elem := range p.Elements {
+			if err := predeclarePattern(elem, isConst, isExport, env); err != nil {
+				return err
+			}
+		}
+		return nil
+
+	case *ast.MapPattern:
+		// var {*} = ... : cannot predeclare (no names!)
+		if p.SelectAll {
+			return nil
+		}
+		// declare any identifiers inside explicit subpatterns
+		for _, sub := range p.Pairs {
+			if sub == nil {
+				continue
+			}
+			if err := predeclarePattern(sub, isConst, isExport, env); err != nil {
+				return err
+			}
+		}
+		return nil
+
+	case *ast.MultiPattern:
+		// no new bindings are *guaranteed* across alternatives; safest is to predeclare none
+		return nil
+
+	default:
+		// LiteralPattern, WildcardPattern, etc: no bindings
+		return nil
+	}
+}
+
+func hasExportTag(tags []*ast.Tag) bool {
+	for _, tag := range tags {
+		if tag.Name == object.EXPORT_TAG {
+			return true
+		}
+	}
+	return false
 }
 
 func getForeignFunctions() map[string]*object.Foreign {

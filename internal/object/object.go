@@ -31,9 +31,11 @@ const (
 	FOREIGN_OBJ        = "FOREIGN"
 	ERROR_OBJ          = "ERROR"
 
-	TAIL_CALL_OBJ    = "TAIL_CALL"
-	RETURN_VALUE_OBJ = "RETURN_VALUE"
-	TASK_HANDLE_OBJ  = "TASK"
+	TAIL_CALL_OBJ     = "TAIL_CALL"
+	RETURN_VALUE_OBJ  = "RETURN_VALUE"
+	TASK_HANDLE_OBJ   = "TASK"
+	BINDING_REF_OBJ   = "BINDING_REF"
+	UNINITIALIZED_OBJ = "UNINITIALIZED"
 )
 
 const (
@@ -225,6 +227,28 @@ type Error struct {
 func (e *Error) Type() ObjectType { return ERROR_OBJ }
 func (e *Error) Inspect() string  { return e.Message }
 
+// Uninitialized is a sentinel used during two-phase module loading.
+// It indicates that a top-level binding name exists (declared) but its value
+// has not yet been initialized (executed).
+type Uninitialized struct{}
+
+func (u *Uninitialized) Type() ObjectType { return UNINITIALIZED_OBJ }
+func (u *Uninitialized) Inspect() string  { return "<uninitialized>" }
+
+// BINDING_UNINITIALIZED is the singleton sentinel instance used by the runtime.
+var BINDING_UNINITIALIZED = &Uninitialized{}
+
+// BindingRef is an internal indirection used to model live bindings across module imports.
+// It is intentionally invisible at the language level; the evaluator should transparently
+// dereference it to the current value of the referenced binding.
+type BindingRef struct {
+	Env  *Environment
+	Name string
+}
+
+func (br *BindingRef) Type() ObjectType { return BINDING_REF_OBJ }
+func (br *BindingRef) Inspect() string  { return fmt.Sprintf("<bindingref %s>", br.Name) }
+
 type Module struct {
 	Name    string
 	Path    string
@@ -288,7 +312,12 @@ func (f *Function) SetTag(tag string, params List) {
 }
 
 type FunctionGroup struct {
+	// Functions holds implementations owned by this group.
 	Functions map[ast.FSig]Object
+	// Delegates optionally points at other groups whose implementations should be considered
+	// during dispatch. This enables composite groups (e.g. merged imports) while keeping
+	// live updates when delegate groups are extended.
+	Delegates []*FunctionGroup
 }
 
 func (fg *FunctionGroup) Type() ObjectType { return FUNCTION_GROUP_OBJ }
@@ -303,47 +332,64 @@ func (fg *FunctionGroup) Inspect() string {
 	out.WriteString("]")
 	return out.String()
 }
+
+// allGroups returns fg plus any delegated function groups (if present).
+func (fg *FunctionGroup) allGroups() []*FunctionGroup {
+	if fg.Delegates == nil || len(fg.Delegates) == 0 {
+		return []*FunctionGroup{fg}
+	}
+	groups := make([]*FunctionGroup, 0, 1+len(fg.Delegates))
+	groups = append(groups, fg)
+	groups = append(groups, fg.Delegates...)
+	return groups
+}
+
 func (fg *FunctionGroup) HasTag(tag string) bool {
-	for _, function := range fg.Functions {
-		switch fn := function.(type) {
-		case Taggable:
-			if fn.HasTag(tag) {
-				return true
+	for _, g := range fg.allGroups() {
+		for _, function := range g.Functions {
+			if taggableFn, ok := function.(Taggable); ok {
+				if taggableFn.HasTag(tag) {
+					return true
+				}
 			}
 		}
 	}
 	return false
 }
+
 func (fg *FunctionGroup) GetTagParams(tag string) (List, bool) {
-	for _, function := range fg.Functions {
-		switch fn := function.(type) {
-		case Taggable:
-			v, ok := fn.GetTagParams(tag)
-			if ok {
-				return v, ok
+	for _, g := range fg.allGroups() {
+		for _, function := range g.Functions {
+			if taggableFn, ok := function.(Taggable); ok {
+				if v, ok := taggableFn.GetTagParams(tag); ok {
+					return v, true
+				}
 			}
 		}
 	}
 	return List{}, false
 }
+
 func (fg *FunctionGroup) GetTags() map[string]List {
 	result := make(map[string]List)
-	for _, function := range fg.Functions {
-		if taggableFn, ok := function.(Taggable); ok {
-			// Retrieve tags from each taggable function
-			for tag, params := range taggableFn.GetTags() {
-				// Merge/accumulate tags
-				result[tag] = params
+	for _, g := range fg.allGroups() {
+		for _, function := range g.Functions {
+			if taggableFn, ok := function.(Taggable); ok {
+				for t, params := range taggableFn.GetTags() {
+					result[t] = params
+				}
 			}
 		}
 	}
 	return result
-
 }
+
 func (fg *FunctionGroup) SetTag(tag string, params List) {
-	for _, function := range fg.Functions {
-		if taggableFn, ok := function.(Taggable); ok {
-			taggableFn.SetTag(tag, params)
+	for _, g := range fg.allGroups() {
+		for _, function := range g.Functions {
+			if taggableFn, ok := function.(Taggable); ok {
+				taggableFn.SetTag(tag, params)
+			}
 		}
 	}
 }
@@ -358,39 +404,38 @@ func (fg *FunctionGroup) DispatchToFunction(fnName string, args []Object) (Objec
 	var bestScore = -1
 	var foundNonVariadic bool
 
-	for sig, fn := range fg.Functions {
-		if n >= sig.Min && n <= sig.Max {
-			isVariadic := sig.IsVariadic
+	for _, g := range fg.allGroups() {
+		for sig, fn := range g.Functions {
+			if n >= sig.Min && n <= sig.Max {
+				isVariadic := sig.IsVariadic
 
-			var score = 0
-			switch f := fn.(type) {
-			case *Function:
-				score = evaluateFunctionMatch(f.Parameters, args)
-			case *Foreign:
-				score = evaluateFunctionMatch(f.Parameters, args)
-			}
+				score := 0
+				switch f := fn.(type) {
+				case *Function:
+					score = evaluateFunctionMatch(f.Parameters, args)
+				case *Foreign:
+					score = evaluateFunctionMatch(f.Parameters, args)
+				}
 
-			//fmt.Printf("----- sig max %d, score: %d\n", sig.Max, score)
-
-			if score >= 0 && sig.Max < bestMax || (sig.Max == bestMax && score > bestScore) ||
-				(sig.Max == bestMax && score == bestScore && (!foundNonVariadic || !isVariadic)) {
-				bestMatch = fn
-				bestMax = sig.Max
-				bestScore = score
-				foundNonVariadic = !isVariadic
+				if (score >= 0 && sig.Max < bestMax) ||
+					(sig.Max == bestMax && score > bestScore) ||
+					(sig.Max == bestMax && score == bestScore && (!foundNonVariadic || !isVariadic)) {
+					bestMatch = fn
+					bestMax = sig.Max
+					bestScore = score
+					foundNonVariadic = !isVariadic
+				}
 			}
 		}
 	}
 
 	if bestMatch != nil {
-		slog.Debug("best match: %s",
+		slog.Debug("best match",
 			slog.Any("match", bestMatch.Inspect()))
-		//fmt.Printf("-----\nbest match: %s, best max %d, score: %d\n\n", bestMatch.Inspect(), bestMax, bestScore)
 		return bestMatch, nil
-	} else {
-		slog.Debug("no match found",
-			slog.Any("parameter-count", n))
 	}
+
+	slog.Debug("no match found", slog.Any("parameter-count", n))
 
 	var a strings.Builder
 	for i, arg := range args {

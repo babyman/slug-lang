@@ -3,6 +3,7 @@ package runtime
 import (
 	"bytes"
 	"fmt"
+	"slug/internal/ast"
 	"slug/internal/dec64"
 	"slug/internal/foreign"
 	"slug/internal/object"
@@ -14,6 +15,7 @@ import (
 
 func fnBuiltinImport() *object.Foreign {
 	return &object.Foreign{
+		Name: "import",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
 			if len(args) < 1 {
@@ -35,20 +37,67 @@ func fnBuiltinImport() *object.Foreign {
 
 				// Import exported bindings into the temp map
 				for name, binding := range module.Env.Bindings {
-					if binding.Meta.IsExport {
-						// Handle function groups (polymorphism)
-						if fg, ok := binding.Value.(*object.FunctionGroup); ok {
-							if existing, exists := tempMap[name]; exists {
-								if existingFg, ok := existing.(*object.FunctionGroup); ok {
-									for sig, fn := range fg.Functions {
-										existingFg.Functions[sig] = fn
-									}
-									continue
+					if !binding.Meta.IsExport {
+						continue
+					}
+					//println(ctx.CurrentEnv().Path, "importing "+name)
+
+					// Functions are always stored as a FunctionGroup in the binding layer.
+					if fg, ok := binding.Value.(*object.FunctionGroup); ok {
+						// Merge function groups across imported modules.
+						if existing, exists := tempMap[name]; exists {
+							existingFg, ok := existing.(*object.FunctionGroup)
+							if !ok {
+								// Short-term: warn and keep the first value.
+								fmt.Printf("WARNING: import name collision for '%s' (non-function vs function) while importing '%s' (keeping first)", name, strArg.Value)
+								continue
+							}
+
+							// Build/extend a composite group that delegates to both groups.
+							// We keep this *live* by delegating to the original groups, not copying functions.
+							// Detect duplicate signatures to keep things explicit.
+							sigSeen := map[ast.FSig]bool{}
+							// existing group's own functions
+							for sig := range existingFg.Functions {
+								sigSeen[sig] = true
+							}
+							// plus any delegated groups
+							for _, dg := range existingFg.Delegates {
+								for sig := range dg.Functions {
+									sigSeen[sig] = true
 								}
 							}
+							for sig := range fg.Functions {
+								if sigSeen[sig] {
+									//return ctx.NewError("import collision for function '%s' with duplicate signature %v while importing '%s'", name, sig, strArg.Value)
+									fmt.Printf("WARNING: import collision for function '%s' with duplicate signature %v while importing '%s'\n", name, sig, strArg.Value)
+								}
+							}
+
+							// If existingFg is not already composite, make it composite by delegating to itself.
+							if existingFg.Delegates == nil {
+								existingFg.Delegates = []*object.FunctionGroup{}
+							}
+							existingFg.Delegates = append(existingFg.Delegates, fg)
+							continue
 						}
-						tempMap[name] = binding.Value
+
+						// First occurrence wins the slot; if later modules export same name,
+						// we will merge by delegating.
+						// Note: we store the group itself (not a BindingRef) so extensions to the group
+						// are visible to the importer.
+						tempMap[name] = fg
+						continue
 					}
+
+					// Non-function exports: warn on collisions and keep the first value.
+					if _, exists := tempMap[name]; exists {
+						fmt.Printf("WARNING: import name collision for '%s' while importing '%s' (keeping first)", name, strArg.Value)
+						continue
+					}
+
+					// Use live binding references for non-function exports.
+					tempMap[name] = &object.BindingRef{Env: module.Env, Name: name}
 				}
 			}
 
