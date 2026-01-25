@@ -1,7 +1,7 @@
 var {*} = import(
     "slug.std",
     "slug.test",
-    "functions"
+    "imports.defaults"
 )
 
 var {sqr, sum: f} = import("functions")
@@ -12,3 +12,13 @@ var {sqr, sum: f} = import("functions")
 [2, 3, 4] /> f /> sqr /> assertEqual(81)
 
 [51, 23] /> f /> assertEqual(74)
+
+// ensure the function defaults are evaluated correctly (ADR-18)
+
+defaultTest() /> assertEqual(1)
+
+defaultTest(2) /> assertEqual(2)
+
+defaultTestCfg() /> assertEqual(10)
+
+defaultTestCfg(2) /> assertEqual(2)

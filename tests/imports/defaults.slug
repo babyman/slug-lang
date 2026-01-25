@@ -1,0 +1,14 @@
+
+
+val privateDefaultValue = 1
+
+
+@export
+var defaultTest = fn(a = privateDefaultValue) {
+	a
+}
+
+@export
+var defaultTestCfg = fn(a = cfg("testCfg", 1)) {
+	a
+}

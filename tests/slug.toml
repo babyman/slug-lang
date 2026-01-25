@@ -1,0 +1,7 @@
+#
+# Slug tests configuration
+# ========================
+#
+
+[imports.defaults]
+testCfg = 10
