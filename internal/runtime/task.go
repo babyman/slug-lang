@@ -1233,7 +1233,7 @@ func (e *Task) extendFunctionEnv(
 		// Handle default values
 		if i >= numArgs {
 			if param.Default != nil {
-				defaultValue := e.Eval(param.Default)
+				defaultValue := e.evalDefaultParam(fn, param.Default)
 				env.Define(param.Name.Value, defaultValue, false, false)
 			} else {
 				env.Define(param.Name.Value, object.NIL, false, false)
@@ -1266,7 +1266,7 @@ func (e *Task) rebindFunctionEnv(
 		// Handle default values
 		if i >= numArgs {
 			if param.Default != nil {
-				val = e.Eval(param.Default)
+				val = e.evalDefaultParam(fn, param.Default)
 			} else {
 				val = object.NIL
 			}
@@ -1285,6 +1285,44 @@ func (e *Task) unwrapReturnValue(obj object.Object) object.Object {
 	}
 
 	return obj
+}
+
+// evalDefaultParam evaluates a default parameter expression at call time,
+// but resolves names in the *defining module environment* of the function,
+// per ADR-018.
+//
+// Conceptually: “defaults belong to the function, not the caller.”
+func (e *Task) evalDefaultParam(fnObj object.Object, expr ast.Expression) object.Object {
+	if expr == nil {
+		return object.NIL
+	}
+
+	// Figure out which environment counts as the defining module env.
+	// For Slug functions, we use fn.Env and walk outward to the module root.
+	var defEnv *object.Environment
+	switch f := fnObj.(type) {
+	case *object.Function:
+		defEnv = f.Env
+	default:
+		// Foreign functions currently don't carry a defining env; fall back to caller env.
+		defEnv = e.CurrentEnv()
+	}
+
+	// Walk to module root (Outer == nil).
+	if defEnv != nil {
+		for defEnv.Outer != nil {
+			defEnv = defEnv.Outer
+		}
+	}
+
+	// Evaluate inside a fresh enclosed env so any transient bindings don't land in the module env.
+	tmp := object.NewEnclosedEnvironment(defEnv, nil)
+
+	e.PushEnv(tmp)
+	val := e.Eval(expr)
+	e.PopEnv(val)
+
+	return val
 }
 
 func (e *Task) evalMapLiteral(
