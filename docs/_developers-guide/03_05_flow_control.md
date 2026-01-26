@@ -1,12 +1,10 @@
+# Module 5: Flow Control
 
+Now you can build logic: conditions, loops via tail recursion, and error handling.
 
-## 5. Flow Control
-
-### Conditionals: `if`/`else`
+## Lesson 5.1: Conditionals
 
 ```slug
-var {*} = import("slug.std")
-
 val max = fn(a, b) {
     if (a > b) {
         a
@@ -15,42 +13,54 @@ val max = fn(a, b) {
     }
 }
 
-max(3, 5) /> println()  // Output: 5
+max(3, 5) /> println()
 ```
 
-### Tail-recursive looping: `recur`
+## Lesson 5.2: Tail-recursive looping with `recur`
 
-`recur` is a special form that restarts the current function in tail position with a new set of arguments, giving you
-loop-like behavior without growing the call stack; it works in both named and anonymous functions, and the compiler
-will report an error if you use `recur` in a position that is not actually tail-recursive.
+`recur` restarts the current function in tail position without growing the call stack.
 
 ```slug
 // Sum 1..n using tail recursion in an anonymous function
 fn(n, acc) {
-	if (n == 0) { 
-		acc
-	} else {
-		recur(n - 1, acc + n) 
-	} 
-}(5, 0) /> println() // Output: 15
+    if (n == 0) {
+        acc
+    } else {
+        recur(n - 1, acc + n)
+    }
+}(5, 0) /> println()
 ```
 
-### Error Handling with `try`/`catch` and `throw`
+## Lesson 5.3: Error handling with `throw` and `defer onerror`
 
 ```slug
-var {*} = import("slug.std")
-
 val process = fn(value) {
-    try {
-        if (value < 0) {
-            throw NegativeValueError({msg:"Negative value not allowed"})
-        }
-        value * 2
-    } catch (err) {
-        {...} => println("Caught error:", err.msg)
-        _ => nil
+    defer onerror(err) { println("Caught error:", err.msg) }
+
+    if (value < 0) {
+        throw {msg: "Negative value not allowed"}
     }
+
+    value * 2
 }
 
-process(-1) /> println()  // Output: Caught error: Negative value not allowed
+process(-1) /> println()
 ```
+
+## Lesson 5.4: `defer`, `defer onsuccess`, and `defer onerror`
+
+Use `defer` to run cleanup or logging when a scope exits.
+
+```slug
+val writeFile = fn(path, text) {
+    defer { println("closing file") }
+    defer onsuccess { println("write ok") }
+    defer onerror(err) { println("write failed:", err) }
+
+    // ... write logic here ...
+}
+```
+
+### Try it
+
+Write a function that divides two numbers and throws an error when the divisor is zero.

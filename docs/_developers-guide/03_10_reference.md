@@ -1,7 +1,8 @@
+# Module 9: Reference
 
-## 10. Reference
+Use this as a quick look-up when you forget operator precedence.
 
-### Operator Precedence and Associativity
+## Operator precedence and associativity
 
 | Prec | Operator  | Description                      | Associates |
 |------|-----------|----------------------------------|------------|

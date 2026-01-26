@@ -1,61 +1,62 @@
-## 2. Core Building Blocks
+# Module 2: Core Building Blocks
 
-### Keywords in Slug
+In this module, you will learn the essential pieces of the language: types, variables, functions, and the builtins you
+will use all the time.
 
-Below is a concise reference list of the keywords in Slug, along with their descriptions. These keywords form the
-foundational building blocks of the language.
+## Lesson 2.1: Types at a glance
 
-#### **Types**
+Slug has a small, focused set of core types:
 
-- `nil`: Represents the absence of a value or "nothing."
-- `true` / `false`: Boolean constants representing logical truth and falsehood.
-- `number`: a DEC64 inspired floating decimal point value, very experimental,
-  see [DEC64: Decimal Floating Point]( https://www.crockford.com/dec64.html )
-- `string`
-- `list`: an ordered collection of values `[1, 2, 3]`
-- `map`: a collection of key-value pairs `{k:v, k:v, ...}`
-- `bytes`: a byte sequence `0x"ff00"`
-- `function`: a function `fn(){}`
-- `task`: a task handle, returned by `spawn`
+- `nil`: absence of a value.
+- `true` / `false`: booleans.
+- `number`: DEC64-inspired floating decimal values.
+- `string`.
+- `list`: ordered collection, e.g. `[1, 2, 3]`.
+- `map`: key-value collection, e.g. `{k: v}`.
+- `bytes`: byte sequence, e.g. `0x"ff00"`.
+- `function`: a `fn(){}` value.
+- `task`: a task handle, returned by `spawn`.
 
-#### **Comments**
+## Lesson 2.2: Comments
 
-- `//` is supported since the language follows C language style conventions.
-- `#` is supported to allow easy execution as a shell script with the inclusion of `#!/usr/bin/env slug`. For example,
-  if `SLUG_HOME` is
-  exported and `slug` is on the user path.
+Slug supports two comment styles:
 
-#### **Variable Declarations**
+- `//` C-style comments.
+- `#` for script-friendly shebang usage, like `#!/usr/bin/env slug`.
 
-- `var`: Declares a mutable variable, allowing its value to be reassigned.
-- `val`: Declares an immutable constant, ensuring its value cannot be changed once initialized.
+## Lesson 2.3: Strings
 
-#### **Control Flow**
+Slug supports regular strings, raw strings, and interpolation.
 
-- `if` / `else`: Define conditional logic. The `if` block executes when the condition evaluates to true, while `else`
-  provides the alternative block.
-- `match`: A powerful pattern-matching construct for handling various cases based on the structure of values.
-- `return`: Exits a function and optionally returns a value.
-- `recur` restarts the current function in tail position with a new set of arguments, providing loop-like control flow
-  without growing the call stack.
+```slug
+val name = "Slug"
+val greeting = "Hello {{name}}!"
+val path = 'C:\temp\file.txt' // raw string, no escapes
+```
 
-#### **Functionality**
+## Lesson 2.4: Numeric literals
 
-- `fn`: Declares a function or closure, a reusable logic block that can be called with arguments.
+Numbers can include underscores for readability:
 
-#### **Error Handling**
+```slug
+val maxUsers = 1_000_000
+```
 
-- `throw`: Explicitly raises an error within the program.
-- `defer`: Ensures a block of code runs after its enclosing scope exits, often used for cleanup tasks.
-- `defer onsuccess`: Runs the block of code only if the enclosing scope exits without error.
-- `defer onerror(err)`: Runs the block of code only if the enclosing scope throws with an error.
+## Lesson 2.5: Variables
 
-#### **Semicolons Optional**
+Use `var` for mutable values and `val` for constants:
 
-Slug does **not require semicolons**.
+```slug
+var counter = 0
+val greeting = "Hello"
 
-Statements are normally terminated by **newlines**, not `;`. You can write clean, line-oriented code without worrying
-about hidden rules or ambiguous formatting.
+counter = counter + 1
+counter /> println()
+```
+
+## Lesson 2.6: Semicolons are optional
+
+Statements end at newlines, not semicolons:
 
 ```slug
 var a = 1
@@ -63,12 +64,7 @@ var b = 2
 (a + b) /> println
 ```
 
-Semicolons are still **allowed**, but they are never required.
-
-##### When a line continues
-
-A newline does **not** end a statement when continuation is visually obvious, such as when a line starts with an
-operator:
+A line continues when it clearly should:
 
 ```slug
 var sql =
@@ -77,18 +73,7 @@ var sql =
     + " where active = true"
 ```
 
-or when using pipelines:
-
-```slug
-value
-    /> transform
-    /> validate
-    /> save
-```
-
-##### When a line always ends
-
-To avoid ambiguity, some constructs must stay on the same line:
+A line ends when the next token would be confusing:
 
 ```slug
 f(x)     // valid
@@ -96,147 +81,84 @@ f
 (x)      // invalid
 ```
 
-This rule prevents accidental or confusing parses and keeps Slug predictable. The result is code that’s concise,
-readable, and easy to reason about—without relying on punctuation to make it work.
+## Lesson 2.7: Dangling commas
 
-#### **Dangling Commas**
-
-Slug supports dangling commas in lists, maps, tag, and function call parameter lists. This allows you to write code that
-is easy to refactor and rearrange. Dangling commas are **NOT** allowed in function definitions (i.e `fn(a,b,)` is
-invalid).
+Slug supports trailing commas in lists, maps, tags, and call arguments. It does not allow them in function definitions.
 
 ```slug
 var {*} = import(
-	"slug.std",
-);
+    "slug.std",
+)
 
 val map = {
-	k: 50,
-};
+    k: 50,
+}
 
 var list = [
-	1,
-	[1,2,],
-	11,
-];
+    1,
+    [1, 2,],
+    11,
+]
 
-println(map, list,);
+println(map, list,)
 ```
 
----
+## Lesson 2.8: Built-in functions you will use first
 
-### Built-in Functions
-
-Slug provides a small set of built-in functions designed to serve core operations and promote simplicity in program
-design. These built-ins are globally available and do not require explicit imports. Here's an overview of the built-ins:
-
-#### **`import`**
-
-- **Purpose**: Dynamically loads external modules and provides access to their exported variables and functions.
-- **Usage**: Accepts one or more module paths as string arguments. Returns a map containing the bindings from the
-  imported modules.
-- **Example**:
+### `import`
 
 ```slug
-val {*} = import("slug.std");
+val {*} = import("slug.std")
 ```
 
-#### **`len`**
-
-- **Purpose**: Returns the length of a supported object.
-- **Usage**: Accepts a single argument, which can be a list, map, or string. Returns the length as an integer.
-- **Example**:
+### `len`
 
 ```slug
-val size = len([1, 2, 3]);       // 3
-val textLength = len("hello");   // 5
+val size = len([1, 2, 3])
+val textLength = len("hello")
 ```
 
-#### **`print`** and **`println`**
-
-- **Purpose**: Output formatted text to the console.
-    - **`print`**: Outputs without a trailing newline.
-    - **`println`**: Outputs followed by a newline.
-- **Usage**: Both accept one or more arguments of any type, outputting their string representations separated by spaces.
-- **Examples**:
+### `print` and `println`
 
 ```slug
-  print("Hello", "Slug!");       // Outputs: Hello Slug!
-  println("Welcome to Slug!");   // Outputs: Welcome to Slug!\n
+print("Hello", "Slug!")
+println("Welcome to Slug!")
 ```
 
-### Command-Line Arguments
+## Lesson 2.9: Modules and exports
 
-Slug provides two small, explicit builtins for working with command-line arguments:
-
-* `argv()` — raw arguments as a list (vector)
-* `argm()` — parsed arguments as a map
-
-These functions return **data only**. Slug does not impose schemas, validation rules, or side effects. Programs are
-expected to interpret arguments explicitly using normal language constructs such as `match`.
-
----
-
-#### `argv()`
+Use `@export` to expose values from a module. `import(...)` returns a map of exports.
 
 ```slug
-argv() -> list<string>
+// math.slug
+@export
+val add = fn(a, b) { a + b }
+
+// app.slug
+val math = import("math")
+math.add(2, 3) /> println()
 ```
 
-Returns the raw command-line arguments passed to the program, excluding the `slug` executable itself.
+Imports are live bindings. In cyclic imports, accessing a value before it is initialized raises a clear runtime error.
 
-##### Example
+## Lesson 2.10: Command-line arguments
+
+Slug provides two tiny, explicit builtins for arguments:
+
+- `argv()` returns raw args as a list.
+- `argm()` returns a parsed map and positionals.
 
 ```slug
 // slug playground.slug -abc --user john foo.txt
 
 argv()
 // => ["-abc", "--user", "john", "foo.txt"]
-```
-
-`argv()` is useful when:
-
-* you want full control over parsing
-* argument order matters
-* you are implementing custom or non-POSIX behavior
-
----
-
-#### `argm()`
-
-```slug
-argm() -> { options: map, positional: list }
-```
-
-Returns a simple POSIX-style parse of the command-line arguments.
-
-##### Parsing behavior
-
-* Short flags are expanded:
-
-    * `-abc` → `{a: true, b: true, c: true}`
-* Long options capture values:
-
-    * `--user john` → `{user: "john"}`
-* Everything that is not an option is treated as positional
-* Order of positional arguments is preserved
-
-##### Example
-
-```slug
-// slug playground.slug -abc --user john foo.txt
 
 argm()
-// =>
-// {
-//   options: { a: true, b: true, c: true, user: "john" },
-//   positional: ["foo.txt"]
-// }
+// => { options: { a: true, b: true, c: true, user: "john" }, positional: ["foo.txt"] }
 ```
 
----
-
-#### Typical usage
+Typical usage:
 
 ```slug
 var cli = argm()
@@ -248,158 +170,67 @@ match cli.options {
 }
 ```
 
-This style keeps argument handling:
+## Lesson 2.11: Unified configuration with `cfg()`
 
-* explicit
-* local to the program
-* easy to reason about
-* free of global state or hidden behavior
-
----
-
-#### Design notes
-
-* `argv()` provides the lowest-level, raw view of arguments
-* `argm()` provides a small, opinion-free structural parse
-* No validation, defaults, aliases, or required fields are enforced
-* Higher-level argument specifications can be layered on later in the standard library
-
-This approach follows Slug’s philosophy:
-
-> **Small primitives, explicit data, no hidden control flow.**
-
----
-
-### Unified Configuration
-
-Slug provides a unified way to handle configuration through the `cfg()` builtin. Instead of manually parsing environment
-variables or configuration files, you use a single function to access settings with built-in support for layering and
-type coercion.
-
----
-
-#### `cfg()`
-
-```
-cfg(key: string, default: any) -> any
-```
-
-Retrieves a configuration value for the given `key`. If the value is not found in any configuration layer, the `default`
-value is returned.
-
-##### Mandatory Defaults
-
-The `default` argument is **required**. This ensures that:
-
-* Every configuration point is explicitly documented in the source code.
-* The application has a safe fallback, preventing "missing config" crashes at runtime.
-* The system knows what type to expect (e.g., if the default is `8080`, an environment variable `"9000"` will be
-  automatically coerced to the number `9000`).
-
----
-
-#### Precedence Layers
-
-Slug merges configuration from multiple sources at startup. If a key exists in multiple places, the highest layer wins:
-
-1. **CLI Arguments**: `--key=value` or `-k=value`.
-2. **Environment Variables**: Prefixed with `SLUG__`, using `__` as a dot delimiter (e.g., `SLUG__db__port=5432` maps to
-   `db.port`).
-3. **Local Config**: A `slug.toml` file in the current execution directory.
-4. **Global Config**: A `slug.toml` file located in `$SLUG_HOME/lib/`.
-5. **In-code Default**: The fallback value provided directly to the `cfg()` function.
-
----
-
-#### Key Resolution and Namespacing
-
-To keep configuration organized and prevent collisions between different modules, Slug uses a simple namespacing rule:
-
-* **Module-Local Keys**: If the key contains no dots (e.g., `cfg("port", 80)`), it is automatically prefixed with the
-  current module's name (e.g., `my_app.port`).
-* **Absolute Keys**: If the key contains a dot (e.g., `cfg("db.url", "localhost")`), it is treated as an absolute path
-  in the configuration store.
-
-##### Example
-
-```
-// In a module named 'server'
+```slug
 val port = cfg("port", 8080)
 val dbUrl = cfg("db.url", "postgres://localhost:5432")
-
-println("Starting server on {{port}} connecting to {{dbUrl}}")
 ```
 
-To override these without changing code:
+Precedence is:
 
-* **CLI**: `slug main.slug --port=9000 --db.url=prod-db:5432`
-* **Env**: `export SLUG__server__port=9000`
+1. CLI args: `--key=value` or `-k=value`.
+2. Environment: `SLUG__db__port=5432`.
+3. Local `slug.toml` in the current directory.
+4. Global `slug.toml` in `$SLUG_HOME/lib/`.
+5. In-code default.
 
----
+Keys without dots are automatically namespaced to the current module.
 
-#### Design Notes
-
-* **Frozen at Startup**: Configuration is read once when the program starts. Changing environment variables or TOML
-  files while the program is running will not affect existing `cfg()` calls until the program is restarted.
-* **Small Primitives**: `cfg()` replaces the need for boilerplate "config loader" logic, keeping your entry points clean
-  and declarative.
-* **Type Safety**: Because Slug uses the default value to determine the type, you don't need to manually call
-  `parseNumber` on environment variables.
-
-### Variables in Slug
-
-Slug supports two types of variable declarations:
-
-1. **Mutable Variables** (`var`): Can change over time.
-2. **Immutable Variables** (`val`): Fixed once initialized.
-
-Examples:
+## Lesson 2.12: Functions and closures
 
 ```slug
-var {*} = import("slug.std");
-
-var counter = 0;  // Mutable variable
-val greeting = "Hello"; // Immutable constant
-
-counter = counter + 1;      // Reassigning is allowed with var
-counter /> println();       // Prints: 1
+val add = fn(a, b) { a + b }
+add(3, 4) /> println()
 ```
 
----
-
-### Functions and Closures
-
-Functions are first-class citizens in Slug. They can be passed as arguments, returned from other functions, or stored in
-variables.
-
-Example of defining and calling functions:
+Closures capture their environment:
 
 ```slug
-var {*} = import("slug.std");
-
-val add = fn(a, b) { a + b }  // A function that adds two numbers
-add(3, 4) /> println();       // Output: 7
-```
-
-Functions can close over their surrounding environment, making them closures:
-
-```slug
-var {*} = import("slug.std");
-
 val multiplier = fn(factor) {
     fn(num) { num * factor }
-};
+}
 
-val double = multiplier(2);
-double(5) /> println();  // Output: 10
+val double = multiplier(2)
+double(5) /> println()
 ```
 
-### Function Chaining, The Trail Operator (`/>`)
+## Lesson 2.13: Default parameters
 
-Slug values simplicity and flow - and the **trail operator** (`/>`) captures both.
+Defaults are evaluated at call time in the function's defining module.
 
-Each value *slides forward* through the trail, passed into the next function or expression. It’s clean, readable, and
-feels like watching data follow its own path.
+```slug
+val dbHost = cfg("db.host", "localhost")
+
+val connect = fn(host = dbHost, port = 5432) {
+    println(host, port)
+}
+
+connect()
+```
+
+## Lesson 2.14: Named parameters
+
+Named parameters are supported in function calls:
+
+```slug
+val greet = fn(name, title) { "Hello {{title}} {{name}}" }
+greet(title: "Dr", name: "Yu") /> println()
+```
+
+## Lesson 2.15: Pipelines with the trail operator
+
+The trail operator (`/>`) passes the value to the next function, left to right:
 
 ```slug
 var double = fn(n) { n * 2 }
@@ -408,58 +239,21 @@ var lst = [nil, double]
 
 10 /> map.double /> lst[1] /> println("is 40")
 
-// is the equivalent of:
+// Equivalent to:
 println(lst[1](map.double(10)), "is 40")
 ```
 
-…but the trail reads the way you think: left to right, step by step. A small bit of syntax that makes code feel alive -
-like a slug gliding gracefully across a path of transformations.
+## Lesson 2.16: Function dispatch and type tags
 
-#### Function Dispatch
-
-- In Slug, you can define multiple variations (overloads) of a function using the same name but with different
-  signatures.
-- During a function call:
-    1. Each candidate function within the group is inspected.
-    2. The number of arguments and their types are matched against the function's signature.
-    3. The **best match** is determined based on:
-        - Exact type matches.
-        - Compatibility with **type tags** (described below).
-        - Preference towards non-variadic functions if possible.
-
-If no suitable match is found, an error is returned mentioning that no valid function exists for the given arguments.
-
-#### Using Type Hints
-
-Type hints, represented by **tags** in Slug, help guide the dispatch process by associating function parameters or
-objects with specific types.
-
-**Supported Type Tags:**
-
-- `@num`: Matches objects of type `Number`.
-- `@str`: Matches objects of type `String`.
-- `@bool`: Matches objects of type `Boolean`.
-- `@list`: Matches objects of type `List`.
-- `@map`: Matches objects of type `Map`.
-- `@bytes`: Matches objects of type `Bytes`.
-- `@fun`: Matches objects of type `Function`.
-- `@task`: Matches objects of type `Task`.
-
-**Example: Function with Type Hints**
-
-Suppose we define two functions where each variation operates on different types:
+Slug can dispatch by argument count and type tags:
 
 ```slug
 fn add(@num a, @num b) { a + b }
 fn add(@str a, @str b) { a + b }
 ```
 
-- Calling `add(3, 5)` would match the first function (`@num`), returning `8`.
-- Calling `add("Hello, ", "world!")` would match the second function (`@str`), returning `"Hello, world!"`.
+Supported tags: `@num`, `@str`, `@bool`, `@list`, `@map`, `@bytes`, `@fun`, `@task`.
 
-#### Tips for Writing Functions with Hints
+### Try it
 
-1. Use **type tags** (`@num`, `@str`, etc.) to clarify expected parameter types.
-2. Define fallback or general-purpose functions to handle unexpected cases.
-
-This function concatenates any number of strings passed as arguments.
+Write an `add` overload for lists that concatenates two lists, then call it with `[1]` and `[2]`.

@@ -1,12 +1,9 @@
-## 3. Functional Programming Constructs
+# Module 3: Functional Programming
 
-Slug excels at **functional programming**, empowering you with concise tools and expressive patterns.
+Slug shines when you lean into functional patterns. Let's practice the big three: map, filter, reduce, plus pattern
+matching.
 
-### Map, Filter, and Reduce
-
-- **Map**: Transform a list using a function.
-- **Filter**: Keep elements that satisfy a condition.
-- **Reduce**: Aggregate a list into a single value.
+## Lesson 3.1: Map, filter, reduce
 
 ```slug
 var {*} = import("slug.std")
@@ -22,56 +19,67 @@ evens /> println()
 sum /> println()
 ```
 
----
+## Lesson 3.2: Pattern matching
 
-### Pattern Matching
-
-Use `match` to destructure and inspect values directly.
+`match` lets you destructure values directly.
 
 ```slug
-var {*} = import("slug.std")
-
 val classify = fn(value) {
     match value {
         0 => "zero"
         1 => "one"
-        _ => "other"  // Catch-all case
+        _ => "other"
     }
 }
 
-classify(1) /> println()  // Output: one
-classify(5) /> println()  // Output: other
+classify(1) /> println()
+classify(5) /> println()
 ```
 
-`match` can also destructure complex data like lists:
+You can match lists too:
 
 ```slug
-var {*} = import("slug.std")
-
 val sumList = fn(list) {
     match list {
-        [h, ...t] => h + sumList(t)  // Head and Tail destructuring
-        [] => 0                      // Base case
+        [h, ...t] => h + sumList(t)
+        [] => 0
     }
 }
 
-sumList([1, 2, 3]) /> println()  // Output: 6
+sumList([1, 2, 3]) /> println()
 ```
 
----
+### Pattern matching extras
 
-### Higher-Order Functions
-
-Slug supports higher-order functions: functions that accept and return functions.
-
-Example:
+Pin an existing value with `^name`:
 
 ```slug
-var {*} = import("slug.std")
+val expected = 42
 
+match value {
+    ^expected => println("matched 42")
+    _ => println("nope")
+}
+```
+
+Use `...` to capture the rest of a list:
+
+```slug
+match list {
+    [head, ...tail] => println(head, tail)
+    [] => println("empty")
+}
+```
+
+## Lesson 3.3: Higher-order functions
+
+```slug
 val applyTwice = fn(f, v) { f(f(v)) }
 
 val increment = fn(x) { x + 1 }
-applyTwice(increment, 10) /> println()  // Output: 12
+applyTwice(increment, 10) /> println()
 ```
 
+### Try it
+
+Write a function `times` that takes `n` and a function `f`, then applies `f` to an input value `n` times.

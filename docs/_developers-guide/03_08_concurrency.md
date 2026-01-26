@@ -1,42 +1,18 @@
-## 8. Concurrency in Slug (Structured, Explicit, Boring)
+# Module 8: Concurrency
 
-This document defines the **official concurrency model** for the Slug programming language.
+Slug uses structured concurrency. That means every task has a clear owner and a clear lifetime. It is explicit and
+predictable on purpose.
 
-Slug favors **explicit concurrency**, **lexical ownership**, and **predictable lifetime rules** over implicit
-parallelism or message-passing abstractions.
+## Lesson 8.1: Core principles
 
----
+1. Concurrency is explicit: parallel work uses `spawn`, suspension uses `await`.
+2. Lifetime is lexical: a scope owns the work it spawns.
+3. Values are values: `await` produces concrete values, not futures.
+4. Errors and cancellation are structural: failures bubble up, cancellations flow down.
 
-### Core Principles
+## Lesson 8.2: `nursery`
 
-1. **Concurrency is explicit**
-
-    * Parallel work is created only with `spawn`
-    * Suspension happens only at `await`
-
-2. **Lifetime is lexical**
-
-    * A scope owns the work it spawns
-    * A scope cannot exit until its child tasks have settled
-
-3. **Values are values**
-
-    * `await` produces concrete values
-    * No futures/promises are visible in user code
-
-4. **Errors and cancellation are structural**
-
-    * Failure propagates upward
-    * Cancellation propagates downward
-    * Sibling tasks are cancelled on first failure (fail-fast)
-
----
-
-### Language Constructs
-
-#### `nursery`
-
-Marks a function (or block) as **suspending**.
+`nursery` marks a function or block as suspending.
 
 ```slug
 var fetchUser = nursery fn(id) {
@@ -44,24 +20,23 @@ var fetchUser = nursery fn(id) {
 }
 ```
 
-**Nursery ownership:** Each executing task has a `currentNursery` pointer. Entering a `nursery` *nursery scope* (e.g.,
-`nursery limit N fn` or `nursery {}`) pushes a new nursery; leaving it joins/cancels its children. Ordinary function
-calls do not create a nursery.
+Key rules:
 
-**Spawn registration:** `spawn { ... }` registers the child task with `currentNursery` (the nearest enclosing nursery),
-not with the immediate call frame or block scope.
+- Each task has a `currentNursery` pointer.
+- Entering a `nursery` scope pushes a new nursery.
+- Leaving a `nursery` scope joins or cancels its children.
+- Ordinary function calls do not create a nursery.
+- `spawn { ... }` registers with the nearest enclosing nursery, not the immediate call frame.
 
-**Escaping task handles:** A task handle may be stored in values (lists/maps) and returned from functions. If a task
-handle escapes its nursery scope (for example, it is returned from a `nursery` scope), it is guaranteed to be
-**settled** (completed, failed, or cancelled), because the nursery cannot exit until all its children settle. As a
-result, `await` on an escaped handle is always **idempotent** and will return immediately (or re-throw the stored
-error).
+Escaping task handles:
 
----
+- A task handle can be returned or stored in data.
+- If it escapes its nursery scope, it is guaranteed to be settled.
+- `await` on an escaped handle is always idempotent and returns immediately (or re-throws the stored error).
 
-#### `spawn`
+## Lesson 8.3: `spawn`
 
-Creates a **child task** that runs concurrently.
+`spawn` creates a child task and returns a task handle.
 
 ```slug
 var t = spawn {
@@ -71,46 +46,34 @@ var t = spawn {
 
 Semantics:
 
-* Returns a **task handle**
-* The child task is owned by the current scope
-* **Execution**: Spawned tasks are executed on a managed worker pool.
-* A **nursery scope** cannot exit until all its spawned children settle
-* `spawn` registers its child task with the nearest enclosing nursery scope (or root), not the immediate
-  function-call environment.
+- Child tasks are owned by the current nursery scope.
+- Spawned tasks run on a managed worker pool.
+- A nursery cannot exit until its children settle.
+- `spawn` registers with the nearest enclosing nursery.
 
-`spawn` may execute:
+## Lesson 8.4: `await`
 
-* `nursery fn` bodies (cooperative suspension)
-* plain `fn` bodies (blocking or CPU work)
-
----
-
-#### `await`
-
-Suspends the current task until a task handle completes.
+`await` suspends the current task until a handle completes.
 
 ```slug
 var value = await taskHandle
 ```
 
-Optional timeout:
+With a timeout:
 
 ```slug
 var value = await taskHandle within 500
 ```
 
-Semantics:
+Notes:
 
-* Suspension happens **only** at `await`
-* On timeout, a `Timeout` error is raised
-* Errors propagate like normal runtime errors
+- Suspension happens only at `await`.
+- On timeout, a `Timeout` error is raised.
+- Errors propagate like normal runtime errors.
 
----
+## Lesson 8.5: Task type tags
 
-### Type Tags (Task Handles)
-
-Task handles are first-class values and can be passed through lists/maps and into functions. When writing polymorphic
-functions that use type-tagged dispatch, Slug provides the `@task` type tag for task handles.
+Task handles are first-class values. Use `@task` with tagged dispatch:
 
 ```slug
 var awaitAll = fn(@list hs) {
@@ -118,18 +81,11 @@ var awaitAll = fn(@list hs) {
 }
 ```
 
-Notes:
+`await` is idempotent: awaiting an already-settled handle returns immediately (or re-throws its error).
 
-* `@task` matches task handles returned by `spawn`.
-* `await` is idempotent: awaiting an already-settled handle returns immediately (or re-throws its stored error).
+## Lesson 8.6: Concurrency limits and timeouts
 
----
-
-### Scoped Concurrency Policies
-
-#### Concurrency Limits
-
-`nursery limit N` limits the number of concurrently executing child tasks **within the nursery scope**.
+### Limits
 
 ```slug
 var handler = nursery limit 10 fn() {
@@ -137,52 +93,28 @@ var handler = nursery limit 10 fn() {
 }
 ```
 
-Rules:
+- Default limit is 2 * CPU cores or 4.
+- Limits apply only to direct `spawn` calls in the current scope.
+- Excess spawns wait for capacity.
 
-* Default limit is 2 * CPU cores or 4.
-* Applies strictly to **direct** `spawn` calls in the current scope (limits are not inherited by child tasks).
-* Excess spawns wait until capacity is available.
-* Limits are lexical and deterministic.
-
----
-
-#### Timeouts
-
-Timeouts are expressed at `await` points:
+### Timeouts
 
 ```slug
 var v = await task within 1
 ```
 
-Timeout behavior:
+- Timeouts are in milliseconds.
+- A timeout raises `Timeout` and cancels the awaited task.
+- Handle errors via `defer onerror` or other constructs.
 
-* If no timeout is specified the default is infinite.
-* Timeouts are in millisecond units.
-* Raises a `Timeout` error.
-* **Error Handling**: Must be handled via `defer onerror` or similar error-trapping constructs.
-* Cancels the awaited task.
-* Triggers normal error propagation and `defer onerror`.
+## Lesson 8.7: Failure and cancellation
 
----
+- If a child task fails, siblings are cancelled and the error propagates.
+- If a parent scope exits early, all children are cancelled.
+- Cancellation is observed at `await`.
+- The runtime attempts to detect circular awaits and raises `Deadlock`.
 
-### Failure & Cancellation Semantics
-
-* **Deadlocks**: The runtime will attempt to detect circular dependencies (e.g., two tasks awaiting each other). If
-  detected, a `Deadlock` error is raised. Otherwise, tasks will remain suspended until a timeout occurs.
-* If a child task fails:
-
-    * Sibling tasks are cancelled
-    * The error propagates to the parent
-* If a parent scope exits early:
-
-    * All child tasks are cancelled
-* Cancellation is observed at `await`
-
-This ensures **fail-fast, structured execution**.
-
----
-
-### Example: Parallel Fan-Out / Fan-In
+## Lesson 8.8: Fan-out and fan-in example
 
 ```slug
 var fetchUser  = nursery fn(id) { ... }
@@ -200,64 +132,25 @@ var showProfile = nursery limit 10 fn(id) {
 }
 ```
 
-Properties:
+## Lesson 8.9: Pipelines and `await`
 
-* `fetchUser` and `fetchPosts` run in parallel
-* `await` points are explicit
-* Scope cannot exit until both complete
-* Timeout and concurrency policies are scoped
-
----
-
-### Idiomatic Helper for Pipelines
-
-Because `await` is syntax (not a function), pipelines should use small helpers:
+Because `await` is syntax, use a helper for pipelines:
 
 ```slug
 var awaitWithin = fn(v, dur) {
     await v within dur
 }
 
-var user = userT /> awaitWithin(500);
+var user = userT /> awaitWithin(500)
 ```
 
-This keeps pipelines readable while preserving explicit suspension.
+## Lesson 8.10: What Slug does not provide
 
----
+Slug intentionally avoids:
 
-### What Slug Does *Not* Provide
-
-Slug intentionally does **not** include:
-
-* Actors or mailboxes
-* Implicit futures
-* Automatic parallelization
-* Implicit blocking on variable reads
-* Global cancellation tokens
-* Detached background tasks (without explicit APIs)
-
-These are considered sources of hidden complexity and unpredictable lifetime.
-
----
-
-### Mental Model (Authoritative)
-
-> * `nursery` — *I will not leave until my children are done*
-> * `spawn` — *do this in parallel*
-> * `await` — *pause here*
-
-If you remember only this, you understand Slug concurrency.
-
----
-
-### Summary
-
-Slug’s concurrency model is:
-
-* **Explicit**: no hidden parallelism
-* **Structured**: scope owns lifetime
-* **Portable**: implementable in Go, Zig, etc.
-* **Boring**: by design
-
-This model favors clarity, debuggability, and long-term maintainability over cleverness.
-
+- Actors or mailboxes.
+- Implicit futures.
+- Automatic parallelization.
+- Implicit blocking on variable reads.
+- Global cancellation tokens.
+- Detached background tasks without explicit APIs.
