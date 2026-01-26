@@ -8,6 +8,7 @@ import (
 
 func fnBytesStrToBytes() *object.Foreign {
 	return &object.Foreign{
+		Name: "strToBytes",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
 				return ctx.NewError("strToBytes: expected 1 argument")
@@ -23,6 +24,7 @@ func fnBytesStrToBytes() *object.Foreign {
 
 func fnBytesBytesToStr() *object.Foreign {
 	return &object.Foreign{
+		Name: "bytesToStr",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
 				return ctx.NewError("bytesToStr: expected 1 argument")
@@ -38,6 +40,7 @@ func fnBytesBytesToStr() *object.Foreign {
 
 func fnBytesHexStrToBytes() *object.Foreign {
 	return &object.Foreign{
+		Name: "hexStrToBytes",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
 				return ctx.NewError("hexStrToBytes: expected 1 argument")
@@ -57,6 +60,7 @@ func fnBytesHexStrToBytes() *object.Foreign {
 
 func fnBytesBytesToHexStr() *object.Foreign {
 	return &object.Foreign{
+		Name: "bytesToHexStr",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
 				return ctx.NewError("bytesToHexStr: expected 1 argument")
@@ -72,6 +76,7 @@ func fnBytesBytesToHexStr() *object.Foreign {
 
 func fnBytesBase64Encode() *object.Foreign {
 	return &object.Foreign{
+		Name: "base64Encode",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
 				return ctx.NewError("base64Encode: expected 1 argument")
@@ -87,6 +92,7 @@ func fnBytesBase64Encode() *object.Foreign {
 
 func fnBytesBase64Decode() *object.Foreign {
 	return &object.Foreign{
+		Name: "base64Decode",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
 				return ctx.NewError("base64Decode: expected 1 argument")

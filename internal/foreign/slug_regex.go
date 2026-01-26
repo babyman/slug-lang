@@ -8,6 +8,7 @@ import (
 
 func fnRegexMatches() *object.Foreign {
 	return &object.Foreign{
+		Name: "matches",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 2 {
 				return ctx.NewError("wrong number of arguments. got=%d, want=2",
@@ -36,6 +37,7 @@ func fnRegexMatches() *object.Foreign {
 
 func fnRegexIndexOf() *object.Foreign {
 	return &object.Foreign{
+		Name: "indexOf",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) < 2 || len(args) > 3 {
 				return ctx.NewError("wrong number of arguments. got=%d, want=2 or 3",
@@ -82,6 +84,7 @@ func fnRegexIndexOf() *object.Foreign {
 
 func fnRegexSplit() *object.Foreign {
 	return &object.Foreign{
+		Name: "split",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 2 {
 				return ctx.NewError("wrong number of arguments. got=%d, want=2",
@@ -117,6 +120,7 @@ func fnRegexSplit() *object.Foreign {
 
 func fnRegexFindAll() *object.Foreign {
 	return &object.Foreign{
+		Name: "findAll",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 2 {
 				return ctx.NewError("wrong number of arguments. got=%d, want=2",
@@ -152,6 +156,7 @@ func fnRegexFindAll() *object.Foreign {
 
 func fnRegexFindAllGroups() *object.Foreign {
 	return &object.Foreign{
+		Name: "findAllGroups",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) < 2 || len(args) > 3 {
 				return ctx.NewError("wrong number of arguments. got=%d, want=2..3",
@@ -191,6 +196,7 @@ func fnRegexFindAllGroups() *object.Foreign {
 
 func fnRegexReplaceAll() *object.Foreign {
 	return &object.Foreign{
+		Name: "replaceAll",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 3 {
 				return ctx.NewError("wrong number of arguments. got=%d, want=3",

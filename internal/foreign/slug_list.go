@@ -8,6 +8,7 @@ import (
 
 func fnListSortWithComparator() *object.Foreign {
 	return &object.Foreign{
+		Name: "sortWithComparator",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			// Check if there are exactly two arguments: the list and the comparator.
 			if len(args) != 2 {

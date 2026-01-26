@@ -116,30 +116,33 @@ func fnBuiltinImport() *object.Foreign {
 }
 
 func fnBuiltinLen() *object.Foreign {
-	return &object.Foreign{Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
-		if len(args) != 1 {
-			return ctx.NewError("wrong number of arguments. got=%d, want=1", len(args))
-		}
+	return &object.Foreign{
+		Name: "len",
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return ctx.NewError("wrong number of arguments. got=%d, want=1", len(args))
+			}
 
-		switch arg := args[0].(type) {
-		case *object.List:
-			return &object.Number{Value: dec64.FromInt(len(arg.Elements))}
-		case *object.Map:
-			return &object.Number{Value: dec64.FromInt(len(arg.Pairs))}
-		case *object.String:
-			return &object.Number{Value: dec64.FromInt(utf8.RuneCountInString(arg.Value))}
-		case *object.Bytes:
-			return &object.Number{Value: dec64.FromInt(len(arg.Value))}
-		default:
-			return ctx.NewError("argument to `len` not supported, got %s",
-				args[0].Type())
-		}
-	},
+			switch arg := args[0].(type) {
+			case *object.List:
+				return &object.Number{Value: dec64.FromInt(len(arg.Elements))}
+			case *object.Map:
+				return &object.Number{Value: dec64.FromInt(len(arg.Pairs))}
+			case *object.String:
+				return &object.Number{Value: dec64.FromInt(utf8.RuneCountInString(arg.Value))}
+			case *object.Bytes:
+				return &object.Number{Value: dec64.FromInt(len(arg.Value))}
+			default:
+				return ctx.NewError("argument to `len` not supported, got %s",
+					args[0].Type())
+			}
+		},
 	}
 }
 
 func fnBuiltinPrint() *object.Foreign {
 	return &object.Foreign{
+		Name: "print",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			var out bytes.Buffer
 			for i, arg := range args {
@@ -159,6 +162,7 @@ func fnBuiltinPrint() *object.Foreign {
 
 func fnBuiltinPrintLn() *object.Foreign {
 	return &object.Foreign{
+		Name: "println",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			var out bytes.Buffer
 			for i, arg := range args {
@@ -180,6 +184,7 @@ func fnBuiltinPrintLn() *object.Foreign {
 
 func fnBuiltinStacktrace() *object.Foreign {
 	return &object.Foreign{
+		Name: "stacktrace",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			// stacktrace(err) must take exactly one argument
 			if len(args) != 1 {
@@ -221,6 +226,7 @@ func fnBuiltinStacktrace() *object.Foreign {
 
 func fnBuiltinArgv() *object.Foreign {
 	return &object.Foreign{
+		Name: "argv",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			argv := ctx.GetConfiguration().Argv
 			elements := make([]object.Object, len(argv))
@@ -235,6 +241,7 @@ func fnBuiltinArgv() *object.Foreign {
 
 func fnBuiltinArgm() *object.Foreign {
 	return &object.Foreign{
+		Name: "argm",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			argv := ctx.GetConfiguration().Argv
 			options, positionals := util.ParseArgs(argv)
@@ -264,6 +271,7 @@ func fnBuiltinArgm() *object.Foreign {
 
 func fnBuiltinCfg() *object.Foreign {
 	return &object.Foreign{
+		Name: "cfg",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			// Enforce exactly 2 arguments: key and default
 			if len(args) != 2 {

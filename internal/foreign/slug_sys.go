@@ -13,6 +13,7 @@ import (
 
 func fnSysExit() *object.Foreign {
 	return &object.Foreign{
+		Name: "exit",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
 				return ctx.NewError("wrong number of arguments. got=%d, want=1",
@@ -32,6 +33,7 @@ func fnSysExit() *object.Foreign {
 
 func fnSysEnv() *object.Foreign {
 	return &object.Foreign{
+		Name: "env",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
 				return ctx.NewError("wrong number of arguments. got=%d, want=1",
@@ -57,6 +59,7 @@ func fnSysEnv() *object.Foreign {
 
 func fnSysSetEnv() *object.Foreign {
 	return &object.Foreign{
+		Name: "setEnv",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 2 {
 				return ctx.NewError("wrong number of arguments. got=%d, want=2",
@@ -85,6 +88,7 @@ func fnSysSetEnv() *object.Foreign {
 
 func fnSysExec() *object.Foreign {
 	return &object.Foreign{
+		Name: "exec",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) < 1 || len(args) > 2 {
 				return ctx.NewError("wrong number of arguments. got=%d, want=1 or 2",

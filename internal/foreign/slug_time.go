@@ -10,6 +10,7 @@ var clockNanosStart = time.Now()
 
 func fnTimeClock() *object.Foreign {
 	return &object.Foreign{
+		Name: "clock",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 0 {
 				return ctx.NewError("wrong number of arguments. got=%d, want=0",
@@ -23,6 +24,7 @@ func fnTimeClock() *object.Foreign {
 
 func fnTimeClockNanos() *object.Foreign {
 	return &object.Foreign{
+		Name: "clockNanos",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 0 {
 				return ctx.NewError("wrong number of arguments. got=%d, want=0",
@@ -39,6 +41,7 @@ func fnTimeClockNanos() *object.Foreign {
 
 func fnTimeSleep() *object.Foreign {
 	return &object.Foreign{
+		Name: "sleep",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			// Ensure a single integer argument is provided
 			if len(args) != 1 {
@@ -66,6 +69,7 @@ func fnTimeSleep() *object.Foreign {
 
 func fnTimeFmtClock() *object.Foreign {
 	return &object.Foreign{
+		Name: "fmtClock",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			// Validate the number of arguments
 			if len(args) != 2 {

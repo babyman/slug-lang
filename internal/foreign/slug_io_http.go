@@ -10,6 +10,7 @@ import (
 
 func fnIoHttpRequest() *object.Foreign {
 	return &object.Foreign{
+		Name: "request",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
 			if len(args) != 4 {

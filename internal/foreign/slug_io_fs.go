@@ -16,6 +16,7 @@ var (
 
 func fnIoFsReadFile() *object.Foreign {
 	return &object.Foreign{
+		Name: "readFile",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
 				return ctx.NewError("wrong number of arguments to `readFile`, got=%d, want=1", len(args))
@@ -42,6 +43,7 @@ func fnIoFsReadFile() *object.Foreign {
 
 func fnIoFsWriteFile() *object.Foreign {
 	return &object.Foreign{
+		Name: "writeFile",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 2 {
 				return ctx.NewError("wrong number of arguments to `writeFile`, got=%d, want=2", len(args))
@@ -73,6 +75,7 @@ func fnIoFsWriteFile() *object.Foreign {
 
 func fnIoFsAppendFile() *object.Foreign {
 	return &object.Foreign{
+		Name: "appendFile",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 2 {
 				return ctx.NewError("wrong number of arguments to `appendFile`, got=%d, want=2", len(args))
@@ -110,6 +113,7 @@ func fnIoFsAppendFile() *object.Foreign {
 
 func fnIoFsExists() *object.Foreign {
 	return &object.Foreign{
+		Name: "exists",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
 				return ctx.NewError("wrong number of arguments to `fileExists`, got=%d, want=1", len(args))
@@ -136,6 +140,7 @@ func fnIoFsExists() *object.Foreign {
 
 func fnIoFsInfo() *object.Foreign {
 	return &object.Foreign{
+		Name: "info",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
 				return ctx.NewError("wrong number of arguments to `isDirectory`, got=%d, want=1", len(args))
@@ -167,6 +172,7 @@ func fnIoFsInfo() *object.Foreign {
 
 func fnIoFsMkdirs() *object.Foreign {
 	return &object.Foreign{
+		Name: "mkDirs",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
 				return ctx.NewError("wrong number of arguments to `mkDirs`, got=%d, want=1", len(args))
@@ -198,6 +204,7 @@ func fnIoFsMkdirs() *object.Foreign {
 
 func fnIoFsIsDir() *object.Foreign {
 	return &object.Foreign{
+		Name: "isDir",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
 				return ctx.NewError("wrong number of arguments to `isDir`, got=%d, want=1", len(args))
@@ -224,6 +231,7 @@ func fnIoFsIsDir() *object.Foreign {
 
 func fnIoFsLs() *object.Foreign {
 	return &object.Foreign{
+		Name: "ls",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
 				return ctx.NewError("wrong number of arguments to `listDir`, got=%d, want=1", len(args))
@@ -255,6 +263,7 @@ func fnIoFsLs() *object.Foreign {
 
 func fnIoFsOpenFile() *object.Foreign {
 	return &object.Foreign{
+		Name: "openFile",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 2 {
 				return ctx.NewError("wrong number of arguments to `openFile`, got=%d, want=2", len(args))
@@ -296,6 +305,7 @@ func fnIoFsOpenFile() *object.Foreign {
 
 func fnIoFsReadLine() *object.Foreign {
 	return &object.Foreign{
+		Name: "readLine",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
 				return ctx.NewError("wrong number of arguments to `readLine`, got=%d, want=1", len(args))
@@ -332,6 +342,7 @@ func fnIoFsReadLine() *object.Foreign {
 
 func fnIoFsWrite() *object.Foreign {
 	return &object.Foreign{
+		Name: "write",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 2 {
 				return ctx.NewError("wrong number of arguments to `write`, got=%d, want=2", len(args))
@@ -364,6 +375,7 @@ func fnIoFsWrite() *object.Foreign {
 
 func fnIoFsRm() *object.Foreign {
 	return &object.Foreign{
+		Name: "rm",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
 				return ctx.NewError("wrong number of arguments to `rm`, got=%d, want=1", len(args))
@@ -390,6 +402,7 @@ func fnIoFsRm() *object.Foreign {
 
 func fnIoFsCloseFile() *object.Foreign {
 	return &object.Foreign{
+		Name: "closeFile",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
 				return ctx.NewError("wrong number of arguments to `closeFile`, got=%d, want=1", len(args))

@@ -17,6 +17,7 @@ var (
 
 func fnIoTcpBind() *object.Foreign {
 	return &object.Foreign{
+		Name: "bind",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
 			addr, err := unpackString(args[0], "")
@@ -45,6 +46,7 @@ func fnIoTcpBind() *object.Foreign {
 
 func fnIoTcpAccept() *object.Foreign {
 	return &object.Foreign{
+		Name: "accept",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
 			id, err := unpackNumber(args[0], "")
@@ -75,6 +77,7 @@ func fnIoTcpAccept() *object.Foreign {
 
 func fnIoTcpConnect() *object.Foreign {
 	return &object.Foreign{
+		Name: "connect",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
 			addr, err := unpackString(args[0], "")
@@ -103,6 +106,7 @@ func fnIoTcpConnect() *object.Foreign {
 
 func fnIoTcpRead() *object.Foreign {
 	return &object.Foreign{
+		Name: "read",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
 			id, err := unpackNumber(args[0], "")
@@ -139,6 +143,7 @@ func fnIoTcpRead() *object.Foreign {
 
 func fnIoTcpWrite() *object.Foreign {
 	return &object.Foreign{
+		Name: "write",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
 			id, err := unpackNumber(args[0], "")
@@ -170,6 +175,7 @@ func fnIoTcpWrite() *object.Foreign {
 
 func fnIoTcpClose() *object.Foreign {
 	return &object.Foreign{
+		Name: "close",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
 			id, err := unpackNumber(args[0], "")

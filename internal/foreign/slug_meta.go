@@ -7,6 +7,7 @@ import (
 
 func fnMetaHasTag() *object.Foreign {
 	return &object.Foreign{
+		Name: "hasTag",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
 			if len(args) != 2 {
@@ -29,6 +30,7 @@ func fnMetaHasTag() *object.Foreign {
 
 func fnMetaGetTag() *object.Foreign {
 	return &object.Foreign{
+		Name: "getTag",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 2 {
 				return ctx.NewError("getTag expects exactly 2 arguments: object and tagName name")
@@ -52,6 +54,7 @@ func fnMetaGetTag() *object.Foreign {
 
 func fnMetaSearchModuleTags() *object.Foreign {
 	return &object.Foreign{
+		Name: "searchModuleTags",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 
 			if len(args) < 1 || len(args) > 3 {
@@ -119,6 +122,7 @@ func fnMetaSearchModuleTags() *object.Foreign {
 
 func fnMetaSearchScopeTags() *object.Foreign {
 	return &object.Foreign{
+		Name: "searchScopeTags",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) != 1 {
 				return ctx.NewError("searchScopeTags expects 1 argument: tag name")

@@ -9,7 +9,7 @@ import (
 )
 
 func fnStringTrim() *object.Foreign {
-	return &object.Foreign{Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+	return &object.Foreign{Name: "trim", Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 		if len(args) != 1 {
 			return ctx.NewError("wrong number of arguments. got=%d, want=1", len(args))
 		}
@@ -28,7 +28,7 @@ func fnStringTrim() *object.Foreign {
 }
 
 func fnStringIndexOf() *object.Foreign {
-	return &object.Foreign{Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+	return &object.Foreign{Name: "indexOf", Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 		if len(args) < 2 {
 			return ctx.NewError("wrong number of arguments. got=%d, want=2", len(args))
 		}
@@ -76,7 +76,7 @@ func fnStringIndexOf() *object.Foreign {
 }
 
 func fnStringToUpper() *object.Foreign {
-	return &object.Foreign{Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+	return &object.Foreign{Name: "toUpper", Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 		if len(args) != 1 {
 			return ctx.NewError("wrong number of arguments. got=%d, want=1", len(args))
 		}
@@ -94,7 +94,7 @@ func fnStringToUpper() *object.Foreign {
 }
 
 func fnStringToLower() *object.Foreign {
-	return &object.Foreign{Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+	return &object.Foreign{Name: "toLower", Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 		if len(args) != 1 {
 			return ctx.NewError("wrong number of arguments. got=%d, want=1", len(args))
 		}
