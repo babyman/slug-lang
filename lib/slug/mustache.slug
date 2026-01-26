@@ -193,7 +193,7 @@ var resolvePartial = fn(partials, @str name) {
 	} else if (type(partials) == FUNCTION_TYPE) {
 		partials(name)
 	} else {
-		throw {type:"error", msg:"partials must be a map or a loader function"}
+		throw Error { type: "MustacheError", msg: "partials must be a map or a loader function" }
 	}
 }
 
@@ -217,11 +217,11 @@ var parse = fn(@str template) {
 
 	var closeSection = fn(stack, name, rawInner) {
 		if (len(stack) <= 1) {
-			throw {type:"error", msg:'Mustache close tag without open: {{' + name + '}}'}
+			throw Error { type: "MustacheError", msg: 'Mustache close tag without open: {{' + name + '}}' }
 		}
 		var frame = stack[len(stack) - 1]
 		if (frame.name != name) {
-			throw {type:"error", msg:'Mustache section mismatch: expected {{' + frame.name + '}} got {{' + name + '}}'}
+			throw Error { type: "MustacheError", msg: 'Mustache section mismatch: expected {{' + frame.name + '}} got {{' + name + '}}' }
 		}
 		var parent = stack[:len(stack) - 1]
 		var node = SectionNode { name:frame.name, inverted:frame.inverted, children:frame.nodes, raw:rawInner, otag:frame.otag, ctag:frame.ctag }
@@ -252,7 +252,7 @@ var parse = fn(@str template) {
 				var closeDelim = if(isTriple) {tripleClose} else {ctag}
 
 				var end = template /> indexOf(closeDelim, open + tagOpenLen)
-				if (end < 0) { throw {type:"error", msg:"Unclosed mustache tag"} }
+				if (end < 0) { throw Error { type: "MustacheError", msg: "Unclosed mustache tag" } }
 
 				var tagEnd = end + len(closeDelim)
 				var tagRaw = template[open + tagOpenLen:end]
@@ -315,12 +315,12 @@ var parse = fn(@str template) {
 							"=" => {
 								// {{=<% %>=}} : must begin and end with '='
 								if (tag[len(tag) - 1] != "=") {
-									throw {type:"error", msg:"Invalid set delimiter tag"}
+									throw Error { type: "MustacheError", msg: "Invalid set delimiter tag" }
 								}
 								var inner = tag[1:len(tag) - 1] /> trim()
 								var parts = inner /> split(" ") /> filter(fn(p) { p != "" })
 								if (len(parts) != 2) {
-									throw {type:"error", msg:"Invalid set delimiter tag"}
+									throw Error { type: "MustacheError", msg: "Invalid set delimiter tag" }
 								}
 								otag = parts[0]
 								ctag = parts[1]
@@ -350,7 +350,7 @@ var parse = fn(@str template) {
 
 	if (len(stack) != 1) {
 		var top = stack[len(stack) - 1]
-		throw {type:"error", msg:'Unclosed mustache section: {{#' + top.name + '}}'}
+		throw Error { type: "MustacheError", msg: 'Unclosed mustache section: {{#' + top.name + '}}' }
 	}
 
 	stack[0].nodes
@@ -433,7 +433,7 @@ var renderNodesCached = fn(nodes, ctxStack, partials, cache, acc = "", indent = 
 				}
 			}
 
-			_ => throw {type:"error", msg:"Unknown mustache node type: " + type(node)}
+			_ => throw Error { type: "MustacheError", msg: "Unknown mustache node type: " + type(node) }
 		}
 	}
 }

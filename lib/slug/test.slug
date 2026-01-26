@@ -18,7 +18,7 @@ var runSafe = fn(@fun f) {
 
 @export
 var isAssertError = fn(v) {
-    v /> type() == MAP_TYPE && v.type == "AssertionError"
+    v /> type() == STRUCT_TYPE && v.type == "AssertionError"
 }
 
 @export
@@ -34,7 +34,7 @@ var assertThrows = fn(@fun f, expected, @str msg = nil) {
                 msg = "No error was thrown"
             }
         }
-        throw {type: "AssertionError", msg: msg}
+        throw Error { type: "AssertionError", msg: msg }
     }
 }
 
@@ -51,7 +51,7 @@ var assertErrorType = fn(@fun f, @str expected, @str msg = nil) {
                 msg = "No error was thrown"
             }
         }
-        throw {type: "AssertionError", msg: msg}
+        throw Error { type: "AssertionError", msg: msg }
     }
 }
 
@@ -63,7 +63,7 @@ var assert = fn(a, msg = nil) {
         if ( !msg ) {
             msg = "{{a}} ({{a /> type()}}) is not true"
         }
-        throw {type: "AssertionError", msg: msg}
+        throw Error { type: "AssertionError", msg: msg }
     }
 }
 
@@ -90,7 +90,7 @@ var assertEqual = fn(value, expected, msg = nil) {
         if (!msg) {
             msg = "'{{value}}' is not equal to '{{expected}}'"
         }
-        throw {type: "AssertionError", msg: msg}
+        throw Error { type: "AssertionError", msg: msg }
     }
 }
 
@@ -110,7 +110,7 @@ var assertNotEqual = fn(value, expected, msg = nil) {
         if (!msg) {
             msg = "Expected '{{value}}' to NOT equal '{{expected}}'"
         }
-        throw {type: "AssertionError", msg: msg}
+        throw Error { type: "AssertionError", msg: msg }
     }
 }
 
@@ -122,7 +122,7 @@ var assertLessThan = fn(value, expected, msg = nil) {
         if (!msg) {
             msg = "Expected '{{value}}' is not less than '{{expected}}'"
         }
-        throw {type: "AssertionError", msg: msg}
+        throw Error { type: "AssertionError", msg: msg }
     }
 }
 
@@ -135,7 +135,7 @@ var assertLessThanOrEqual = fn(value, expected, msg = nil) {
         if (!msg) {
             msg = "Expected '{{value}}' is not less than or equal to '{{expected}}'"
         }
-        throw {type: "AssertionError", msg: msg}
+        throw Error { type: "AssertionError", msg: msg }
     }
 }
 
@@ -147,7 +147,7 @@ var assertGreaterThan = fn(value, expected, msg = nil) {
         if (!msg) {
             msg = "Expected '{{value}}' is not greater than '{{expected}}'"
         }
-        throw {type: "AssertionError", msg: msg}
+        throw Error { type: "AssertionError", msg: msg }
     }
 }
 
@@ -159,7 +159,7 @@ var assertGreaterThanOrEqual = fn(value, expected, msg = nil) {
         if (!msg) {
             msg = "Expected '{{value}}' is not greater than or equal to '{{expected}}'"
         }
-        throw {type: "AssertionError", msg: msg}
+        throw Error { type: "AssertionError", msg: msg }
     }
 }
 
@@ -171,7 +171,7 @@ var assertNil = fn(value, msg = nil) {
         if (!msg) {
             msg = "Expected nil but got '{{value}}'"
         }
-        throw {type: "AssertionError", msg: msg}
+        throw Error { type: "AssertionError", msg: msg }
     }
 }
 
@@ -183,7 +183,7 @@ var assertNotNil = fn(value, msg = nil) {
         if (!msg) {
             msg = "Expected non-nil"
         }
-        throw {type: "AssertionError", msg: msg}
+        throw Error { type: "AssertionError", msg: msg }
     }
 }
 
@@ -192,7 +192,7 @@ var fail = fn(msg = nil) {
     if ( !msg ) {
         msg = "Test failed!"
     }
-    throw {type: "AssertionError", msg: msg}
+    throw Error { type: "AssertionError", msg: msg }
 }
 
 @export var eq = assertEqual

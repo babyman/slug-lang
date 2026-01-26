@@ -38,13 +38,33 @@ val process = fn(value) {
     defer onerror(err) { println("Caught error:", err.msg) }
 
     if (value < 0) {
-        throw {msg: "Negative value not allowed"}
+        throw Error { type: "ValidationError", msg: "Negative value not allowed" }
     }
 
     value * 2
 }
 
 process(-1) /> println()
+```
+
+### Standard `Error` payloads (slug.std)
+
+Slug treats errors as values. The standard library defines a conventional `Error` struct for consistency:
+
+```slug
+val Error = struct {
+    @str type = "Error",
+    @str msg,
+    code = nil,
+    data = nil,
+    cause = nil,
+}
+```
+
+Use struct literals at the throw site to keep stacktraces accurate:
+
+```slug
+throw Error { type: "IOError", msg: "failed to read config", data: { path: path } }
 ```
 
 ## Lesson 5.4: `defer`, `defer onsuccess`, and `defer onerror`

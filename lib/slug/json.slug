@@ -251,7 +251,7 @@ var tokenize = fn(@str s, @num i, @num n, @list tokens) {
 }
 
 var error = fn(@str msg) {
-	throw {type: "error", msg: msg}
+	throw Error { type: "JsonError", msg: msg }
 }
 
 var isWhitespace = fn(@str c) {

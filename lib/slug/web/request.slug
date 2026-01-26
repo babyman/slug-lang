@@ -50,14 +50,14 @@ var request = fn(method, path, version = "HTTP/1.1", headers = {}, body = "") {
 @export
 var parseRequestHeaders = fn(buf) {
     var i = buf /> indexOf("\r\n\r\n")
-    if (i < 0) { throw { type: "http", msg: "Incomplete headers" } }
+    if (i < 0) { throw Error { type: "http", msg: "Incomplete headers" } }
 
     var head = buf[:i]
     var rest = buf[i + 4:] // This is the start of the body
 
     var lines = head /> split("\r\n")
     var first = lines[0] /> split(" ")
-    if (len(first) < 3) { throw { type: "http", msg: "Bad request line" } }
+    if (len(first) < 3) { throw Error { type: "http", msg: "Bad request line" } }
 
     var headers = parseHeaders(lines[1:])
     var [cleanPath, query] = parseQuery(first[1])

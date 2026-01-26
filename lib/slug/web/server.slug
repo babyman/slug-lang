@@ -87,7 +87,7 @@ var getNextRequest = fn(conn, buf, idleMs) {
 
 		if (cl > maxInMemoryBody) {
 			// For large bodies, we don't read it all.
-			throw { type: "http", msg: "Content-Length to large: {{cl}}" }
+			throw Error { type: "http", msg: "Content-Length to large: {{cl}}" }
 		} else {
 			// For small bodies, keep the convenience of a string
 			var bodyAlreadyRead = len(bodyStart)
@@ -117,7 +117,7 @@ var readUntilHeaders = fn(conn, maxBytes, chunkSize, timeoutMs, buf = "") {
 	if (buf /> indexOf("\r\n\r\n") >= 0) {
 		buf
 	} else if (len(buf) >= maxBytes) {
-		throw { type: "http", msg: "Request headers too large" }
+		throw Error { type: "http", msg: "Request headers too large" }
 	} else {
 		match readWithin(conn, chunkSize, timeoutMs) {
 			nil => buf
@@ -137,4 +137,3 @@ var readExact = fn(conn, n, chunkSize, timeoutMs, buf = "") {
 		}
 	}
 }
-

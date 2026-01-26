@@ -28,5 +28,5 @@ var convertValue = fn(newValue, targetType) match {
 	[nv, ^BOOLEAN_TYPE] => toBoolean(nv)
 	[nv, ^NUMBER_TYPE]  => toNumber(nv)
 	[nv, ^STRING_TYPE]  => toString(nv)
-	[nv, tt] => throw {type: "error", msg:"Cannot convert '{{nv}}' to type {{tt}}"}
+	[nv, tt] => throw Error { type: "error", msg: "Cannot convert '{{nv}}' to type {{tt}}"}
 }

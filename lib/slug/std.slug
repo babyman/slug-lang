@@ -16,7 +16,17 @@ var {*} = import(
 @export val BYTES_TYPE = "BYTES"
 @export val FUNCTION_TYPE = "FUNCTION"
 @export val TASK_TYPE = "TASK"
+@export val STRUCT_TYPE = "STRUCT"
 
+
+/// Standard error payload shape for idiomatic error handling
+@export val Error = struct {
+	@str type = "Error",
+	@str msg,
+	code = nil,
+	data = nil,
+	cause = nil,
+}
 
 /// return a string value indicating the type of `val`
 @testWith(
@@ -243,10 +253,10 @@ var toBoolean = fn(v) {
 			match v /> toLower() {
 				"true", "yes", "1" => true
 				"false", "no", "0" => false
-				_ => throw {type: "error", msg: "Cannot convert '{{v}}' to boolean"}
+				_ => throw Error { type: "error", msg: "Cannot convert '{{v}}' to boolean"}
 			}
 		}
-		t => throw {type: "error", msg: "Cannot convert type {{t}} to boolean"}
+		t => throw Error { type: "error", msg: "Cannot convert type {{t}} to boolean"}
 	}
 }
 
@@ -270,7 +280,7 @@ var toNumber = fn(v) {
 		^NIL_TYPE => nil
 		^NUMBER_TYPE => v
 		^STRING_TYPE => parseNumber(v)
-		t => throw {type: "error", msg: "Cannot convert type {{t}} to number"}
+		t => throw Error { type: "error", msg: "Cannot convert type {{t}} to number"}
 	}
 }
 
