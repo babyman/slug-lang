@@ -225,7 +225,7 @@ Named parameters are supported in function calls:
 
 ```slug
 val greet = fn(name, title) { "Hello {{title}} {{name}}" }
-greet(title: "Dr", name: "Yu") /> println()
+greet(title: "Mr", name: "Slug") /> println()
 ```
 
 ## Lesson 2.15: Pipelines with the trail operator
