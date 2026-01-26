@@ -36,7 +36,7 @@ println("Result:", result)
 
 ## Get started
 
-- Home: (http://www.sluglang.org)[https://www.sluglang.org]
-- (Developers guide)[/developers-guide.html]
-- (Setup guide)[/setup/]
-- (Cookbook)[/cookbook/]
+- Home: [http://www.sluglang.org](https://www.sluglang.org)
+- [Developers guide](/developers-guide.html)
+- [Setup guide](/setup/)
+- [Cookbook](/cookbook/)
