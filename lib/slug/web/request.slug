@@ -1,11 +1,22 @@
 var {*} = import (
     "slug.std",
     "slug.string",
-    "slug.map",
-    "slug.list",
 )
 
-val RequestType = "HttpRequest"
+val Request = struct {
+	@str method,
+	@str path,
+	@str version,
+	@map headers,
+	body,
+	@map query,
+	@map form,
+	@list files,
+	@map params,
+	requestId,
+	traceId,
+	spanId,
+}
 
 // -------------------------
 // Core Data Structure
@@ -13,17 +24,19 @@ val RequestType = "HttpRequest"
 
 @export
 var request = fn(method, path, version = "HTTP/1.1", headers = {}, body = "") {
-    {
-        type:    RequestType,
+    Request {
         method:  method,
         path:    path,
         version: version,
         headers: headers,
-        body:    body,    // can be string, bytes, etc
+        body:    body,
         query:   {},
         form:    {},
         files:   [],
         params:  {},
+        requestId: nil,
+        traceId: nil,
+        spanId: nil,
     }
 }
 
@@ -57,7 +70,7 @@ var parseRequestHeaders = fn(buf) {
 
 @export
 var withBody = fn(req, body) {
-    req /> put("body", body) /> parseForm
+    req copy { body: body } /> parseForm
 }
 
 // -------------------------
@@ -66,22 +79,22 @@ var withBody = fn(req, body) {
 
 @export
 var withPath = fn(req, path) {
-    req /> put("path", path)
+    req copy { path: path }
 }
 
 @export
 var withQuery = fn(req, query) {
-    req /> put("query", query)
+    req copy { query: query }
 }
 
 @export
-var withParams = fn(@map request, @map params) {
-  request /> put("params", params)
+var withParams = fn(request, @map params) {
+  request copy { params: params }
 }
 
 @export
-var withoutParam = fn(@map request, param) {
-	request /> put("params", request.params /> remove(param))
+var withoutParam = fn(request, param) {
+	request copy { params: request.params /> remove(param) }
 }
 
 @export
@@ -93,7 +106,7 @@ var shouldKeepAlive = fn(req) {
     }
 }
 
-@export var isRequest = fn(x) { get(x, "type") == RequestType }
+@export var isRequest = fn(x) match { Request { method, path } => true _ => false }
 
 // -------------------------
 // Internals
@@ -141,7 +154,7 @@ var parseForm = fn(req) {
     var ct = req.headers["content-type"]
     // Only parse form automatically if body is already a string (small payload)
     if (type(req.body) == "string" && ct != nil && ct /> startsWith("application/x-www-form-urlencoded")) {
-        req /> put("form", parseUrlEncoded(req.body))
+        req copy { form: parseUrlEncoded(req.body) }
     } else {
         req
     }

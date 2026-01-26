@@ -4,6 +4,16 @@ var {*} = import(
 	"slug.list",
 )
 
+val Token = struct {
+	@str type,
+	value = nil,
+}
+
+val ParseResult = struct {
+	value,
+	@num nextIdx,
+}
+
 // ===========================
 // Public API
 // ===========================
@@ -199,41 +209,41 @@ var tokenize = fn(@str s, @num i, @num n, @list tokens) {
 		if (isWhitespace(c)) {
 			recur(s, i + 1, n, tokens)
 		} else if (c == "{") {
-			recur(s, i + 1, n, tokens :+ {"type": "lbrace"})
+			recur(s, i + 1, n, tokens :+ Token { type: "lbrace" })
 		} else if (c == "}") {
-			recur(s, i + 1, n, tokens :+ {"type": "rbrace"})
+			recur(s, i + 1, n, tokens :+ Token { type: "rbrace" })
 		} else if (c == "[") {
-			recur(s, i + 1, n, tokens :+ {"type": "lbracket"})
+			recur(s, i + 1, n, tokens :+ Token { type: "lbracket" })
 		} else if (c == "]") {
-			recur(s, i + 1, n, tokens :+ {"type": "rbracket"})
+			recur(s, i + 1, n, tokens :+ Token { type: "rbracket" })
 		} else if (c == ":") {
-			recur(s, i + 1, n, tokens :+ {"type": "colon"})
+			recur(s, i + 1, n, tokens :+ Token { type: "colon" })
 		} else if (c == ",") {
-			recur(s, i + 1, n, tokens :+ {"type": "comma"})
+			recur(s, i + 1, n, tokens :+ Token { type: "comma" })
 		} else if (c == "\"") {
 			var result = parseStringToken(s, i + 1, n, "")
-			recur(s, result.nextIdx, n, tokens :+ {"type": "string", "value": result.value})
+			recur(s, result.nextIdx, n, tokens :+ Token { type: "string", value: result.value })
 		} else if (c == "t") {
 			if (i + 4 <= n && s[i:i+4] == "true") {
-				recur(s, i + 4, n, tokens :+ {"type": "true"})
+				recur(s, i + 4, n, tokens :+ Token { type: "true" })
 			} else {
 				error("json: invalid token at position " + i)
 			}
 		} else if (c == "f") {
 			if (i + 5 <= n && s[i:i+5] == "false") {
-				recur(s, i + 5, n, tokens :+ {"type": "false"})
+				recur(s, i + 5, n, tokens :+ Token { type: "false" })
 			} else {
 				error("json: invalid token at position " + i)
 			}
 		} else if (c == "n") {
 			if (i + 4 <= n && s[i:i+4] == "null") {
-				recur(s, i + 4, n, tokens :+ {"type": "null"})
+				recur(s, i + 4, n, tokens :+ Token { type: "null" })
 			} else {
 				error("json: invalid token at position " + i)
 			}
 		} else if (isDigit(c) || c == "-") {
 			var result = parseNumberToken(s, i, n)
-			recur(s, result.nextIdx, n, tokens :+ {"type": "number", "value": result.value})
+			recur(s, result.nextIdx, n, tokens :+ Token { type: "number", value: result.value })
 		} else {
 			error("json: unexpected character '" + c + "' at position " + i)
 		}
@@ -259,7 +269,7 @@ var parseStringToken = fn(@str s, @num i, @num n, @str acc) {
 		var c = s[i]
 
 		if (c == "\"") {
-			{"value": acc, "nextIdx": i + 1}
+			ParseResult { value: acc, nextIdx: i + 1 }
 		} else if (c == "\\") {
 			if (i + 1 >= n) {
 				error("json: unterminated escape sequence")
@@ -328,7 +338,7 @@ var parseNumberToken = fn(@str s, @num i, @num n) {
 		}
 
 		var numStr = s[i:j]
-		{"value": toNumber(numStr), "nextIdx": j}
+		ParseResult { value: toNumber(numStr), nextIdx: j }
 	}
 }
 
@@ -349,14 +359,14 @@ var parseValue = fn(@list tokens, @num idx) {
 		error("json: unexpected end of input")
 	} else {
 		var token = tokens[idx]
-		var tokenType = token["type"]
+		var tokenType = token.type
 
 		match tokenType {
-			"string" => return {"value": token["value"], "nextIdx": idx + 1}
-			"number" => return {"value": token["value"], "nextIdx": idx + 1}
-			"true" => return {"value": true, "nextIdx": idx + 1}
-			"false" => return {"value": false, "nextIdx": idx + 1}
-			"null" => return {"value": nil, "nextIdx": idx + 1}
+			"string" => return ParseResult { value: token.value, nextIdx: idx + 1 }
+			"number" => return ParseResult { value: token.value, nextIdx: idx + 1 }
+			"true" => return ParseResult { value: true, nextIdx: idx + 1 }
+			"false" => return ParseResult { value: false, nextIdx: idx + 1 }
+			"null" => return ParseResult { value: nil, nextIdx: idx + 1 }
 			"lbracket" => parseArray(tokens, idx + 1, [], false)
 			"lbrace" => parseObject(tokens, idx + 1, {}, false)
 			_ => error("json: unexpected token " + tokenType + " at position " + idx)
@@ -370,11 +380,11 @@ var parseArray = fn(@list tokens, @num idx, @list acc, @bool afterComma) {
 	} else {
 		var token = tokens[idx]
 
-		if (token["type"] == "rbracket") {
+		if (token.type == "rbracket") {
 			if (afterComma) {
 				error("json: trailing comma not allowed in array")
 			} else {
-				{"value": acc, "nextIdx": idx + 1}
+				ParseResult { value: acc, nextIdx: idx + 1 }
 			}
 		} else {
 			var result = parseValue(tokens, idx)
@@ -386,10 +396,10 @@ var parseArray = fn(@list tokens, @num idx, @list acc, @bool afterComma) {
 			} else {
 				var nextToken = tokens[nextIdx]
 
-				if (nextToken["type"] == "comma") {
+				if (nextToken.type == "comma") {
 					recur(tokens, nextIdx + 1, newAcc, true)
-				} else if (nextToken["type"] == "rbracket") {
-					{"value": newAcc, "nextIdx": nextIdx + 1}
+				} else if (nextToken.type == "rbracket") {
+					ParseResult { value: newAcc, nextIdx: nextIdx + 1 }
 				} else {
 					error("json: expected comma or ] in array")
 				}
@@ -405,17 +415,17 @@ var parseObject = fn(@list tokens, @num idx, @map acc, @bool afterComma) {
 	} else {
 		var token = tokens[idx]
 
-		if (token["type"] == "rbrace") {
+		if (token.type == "rbrace") {
 			if (afterComma) {
 				error("json: trailing comma not allowed in object")
 			} else {
-				{"value": acc, "nextIdx": idx + 1}
+				ParseResult { value: acc, nextIdx: idx + 1 }
 			}
-		} else if (token["type"] == "string") {
-			var key = token["value"]
+		} else if (token.type == "string") {
+			var key = token.value
 			var nextIdx = idx + 1
 
-			if (nextIdx >= len(tokens) || tokens[nextIdx]["type"] != "colon") {
+			if (nextIdx >= len(tokens) || tokens[nextIdx].type != "colon") {
 				error("json: expected colon after object key")
 			} else {
 				var result = parseValue(tokens, nextIdx + 1)
@@ -427,10 +437,10 @@ var parseObject = fn(@list tokens, @num idx, @map acc, @bool afterComma) {
 				} else {
 					var nextToken = tokens[afterValueIdx]
 
-					if (nextToken["type"] == "comma") {
+					if (nextToken.type == "comma") {
 						recur(tokens, afterValueIdx + 1, newAcc, true)
-					} else if (nextToken["type"] == "rbrace") {
-						{"value": newAcc, "nextIdx": afterValueIdx + 1}
+					} else if (nextToken.type == "rbrace") {
+						ParseResult { value: newAcc, nextIdx: afterValueIdx + 1 }
 					} else {
 						error("json: expected comma or } in object")
 					}

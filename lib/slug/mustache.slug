@@ -14,10 +14,42 @@ val DEFAULT_OTAG = '{{'
 val DEFAULT_CTAG = '}}'
 
 // Node shapes:
-//  {type:"text", text:"..."}
-//  {type:"var", name:"a.b", escape:true/false}
-//  {type:"section", name:"items", inverted:false, children:[...], raw:"...", otag:"{{", ctag:"}}"}
-//  {type:"partial", name:"p", indent:"   "}
+//  TextNode { text:"..." }
+//  VarNode { name:"a.b", escape:true/false }
+//  SectionNode { name:"items", inverted:false, children:[...], raw:"...", otag:"{{", ctag:"}}" }
+//  PartialNode { name:"p", indent:"   " }
+
+val TextNode = struct {
+	@str text,
+}
+
+val VarNode = struct {
+	@str name,
+	@bool escape,
+}
+
+val SectionNode = struct {
+	@str name,
+	@bool inverted,
+	@list children,
+	@str raw,
+	@str otag,
+	@str ctag,
+}
+
+val PartialNode = struct {
+	@str name,
+	@str indent,
+}
+
+val SectionFrame = struct {
+	@str name,
+	@bool inverted,
+	@list nodes,
+	contentStart,
+	@str otag,
+	@str ctag,
+}
 
 var isWs = fn(@str s) {
 	if (s == nil || len(s) == 0) {
@@ -148,17 +180,17 @@ var parse = fn(@str template) {
 	var otag = DEFAULT_OTAG
 	var ctag = DEFAULT_CTAG
 
-	var root = {name:"__root__", inverted:false, nodes:[]}
+	var root = SectionFrame { name:"__root__", inverted:false, nodes:[], contentStart:nil, otag:otag, ctag:ctag }
 	var stack = [root]
 
 	var pushNode = fn(stack, node) {
 		var top = stack[len(stack) - 1]
-		var updated = top /> put("nodes", top.nodes :+ node)
+		var updated = top copy { nodes: top.nodes :+ node }
 		stack /> update(len(stack) - 1, updated)
 	}
 
 	var openSection = fn(stack, name, inverted, contentStart, ot, ct) {
-		stack :+ {name:name, inverted:inverted, nodes:[], contentStart:contentStart, otag:ot, ctag:ct}
+		stack :+ SectionFrame { name:name, inverted:inverted, nodes:[], contentStart:contentStart, otag:ot, ctag:ct }
 	}
 
 	var closeSection = fn(stack, name, rawInner) {
@@ -170,7 +202,7 @@ var parse = fn(@str template) {
 			throw {type:"error", msg:'Mustache section mismatch: expected {{' + frame.name + '}} got {{' + name + '}}'}
 		}
 		var parent = stack[:len(stack) - 1]
-		var node = {type:"section", name:frame.name, inverted:frame.inverted, children:frame.nodes, raw:rawInner, otag:frame.otag, ctag:frame.ctag}
+		var node = SectionNode { name:frame.name, inverted:frame.inverted, children:frame.nodes, raw:rawInner, otag:frame.otag, ctag:frame.ctag }
 		parent /> then(fn(ps) { pushNode(ps, node) })
 	}
 
@@ -186,7 +218,7 @@ var parse = fn(@str template) {
 		} else {
 			var open = template /> indexOf(otag, i)
 			if (open < 0) {
-				stack = stack /> then(fn(st) { pushNode(st, {type:"text", text:template[i:]}) })
+				stack = stack /> then(fn(st) { pushNode(st, TextNode { text:template[i:] }) })
 				i = n
 				recur()
 			} else {
@@ -223,12 +255,12 @@ var parse = fn(@str template) {
 				// emit text preceding tag; for standalone tags, drop indentation-only prefix on that line
 				var textEnd = if(standalone) {ls} else {open}
 				if (textEnd > i) {
-					stack = stack /> then(fn(st) { pushNode(st, {type:"text", text:template[i:textEnd]}) })
+					stack = stack /> then(fn(st) { pushNode(st, TextNode { text:template[i:textEnd] }) })
 				}
 
 				if (len(tag) > 0) {
 					if (isTriple) {
-						stack = stack /> then(fn(st) { pushNode(st, {type:"var", name:tag, escape:false}) })
+						stack = stack /> then(fn(st) { pushNode(st, VarNode { name:tag, escape:false }) })
 					} else {
 						match sig {
 							"!" => { }
@@ -251,12 +283,12 @@ var parse = fn(@str template) {
 							}
 							"&" => {
 								var name = tag[1:] /> trim()
-								stack = stack /> then(fn(st) { pushNode(st, {type:"var", name:name, escape:false}) })
+								stack = stack /> then(fn(st) { pushNode(st, VarNode { name:name, escape:false }) })
 							}
 							">" => {
 								var name = tag[1:] /> trim()
 								var indent = if(standalone) {before} else {""}
-								stack = stack /> then(fn(st) { pushNode(st, {type:"partial", name:name, indent:indent}) })
+								stack = stack /> then(fn(st) { pushNode(st, PartialNode { name:name, indent:indent }) })
 							}
 							"=" => {
 								// {{=<% %>=}} : must begin and end with '='
@@ -272,7 +304,7 @@ var parse = fn(@str template) {
 								ctag = parts[1]
 							}
 							_ => {
-								stack = stack /> then(fn(st) { pushNode(st, {type:"var", name:tag, escape:true}) })
+								stack = stack /> then(fn(st) { pushNode(st, VarNode { name:tag, escape:true }) })
 							}
 						}
 					}
@@ -321,37 +353,37 @@ var getPartialAst = fn(partials, cache, name) {
 var renderNodesCached = fn(nodes, ctxStack, partials, cache, acc = "", indent = "") match {
 	[[], ...] => { {html:acc, cache:cache} }
 	[[node, ...rest], ...] => {
-		match node.type {
-			"text" => {
-				var text = indentPartial(node.text, indent)
+		match node {
+			TextNode { text } => {
+				var text = indentPartial(text, indent)
 				recur(rest, ctxStack, partials, cache, acc + text)
 			}
 
-			"var" => {
-				var v = lookup(ctxStack, node.name)
+			VarNode { name, escape } => {
+				var v = lookup(ctxStack, name)
 				var s = if(v == nil) {""} else {(v /> toString())}
-				var out = if(node.escape) {htmlEscape(s)} else {s}
+				var out = if(escape) {htmlEscape(s)} else {s}
 				var indented = indentPartial(out, indent)
 				recur(rest, ctxStack, partials, cache, acc + indented)
 			}
 
-			"partial" => {
-				var r = getPartialAst(partials, cache, node.name)
+			PartialNode { name, indent } => {
+				var r = getPartialAst(partials, cache, name)
 				if (r.ast == nil) {
 					recur(rest, ctxStack, partials, r.cache, acc)
 				} else {
-					var indent = node.indent /> ifNil("")
-					var rendered = renderNodesCached(r.ast, ctxStack, partials, r.cache, "", indent)
-					var html = indent + rendered.html
+					var localIndent = indent /> ifNil("")
+					var rendered = renderNodesCached(r.ast, ctxStack, partials, r.cache, "", localIndent)
+					var html = localIndent + rendered.html
 					recur(rest, ctxStack, partials, rendered.cache, acc + html)
 				}
 			}
 
-			"section" => {
-				var v = lookup(ctxStack, node.name)
-				if (node.inverted) {
+			SectionNode { name, inverted, children } => {
+				var v = lookup(ctxStack, name)
+				if (inverted) {
 					if (isFalsey(v)) {
-						var inner = renderNodesCached(node.children, ctxStack, partials, cache, "")
+						var inner = renderNodesCached(children, ctxStack, partials, cache, "")
 						recur(rest, ctxStack, partials, inner.cache, acc + inner.html)
 					} else {
 						recur(rest, ctxStack, partials, cache, acc)
@@ -363,23 +395,23 @@ var renderNodesCached = fn(nodes, ctxStack, partials, cache, acc = "", indent = 
 						var each = fn(items, acc2, cache2) match {
 							[[], ...] => { {html:acc2, cache:cache2} }
 							[[h, ...t], ...] => {
-								var inner = renderNodesCached(node.children, ctxStack :+ h, partials, cache2, "")
+								var inner = renderNodesCached(children, ctxStack :+ h, partials, cache2, "")
 								each(t, acc2 + inner.html, inner.cache)
 							}
 						}
 						var r2 = each(v, "", cache)
 						recur(rest, ctxStack, partials, r2.cache, acc + r2.html)
 					} else if (type(v) == MAP_TYPE) {
-						var inner = renderNodesCached(node.children, ctxStack :+ v, partials, cache, "")
+						var inner = renderNodesCached(children, ctxStack :+ v, partials, cache, "")
 						recur(rest, ctxStack, partials, inner.cache, acc + inner.html)
 					} else {
-						var inner = renderNodesCached(node.children, ctxStack :+ v, partials, cache, "")
+						var inner = renderNodesCached(children, ctxStack :+ v, partials, cache, "")
 						recur(rest, ctxStack, partials, inner.cache, acc + inner.html)
 					}
 				}
 			}
 
-			_ => throw {type:"error", msg:"Unknown mustache node type: " + node.type}
+			_ => throw {type:"error", msg:"Unknown mustache node type: " + type(node)}
 		}
 	}
 }

@@ -1,28 +1,24 @@
 var {*} = import (
 	"slug.std",
 	"slug.string",
-	"slug.map",
 	"slug.list",
 )
 var json = import("slug.json")
 
-// ------------------------------------
-// Response shape (tagged immutable map)
-// ------------------------------------
-//
-// {
-//   type: "HttpResponse",
-//   status: number,
-//   headers: map[string] -> string | list[string],
-//   body: string | bytes | {type:"Stream", ...} (future)
-// }
-//
-// Header keys are normalized to lowercase.
-//
-// ------------------------------------
+// -------------------------------
+// Response shapes (struct-based)
+// -------------------------------
 
-val responseType = "HttpResponse"
-val formattedResponseType = "FormattedHttpResponse"
+val Response = struct {
+	@num status,
+	@map headers,
+	body,
+}
+
+val FormattedResponse = struct {
+	@str head,
+	body,
+}
 
 // ------------------
 // Core constructors
@@ -30,12 +26,7 @@ val formattedResponseType = "FormattedHttpResponse"
 
 @export
 var response = fn(@num status, @str body) {
-	{
-		type: responseType,
-		status: status,
-		headers: {},
-		body: body,
-	}
+	Response { status: status, headers: {}, body: body }
 }
 
 @export var ok = fn(@str body) { response(200, body) }
@@ -58,13 +49,13 @@ var response = fn(@num status, @str body) {
 // ------------------
 
 @export
-var withStatus = fn(@map res, @num status) {
-  with(res, { status: status })
+var withStatus = fn(res, @num status) {
+  res copy { status: status }
 }
 
 @export
-var withBody = fn(@map res, @str body) {
-  with(res, { body: body })
+var withBody = fn(res, @str body) {
+  res copy { body: body }
 }
 
 @export
@@ -74,16 +65,16 @@ var hasHeader = fn(res, key) {
 
 // Replace a header (single-value semantics)
 @export
-var withHeader = fn(@map res, @str key, @str value) {
+var withHeader = fn(res, @str key, @str value) {
   var k = normKey(key)
   var v = normVal(value)
   var hs = res.headers /> put(k, v)
-  with(res, { headers: hs })
+  res copy { headers: hs }
 }
 
 // Replace many headers from a map
 @export
-var withHeaders = fn(@map res, @map headersMap) {
+var withHeaders = fn(res, @map headersMap) {
   // fold over keys so we normalize each header name
   headersMap /> keys /> reduce(res, fn(acc, rawKey) {
 	acc /> withHeader(rawKey, headersMap[rawKey])
@@ -92,10 +83,10 @@ var withHeaders = fn(@map res, @map headersMap) {
 
 // Remove a header entirely
 @export
-var withoutHeader = fn(@map res, @str key) {
+var withoutHeader = fn(res, @str key) {
   var k = normKey(key)
   var hs = remove(res.headers, k)
-  with(res, { headers: hs })
+  res copy { headers: hs }
 }
 
 
@@ -106,7 +97,7 @@ var withoutHeader = fn(@map res, @str key) {
 // Add a header value without clobbering existing values.
 // Upgrades string -> list[string] when needed.
 @export
-var addHeader = fn(@map res, @str key, @str value) {
+var addHeader = fn(res, @str key, @str value) {
   var k = normKey(key)
   var v = normVal(value)
 
@@ -114,10 +105,10 @@ var addHeader = fn(@map res, @str key, @str value) {
   var next = toList(cur) :+ v
 
   var hs = res.headers /> put(k, next)
-  with(res, { headers: hs })
+  res copy { headers: hs }
 }
 
-var addSetCookie = fn(@map res, @str cookieStr) {
+var addSetCookie = fn(res, @str cookieStr) {
   addHeader(res, "set-cookie", cookieStr)
 }
 
@@ -127,7 +118,7 @@ var addSetCookie = fn(@map res, @str cookieStr) {
 // ------------------
 
 @export
-var withContentType = fn(@map res, @str ct) {
+var withContentType = fn(res, @str ct) {
   withHeader(res, "content-type", ct)
 }
 
@@ -172,7 +163,7 @@ var redirectPermanent = fn(@str location) {
 // ------------------
 
 @export
-var noCache = fn(@map res) {
+var noCache = fn(res) {
   res
   /> withHeader("cache-control", "no-store, no-cache, must-revalidate")
   /> withHeader("pragma", "no-cache")
@@ -180,7 +171,7 @@ var noCache = fn(@map res) {
 }
 
 @export
-var cacheSeconds = fn(@map res, @num seconds) {
+var cacheSeconds = fn(res, @num seconds) {
   withHeader(res, "cache-control", "public, max-age=" + seconds)
 }
 
@@ -190,12 +181,12 @@ var cacheSeconds = fn(@map res, @num seconds) {
 // ------------------
 
 @export
-var withConnClose = fn(@map res) {
+var withConnClose = fn(res) {
   res /> withHeader("Connection", "close")
 }
 
 @export
-var withConnKeepAlive = fn(@map res) {
+var withConnKeepAlive = fn(res) {
   res /> withHeader("Connection", "keep-alive")
 }
 
@@ -204,17 +195,17 @@ var withConnKeepAlive = fn(@map res) {
 // ------------------
 
 @export
-var hxTrigger = fn(@map res, @str eventName) {
+var hxTrigger = fn(res, @str eventName) {
   withHeader(res, "hx-trigger", eventName)
 }
 
 @export
-var hxRedirect = fn(@map res, @str location) {
+var hxRedirect = fn(res, @str location) {
   withHeader(res, "hx-redirect", location)
 }
 
 @export
-var hxRetarget = fn(@map res, @str selector) {
+var hxRetarget = fn(res, @str selector) {
   withHeader(res, "hx-retarget", selector)
 }
 
@@ -243,12 +234,12 @@ var cookie = fn(@str name, @str value, @map opts) {
 }
 
 @export
-var setCookie = fn(@map res, @str name, @str value, @map opts) {
+var setCookie = fn(res, @str name, @str value, @map opts) {
   addSetCookie(res, cookie(name, value, opts))
 }
 
 @export
-var clearCookie = fn(@map res, @str name, @map opts) {
+var clearCookie = fn(res, @str name, @map opts) {
   // expire immediately
   setCookie(res, name, "", put(opts, "maxAge", 0))
 }
@@ -258,12 +249,12 @@ var clearCookie = fn(@map res, @str name, @map opts) {
 // Introspection
 // ------------------
 
-@export var isResponse = fn(x) { get(x, "type") == responseType }
-@export var isFormattedResponse = fn(x) { get(x, "type") == formattedResponseType }
+@export var isResponse = fn(x) match { Response { status, headers, body } => true _ => false }
+@export var isFormattedResponse = fn(x) match { FormattedResponse { head, body } => true _ => false }
 
-@export var status = fn(@map res) { res.status }
-@export var headers = fn(@map res) { res.headers }
-@export var body = fn(@map res) { res.body }
+@export var status = fn(res) { res.status }
+@export var headers = fn(res) { res.headers }
+@export var body = fn(res) { res.body }
 
 
 // -------------------------
@@ -289,17 +280,13 @@ var formatResponse = fn(res) {
   // keep response shaping separate from formatting (adds content-length)
   var r = ensureContentLength(res)
 
-  {
-	type: formattedResponseType,
-	head: formatHead(r),
-	body: r.body,
-  }
+  FormattedResponse { head: formatHead(r), body: r.body }
 }
 
 @export
 var renderResponse = fn(res) {
 	res /> formatResponse /> match {
-		{head, body} => head + body
+		FormattedResponse { head, body } => head + body
 	}
 }
 
@@ -308,10 +295,6 @@ var renderResponse = fn(res) {
 // Internals
 // ----------
 
-// Merge a patch map into the response 
-var with = fn(res, patch) {
-  res /> merge(patch)
-}
 
 var normKey = fn(k) {
   k /> toLower /> trim

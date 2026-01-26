@@ -8,7 +8,15 @@ var {*} = import (
 	"slug.web.response",
 )
 
-val RouterType = "WebRouter"
+val Route = struct {
+	@str method,
+	@str pattern,
+	@fun handler,
+}
+
+val Router = struct {
+	@list routes,
+}
 
 
 // ------------------
@@ -17,45 +25,45 @@ val RouterType = "WebRouter"
 
 @export
 var router = fn() {
-	{ type: RouterType, routes: [] } 
+	Router { routes: [] }
 }
 
 // ------------------
 // Introspection
 // ------------------
 
-@export var isRouter = fn(x) { get(x, "type") == RouterType }
+@export var isRouter = fn(x) match { Router { routes } => true _ => false }
 
 // ------------------
 // Basic modifiers
 // ------------------
 
-var addRoute = fn(@map r, @str method, @str pattern, @fun handler) {
-  r /> put("routes", r.routes :+ { method: method, pattern: pattern, handler: handler })
+var addRoute = fn(r, @str method, @str pattern, @fun handler) {
+  r copy { routes: r.routes :+ Route { method: method, pattern: pattern, handler: handler } }
 }
 
 @export
-var head  = fn(@map r, @str pattern, @fun handler) { addRoute(r, "HEAD",  pattern, handler) }
+var head  = fn(r, @str pattern, @fun handler) { addRoute(r, "HEAD",  pattern, handler) }
 
 @export
-var get  = fn(@map r, @str pattern, @fun handler) { addRoute(r, "GET",  pattern, handler) }
+var get  = fn(r, @str pattern, @fun handler) { addRoute(r, "GET",  pattern, handler) }
 
 @export
-var post = fn(@map r, @str pattern, @fun handler) { addRoute(r, "POST", pattern, handler) }
+var post = fn(r, @str pattern, @fun handler) { addRoute(r, "POST", pattern, handler) }
 
 // mount = any method, prefix
 @export
-var mount = fn(@map r, @str prefix, @fun handler) { addRoute(r, "*", prefix + "/*", handler) }
+var mount = fn(r, @str prefix, @fun handler) { addRoute(r, "*", prefix + "/*", handler) }
 
 @export
-var mountRouter = fn(@map r, @str prefix, @map childRouter) { mount(r, prefix, subrouter(childRouter)) }
+var mountRouter = fn(r, @str prefix, childRouter) { mount(r, prefix, subrouter(childRouter)) }
 
 // ------------------
 // Public
 // ------------------
 
 @export
-var handle = fn(@map request, @map r) {
+var handle = fn(request, r) {
 	match handleRequest(r.routes, request) {
 		nil => notFound()
 		response => response
@@ -66,7 +74,7 @@ var handle = fn(@map request, @map r) {
 // Internals
 // ------------------
 
-var handleRequest = fn(@list routes, @map request) match {
+var handleRequest = fn(@list routes, request) match {
 	[[], ...] => nil
 	[[route, ...t], ...] => {
 		if (route.method == request.method || route.method == "*") {
@@ -122,8 +130,8 @@ var matchRoutePattern = fn(pattern, path) {
 // ------------------
 
 @export
-var subrouter = fn(@map router) {
-  fn(@map req) {
+var subrouter = fn(router) {
+  fn(req) {
 	// remainder captured by mount "/prefix/*"
 	var rest = req.params["*"]
 	if (rest == nil || rest == "") {
@@ -150,7 +158,7 @@ var subrouter = fn(@map router) {
 
 @export
 var static = fn(dir, cacheTimeSeconds = 3600) {
-	fn(@map req) {
+	fn(req) {
 		defer onerror(err) notFound()
 		
 		if (req.method != "GET" && req.method != "HEAD") {
@@ -229,7 +237,7 @@ var joinPath = fn(dir, rel) {
 
 @export
 var withLog = fn(handler) {
-	fn(@map req) {
+	fn(req) {
 		var d = delta(clock)
 
 		var res = handler(req)
@@ -251,7 +259,7 @@ var withLog = fn(handler) {
 
 @export
 var withTimeout = fn(h, ms) {
-	fn(@map req) {
+	fn(req) {
 		var task = spawn { h(req) }
 		await task within ms
 	}
@@ -263,7 +271,7 @@ var withTimeout = fn(h, ms) {
 
 @export
 var withRecover = fn(h) {
-	fn(@map req) {
+	fn(req) {
 		defer onerror(err) {
 			serverError()
 		}
@@ -277,7 +285,7 @@ var withRecover = fn(h) {
 
 @export
 var withHeader = fn(@fun handler, @str header, @str value) {
-	fn(@map req) {
+	fn(req) {
 		req /> handler /> withHeader(header, value)
 	}
 }
@@ -289,7 +297,7 @@ var withHeader = fn(@fun handler, @str header, @str value) {
 @export
 var withRequestId = fn(@fun handler, @fun newRequestId = nil) {
 	newRequestId = if (newRequestId) {newRequestId} else {fn() { randomHexString(32) }}
-	fn(@map req) {
+	fn(req) {
 		var rid = req.headers["x-request-id"]
 
 		if (rid == nil) {
@@ -297,7 +305,7 @@ var withRequestId = fn(@fun handler, @fun newRequestId = nil) {
 		}
 
 		// attach to request
-		req = req /> put("requestId", rid)
+		req = req copy { requestId: rid }
 
 		var res = handler(req)
 
@@ -317,7 +325,7 @@ var withRequestId = fn(@fun handler, @fun newRequestId = nil) {
 var withTraceContext = fn(handler, @fun newTraceId = nil, @fun newSpanId = nil) {
 	newTraceId = if (newTraceId) {newTraceId} else {fn() { randomHexString(32) }}
 	newSpanId = if (newSpanId) {newSpanId} else {fn() { randomHexString(16) }}
-	fn(@map req) {
+	fn(req) {
 
 		var tp = req.headers["traceparent"]
 
@@ -346,10 +354,7 @@ var withTraceContext = fn(handler, @fun newTraceId = nil, @fun newSpanId = nil) 
 		var newTraceParent = "00-" + traceId + "-" + currentSpanId + "-01"
 
 		// Attach to request context so internal logic can use it
-		var res = req
-			/> put("traceId", traceId)
-			/> put("spanId", currentSpanId)
-			/> handler
+		var res = req copy { traceId: traceId, spanId: currentSpanId } /> handler
 
 		if (res != nil) {
 			res /> withHeader("traceparent", newTraceParent)
@@ -366,7 +371,7 @@ var withTraceContext = fn(handler, @fun newTraceId = nil, @fun newSpanId = nil) 
 
 @export
 var withMaxBody = fn(h, maxBytes = 1_048_576) {
-	fn(@map req) {
+	fn(req) {
 		// only enforce for methods that may have bodies
 		if (req.method == "POST" || req.method == "PUT" || req.method == "PATCH") {
 			var cl = req.headers["content-length"]
@@ -382,4 +387,3 @@ var withMaxBody = fn(h, maxBytes = 1_048_576) {
 		h(req)
 	}
 }
-
