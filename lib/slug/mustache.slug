@@ -163,6 +163,28 @@ var indentPartial = fn(@str partial, @str indent) {
 	}
 }
 
+var indentLines = fn(@str text, @str indent) {
+	if (indent == "" || text == nil || text == "") {
+		text /> ifNil("")
+	} else {
+		var out = indent
+		var i = 0
+		fn() {
+			if (i >= len(text)) { 
+				out 
+			} else {
+				var c = text[i]
+				out = out + c
+				if (c == "\n" && i < len(text) - 1) {
+					out = out + indent
+				}
+				i = i + 1
+				recur()
+			}
+		}()
+	}
+}
+
 var resolvePartial = fn(partials, @str name) {
 	if (partials == nil) {
 		nil
@@ -373,9 +395,9 @@ var renderNodesCached = fn(nodes, ctxStack, partials, cache, acc = "", indent = 
 					recur(rest, ctxStack, partials, r.cache, acc)
 				} else {
 					var localIndent = indent /> ifNil("")
-					var rendered = renderNodesCached(r.ast, ctxStack, partials, r.cache, "", localIndent)
-					var html = localIndent + rendered.html
-					recur(rest, ctxStack, partials, rendered.cache, acc + html)
+					var ast = if(localIndent == "") {r.ast} else {parse(indentLines(r.src, localIndent))}
+					var rendered = renderNodesCached(ast, ctxStack, partials, r.cache, "", "")
+					recur(rest, ctxStack, partials, rendered.cache, acc + rendered.html)
 				}
 			}
 

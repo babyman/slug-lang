@@ -50,26 +50,8 @@ var runAll = fn(xs, acc = []) match {
 	'/sections.json',
 ] /> runAll /> reduce([0,0], score) /> println /> match {
 	[_, 0] => println("All tests passed!")
-	[_, 1] => println("All but 1 pasky test passed!")
 	_      => {
 		println("Some tests failed!")
 		exit(1)
 	}
 }
-//
-// this 1 test is failing...
-//
-// [FAIL] Standalone Indentation: Each line of the partial should be indented before rendering. / '\
-//  |
-// <
-// ->
-// |
-// /
-// ' is not equal to '\
-//  |
-//  <
-// ->
-//  |
-// /
-// '
-
