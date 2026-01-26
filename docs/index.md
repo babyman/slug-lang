@@ -36,7 +36,7 @@ println("Result:", result)
 
 ## Get started
 
-- Installation and setup: http://www.sluglang.org
-- Developers guide: `docs/developers-guide.md`
-- Setup guide: `docs/setup.md`
-- Cookbook: `docs/cookbook.md`
+- Home: (http://www.sluglang.org)[https://www.sluglang.org]
+- (Developers guide)[/developers-guide.html]
+- (Setup guide)[/setup/]
+- (Cookbook)[/cookbook/]
