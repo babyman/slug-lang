@@ -77,6 +77,8 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.std.parseNumber": fnStdParseNumber(),
 		"slug.std.get":         fnStdGet(),
 		"slug.std.keys":        fnStdKeys(),
+		"slug.std.sym":         fnStdSym(),
+		"slug.std.label":       fnStdLabel(),
 		"slug.std.put":         fnStdPut(),
 		"slug.std.remove":      fnStdRemove(),
 

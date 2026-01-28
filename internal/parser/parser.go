@@ -10,6 +10,7 @@ import (
 	"slug/internal/lexer"
 	"slug/internal/token"
 	"slug/internal/util"
+	"strings"
 )
 
 const (
@@ -96,6 +97,8 @@ func New(l lexer.Tokenizer, path, source string) *Parser {
 	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
 	p.registerPrefix(token.NIL, p.parseNil)
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
+	p.registerPrefix(token.SYMBOL, p.parseSymbolLiteral)
+	p.registerPrefix(token.COLON, p.parseSymbolLiteralFromColon)
 	p.registerPrefix(token.NUMBER, p.parseNumberLiteral)
 	p.registerPrefix(token.STRING, p.parseStringLiteral)
 	p.registerPrefix(token.BYTES, p.parseBytesLiteral)
@@ -451,6 +454,55 @@ func (p *Parser) parseIdentifier() ast.Expression {
 	return ident
 }
 
+func (p *Parser) parseSymbolLiteral() ast.Expression {
+	name := strings.TrimPrefix(p.curToken.Literal, ":")
+	return &ast.SymbolLiteral{Token: p.curToken, Value: name}
+}
+
+func (p *Parser) parseSymbolLiteralFromColon() ast.Expression {
+	if !p.peekTokenIsSymbolName() && !p.peekTokenIs(token.STRING) {
+		p.peekError(token.IDENT)
+		return nil
+	}
+	p.nextToken()
+	if p.curToken.Type == token.STRING {
+		return &ast.SymbolLiteral{Token: p.curToken, Value: p.curToken.Literal}
+	}
+	return &ast.SymbolLiteral{Token: p.curToken, Value: p.curToken.Literal}
+}
+
+func (p *Parser) peekTokenIsSymbolName() bool {
+	switch p.peekToken.Type {
+	case token.IDENT,
+		token.NIL,
+		token.TRUE,
+		token.FALSE,
+		token.FOREIGN,
+		token.FUNCTION,
+		token.VAL,
+		token.VAR,
+		token.IF,
+		token.ELSE,
+		token.MATCH,
+		token.RETURN,
+		token.RECUR,
+		token.THROW,
+		token.DEFER,
+		token.ONSUCCESS,
+		token.ONERROR,
+		token.STRUCT,
+		token.COPY,
+		token.NURSERY,
+		token.SPAWN,
+		token.AWAIT,
+		token.LIMIT,
+		token.WITHIN:
+		return true
+	default:
+		return false
+	}
+}
+
 // Modify parseNumberLiteral to include line and column
 func (p *Parser) parseNumberLiteral() ast.Expression {
 	lit := &ast.NumberLiteral{Token: p.curToken}
@@ -755,10 +807,13 @@ func (p *Parser) parseMultiPattern() ast.MatchPattern {
 			return true
 
 		case *ast.MapPattern:
-			for _, sub := range pt.Pairs {
-				if !isNonBinding(sub) {
+			for _, entry := range pt.Pairs {
+				if !isNonBinding(entry.Pattern) {
 					return false
 				}
+			}
+			if pt.Spread != nil && !isNonBinding(pt.Spread) {
+				return false
 			}
 			return true
 
@@ -849,8 +904,8 @@ func (p *Parser) parseListPattern() ast.MatchPattern {
 func (p *Parser) parseMapPattern() *ast.MapPattern {
 	mapPattern := &ast.MapPattern{
 		Token:     p.curToken,
-		Pairs:     make(map[string]ast.MatchPattern),
-		Spread:    false,
+		Pairs:     []ast.MapPatternEntry{},
+		Spread:    nil,
 		Exact:     false,
 		SelectAll: false,
 	}
@@ -882,8 +937,7 @@ func (p *Parser) parseMapPattern() *ast.MapPattern {
 				return nil
 			} else {
 				value := p.parseMatchPattern()
-				mapPattern.Pairs[token.ELLIPSIS] = value
-				mapPattern.Spread = true
+				mapPattern.Spread = value
 				continue
 			}
 		}
@@ -899,22 +953,39 @@ func (p *Parser) parseMapPattern() *ast.MapPattern {
 			p.expectPeek(token.RBRACKET)
 		}
 
-		_, isIdent := key.(*ast.Identifier)
+		ident, isIdent := key.(*ast.Identifier)
 		if isIdent && !readIdent {
-			key = &ast.StringLiteral{
-				Token: key.(*ast.Identifier).Token,
-				Value: key.(*ast.Identifier).Value}
+			key = &ast.SymbolLiteral{
+				Token: ident.Token,
+				Value: ident.Value,
+			}
 		}
 
 		if p.peekTokenIs(token.COLON) {
 			p.nextToken()
 			p.nextToken()
 			value := p.parseMatchPattern()
-			mapPattern.Pairs[key.String()] = value
+			mapPattern.Pairs = append(mapPattern.Pairs, ast.MapPatternEntry{
+				Key:     key,
+				Pattern: value,
+			})
 		} else {
-			mapPattern.Pairs[key.String()] = &ast.IdentifierPattern{
-				Token: p.curToken,
-				Value: &ast.Identifier{Token: p.curToken, Value: key.String()}}
+			name := key.String()
+			switch literal := key.(type) {
+			case *ast.Identifier:
+				name = literal.Value
+			case *ast.StringLiteral:
+				name = literal.Value
+			case *ast.SymbolLiteral:
+				name = literal.Value
+			}
+			mapPattern.Pairs = append(mapPattern.Pairs, ast.MapPatternEntry{
+				Key: key,
+				Pattern: &ast.IdentifierPattern{
+					Token: p.curToken,
+					Value: &ast.Identifier{Token: p.curToken, Value: name},
+				},
+			})
 		}
 
 		if p.peekTokenIs(token.MATCH_KEYS_CLOSE) || p.peekTokenIs(token.RBRACE) {
@@ -933,41 +1004,6 @@ func (p *Parser) parseMapPattern() *ast.MapPattern {
 	}
 
 	return mapPattern
-}
-
-func (p *Parser) parseMapPatternPair(hp *ast.MapPattern) bool {
-	// For map patterns, keys are always identifiers
-	if !p.curTokenIs(token.IDENT) {
-		p.addErrorAt(p.curToken.Position, "expected identifier as map pattern key, got %s", p.curToken.Type)
-		return false
-	}
-
-	key := p.curToken.Literal
-
-	// Check if this is a shorthand notation (just the key)
-	if p.peekTokenIs(token.COMMA) || p.peekTokenIs(token.RBRACE) {
-		// Shorthand notation - { name } is the same as { name: name }
-		hp.Pairs[key] = &ast.IdentifierPattern{
-			Token: p.curToken,
-			Value: &ast.Identifier{Token: p.curToken, Value: key},
-		}
-		return true
-	}
-
-	// Otherwise, expect colon followed by a pattern
-	if !p.expectPeek(token.COLON) {
-		return false
-	}
-
-	p.nextToken() // Move to the pattern
-
-	pattern := p.parseMatchPattern()
-	if pattern == nil {
-		return false
-	}
-
-	hp.Pairs[key] = pattern
-	return true
 }
 
 func (p *Parser) parseStructPattern(schema *ast.Identifier) ast.MatchPattern {
@@ -1408,7 +1444,7 @@ func (p *Parser) parseDotIdentifierToIndexExpression(left ast.Expression) ast.Ex
 	return &ast.IndexExpression{
 		Token: mapKey.Token,
 		Left:  left,
-		Index: &ast.StringLiteral{Token: mapKey.Token, Value: mapKey.Value},
+		Index: &ast.SymbolLiteral{Token: mapKey.Token, Value: mapKey.Value},
 	}
 }
 
@@ -1699,11 +1735,18 @@ func (p *Parser) parseIndexExpressionList() []ast.Expression {
 	i := 0
 	for i < 3 {
 		if p.curTokenIs(token.COLON) { // Handle ':'
-			// Append nil for an omitted part
-			slice = true
-			list = append(list, nil)
-			if p.peekTokenIs(token.RBRACKET) {
-				break
+			if i == 0 {
+				list = append(list, p.parseExpression(LOWEST))
+				if p.peekTokenIs(token.RBRACKET) {
+					break
+				}
+			} else {
+				// Append nil for an omitted part
+				slice = true
+				list = append(list, nil)
+				if p.peekTokenIs(token.RBRACKET) {
+					break
+				}
 			}
 		} else if p.curTokenIs(token.RBRACKET) { // End of slice
 			break
@@ -1768,7 +1811,7 @@ func (p *Parser) parseMapLiteral() ast.Expression {
 		}
 
 		if ident, ok := key.(*ast.Identifier); ok && !readIdent {
-			key = &ast.StringLiteral{Token: ident.Token, Value: ident.Value}
+			key = &ast.SymbolLiteral{Token: ident.Token, Value: ident.Value}
 		}
 
 		if !p.expectPeek(token.COLON) {

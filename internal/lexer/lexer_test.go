@@ -25,6 +25,7 @@ if (5 < 10) {
 }
 // comment
 # alt comment
+:foo
 10 == 10; // comment
 10 != 9; # alt comment
 true && false;
@@ -141,6 +142,9 @@ recur
 		{token.SEMICOLON, ";"},
 		{token.NEWLINE, "\n"},
 		{token.RBRACE, "}"},
+		{token.NEWLINE, "\n"},
+		{token.COLON, ":"},
+		{token.IDENT, "foo"},
 		{token.NEWLINE, "\n"},
 		{token.NUMBER, "10"},
 		{token.EQ, "=="},

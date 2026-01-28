@@ -9,7 +9,6 @@ import (
 	"slug/internal/dec64"
 	"slug/internal/foreign"
 	"slug/internal/object"
-	"slug/internal/token"
 	"slug/internal/util"
 	"strings"
 	"sync"
@@ -227,6 +226,9 @@ func (e *Task) Eval(node ast.Node) object.Object {
 
 	case *ast.StringLiteral:
 		return &object.String{Value: node.Value}
+
+	case *ast.SymbolLiteral:
+		return object.InternSymbol(node.Value)
 
 	case *ast.BytesLiteral:
 		return &object.Bytes{Value: node.Value}
@@ -1866,15 +1868,22 @@ func (e *Task) patternMatches(
 		if p.SelectAll {
 			// Copy all key-value pairs into current scope
 			for _, pair := range mapObj.Pairs {
-				if str, ok := pair.Key.(*object.String); ok {
-					if isConstant {
-						if _, err := env.DefineConstant(str.Value, pair.Value, isExport, isImport); err != nil {
-							return false, err
-						}
-					} else {
-						if _, err := env.Define(str.Value, pair.Value, isExport, isImport); err != nil {
-							return false, err
-						}
+				var name string
+				switch key := pair.Key.(type) {
+				case *object.String:
+					name = key.Value
+				case *object.Symbol:
+					name = key.Name
+				default:
+					continue
+				}
+				if isConstant {
+					if _, err := env.DefineConstant(name, pair.Value, isExport, isImport); err != nil {
+						return false, err
+					}
+				} else {
+					if _, err := env.Define(name, pair.Value, isExport, isImport); err != nil {
+						return false, err
 					}
 				}
 			}
@@ -1882,11 +1891,11 @@ func (e *Task) patternMatches(
 		}
 
 		// Empty map pattern matches empty map
-		if len(p.Pairs) == 0 {
+		if len(p.Pairs) == 0 && p.Spread == nil {
 			return len(mapObj.Pairs) == 0, nil
 		}
 
-		usedKeys := make([]object.MapKey, 0)
+		usedKeys := make(map[object.MapKey]bool)
 
 		// scoped environment to capture the match bindings, these will be copied to the parent env on success
 		scoped := object.NewEnclosedEnvironment(env, nil)
@@ -1894,23 +1903,28 @@ func (e *Task) patternMatches(
 		defer func() { e.PopEnv(nil) }() // Pattern matches shouldn't produce errors via defer usually
 
 		// Check if all required fields are present
-		for key, subPattern := range p.Pairs {
-			if key == token.ELLIPSIS {
-				// Skip wildcard placeholder for spread, we'll deal with that later
+		for _, entry := range p.Pairs {
+			if entry.Key == nil || entry.Pattern == nil {
 				continue
 			}
 
-			// Check if key exists in map
-			keyObj := &object.String{Value: key}
-			mapKey := keyObj.MapKey()
-			usedKeys = append(usedKeys, mapKey)
+			keyObj, err := e.evalMapPatternKey(entry.Key)
+			if err != nil {
+				return false, err
+			}
+			hashable, ok := keyObj.(object.Hashable)
+			if !ok {
+				return false, fmt.Errorf("unusable as map key: %s", keyObj.Type())
+			}
+			mapKey := hashable.MapKey()
+			usedKeys[mapKey] = true
 			pair, ok := mapObj.Pairs[mapKey]
 			if !ok {
 				return false, nil
 			}
 
 			// Check if value matches subpattern
-			matched, err := e.patternMatches(subPattern, pair.Value, isConstant, isExport, isImport, pinEnv)
+			matched, err := e.patternMatches(entry.Pattern, pair.Value, isConstant, isExport, isImport, pinEnv)
 			if !matched || err != nil {
 				return false, err
 			}
@@ -1921,33 +1935,22 @@ func (e *Task) patternMatches(
 		}
 
 		// If a spread pattern is used, collect unused keys into a new map
-		if p.Spread {
-			pair, ok := p.Pairs[token.ELLIPSIS]
-			if ok {
-				if len(usedKeys) >= len(mapObj.Pairs) {
-					// map is empty
-					_, err := e.patternMatches(pair, &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}, isConstant, isExport, isImport, pinEnv)
-					if err != nil {
-						return false, err
+		if p.Spread != nil {
+			if len(usedKeys) >= len(mapObj.Pairs) {
+				_, err := e.patternMatches(p.Spread, &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}, isConstant, isExport, isImport, pinEnv)
+				if err != nil {
+					return false, err
+				}
+			} else {
+				copiedPairs := make(map[object.MapKey]object.MapPair)
+				for mapKey, pair := range mapObj.Pairs {
+					if !usedKeys[mapKey] {
+						copiedPairs[mapKey] = pair
 					}
-				} else {
-					copiedPairs := make(map[object.MapKey]object.MapPair)
-					for mapKey, pair := range mapObj.Pairs {
-						isUsed := false
-						for _, usedKey := range usedKeys {
-							if mapKey == usedKey {
-								isUsed = true
-								break
-							}
-						}
-						if !isUsed {
-							copiedPairs[mapKey] = pair
-						}
-					}
-					_, err := e.patternMatches(pair, &object.Map{Pairs: copiedPairs}, isConstant, isExport, isImport, pinEnv)
-					if err != nil {
-						return false, err
-					}
+				}
+				_, err := e.patternMatches(p.Spread, &object.Map{Pairs: copiedPairs}, isConstant, isExport, isImport, pinEnv)
+				if err != nil {
+					return false, err
 				}
 			}
 		}
@@ -2034,6 +2037,28 @@ func (e *Task) patternMatches(
 
 	// Unhandled pattern type
 	return false, nil
+}
+
+func (e *Task) evalMapPatternKey(key ast.Expression) (object.Object, error) {
+	switch key := key.(type) {
+	case *ast.StringLiteral:
+		return &object.String{Value: key.Value}, nil
+	case *ast.SymbolLiteral:
+		return object.InternSymbol(key.Value), nil
+	case *ast.Identifier:
+		return &object.String{Value: key.Value}, nil
+	case *ast.NumberLiteral:
+		return &object.Number{Value: key.Value}, nil
+	case *ast.Boolean:
+		if key.Value {
+			return object.TRUE, nil
+		}
+		return object.FALSE, nil
+	case *ast.Nil:
+		return object.NIL, nil
+	default:
+		return nil, fmt.Errorf("map pattern keys must be literals or identifiers, got %T", key)
+	}
 }
 
 func (e *Task) patternMatchesList(
@@ -2220,6 +2245,9 @@ func (e *Task) objectsEqual(a, b object.Object) bool {
 	case *object.String:
 		return aVal.Value == b.(*object.String).Value
 
+	case *object.Symbol:
+		return aVal == b.(*object.Symbol)
+
 	case *object.Nil:
 		return true // nil equals nil
 
@@ -2310,17 +2338,17 @@ func (e *Task) evalMapIndexExpression(pos int, obj, index object.Object) object.
 
 func (e *Task) evalStructIndexExpression(pos int, obj, index object.Object) object.Object {
 	structObj := obj.(*object.StructValue)
-	key, ok := index.(*object.String)
+	key, ok := index.(*object.Symbol)
 	if !ok {
-		return e.newErrorfWithPos(pos, "struct field access expects string, got %s", index.Type())
+		return e.newErrorfWithPos(pos, "struct field access expects symbol, got %s", index.Type())
 	}
 	if structObj.Schema == nil {
 		return e.newErrorfWithPos(pos, "struct has no schema")
 	}
-	if _, ok := structObj.Schema.FieldIndex[key.Value]; !ok {
-		return e.newErrorfWithPos(pos, "unknown field '%s' for struct %s", key.Value, e.structSchemaName(structObj.Schema))
+	if _, ok := structObj.Schema.FieldIndex[key.Name]; !ok {
+		return e.newErrorfWithPos(pos, "unknown field '%s' for struct %s", key.Name, e.structSchemaName(structObj.Schema))
 	}
-	val, ok := structObj.Fields[key.Value]
+	val, ok := structObj.Fields[key.Name]
 	if !ok {
 		return object.NIL
 	}

@@ -12,13 +12,13 @@ arr[3] /> assertEqual("l")
 // slicing
 // -------
 
-arr[:] /> assertEqual(["h", "e", "l", "l", "o"])
+arr[0:] /> assertEqual(["h", "e", "l", "l", "o"])
 
 arr[1:] /> assertEqual(["e", "l", "l", "o"])
 
-arr[:2] /> assertEqual(["h", "e"])
+arr[0:2] /> assertEqual(["h", "e"])
 
-arr[:-1] /> assertEqual(["h", "e", "l", "l"])
+arr[0:-1] /> assertEqual(["h", "e", "l", "l"])
 
 arr[0:4] /> assertEqual(["h", "e", "l", "l"])
 
@@ -26,27 +26,27 @@ arr[0:10] /> assertEqual(["h", "e", "l", "l", "o"])
 
 arr[10:] /> assertEqual([])
 
-(arr[:2] + arr[4:]) /> assertEqual(["h", "e", "o"])
+(arr[0:2] + arr[4:]) /> assertEqual(["h", "e", "o"])
 
 arr[1 + 1:] /> assertEqual(["l", "l", "o"])
 
 // slicing with step value
 // -----------------------
 
-arr[::] /> assertEqual(["h", "e", "l", "l", "o"])
+arr[0::] /> assertEqual(["h", "e", "l", "l", "o"])
 
 arr[1::] /> assertEqual(["e", "l", "l", "o"])
 
-arr[:2:] /> assertEqual(["h", "e"])
+arr[0:2:] /> assertEqual(["h", "e"])
 
-arr[::2] /> assertEqual(["h", "l", "o"])
+arr[0::2] /> assertEqual(["h", "l", "o"])
 
-arr[::3] /> assertEqual(["h", "l"])
+arr[0::3] /> assertEqual(["h", "l"])
 
 arr[0:4:] /> assertEqual(["h", "e", "l", "l"])
 
 arr[1::2] /> assertEqual(["e", "l"])
 
-arr[:6:2] /> assertEqual(["h", "l", "o"])
+arr[0:6:2] /> assertEqual(["h", "l", "o"])
 
 arr[1:6:2] /> assertEqual(["e", "l"])

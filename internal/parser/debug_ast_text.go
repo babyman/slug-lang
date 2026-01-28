@@ -150,6 +150,8 @@ func RenderASTAsText(node ast.Node, indent int) string {
 		return n.Value.String()
 	case *ast.StringLiteral:
 		return fmt.Sprintf("%q", n.Value)
+	case *ast.SymbolLiteral:
+		return ":" + n.Value
 	case *ast.Boolean:
 		return fmt.Sprintf("%v", n.Value)
 	case *ast.Nil:
@@ -226,14 +228,14 @@ func RenderASTAsText(node ast.Node, indent int) string {
 
 	case *ast.MapPattern:
 		pairs := []string{}
-		for k, p := range n.Pairs {
-			pairs = append(pairs, fmt.Sprintf("%s: %s", k, RenderASTAsText(p, 0)))
+		for _, entry := range n.Pairs {
+			pairs = append(pairs, fmt.Sprintf("%s: %s", RenderASTAsText(entry.Key, 0), RenderASTAsText(entry.Pattern, 0)))
 		}
 		if n.SelectAll {
 			pairs = append(pairs, "*")
 		}
-		if n.Spread {
-			pairs = append(pairs, "...")
+		if n.Spread != nil {
+			pairs = append(pairs, "..."+RenderASTAsText(n.Spread, 0))
 		}
 		delim := ""
 		if n.Exact {

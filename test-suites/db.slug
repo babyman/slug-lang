@@ -21,10 +21,10 @@ var testSqliteWorkflow = fn() {
     val rows = query(conn, "SELECT name, age FROM users ORDER BY age ASC")
     
     assertEqual(len(rows), 2)
-    assertEqual(rows[0].name, "Bob")
-    assertEqual(rows[0].age, 25)
-    assertEqual(rows[1].name, "Alice")
-    assertEqual(rows[1].age, 30)
+    assertEqual(rows[0]["name"], "Bob")
+    assertEqual(rows[0]["age"], 25)
+    assertEqual(rows[1]["name"], "Alice")
+    assertEqual(rows[1]["age"], 30)
 }
 
 @test
@@ -50,5 +50,5 @@ var testSqliteTransactions = fn() {
 
     val rowsAfterCommit = query(conn, "SELECT * FROM tokens")
     assertEqual(len(rowsAfterCommit), 1, "Commit failed to persist data")
-    assertEqual(rowsAfterCommit[0].token, "permanent")
+    assertEqual(rowsAfterCommit[0]["token"], "permanent")
 }

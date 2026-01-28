@@ -104,6 +104,13 @@ func WalkAST(node ast.Node) interface{} {
 			"value": n.Value,
 		}
 
+	case *ast.SymbolLiteral:
+		return map[string]interface{}{
+			"type":  "SymbolLiteral",
+			"token": n.TokenLiteral(),
+			"value": n.Value,
+		}
+
 	case *ast.BytesLiteral:
 		return map[string]interface{}{
 			"type":  "BytesLiteral",
@@ -304,19 +311,19 @@ func WalkAST(node ast.Node) interface{} {
 		return map[string]interface{}{"type": "ListPattern", "elements": elements}
 	case *ast.MapPattern:
 		type pair struct {
-			Key     string      `json:"key"`
+			Key     interface{} `json:"key"`
 			Pattern interface{} `json:"pattern"`
 		}
 		pairs := make([]pair, 0, len(n.Pairs))
-		for k, p := range n.Pairs {
-			pairs = append(pairs, pair{Key: k, Pattern: WalkAST(p)})
+		for _, entry := range n.Pairs {
+			pairs = append(pairs, pair{Key: WalkAST(entry.Key), Pattern: WalkAST(entry.Pattern)})
 		}
 		return map[string]interface{}{
 			"type":      "MapPattern",
 			"pairs":     pairs,
 			"exact":     n.Exact,
 			"selectAll": n.SelectAll,
-			"spread":    n.Spread,
+			"spread":    WalkAST(n.Spread),
 		}
 
 	case *ast.StructPattern:

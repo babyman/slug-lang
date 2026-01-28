@@ -221,6 +221,15 @@ func (i *Identifier) expressionNode()      {}
 func (i *Identifier) TokenLiteral() string { return i.Token.Literal }
 func (i *Identifier) String() string       { return i.Value }
 
+type SymbolLiteral struct {
+	Token token.Token
+	Value string
+}
+
+func (sl *SymbolLiteral) expressionNode()      {}
+func (sl *SymbolLiteral) TokenLiteral() string { return sl.Token.Literal }
+func (sl *SymbolLiteral) String() string       { return ":" + sl.Value }
+
 type Boolean struct {
 	Token token.Token
 	Value bool
@@ -859,11 +868,11 @@ func (ap *ListPattern) String() string {
 
 // MapPattern for matching map structure
 type MapPattern struct {
-	Token     token.Token             // The token representing the map pattern.
-	Pairs     map[string]MatchPattern // List of keys for matching (for `{key}`).
-	Spread    bool                    // Whether ... is present to match additional fields
-	Exact     bool                    // True for exact match patterns `{|k1, k2|}`.
-	SelectAll bool                    // True for wildcard match `{*}`.
+	Token     token.Token // The token representing the map pattern.
+	Pairs     []MapPatternEntry
+	Spread    MatchPattern // Optional spread binding for ...
+	Exact     bool         // True for exact match patterns `{|k1, k2|}`.
+	SelectAll bool         // True for wildcard match `{*}`.
 }
 
 func (mp *MapPattern) expressionNode()      {}
@@ -873,12 +882,11 @@ func (mp *MapPattern) String() string {
 	var out bytes.Buffer
 	pairs := []string{}
 
-	for key, pattern := range mp.Pairs {
-		if key == "_" {
-			pairs = append(pairs, "_")
-		} else {
-			pairs = append(pairs, key+": "+pattern.String())
+	for _, pair := range mp.Pairs {
+		if pair.Key == nil {
+			continue
 		}
+		pairs = append(pairs, pair.Key.String()+": "+pair.Pattern.String())
 	}
 
 	out.WriteString("{")
@@ -889,12 +897,24 @@ func (mp *MapPattern) String() string {
 		out.WriteString("*")
 	}
 	out.WriteString(strings.Join(pairs, ", "))
+	if mp.Spread != nil {
+		if len(pairs) > 0 {
+			out.WriteString(", ")
+		}
+		out.WriteString("...")
+		out.WriteString(mp.Spread.String())
+	}
 	if mp.Exact {
 		out.WriteString("|")
 	}
 	out.WriteString("}")
 
 	return out.String()
+}
+
+type MapPatternEntry struct {
+	Key     Expression
+	Pattern MatchPattern
 }
 
 type StructPatternField struct {

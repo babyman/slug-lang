@@ -22,17 +22,17 @@ str[-1] /> assertEqual("o")
 // slicing
 // -------
 
-str[:] /> assertEqual("hello")
+str[0:] /> assertEqual("hello")
 
 str[1:] /> assertEqual("ello")
 
-str[:2] /> assertEqual("he")
+str[0:2] /> assertEqual("he")
 
 str[0:4] /> assertEqual("hell")
 
 str[1::] /> assertEqual("ello")
 
-str[:2:] /> assertEqual("he")
+str[0:2:] /> assertEqual("he")
 
 
 // slicing with step value
@@ -42,10 +42,10 @@ str[0:4:] /> assertEqual("hell")
 
 str[1:6:2] /> assertEqual("el")
 
-str[:6:2] /> assertEqual("hlo")
+str[0:6:2] /> assertEqual("hlo")
 
 str[1::2] /> assertEqual("el")
 
-str[::2] /> assertEqual("hlo")
+str[0::2] /> assertEqual("hlo")
 
-str[::] /> assertEqual("hello")
+str[0::] /> assertEqual("hello")

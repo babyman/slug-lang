@@ -61,3 +61,19 @@ func TestIntegerMapKey(t *testing.T) {
 		t.Errorf("numbers with different content have same map keys, %v : %v", one1, two1)
 	}
 }
+
+func TestSymbolMapKey(t *testing.T) {
+	s1 := InternSymbol("foo")
+	s2 := InternSymbol("foo")
+	s3 := InternSymbol("bar")
+
+	if s1 != s2 {
+		t.Errorf("symbols with same name are not interned")
+	}
+	if s1.MapKey() != s2.MapKey() {
+		t.Errorf("symbols with same name have different map keys")
+	}
+	if s1.MapKey() == s3.MapKey() {
+		t.Errorf("symbols with different names have same map keys")
+	}
+}

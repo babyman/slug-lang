@@ -770,6 +770,77 @@ func TestParsingEmptyMapLiteral(t *testing.T) {
 	}
 }
 
+func TestParsingSymbolLiteral(t *testing.T) {
+	input := ":foo"
+
+	l := lexer.New(input)
+	p := New(l, "", input)
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	stmt := program.Statements[0].(*ast.ExpressionStatement)
+	symbol, ok := stmt.Expression.(*ast.SymbolLiteral)
+	if !ok {
+		t.Fatalf("exp is not ast.SymbolLiteral. got=%T", stmt.Expression)
+	}
+	if symbol.Value != "foo" {
+		t.Fatalf("symbol.Value not foo. got=%q", symbol.Value)
+	}
+}
+
+func TestParsingQuotedSymbolLiteral(t *testing.T) {
+	input := `:"foo bar"`
+
+	l := lexer.New(input)
+	p := New(l, "", input)
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	stmt := program.Statements[0].(*ast.ExpressionStatement)
+	symbol, ok := stmt.Expression.(*ast.SymbolLiteral)
+	if !ok {
+		t.Fatalf("exp is not ast.SymbolLiteral. got=%T", stmt.Expression)
+	}
+	if symbol.Value != "foo bar" {
+		t.Fatalf("symbol.Value not \"foo bar\". got=%q", symbol.Value)
+	}
+}
+
+func TestParsingMapLiteralsSymbolKeys(t *testing.T) {
+	input := `{foo: 1, bar: 2}`
+
+	l := lexer.New(input)
+	p := New(l, "", input)
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	stmt := program.Statements[0].(*ast.ExpressionStatement)
+	mapLiteral, ok := stmt.Expression.(*ast.MapLiteral)
+	if !ok {
+		t.Fatalf("exp is not ast.MapLiteral. got=%T", stmt.Expression)
+	}
+
+	expected := map[string]int64{
+		"foo": 1,
+		"bar": 2,
+	}
+
+	if len(mapLiteral.Pairs) != len(expected) {
+		t.Errorf("mapLiteral.Pairs has wrong length. got=%d", len(mapLiteral.Pairs))
+	}
+
+	for key, value := range mapLiteral.Pairs {
+		literal, ok := key.(*ast.SymbolLiteral)
+		if !ok {
+			t.Errorf("key is not ast.SymbolLiteral. got=%T", key)
+			continue
+		}
+
+		expectedValue := expected[literal.Value]
+		testIntegerLiteral(t, value, expectedValue)
+	}
+}
+
 func TestParsingMapLiteralsStringKeys(t *testing.T) {
 	input := `{"one": 1, "two": 2, "three": 3}`
 

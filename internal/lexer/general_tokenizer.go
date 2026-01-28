@@ -104,15 +104,23 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 		}
 	case '{':
 		tok = g.lexer.handleCompoundToken2(token.LBRACE, '{', token.INTERPOLATION_START, '|', token.MATCH_KEYS_EXACT)
+		if tok.Type == token.INTERPOLATION_START {
+			g.lexer.pushInterpolationReturnMode(g.lexer.prevMode)
+		}
 	case '}':
-		if g.lexer.prevMode != nil && g.lexer.peekChar() == '}' && g.lexer.peekTwoChars() == '"' {
+		if g.lexer.hasInterpolationReturnMode() && g.lexer.peekChar() == '}' {
 			g.lexer.readChar() // consume the }
-			g.lexer.readChar() // Consume the closing "
-			tok = token.Token{Type: token.INTERPOLATION_END, Literal: "}}", Position: startPosition}
-		} else if g.lexer.prevMode != nil && g.lexer.peekChar() == '}' {
-			g.lexer.readChar() // consume the }
-			tok = token.Token{Type: token.INTERPOLATION_END, Literal: "}}", Position: startPosition}
-			g.lexer.switchMode(g.lexer.prevMode) // Return to the previous string tokenizer
+			returnMode := g.lexer.popInterpolationReturnMode()
+			if _, ok := returnMode.(*SingleLineStringTokenizer); ok && g.lexer.peekChar() == '"' {
+				g.lexer.readChar() // consume the closing "
+				tok = token.Token{Type: token.INTERPOLATION_END, Literal: "}}", Position: startPosition}
+				g.lexer.setMode(NewGeneralTokenizer(g.lexer))
+			} else {
+				tok = token.Token{Type: token.INTERPOLATION_END, Literal: "}}", Position: startPosition}
+				if returnMode != nil {
+					g.lexer.switchMode(returnMode)
+				}
+			}
 		} else {
 			tok = newToken(token.RBRACE, g.lexer.ch, g.lexer.position)
 		}

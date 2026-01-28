@@ -237,11 +237,16 @@ func predeclarePattern(pat ast.MatchPattern, isConst bool, isExport bool, env *o
 			return nil
 		}
 		// declare any identifiers inside explicit subpatterns
-		for _, sub := range p.Pairs {
-			if sub == nil {
+		for _, entry := range p.Pairs {
+			if entry.Pattern == nil {
 				continue
 			}
-			if err := predeclarePattern(sub, isConst, isExport, env); err != nil {
+			if err := predeclarePattern(entry.Pattern, isConst, isExport, env); err != nil {
+				return err
+			}
+		}
+		if p.Spread != nil {
+			if err := predeclarePattern(p.Spread, isConst, isExport, env); err != nil {
 				return err
 			}
 		}

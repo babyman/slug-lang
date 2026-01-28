@@ -21,6 +21,7 @@ const (
 	NUMBER_OBJ  = "NUMBER"
 	STRING_OBJ  = "STRING"
 	BYTE_OBJ    = "BYTES"
+	SYMBOL_OBJ  = "SYMBOL"
 
 	LIST_OBJ          = "LIST"
 	MAP_OBJ           = "MAP"

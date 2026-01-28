@@ -12,13 +12,13 @@ arr[3] /> assertEqual(108)
 // slicing
 // -------
 
-arr[:] /> assertEqual(0x"68656c6c6f")
+arr[0:] /> assertEqual(0x"68656c6c6f")
 
 arr[1:] /> assertEqual(0x"656c6c6f")
 
-arr[:2] /> assertEqual(0x"6865")
+arr[0:2] /> assertEqual(0x"6865")
 
-arr[:-1] /> assertEqual(0x"68656c6c")
+arr[0:-1] /> assertEqual(0x"68656c6c")
 
 arr[0:4] /> assertEqual(0x"68656c6c")
 
@@ -26,27 +26,27 @@ arr[0:10] /> assertEqual(0x"68656c6c6f")
 
 arr[10:] /> assertEqual(0x"")
 
-(arr[:2] + arr[4:]) /> assertEqual(0x"68656f")
+(arr[0:2] + arr[4:]) /> assertEqual(0x"68656f")
 
 arr[1 + 1:] /> assertEqual(0x"6c6c6f")
 
 // slicing with step value
 // -----------------------
 
-arr[::] /> assertEqual(0x"68656c6c6f")
+arr[0::] /> assertEqual(0x"68656c6c6f")
 
 arr[1::] /> assertEqual(0x"656c6c6f")
 
-arr[:2:] /> assertEqual(0x"6865")
+arr[0:2:] /> assertEqual(0x"6865")
 
-arr[::2] /> assertEqual(0x"686c6f")
+arr[0::2] /> assertEqual(0x"686c6f")
 
-arr[::3] /> assertEqual(0x"686c")
+arr[0::3] /> assertEqual(0x"686c")
 
 arr[0:4:] /> assertEqual(0x"68656c6c")
 
 arr[1::2] /> assertEqual(0x"656c")
 
-arr[:6:2] /> assertEqual(0x"686c6f")
+arr[0:6:2] /> assertEqual(0x"686c6f")
 
 arr[1:6:2] /> assertEqual(0x"656c")

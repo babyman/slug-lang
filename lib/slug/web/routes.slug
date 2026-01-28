@@ -91,7 +91,7 @@ var handleRequest = fn(@list routes, request) match {
 var matchRoutePattern = fn(pattern, path) {
 	// prefix mount: "/static/*"
 	if (pattern /> endsWith("/*")) {
-		var base = pattern[:-2] // strip "/*"
+		var base = pattern[0:-2] // strip "/*"
 
 		if (path == base) {
 			{ "*": "" }

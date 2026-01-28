@@ -113,14 +113,14 @@ var encodeObject = fn(@map m) {
 var encodeObjectPairs = fn(@list keys, @map m, @str acc) match {
 	[[], ...] => acc
 	[[k], ...] => {
-		if (type(k) != "STRING") {
+		if (type(k) != STRING_TYPE) {
 			error("json: map keys must be strings, got: " + type(k))
 		} else {
 			acc + encodeString(k) + ":" + encode(m[k])
 		}
 	}
 	[[k, ...rest], ...] => {
-		if (type(k) != "STRING") {
+		if (type(k) != STRING_TYPE) {
 			error("json: map keys must be strings, got: " + type(k))
 		} else {
 			recur(rest, m, acc + encodeString(k) + ":" + encode(m[k]) + ",")
@@ -175,14 +175,14 @@ var prettyObjectPairs = fn(@list keys, @map m, @num indent, @num depth, @str ind
 	match keys {
 		[] => acc
 		[k] => {
-			if (type(k) != "STRING") {
+			if (type(k) != STRING_TYPE) {
 				error("json: map keys must be strings, got: " + type(k))
 			} else {
 				acc + indentStr + encodeString(k) + ": " + prettyPrint(m[k], indent, depth)
 			}
 		}
 		[k, ...rest] => {
-			if (type(k) != "STRING") {
+			if (type(k) != STRING_TYPE) {
 				error("json: map keys must be strings, got: " + type(k))
 			} else {
 				recur(rest, m, indent, depth, indentStr,

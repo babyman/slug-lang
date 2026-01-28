@@ -120,7 +120,7 @@ foreign closeFile = fn(@num handle)
 var readLines = fn(@num file, lines = []) {
 	match file /> readLine {
 		nil => lines
-		str => readLines(file, lines :+ str[:-1]) // -1 to trim the newline
+		str => readLines(file, lines :+ str[0:-1]) // -1 to trim the newline
 	}
 }
 

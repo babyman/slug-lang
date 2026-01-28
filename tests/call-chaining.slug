@@ -41,8 +41,8 @@ val m3 = { key: m2 }
 10 /> m2.key.key /> assertEqual(20)
 10 /> m3.key.key.key /> assertEqual(20)
 
-10 /> m1["key"] /> assertEqual(20)
-10 /> m3["key"].key["key"] /> assertEqual(20)
+10 /> m1[:key] /> assertEqual(20)
+10 /> m3[:key].key[:key] /> assertEqual(20)
 
 // chaining with lists
 //
@@ -55,4 +55,3 @@ val l2 = [l1]
 10 /> l1[0] /> assertEqual(20)
 10 /> l2[0][0]() /> assertEqual(20)
 10 /> l2[0][0] /> assertEqual(20)
-

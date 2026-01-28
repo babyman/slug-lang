@@ -160,11 +160,11 @@ func fnIoFsInfo() *object.Foreign {
 				return ctx.NewError("failed to get file info: %s", err.Error())
 			}
 			m := &object.Map{}
-			m.Put(&object.String{Value: "name"}, &object.String{Value: info.Name()}).
-				Put(&object.String{Value: "size"}, &object.Number{Value: dec64.FromInt64(info.Size())}).
-				Put(&object.String{Value: "mode"}, &object.Number{Value: dec64.FromInt64(int64(info.Mode()))}).
-				Put(&object.String{Value: "modTime"}, &object.Number{Value: dec64.FromInt64(info.ModTime().Unix())}).
-				Put(&object.String{Value: "isDir"}, ctx.NativeBoolToBooleanObject(info.IsDir()))
+			m.Put(object.InternSymbol("name"), &object.String{Value: info.Name()}).
+				Put(object.InternSymbol("size"), &object.Number{Value: dec64.FromInt64(info.Size())}).
+				Put(object.InternSymbol("mode"), &object.Number{Value: dec64.FromInt64(int64(info.Mode()))}).
+				Put(object.InternSymbol("modTime"), &object.Number{Value: dec64.FromInt64(info.ModTime().Unix())}).
+				Put(object.InternSymbol("isDir"), ctx.NativeBoolToBooleanObject(info.IsDir()))
 			return m
 		},
 	}

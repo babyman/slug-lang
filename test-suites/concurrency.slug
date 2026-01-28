@@ -119,8 +119,8 @@ var test_timeout_throws = fn() {
         var i = await x within 1
     }
     var r = runSafe(fn() { f() })
-    r.error.type /> eq("timeout")
-    r.error.ms /> eq(1)
+    r.error["type"] /> eq("timeout")
+    r.error["ms"] /> eq(1)
 }
 
 @test
@@ -153,8 +153,8 @@ var test_errors_cause_incomplete_tasks_to_cancel = fn() {
     
     throwError.error /> eq("err")
 
-    xldTask.error.type /> eq("cancelled")
-    xldTask.error.reason /> eq("sibling cancelled due to fail-fast")
+    xldTask.error["type"] /> eq("cancelled")
+    xldTask.error["reason"] /> eq("sibling cancelled due to fail-fast")
 }
 
 @test

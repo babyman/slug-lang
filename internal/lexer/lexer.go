@@ -17,6 +17,8 @@ type Lexer struct {
 
 	parenDepth   int // Track nesting of ( )
 	bracketDepth int // Track nesting of [ ]
+
+	interpolationStack []Tokenizer // Return modes for nested interpolations
 }
 
 type Tokenizer interface {
@@ -40,6 +42,26 @@ func (l *Lexer) switchMode(mode Tokenizer) {
 func (l *Lexer) setMode(mode Tokenizer) {
 	l.prevMode = nil
 	l.currentMode = mode
+}
+
+func (l *Lexer) pushInterpolationReturnMode(mode Tokenizer) {
+	if mode != nil {
+		l.interpolationStack = append(l.interpolationStack, mode)
+	}
+}
+
+func (l *Lexer) popInterpolationReturnMode() Tokenizer {
+	if len(l.interpolationStack) == 0 {
+		return nil
+	}
+	idx := len(l.interpolationStack) - 1
+	mode := l.interpolationStack[idx]
+	l.interpolationStack = l.interpolationStack[:idx]
+	return mode
+}
+
+func (l *Lexer) hasInterpolationReturnMode() bool {
+	return len(l.interpolationStack) > 0
 }
 
 func (l *Lexer) NextToken() token.Token {

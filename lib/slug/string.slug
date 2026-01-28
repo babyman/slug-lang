@@ -67,7 +67,7 @@ var contains = fn(@str str, @str seq) {
 )
 @export
 var startsWith = fn(@str str, @str start) {
-	str[:len(start)] == start
+	str[0:len(start)] == start
 }
 
 @testWith(
@@ -127,7 +127,7 @@ var split = fn(@str str, @str delimiter, @num max = -1, @num count = 1, @list st
 	match str /> indexOf(delimiter) {
 		n if n >= 0 && (max < 0 || count < max) => {
 			val i = n + delimiter /> len()
-			recur(str[i:], delimiter, max, count + 1, strs :+ str[:n])
+			recur(str[i:], delimiter, max, count + 1, strs :+ str[0:n])
 		}
 		_ => strs :+ str
 	}

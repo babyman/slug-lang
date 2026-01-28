@@ -108,7 +108,7 @@ func fnBuiltinImport() *object.Foreign {
 				},
 			}
 			for k, v := range tempMap {
-				m.Put(&object.String{Value: k}, v)
+				m.Put(object.InternSymbol(k), v)
 			}
 			return m
 		},

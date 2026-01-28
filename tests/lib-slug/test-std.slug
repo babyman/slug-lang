@@ -10,3 +10,8 @@ list /> map(fn(v) {v * v})
 	 /> reduce(0, fn(a, b) { a + b })
 	 /> assertEqual(56)
 
+label(:foo) /> assertEqual("foo")
+
+label(sym("foo bar")) /> assertEqual("foo bar")
+
+label(sym("Content-Type")) /> assertEqual("Content-Type")

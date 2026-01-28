@@ -9,10 +9,10 @@ var {*} = import(
 var f = fn(x) {
     match x {
       {} => "empty map"
-      {k:1} => "map with k == 1"
-      {k} if k == "a" => "map with " + k
-      {k} => "map with " + k
-      {k1, k2:k, ...a} => "map with " + k + " '" + a + "'"
+      {"k":1} => "map with k == 1"
+      {"k":k} if k == "a" => "map with " + k
+      {"k":k} => "map with " + k
+      {"k1", "k2":k, ...a} => "map with " + k + " '" + a + "'"
       {...} => "map with data"
       _ => {
               return "default"

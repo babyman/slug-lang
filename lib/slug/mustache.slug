@@ -73,7 +73,7 @@ var isWs = fn(@str s) {
 }
 
 var lineStart = fn(@str s, @num idx) {
-	var k = if(idx <= 0) {-1} else {(s[:idx] /> lastIndexOf("\n"))}
+	var k = if(idx <= 0) {-1} else {(s[0:idx] /> lastIndexOf("\n"))}
 	if(k < 0) {0} else {(k + 1)}
 }
 
@@ -223,7 +223,7 @@ var parse = fn(@str template) {
 		if (frame.name != name) {
 			throw Error { type: "MustacheError", msg: 'Mustache section mismatch: expected {{' + frame.name + '}} got {{' + name + '}}' }
 		}
-		var parent = stack[:len(stack) - 1]
+		var parent = stack[0:len(stack) - 1]
 		var node = SectionNode { name:frame.name, inverted:frame.inverted, children:frame.nodes, raw:rawInner, otag:frame.otag, ctag:frame.ctag }
 		parent /> then(fn(ps) { pushNode(ps, node) })
 	}

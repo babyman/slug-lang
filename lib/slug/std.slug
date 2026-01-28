@@ -7,16 +7,18 @@ var {*} = import(
 )
 
 /// Constant for NIL_TYPE, `type`
-@export val NIL_TYPE = "NIL"
-@export val BOOLEAN_TYPE = "BOOLEAN"
-@export val NUMBER_TYPE = "NUMBER"
-@export val STRING_TYPE = "STRING"
-@export val LIST_TYPE = "LIST"
-@export val MAP_TYPE = "MAP"
-@export val BYTES_TYPE = "BYTES"
-@export val FUNCTION_TYPE = "FUNCTION"
-@export val TASK_TYPE = "TASK"
-@export val STRUCT_TYPE = "STRUCT"
+@export val NIL_TYPE = :nil
+@export val BOOLEAN_TYPE = :bool
+@export val NUMBER_TYPE = :number
+@export val STRING_TYPE = :string
+@export val LIST_TYPE = :list
+@export val MAP_TYPE = :map
+@export val BYTES_TYPE = :bytes
+@export val FUNCTION_TYPE = :function
+@export val TASK_TYPE = :task
+@export val STRUCT_TYPE = :struct
+@export val SYMBOL_TYPE = :symbol
+@export val ERROR_TYPE = :error
 
 
 /// Standard error payload shape for idiomatic error handling
@@ -60,29 +62,44 @@ foreign sprintf = fn(@str str, ...args)
 // get the list of keys used a map
 @testWith(
 	[{}], [],
-	[{k:1}], ["k"]
+	[{k:1}], [:k]
 )
 @export
-foreign keys = fn(@map map)
+foreign keys = fn(map)
+
+@testWith(
+	["foo"], :foo,
+	["foo bar"], :"foo bar",
+	["Content-Type"], :"Content-Type"
+)
+@export
+foreign sym = fn(@str name)
+
+@testWith(
+	[:foo], "foo",
+	[sym("a b")], "a b"
+)
+@export
+foreign label = fn(symbol)
 
 // get a value from a map, nil if not present
 @testWith(
-	[{}, "k"], nil,
-	[{k:1}, "k"], 1
+	[{}, :k], nil,
+	[{k:1}, :k], 1
 )
 @export
 foreign get = fn(@map map, key)
 
 @testWith(
-	[{}, "k", "v"], {k:"v"}
+	[{}, :k, "v"], {k:"v"}
 )
 @export
 foreign put = fn(@map map, key, value)
 
 @testWith(
-	[{}, "k"], {},
-	[{k:1}, "k"], {},
-	[{k:1}, "j"], {k:1}
+	[{}, :k], {},
+	[{k:1}, :k], {},
+	[{k:1}, :j], {k:1}
 )
 @export
 foreign remove = fn(@map map, key)
@@ -100,8 +117,8 @@ foreign update = fn(@list list, @num index, value)
 foreign swap = fn(@list list, @num index1, @num index2)
 
 @testWith(
-	[{k:1}, "k", fn(k, v) { v + 1 }], {k:2},
-	[{}, "k", fn(k, v) { v == nil }], {k:true}
+	[{k:1}, :k, fn(k, v) { v + 1 }], {k:2},
+	[{}, :k, fn(k, v) { v == nil }], {k:true}
 )
 @export
 var compute = fn(@map map, key, f) {

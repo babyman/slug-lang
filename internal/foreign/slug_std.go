@@ -13,10 +13,54 @@ func fnStdType() *object.Foreign {
 				len(args))
 		}
 
-		return &object.String{
-			Value: string(args[0].Type()),
+		if structVal, ok := args[0].(*object.StructValue); ok {
+			if structVal.Schema == nil {
+				return ctx.NewError("struct has no schema")
+			}
+			return structVal.Schema
 		}
-	},
+
+		if _, ok := args[0].(*object.StructSchema); ok {
+			return object.InternSymbol("struct")
+		}
+
+		tag, ok := typeTagForObject(args[0])
+		if !ok {
+			return ctx.NewError("unknown type: %s", args[0].Type())
+		}
+
+		return object.InternSymbol(tag)
+	}}
+}
+
+func typeTagForObject(obj object.Object) (string, bool) {
+	switch obj.Type() {
+	case object.NIL_OBJ:
+		return "nil", true
+	case object.BOOLEAN_OBJ:
+		return "bool", true
+	case object.NUMBER_OBJ:
+		return "number", true
+	case object.STRING_OBJ:
+		return "string", true
+	case object.LIST_OBJ:
+		return "list", true
+	case object.MAP_OBJ:
+		return "map", true
+	case object.BYTE_OBJ:
+		return "bytes", true
+	case object.SYMBOL_OBJ:
+		return "symbol", true
+	case object.ERROR_OBJ:
+		return "error", true
+	case object.FUNCTION_OBJ:
+		return "function", true
+	case object.TASK_HANDLE_OBJ:
+		return "task", true
+	case object.STRUCT_SCHEMA_OBJ:
+		return "struct", true
+	default:
+		return "", false
 	}
 }
 
@@ -94,22 +138,63 @@ func fnStdKeys() *object.Foreign {
 				return ctx.NewError("wrong number of arguments. got=%d, want=1", len(args))
 			}
 
-			// Ensure the argument is of type MAP_OBJ
-			if args[0].Type() != object.MAP_OBJ {
-				return ctx.NewError("argument to `keys` must be a MAP, got=%s", args[0].Type())
+			switch obj := args[0].(type) {
+			case *object.Map:
+				keys := make([]object.Object, 0, len(obj.Pairs))
+				for _, pair := range obj.Pairs {
+					keys = append(keys, pair.Key)
+				}
+				return &object.List{Elements: keys}
+			case *object.StructValue:
+				if obj.Schema == nil {
+					return ctx.NewError("struct has no schema")
+				}
+				keys := make([]object.Object, len(obj.Schema.Fields))
+				for i, field := range obj.Schema.Fields {
+					keys[i] = object.InternSymbol(field.Name)
+				}
+				return &object.List{Elements: keys}
+			case *object.StructSchema:
+				keys := make([]object.Object, len(obj.Fields))
+				for i, field := range obj.Fields {
+					keys[i] = object.InternSymbol(field.Name)
+				}
+				return &object.List{Elements: keys}
+			default:
+				return ctx.NewError("argument to `keys` must be a map or struct, got=%s", args[0].Type())
 			}
+		},
+	}
+}
 
-			// Extract the map
-			mapObj := args[0].(*object.Map)
-
-			// Collect keys
-			keys := make([]object.Object, 0, len(mapObj.Pairs))
-			for _, pair := range mapObj.Pairs {
-				keys = append(keys, pair.Key)
+func fnStdSym() *object.Foreign {
+	return &object.Foreign{
+		Name: "sym",
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return ctx.NewError("wrong number of arguments. got=%d, want=1", len(args))
 			}
+			str, ok := args[0].(*object.String)
+			if !ok {
+				return ctx.NewError("argument to `sym` must be a string, got=%s", args[0].Type())
+			}
+			return object.InternSymbol(str.Value)
+		},
+	}
+}
 
-			// Return the keys as an List object
-			return &object.List{Elements: keys}
+func fnStdLabel() *object.Foreign {
+	return &object.Foreign{
+		Name: "label",
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return ctx.NewError("wrong number of arguments. got=%d, want=1", len(args))
+			}
+			sym, ok := args[0].(*object.Symbol)
+			if !ok {
+				return ctx.NewError("argument to `label` must be a symbol, got=%s", args[0].Type())
+			}
+			return &object.String{Value: sym.Name}
 		},
 	}
 }

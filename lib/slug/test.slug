@@ -18,7 +18,7 @@ var runSafe = fn(@fun f) {
 
 @export
 var isAssertError = fn(v) {
-    v /> type() == STRUCT_TYPE && v.type == "AssertionError"
+    v /> type() == Error && v.type == "AssertionError"
 }
 
 @export
@@ -39,7 +39,7 @@ var assertThrows = fn(@fun f, expected, @str msg = nil) {
 }
 
 @export
-var assertErrorType = fn(@fun f, @str expected, @str msg = nil) {
+var assertErrorType = fn(@fun f, expected, @str msg = nil) {
     var r = runSafe(f)
     if (r.error /> type() == expected) {
         true

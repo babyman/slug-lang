@@ -9,6 +9,7 @@ const (
 
 	// Identifiers + literals
 	IDENT  = "IDENT"  // add, foobar, x, y, ...
+	SYMBOL = "SYMBOL" // :foo
 	NUMBER = "NUMBER" // 1343456
 	STRING = "STRING" // "foobar"
 	BYTES  = "BYTES"  // 0x"414243"
