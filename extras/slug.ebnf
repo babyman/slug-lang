@@ -115,13 +115,13 @@ expression_list = expression_item , { "," , expression_item } , [ "," ] ;
 expression_item = [ "..." ] , expression ;
 
 index_args = expression
-           | [ expression ] , ":" , [ expression ] , [ ":" , [ expression ] ]
+           | expression , ":" , [ expression ] , [ ":" , [ expression ] ]
            ;
 
 map_literal = "{" , [ map_entries ] , "}" ;
 map_entries = map_entry , { "," , map_entry } , [ "," ] ;
 map_entry = map_key , ":" , expression ;
-(* Bare identifiers are coerced to string keys unless bracketed. *)
+(* Bare identifiers are coerced to symbol keys unless bracketed. *)
 map_key = expression | "[" , expression , "]" ;
 
 struct_schema = "struct" , "{" , [ struct_schema_fields ] , "}" ;
@@ -172,9 +172,10 @@ struct_pattern_field = identifier , [ ":" , match_pattern ] ;
 
 block = "{" , { statement_sep } , { statement , { statement_sep } } , "}" ;
 
-literal = number | string | bytes | boolean | nil ;
+literal = number | string | bytes | boolean | nil | symbol ;
 boolean = "true" | "false" ;
 nil = "nil" ;
+symbol = ":" , ( identifier | string ) ;
 
 (* Lexical forms (simplified): *)
 identifier = letter , { letter | digit } ;

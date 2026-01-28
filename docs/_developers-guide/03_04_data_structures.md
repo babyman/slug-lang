@@ -9,7 +9,7 @@ val list = [10, 20, 30]
 
 list[1] /> println()    // 20
 list[-1] /> println()   // 30
-list[:1] /> println()   // [10]
+list[0:1] /> println()  // [10]
 list[1:] /> println()   // [20, 30]
 ```
 
@@ -21,11 +21,40 @@ Maps store key-value pairs:
 
 ```slug
 var myMap = {}
-myMap = put(myMap, "name", "Slug")
-get(myMap, "name") /> println()
+myMap = put(myMap, :name, "Slug")
+get(myMap, :name) /> println()
 ```
 
-## Lesson 4.3: Structs
+## Lesson 4.3: Symbols
+
+Symbols are interned labels used as map keys, struct fields, and type tags. They are written with a `:` prefix:
+
+```slug
+:ok
+:"Content-Type"
+```
+
+Use `sym()` to create symbols from strings and `label()` to get the raw text:
+
+```slug
+sym("foo bar")      // :"foo bar"
+label(:ok)          // "ok"
+```
+
+Maps with bare keys use symbols by default:
+
+```slug
+val headers = {contentType: "text/plain"}
+headers[:contentType] /> println()
+```
+
+When a map uses symbol keys, you can use dot access as shorthand:
+
+```slug
+headers.contentType /> println()
+```
+
+## Lesson 4.4: Structs
 
 Structs are schema-backed, immutable records. You define a schema with `struct`, then construct values from it.
 
@@ -44,6 +73,13 @@ Update with `copy`:
 
 ```slug
 val u2 = u1 copy { age: 3 }
+```
+
+Structs support introspection through `type()` and `keys()`:
+
+```slug
+type(u1) == User /> println()
+keys(u1) /> println()    // [:name, :age, :active]
 ```
 
 Match on structs:

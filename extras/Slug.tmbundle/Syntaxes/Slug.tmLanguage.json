@@ -4,10 +4,12 @@
   "fileTypes": ["slug"],
   "patterns": [
     {"include": "#comments"},
+    {"include": "#symbols"},
     {"include": "#strings"},
     {"include": "#numbers"},
     {"include": "#keywords"},
     {"include": "#tags"},
+    {"include": "#stdlib_functions"},
     {"include": "#operators"},
     {"include": "#function_calls"},
     {"include": "#identifiers"}
@@ -22,7 +24,34 @@
     },
     "tags": {
       "patterns": [
+        {"name": "storage.modifier.slug", "match": "@export\\b"},
+        {"name": "meta.annotation.test.slug", "match": "@testWith\\b"},
+        {"name": "storage.type.annotation.slug", "match": "@(?:bool|bytes|fun|list|map|num|str|symbol|task)\\b"},
         {"name": "entity.name.tag.slug", "match": "@[A-Za-z_][A-Za-z0-9_]*"}
+      ]
+    },
+    "stdlib_functions": {
+      "patterns": [
+        {"name": "support.function.stdlib.slug", "match": "\\b(type|keys|sym|label)\\b"}
+      ]
+    },
+    "symbols": {
+      "patterns": [
+        {"name": "constant.language.symbol.slug", "match": ":(?:nil|true|false)\\b"},
+        {"name": "support.type.symbol.slug", "match": ":(?:bool|number|string|list|map|bytes|function|task|struct|symbol|error)\\b"},
+        {"name": "constant.other.symbol.slug", "match": ":[A-Za-z_][A-Za-z0-9_]*"},
+        {"name": "constant.other.symbol.slug", "begin": ":\"\"\"", "end": "\"\"\""},
+        {"name": "constant.other.symbol.slug", "begin": ":'''", "end": "'''"},
+        {
+          "name": "constant.other.symbol.slug",
+          "begin": ":\"",
+          "end": "\"",
+          "patterns": [
+            {"name": "constant.character.escape.slug", "match": "\\\\[\\\\\"'nrt\\{]"},
+            {"name": "constant.character.escape.slug", "match": "\\\\[0-7]{1,3}"}
+          ]
+        },
+        {"name": "constant.other.symbol.slug", "begin": ":'", "end": "'"}
       ]
     },
     "keywords": {
@@ -99,10 +128,12 @@
       "end": "\\}\\}",
       "patterns": [
         {"include": "#comments"},
+        {"include": "#symbols"},
         {"include": "#strings"},
         {"include": "#numbers"},
         {"include": "#keywords"},
         {"include": "#tags"},
+        {"include": "#stdlib_functions"},
         {"include": "#operators"},
         {"include": "#function_calls"},
         {"include": "#identifiers"}

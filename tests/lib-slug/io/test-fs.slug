@@ -61,4 +61,3 @@ fileIn /> readLines /> len /> assertEqual(2)
 
 ("./" /> ls() /> len() > 0) /> assertTrue()
 
-
