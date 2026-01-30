@@ -27,8 +27,12 @@ scope: source.slug
 contexts:
   main:
     # Comments
-    - match: ///.*$
-      scope: comment.line.documentation.slug
+    - match: /\*\*
+      scope: comment.block.documentation.slug
+      push: doc_comment_block
+    - match: /\*
+      scope: comment.block.slug
+      push: comment_block
     - match: //.*$
       scope: comment.line.double-slash.slug
     - match: \#.*$
@@ -268,6 +272,18 @@ contexts:
       scope: punctuation.section.parens.end.slug
       pop: true
     - include: main
+
+  doc_comment_block:
+    - meta_scope: comment.block.documentation.slug
+    - match: \*/
+      pop: true
+    - match: .
+
+  comment_block:
+    - meta_scope: comment.block.slug
+    - match: \*/
+      pop: true
+    - match: .
 
   destructuring_pattern:
     - meta_scope: meta.destructuring.slug

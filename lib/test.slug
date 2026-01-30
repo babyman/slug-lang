@@ -1,26 +1,28 @@
-// Slug Test Framework
-//
-// This is a simple test framework for Slug programs that allows you to write and run
-// unit tests. The framework supports both simple test cases and parameterized tests
-// with multiple inputs and expected outputs.
-//
-// Usage:
-//   1. Tag your functions with either @test or @testWith
-//   2. Run your tests using the test runner
-//   3. View results including passes, failures and errors
-//
-// Example:
-//   @test
-//   var simpleTest = fn() {
-//     assert(1 + 1 == 2)
-//   }
-//
-//   @testWith(
-//     [1, 2, 3], 3,
-//     [7, 9, 8], 9,
-//     [4, 5, 3], 5
-//   )
-//   var max = fn(a, ...b)
+/**
+ * Slug Test Framework
+ *
+ * This is a simple test framework for Slug programs that allows you to write and run
+ * unit tests. The framework supports both simple test cases and parameterized tests
+ * with multiple inputs and expected outputs.
+ *
+ * Usage:
+ *   1. Tag your functions with either @test or @testWith
+ *   2. Run your tests using the test runner
+ *   3. View results including passes, failures and errors
+ *
+ * Example:
+ *   @test
+ *   var simpleTest = fn() {
+ *     assert(1 + 1 == 2)
+ *   }
+ *
+ *   @testWith(
+ *     [1, 2, 3], 3,
+ *     [7, 9, 8], 9,
+ *     [4, 5, 3], 5
+ *   )
+ *   var max = fn(a, ...b)
+ */
 
 var {*} = import(
 	"slug.std",
@@ -33,10 +35,14 @@ var {*} = import(
 	"slug.term.colour",
 )
 
-// @test - Marks a function as a test case that takes no parameters
-// @testWith - Allows test inputs and expected outputs to be specified
-//
+/**
+ * @testWith - Allows test inputs and expected outputs to be specified
+ */
 val TestWithTag = "@testWith"
+
+/**
+ * @test - Marks a function as a test case that takes no parameters
+ */
 val TestTag = "@test"
 
 val Fail = BrightColour["Red"]
@@ -166,4 +172,6 @@ var run = fn(stats, ...modules) match {
 	_ => "Unrecognized modules parameter!"
 }
 
-run({run:0, fail:0, error:0}, ...argv())
+if(len(argv()) > 0) {
+	run({run:0, fail:0, error:0}, ...argv())
+}

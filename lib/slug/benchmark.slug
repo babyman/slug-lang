@@ -1,7 +1,9 @@
-///
-/// slug.bench
-/// Slug-native micro benchmarking (no opts maps)
-///
+/**
+ *
+ * slug.benchmark
+ * Slug-native micro benchmarking (no opts maps)
+ *
+ */
 
 var {*} = import(
 	"slug.std",
@@ -27,7 +29,9 @@ val scale = fn(xs, unit) {
 	xs /> map(fn(x) { x / div })
 }
 
-/// insertion sort (ascending) — good enough for small sample counts
+/**
+ * insertion sort (ascending) — good enough for small sample counts
+ */
 val sortAsc = fn(xs, acc = []) match {
 	[[], ...] => acc
 	[[h, ...t], ...] => recur(t, insertAsc(acc, h))
@@ -121,12 +125,14 @@ val sampleTimesPerIter = fn(workFn, iters, samples, overheadPerIter) {
 
 // ---------------- Public API ----------------
 
-///
-/// micro(name, workFn, warmupMs=100, sampleMs=200, samples=20, minIters=1, maxIters=10000000, subtractOverhead=true, unit="ns")
-///
-/// returns:
-/// { name, unit, itersPerSample, samples, stats:{...}, raw:{timesPerIter:[...] } }
-///
+/**
+ *
+ * micro(name, workFn, warmupMs=100, sampleMs=200, samples=20, minIters=1, maxIters=10000000, subtractOverhead=true, unit="ns")
+ *
+ * returns:
+ * { name, unit, itersPerSample, samples, stats:{...}, raw:{timesPerIter:[...] } }
+ *
+ */
 @export
 var micro = fn(
 	@str name,
@@ -172,8 +178,10 @@ var printResult = fn(res) {
 	printf("  iters/sample: %d  samples: %d\n", res.itersPerSample, res.samples)
 }
 
-/// compare(work, benches, ...same defaults...)
-/// benches: [ {name:"x", fun: fn(){...}}, ... ]
+/**
+ * compare(work, benches, ...same defaults...)
+ * benches: [ {name:"x", fun: fn(){...}}, ... ]
+ */
 @export
 var compare = fn(
 	@list benches,

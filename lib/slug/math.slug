@@ -103,7 +103,9 @@ var stdev = fn(xs, mean) match {
 }
 
 
-/// percentileSorted: xs must be ascending
+/**
+ * percentileSorted: xs must be ascending
+ */
 @export
 var percentileSorted = fn(xs, p) match {
 	[[], ...] => 0

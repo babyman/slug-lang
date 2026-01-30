@@ -13,3 +13,9 @@ foreign searchModuleTags = fn(@str module, @str tag, @bool includePrivate = fals
 
 @export
 foreign searchScopeTags = fn(@str tag)
+
+@export
+foreign docs = fn(value)
+
+@export
+foreign moduleDocs = fn(@str module)

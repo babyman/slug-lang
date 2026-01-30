@@ -1,10 +1,12 @@
-///
-/// A terminal colours library inspired by the python `colorist` library.
-///
-/// See also:
-///  - Colorist https://jakob-bagterp.github.io/colorist-for-python/
-///  - the wikipedia page https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
-///
+/**
+ *
+ * A terminal colours library inspired by the python `colorist` library.
+ *
+ * See also:
+ *  - Colorist https://jakob-bagterp.github.io/colorist-for-python/
+ *  - the wikipedia page https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
+ *
+ */
 
 var {*} = import(
 	"slug.std",
@@ -43,11 +45,13 @@ var checkTerminal = fn() {
 	}
 }
 
-///
-/// Parameters
-/// - a list of code values
-/// - the accumulator used to build the result
-///
+/**
+ *
+ * Parameters
+ * - a list of code values
+ * - the accumulator used to build the result
+ *
+ */
 @testWith(
 	[[31,1]], "31;1",
 	[[0]], "0",
@@ -131,35 +135,43 @@ var buildEffects = fn(@map styles) {
 			})
 }
 
-///
-/// The number of supported colours reported by `tput colors`
-///
+/**
+ *
+ * The number of supported colours reported by `tput colors`
+ *
+ */
 @export val ColourSupport = checkTerminal()
 
-///
-/// Styles map, contains a list containing the ANSI escape code numbers for each style, 
-/// map keys by colour name plus modifiers, e.g. black, brightBlack, bgBlack, bgBrightBlack
-/// other keys include `reset` and the effects, e.g. blink and blinkOff
-///
+/**
+ *
+ * Styles map, contains a list containing the ANSI escape code numbers for each style,
+ * map keys by colour name plus modifiers, e.g. black, brightBlack, bgBlack, bgBrightBlack
+ * other keys include `reset` and the effects, e.g. blink and blinkOff
+ *
+ */
 @export var Styles = buildStyles()
 @export var Colour = buildCodes(Styles)
 @export var BrightColour = buildCodes(Styles, brightPrefix)
 @export var BgColour = buildCodes(Styles, bgPrefix)
 @export var BgBrightColour = buildCodes(Styles, bgBrightPrefix)
 
-///
-/// A map of effects control codes.
-///
-/// The following keys are defined: bold, boldOff, dim, dimOff, underline, underlineOff,
-/// blink, blinkOff, reverse, reverseOff, hide, hideOff
-///
+/**
+ *
+ * A map of effects control codes.
+ *
+ * The following keys are defined: bold, boldOff, dim, dimOff, underline, underlineOff,
+ * blink, blinkOff, reverse, reverseOff, hide, hideOff
+ *
+ */
 @export var Effects = buildEffects(Styles)
 
 // reset styles
 // -----------
-///
-/// A terminal control code the reset styles back to the default
-///
+/**
+ *
+ * A terminal control code the reset styles back to the default
+ *
+ */
 @export var reset = ansiCode( Styles.reset )
 
 // text colour

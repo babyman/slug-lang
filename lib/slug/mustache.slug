@@ -1,9 +1,11 @@
-///
-/// slug.mustache
-/// A native Mustache renderer for Slug.
-///
-/// Intended to satisfy the official Mustache spec v1.4.3 (core suites).
-///
+/**
+ *
+ * slug.mustache
+ * A native Mustache renderer for Slug.
+ *
+ * Intended to satisfy the official Mustache spec v1.4.3 (core suites).
+ *
+ */
 
 var {*} = import(
 	"slug.std",

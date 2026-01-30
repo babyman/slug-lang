@@ -144,6 +144,8 @@ func (r *Runtime) LoadModule(modName string) (*object.Module, error) {
 		Src:     string(source),
 		Program: program,
 		Env:     moduleEnv,
+		Doc:     program.ModuleDoc,
+		HasDoc:  program.HasModuleDoc,
 	}
 
 	r.Modules[modName] = module

@@ -44,6 +44,73 @@ func TestReturnStatements(t *testing.T) {
 	}
 }
 
+func TestDocCommentAttachment(t *testing.T) {
+	input := `/**
+ * Doc for x
+ */
+@export
+val x = 1`
+
+	l := lexer.New(input)
+	p := New(l, "", input)
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	if len(program.Statements) != 1 {
+		t.Fatalf("program.Statements does not contain 1 statements. got=%d",
+			len(program.Statements))
+	}
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not ast.ExpressionStatement. got=%T", program.Statements[0])
+	}
+
+	valExpr, ok := stmt.Expression.(*ast.ValExpression)
+	if !ok {
+		t.Fatalf("stmt.Expression is not *ast.ValExpression. got=%T", stmt.Expression)
+	}
+
+	if !valExpr.HasDoc {
+		t.Fatalf("expected val to have doc metadata")
+	}
+	if valExpr.Doc != "Doc for x" {
+		t.Fatalf("unexpected doc string. got=%q", valExpr.Doc)
+	}
+}
+
+func TestModuleDoc(t *testing.T) {
+	input := `/**
+ * Module doc
+ */
+
+val x = 1`
+
+	l := lexer.New(input)
+	p := New(l, "", input)
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	if !program.HasModuleDoc {
+		t.Fatalf("expected module doc to be set")
+	}
+	if program.ModuleDoc != "Module doc" {
+		t.Fatalf("unexpected module doc. got=%q", program.ModuleDoc)
+	}
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not ast.ExpressionStatement. got=%T", program.Statements[0])
+	}
+	valExpr, ok := stmt.Expression.(*ast.ValExpression)
+	if !ok {
+		t.Fatalf("stmt.Expression is not *ast.ValExpression. got=%T", stmt.Expression)
+	}
+	if valExpr.HasDoc {
+		t.Fatalf("expected val doc to be empty for module doc comment")
+	}
+}
+
 func TestIdentifierExpression(t *testing.T) {
 	input := "foobar;"
 

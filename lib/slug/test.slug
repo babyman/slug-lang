@@ -2,11 +2,13 @@ var {*} = import(
     "slug.std",
 )
 
-/// runSafe executes f() and returns a map:
-///   {"ok": value} on normal return
-///   {"error": thrownValue, "trace": stacktrace(thrownValue)} on throw
-///
-/// Implementation uses `defer onerror` to intercept thrown payload.
+/**
+ * runSafe executes f() and returns a map:
+ *   {"ok": value} on normal return
+ *   {"error": thrownValue, "trace": stacktrace(thrownValue)} on throw
+ *
+ * Implementation uses `defer onerror` to intercept thrown payload.
+ */
 @export
 var runSafe = fn(@fun f) {
     defer onerror(err) {

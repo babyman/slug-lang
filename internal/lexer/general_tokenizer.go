@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"slug/internal/token"
+	"strings"
 )
 
 type GeneralTokenizer struct {
@@ -27,11 +28,25 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 			return g.NextToken()
 		}
 		// Otherwise, collapse multiple newlines into a single NEWLINE token
-		for g.lexer.ch == '\n' || g.lexer.ch == '\r' || g.lexer.ch == ' ' || g.lexer.ch == '\t' {
-			g.lexer.readChar()
-			g.lexer.skipWhitespace() // consume whitespace including comments
+		newlineCount := 0
+		for {
+			if g.lexer.ch == '\n' {
+				newlineCount++
+				g.lexer.readChar()
+				g.lexer.skipWhitespace() // consume whitespace including line comments
+				continue
+			}
+			if g.lexer.ch == '\r' || g.lexer.ch == ' ' || g.lexer.ch == '\t' {
+				g.lexer.readChar()
+				g.lexer.skipWhitespace()
+				continue
+			}
+			break
 		}
-		return token.Token{Type: token.NEWLINE, Literal: "\n", Position: startPosition}
+		if newlineCount == 0 {
+			newlineCount = 1
+		}
+		return token.Token{Type: token.NEWLINE, Literal: strings.Repeat("\n", newlineCount), Position: startPosition}
 	case '=':
 		tok = g.lexer.handleCompoundToken2(token.ASSIGN, '=', token.EQ, '>', token.ROCKET)
 	case '+':
@@ -44,6 +59,18 @@ func (g *GeneralTokenizer) NextToken() token.Token {
 		if g.lexer.peekChar() == '>' {
 			tok = token.Token{Type: token.CALL_CHAIN, Literal: "/>", Position: startPosition}
 			g.lexer.readChar()
+		} else if g.lexer.peekChar() == '*' {
+			if g.lexer.peekTwoChars() == '*' {
+				lit, err := g.lexer.readDocComment()
+				if err != nil {
+					return token.Token{Type: token.ILLEGAL, Literal: err.Error(), Position: startPosition}
+				}
+				return token.Token{Type: token.DOC_COMMENT, Literal: lit, Position: startPosition}
+			}
+			if err := g.lexer.skipBlockComment(); err != nil {
+				return token.Token{Type: token.ILLEGAL, Literal: err.Error(), Position: startPosition}
+			}
+			return g.NextToken()
 		} else {
 			tok = newToken(token.SLASH, g.lexer.ch, startPosition)
 		}

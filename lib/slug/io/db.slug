@@ -1,25 +1,31 @@
 
-///
-/// var con = ":memory:" 
-///   /> connect(SQLITE_DRIVER)
-///
-/// open a file with optional parameters (e.g. `?cache=shared&mode=rwc`)
-///
-/// var con = "file:filename.db" 
-///   /> connect(SQLITE_DRIVER)
-///
+/**
+ *
+ * var con = ":memory:"
+ *   /> connect(SQLITE_DRIVER)
+ *
+ * open a file with optional parameters (e.g. `?cache=shared&mode=rwc`)
+ *
+ * var con = "file:filename.db"
+ *   /> connect(SQLITE_DRIVER)
+ *
+ */
 @export val SQLITE_DRIVER = "sqlite3";
 
-///
-/// var con = "user:pass@tcp(localhost:3306)/dbname?charset=utf8mb4&parseTime=True"
-///   /> connect(MYSQL_DRIVER)
-///
+/**
+ *
+ * var con = "user:pass@tcp(localhost:3306)/dbname?charset=utf8mb4&parseTime=True"
+ *   /> connect(MYSQL_DRIVER)
+ *
+ */
 @export val MYSQL_DRIVER = "mysql";
 
-///
-/// var con = "postgres://user:password@localhost/dbname?sslmode=disable" 
-///   /> connect(PGSQL_DRIVER)
-///
+/**
+ *
+ * var con = "postgres://user:password@localhost/dbname?sslmode=disable"
+ *   /> connect(PGSQL_DRIVER)
+ *
+ */
 @export val PGSQL_DRIVER = "postgres";
 
 @export

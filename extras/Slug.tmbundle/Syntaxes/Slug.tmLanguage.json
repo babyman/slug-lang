@@ -17,7 +17,8 @@
   "repository": {
     "comments": {
       "patterns": [
-        {"name": "comment.line.documentation.slug", "match": "///.*$"},
+        {"name": "comment.block.documentation.slug", "begin": "/\\*\\*", "end": "\\*/"},
+        {"name": "comment.block.slug", "begin": "/\\*", "end": "\\*/"},
         {"name": "comment.line.double-slash.slug", "match": "//.*$"},
         {"name": "comment.line.number-sign.slug", "match": "#.*$"}
       ]

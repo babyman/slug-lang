@@ -2,7 +2,9 @@ package lexer
 
 import (
 	"errors"
+	"fmt"
 	"slug/internal/token"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 )
@@ -131,6 +133,96 @@ func (l *Lexer) skipToLineEnd() {
 	for l.ch != '\n' && l.ch != 0 {
 		l.readChar()
 	}
+}
+
+func (l *Lexer) skipBlockComment() error {
+	if l.ch != '/' || l.peekChar() != '*' {
+		return nil
+	}
+
+	depth := 1
+	l.readChar() // consume '/'
+	l.readChar() // consume '*'
+
+	for l.ch != 0 {
+		if l.ch == '/' && l.peekChar() == '*' {
+			depth++
+			l.readChar()
+			l.readChar()
+			continue
+		}
+		if l.ch == '*' && l.peekChar() == '/' {
+			depth--
+			l.readChar()
+			l.readChar()
+			if depth == 0 {
+				return nil
+			}
+			continue
+		}
+		l.readChar()
+	}
+
+	return errors.New("unterminated block comment")
+}
+
+func (l *Lexer) readDocComment() (string, error) {
+	if l.ch != '/' || l.peekChar() != '*' || l.peekTwoChars() != '*' {
+		return "", nil
+	}
+
+	l.readChar() // consume '/'
+	l.readChar() // consume '*'
+	l.readChar() // consume '*'
+
+	contentStart := l.position
+
+	for l.ch != 0 {
+		if l.ch == '*' && l.peekChar() == '/' {
+			contentEnd := l.position
+			l.readChar() // consume '*'
+			l.readChar() // consume '/'
+			raw := l.input[contentStart:contentEnd]
+			return formatDocComment(raw)
+		}
+		l.readChar()
+	}
+
+	return "", errors.New("unterminated doc comment")
+}
+
+func formatDocComment(raw string) (string, error) {
+	lines := strings.Split(raw, "\n")
+	if len(lines) > 1 {
+		lines = lines[1:]
+		if len(lines) > 0 {
+			lines = lines[:len(lines)-1]
+		}
+	}
+
+	if len(lines) == 0 {
+		return "", nil
+	}
+
+	out := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimRight(line, "\r")
+		if strings.TrimSpace(line) == "" {
+			out = append(out, "")
+			continue
+		}
+		trimmed := strings.TrimLeft(line, " \t")
+		if !strings.HasPrefix(trimmed, "*") {
+			return "", fmt.Errorf("doc comment lines must start with '*'")
+		}
+		trimmed = strings.TrimPrefix(trimmed, "*")
+		if strings.HasPrefix(trimmed, " ") {
+			trimmed = trimmed[1:]
+		}
+		out = append(out, trimmed)
+	}
+
+	return strings.Join(out, "\n"), nil
 }
 
 // readChar advances by one UTF-8 rune, updating byte positions

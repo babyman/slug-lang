@@ -3,9 +3,10 @@ package token
 type TokenType string
 
 const (
-	ILLEGAL = "ILLEGAL"
-	EOF     = "EOF"
-	NEWLINE = "NEWLINE"
+	ILLEGAL     = "ILLEGAL"
+	EOF         = "EOF"
+	NEWLINE     = "NEWLINE"
+	DOC_COMMENT = "DOC_COMMENT"
 
 	// Identifiers + literals
 	IDENT  = "IDENT"  // add, foobar, x, y, ...

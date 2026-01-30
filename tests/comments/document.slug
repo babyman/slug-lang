@@ -1,0 +1,22 @@
+/**
+ * this is a module document comment
+ */
+
+ var {*} = import(
+ 	"slug.meta",
+ 	"slug.test",
+ )
+
+
+/**
+ * this is ignored
+ */
+
+/**
+ * this is a variable document comment
+ */
+var x = 1
+
+docs(x) /> assertEqual("this is a variable document comment")
+
+moduleDocs("document") /> assertEqual("this is a module document comment")

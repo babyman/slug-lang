@@ -75,6 +75,12 @@ type Parser struct {
 	src             string // source code here
 	errors          []string
 	pendingTags     []*ast.Tag
+	pendingDoc      string
+	hasPendingDoc   bool
+	moduleDoc       string
+	hasModuleDoc    bool
+	seenMeaningful  bool
+	scopeDepth      int
 	allowStructInit bool
 
 	curToken   token.Token
@@ -230,12 +236,21 @@ func (p *Parser) ParseProgram() *ast.Program {
 		stmt := p.parseStatement()
 		if stmt != nil {
 			program.Statements = append(program.Statements, stmt)
+			if p.scopeDepth == 0 {
+				p.seenMeaningful = true
+				if p.hasPendingDoc && !isDocAttachStatement(stmt) {
+					p.clearPendingDoc()
+				}
+			}
 		}
 
 		// Move forward at least once, then skip separators.
 		p.nextToken()
 		p.skipStatementSeparators()
 	}
+
+	program.ModuleDoc = p.moduleDoc
+	program.HasModuleDoc = p.hasModuleDoc
 
 	p.validateStructSchemaUsage(program)
 
@@ -245,6 +260,9 @@ func (p *Parser) ParseProgram() *ast.Program {
 func (p *Parser) skipStatementSeparators() {
 	for {
 		if p.curTokenIs(token.SEMICOLON) {
+			if p.scopeDepth == 0 && p.hasPendingDoc {
+				p.clearPendingDoc()
+			}
 			p.nextToken()
 			continue
 		}
@@ -263,8 +281,18 @@ func (p *Parser) parseStatement() ast.Statement {
 	case token.NEWLINE, token.SEMICOLON:
 		// separators, not statements
 		return nil
+	case token.DOC_COMMENT:
+		p.handleDocComment()
+		return nil
 	case token.FOREIGN:
-		return p.parseForeignFunctionDeclaration()
+		stmt := p.parseForeignFunctionDeclaration()
+		if p.scopeDepth == 0 {
+			p.seenMeaningful = true
+			if p.hasPendingDoc && !isDocAttachStatement(stmt) {
+				p.clearPendingDoc()
+			}
+		}
+		return stmt
 	case token.RETURN:
 		return p.parseReturnStatement()
 	case token.NOT_IMPLEMENTED:
@@ -276,9 +304,67 @@ func (p *Parser) parseStatement() ast.Statement {
 	case token.AT:
 		tag := p.parseTag()
 		p.pendingTags = append(p.pendingTags, tag)
+		if p.scopeDepth == 0 {
+			p.seenMeaningful = true
+		}
 		return nil
 	default:
-		return p.parseExpressionStatement()
+		stmt := p.parseExpressionStatement()
+		if p.scopeDepth == 0 {
+			p.seenMeaningful = true
+			if p.hasPendingDoc && !isDocAttachStatement(stmt) {
+				p.clearPendingDoc()
+			}
+		}
+		return stmt
+	}
+}
+
+func (p *Parser) handleDocComment() {
+	if p.scopeDepth != 0 {
+		return
+	}
+
+	doc := p.curToken.Literal
+	if !p.seenMeaningful && !p.hasModuleDoc && p.isModuleDocCandidate() {
+		p.moduleDoc = doc
+		p.hasModuleDoc = true
+		p.seenMeaningful = true
+		return
+	}
+
+	p.pendingDoc = doc
+	p.hasPendingDoc = true
+	if !p.seenMeaningful {
+		p.seenMeaningful = true
+	}
+}
+
+func (p *Parser) isModuleDocCandidate() bool {
+	if !p.peekTokenIs(token.NEWLINE) {
+		return false
+	}
+	return strings.Count(p.peekToken.Literal, "\n") >= 2
+}
+
+func (p *Parser) clearPendingDoc() {
+	p.pendingDoc = ""
+	p.hasPendingDoc = false
+}
+
+func isDocAttachStatement(stmt ast.Statement) bool {
+	if _, ok := stmt.(*ast.ForeignFunctionDeclaration); ok {
+		return true
+	}
+	exprStmt, ok := stmt.(*ast.ExpressionStatement)
+	if !ok || exprStmt.Expression == nil {
+		return false
+	}
+	switch exprStmt.Expression.(type) {
+	case *ast.ValExpression, *ast.VarExpression:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -291,6 +377,11 @@ func (p *Parser) parseVarStatement() ast.Expression {
 	if p.pendingTags != nil {
 		varExp.Tags = p.pendingTags
 		p.pendingTags = nil
+	}
+	if p.scopeDepth == 0 && p.hasPendingDoc {
+		varExp.Doc = p.pendingDoc
+		varExp.HasDoc = true
+		p.clearPendingDoc()
 	}
 
 	if !(p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.LBRACKET) ||
@@ -326,6 +417,11 @@ func (p *Parser) parseValStatement() ast.Expression {
 	if p.pendingTags != nil {
 		valExp.Tags = p.pendingTags
 		p.pendingTags = nil
+	}
+	if p.scopeDepth == 0 && p.hasPendingDoc {
+		valExp.Doc = p.pendingDoc
+		valExp.HasDoc = true
+		p.clearPendingDoc()
 	}
 
 	if !(p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.LBRACKET) || p.peekTokenIs(token.LBRACE)) {
@@ -1190,6 +1286,9 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 
 	p.nextToken() // move to first token inside block
 	p.skipStatementSeparators()
+
+	p.scopeDepth++
+	defer func() { p.scopeDepth-- }()
 
 	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
 		stmt := p.parseStatement()
@@ -2069,6 +2168,11 @@ func (p *Parser) parseForeignFunctionDeclaration() *ast.ForeignFunctionDeclarati
 	if p.pendingTags != nil {
 		foreignFunction.Tags = p.pendingTags
 		p.pendingTags = nil
+	}
+	if p.scopeDepth == 0 && p.hasPendingDoc {
+		foreignFunction.Doc = p.pendingDoc
+		foreignFunction.HasDoc = true
+		p.clearPendingDoc()
 	}
 
 	if !p.expectPeek(token.IDENT) {

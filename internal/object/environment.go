@@ -38,6 +38,8 @@ type Binding struct {
 type Meta struct {
 	IsImport bool
 	IsExport bool
+	Doc      string
+	HasDoc   bool
 }
 
 func nextEnvID() uint64 {
@@ -191,9 +193,13 @@ func (e *Environment) define(name string, val Object, isMutable bool, isExported
 		}
 	}
 
+	doc := binding.Meta.Doc
+	hasDoc := binding.Meta.HasDoc
 	binding.Meta = Meta{
 		IsImport: isImport,
 		IsExport: isExported,
+		Doc:      doc,
+		HasDoc:   hasDoc,
 	}
 
 	switch val := val.(type) {
@@ -294,6 +300,22 @@ func (e *Environment) Assign(name string, val Object) (Object, error) {
 		return e.Outer.Assign(name, val)
 	}
 	return nil, fmt.Errorf("failed to assign to '%s': not defined in any accessible scope", name)
+}
+
+// SetLocalDoc updates documentation metadata for a binding in this environment only.
+func (e *Environment) SetLocalDoc(name, doc string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	binding, ok := e.Bindings[name]
+	if !ok {
+		return
+	}
+	binding.Meta.Doc = doc
+	binding.Meta.HasDoc = true
+	if fg, ok := binding.Value.(*FunctionGroup); ok {
+		fg.Doc = doc
+		fg.HasDoc = true
+	}
 }
 
 func (e *Environment) RegisterDefer(deferStmt *ast.DeferStatement) {

@@ -32,7 +32,9 @@ type Expression interface {
 }
 
 type Program struct {
-	Statements []Statement
+	Statements   []Statement
+	ModuleDoc    string
+	HasModuleDoc bool
 }
 
 func (p *Program) TokenLiteral() string {
@@ -58,6 +60,8 @@ type VarExpression struct {
 	Token   token.Token // the token.VAR token
 	Pattern MatchPattern
 	Value   Expression
+	Doc     string
+	HasDoc  bool
 }
 
 func (ls *VarExpression) expressionNode()      {}
@@ -88,6 +92,8 @@ type ValExpression struct {
 	Token   token.Token  // The token.VAL token
 	Pattern MatchPattern // Constant name
 	Value   Expression   // The assigned value
+	Doc     string
+	HasDoc  bool
 }
 
 func (vs *ValExpression) expressionNode()      {}
@@ -116,6 +122,8 @@ type ForeignFunctionDeclaration struct {
 	Name       *Identifier // Name of the foreign function
 	Parameters []*FunctionParameter
 	Signature  FSig
+	Doc        string
+	HasDoc     bool
 }
 
 func (ffd *ForeignFunctionDeclaration) statementNode()       {}

@@ -165,6 +165,49 @@ func fnMetaSearchScopeTags() *object.Foreign {
 	}
 }
 
+func fnMetaDocs() *object.Foreign {
+	return &object.Foreign{
+		Name: "doc",
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return ctx.NewError("doc expects exactly 1 argument: value")
+			}
+
+			doc, ok := findDocForValue(ctx, args[0])
+			if !ok {
+				return ctx.Nil()
+			}
+			return &object.String{Value: doc}
+		},
+	}
+}
+
+func fnMetaModuleDocs() *object.Foreign {
+	return &object.Foreign{
+		Name: "moduleDoc",
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return ctx.NewError("moduleDoc expects exactly 1 argument: module name")
+			}
+
+			moduleName, ok := args[0].(*object.String)
+			if !ok {
+				return ctx.NewError("moduleDoc argument must be a string module name")
+			}
+
+			module, err := ctx.LoadModule(moduleName.Value)
+			if err != nil {
+				return ctx.NewError("failed to load module '%s': %s", moduleName.Value, err.Error())
+			}
+
+			if !module.HasDoc {
+				return ctx.Nil()
+			}
+			return &object.String{Value: module.Doc}
+		},
+	}
+}
+
 func hasTag(binding *object.Binding, tagName string) bool {
 	if binding == nil {
 		return false
@@ -173,4 +216,90 @@ func hasTag(binding *object.Binding, tagName string) bool {
 	// Check if the binding contains a group of functions
 	fg, ok := binding.Value.(object.Taggable)
 	return ok && fg.HasTag(tagName)
+}
+
+func findDocForValue(ctx object.EvaluatorContext, value object.Object) (string, bool) {
+	if fg, ok := value.(*object.FunctionGroup); ok && fg.HasDoc {
+		return fg.Doc, true
+	}
+
+	if ref, ok := value.(*object.BindingRef); ok {
+		return docFromBinding(ref.Env, ref.Name)
+	}
+
+	env := ctx.CurrentEnv()
+	if env == nil {
+		return "", false
+	}
+	for env.Outer != nil {
+		env = env.Outer
+	}
+	return docFromEnvValue(env, value)
+}
+
+func docFromBinding(env *object.Environment, name string) (string, bool) {
+	if env == nil {
+		return "", false
+	}
+	binding, ok := env.GetLocalBinding(name)
+	if !ok || binding == nil {
+		return "", false
+	}
+	if !binding.Meta.HasDoc {
+		return "", false
+	}
+	return binding.Meta.Doc, true
+}
+
+func docFromEnvValue(env *object.Environment, value object.Object) (string, bool) {
+	if env == nil {
+		return "", false
+	}
+
+	matches := 0
+	var doc string
+	hasDoc := false
+
+	for _, binding := range env.Bindings {
+		if binding == nil {
+			continue
+		}
+		resolved, ok := resolveBindingValue(binding.Value)
+		if !ok {
+			continue
+		}
+		if resolved != value {
+			continue
+		}
+		matches++
+		if binding.Meta.HasDoc {
+			doc = binding.Meta.Doc
+			hasDoc = true
+		}
+	}
+
+	if matches == 1 && hasDoc {
+		return doc, true
+	}
+	return "", false
+}
+
+func resolveBindingValue(value object.Object) (object.Object, bool) {
+	for {
+		ref, ok := value.(*object.BindingRef)
+		if !ok {
+			return value, true
+		}
+		if ref.Env == nil {
+			return nil, false
+		}
+		val, _, ok := ref.Env.GetLocalBindingValue(ref.Name)
+		if !ok {
+			return nil, false
+		}
+		if val == object.BINDING_UNINITIALIZED {
+			return nil, false
+		}
+		value = val
+	}
 }

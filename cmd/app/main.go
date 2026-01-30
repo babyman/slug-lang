@@ -123,6 +123,18 @@ func main() {
 	env.ModuleFqn = mainModule
 
 	rt := runtime.NewRuntime(config)
+	if rt.Modules == nil {
+		rt.Modules = make(map[string]*object.Module)
+	}
+	rt.Modules[mainModule] = &object.Module{
+		Name:    mainModule,
+		Path:    scriptPath,
+		Src:     string(source),
+		Program: program,
+		Env:     env,
+		Doc:     program.ModuleDoc,
+		HasDoc:  program.HasModuleDoc,
+	}
 	eval := &runtime.Task{
 		Runtime: rt,
 	}

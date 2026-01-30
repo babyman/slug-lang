@@ -258,6 +258,8 @@ type Module struct {
 	Src     string
 	Env     *Environment
 	Program *ast.Program
+	Doc     string
+	HasDoc  bool
 }
 
 func (m *Module) Type() ObjectType { return MODULE_OBJ }
@@ -322,6 +324,8 @@ type FunctionGroup struct {
 	// during dispatch. This enables composite groups (e.g. merged imports) while keeping
 	// live updates when delegate groups are extended.
 	Delegates []*FunctionGroup
+	Doc       string
+	HasDoc    bool
 }
 
 func (fg *FunctionGroup) Type() ObjectType { return FUNCTION_GROUP_OBJ }

@@ -204,6 +204,7 @@ func (e *Task) Eval(node ast.Node) object.Object {
 		if _, err := e.patternMatches(node.Pattern, variable, false, isExported, false, e.CurrentEnv()); err != nil {
 			return e.newErrorWithPos(node.Token.Position, err.Error())
 		}
+		e.applyDocIfPresent(node.Pattern, node.Doc, node.HasDoc)
 		return e.applyTagsIfPresent(node.Tags, variable)
 
 	case *ast.ValExpression:
@@ -215,6 +216,7 @@ func (e *Task) Eval(node ast.Node) object.Object {
 		if _, err := e.patternMatches(node.Pattern, value, true, isExported, false, e.CurrentEnv()); err != nil {
 			return e.newErrorWithPos(node.Token.Position, err.Error())
 		}
+		e.applyDocIfPresent(node.Pattern, node.Doc, node.HasDoc)
 		return e.applyTagsIfPresent(node.Tags, value)
 
 	case *ast.ForeignFunctionDeclaration:
@@ -552,6 +554,9 @@ func (e *Task) evalInfixExpression(
 	case left.Type() == object.STRING_OBJ && right.Type() == object.STRING_OBJ:
 		return e.evalStringInfixExpression(operator, left, right)
 
+	case left.Type() == object.SYMBOL_OBJ && right.Type() == object.SYMBOL_OBJ:
+		return e.evalSymbolInfixExpression(operator, left, right)
+
 	case left.Type() == object.BOOLEAN_OBJ && right.Type() == object.BOOLEAN_OBJ:
 		return e.evalBooleanInfixExpression(operator, left, right)
 
@@ -771,6 +776,32 @@ func (e *Task) evalStringInfixExpression(
 			left.Type(), operator, right.Type())
 	}
 
+}
+
+func (e *Task) evalSymbolInfixExpression(
+	operator string,
+	left, right object.Object,
+) object.Object {
+	leftVal := left.(*object.Symbol).Name
+	rightVal := right.(*object.Symbol).Name
+
+	switch operator {
+	case "==":
+		return e.NativeBoolToBooleanObject(left == right)
+	case "!=":
+		return e.NativeBoolToBooleanObject(left != right)
+	case "<":
+		return e.NativeBoolToBooleanObject(leftVal < rightVal)
+	case "<=":
+		return e.NativeBoolToBooleanObject(leftVal <= rightVal)
+	case ">":
+		return e.NativeBoolToBooleanObject(leftVal > rightVal)
+	case ">=":
+		return e.NativeBoolToBooleanObject(leftVal >= rightVal)
+	default:
+		return e.newErrorf("unknown operator: %s %s %s",
+			left.Type(), operator, right.Type())
+	}
 }
 
 func (e *Task) evalStringPlusOtherInfixExpression(
@@ -2596,6 +2627,9 @@ func (e *Task) evalForeignFunctionDeclaration(ff *ast.ForeignFunctionDeclaration
 		if err != nil {
 			return e.newErrorWithPos(ff.Token.Position, err.Error())
 		}
+		if ff.HasDoc && env.Outer == nil {
+			env.SetLocalDoc(functionName, ff.Doc)
+		}
 		return object.NIL
 	}
 	return e.newErrorfWithPos(ff.Token.Position, "unknown foreign function %s", fqn)
@@ -2728,6 +2762,50 @@ func (e *Task) applyTagsIfPresent(tags []*ast.Tag, val object.Object) object.Obj
 		}
 	}
 	return val
+}
+
+func (e *Task) applyDocIfPresent(pattern ast.MatchPattern, doc string, hasDoc bool) {
+	if !hasDoc {
+		return
+	}
+	env := e.CurrentEnv()
+	if env == nil || env.Outer != nil {
+		return
+	}
+	e.applyDocToPattern(pattern, doc, env)
+}
+
+func (e *Task) applyDocToPattern(pattern ast.MatchPattern, doc string, env *object.Environment) {
+	switch p := pattern.(type) {
+	case *ast.IdentifierPattern:
+		env.SetLocalDoc(p.Value.Value, doc)
+	case *ast.SpreadPattern:
+		if p.Value != nil {
+			env.SetLocalDoc(p.Value.Value, doc)
+		}
+	case *ast.ListPattern:
+		for _, elem := range p.Elements {
+			e.applyDocToPattern(elem, doc, env)
+		}
+	case *ast.MapPattern:
+		for _, entry := range p.Pairs {
+			if entry.Pattern == nil {
+				continue
+			}
+			e.applyDocToPattern(entry.Pattern, doc, env)
+		}
+		if p.Spread != nil {
+			e.applyDocToPattern(p.Spread, doc, env)
+		}
+	case *ast.StructPattern:
+		for _, field := range p.Fields {
+			if field.Pattern != nil {
+				e.applyDocToPattern(field.Pattern, doc, env)
+			}
+		}
+	case *ast.MultiPattern, *ast.LiteralPattern, *ast.WildcardPattern, *ast.AllPattern, *ast.PinnedIdentifierPattern:
+		return
+	}
 }
 
 func (e *Task) evalTags(tags []*ast.Tag) map[string]object.List {
