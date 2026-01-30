@@ -86,7 +86,7 @@ defaults:
       breadcrumb_list:
         - label: Home
           url: /
-        - label: Architectural Design Records
+        - label: Architectural Decision Records
           url: /adr/
   - scope:
       path: ""

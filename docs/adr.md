@@ -1,6 +1,6 @@
 ---
 layout: archive
-title: Architectural Design Records
+title: Architectural Decision Records
 permalink: /adr/
 include_collection: adr
 ---
