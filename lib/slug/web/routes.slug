@@ -248,7 +248,7 @@ var withLog = fn(handler) {
 		if (req.traceId) { msg = msg :+ req.traceId }
 		if (req.spanId) { msg = msg :+ req.spanId }
 		msg = msg :+ req.path
-		printf("%s [ %-4s ] %dms %d %s\n", ts, req.method, d(), res.status, msg /> join(" "));
+		printf("{s} [ {:<4s} ] {:d}ms {:d} {s}", ts, req.method, d(), res.status, msg /> join(" ")) /> println;
 		res
 	}
 }

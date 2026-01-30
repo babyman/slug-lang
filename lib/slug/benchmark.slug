@@ -173,9 +173,9 @@ var micro = fn(
 var printResult = fn(res) {
 	val s = res.stats
 	println(res.name)
-	printf("  p50: %0.0f %s  p90: %0.0f  p99: %0.0f\n", s.p50, res.unit, s.p90, s.p99)
-	printf("  mean: %0.0f  stdev: %0.0f  min: %0.0f  max: %0.0f\n", s.mean, s.stdev, s.min, s.max)
-	printf("  iters/sample: %d  samples: %d\n", res.itersPerSample, res.samples)
+	fmt("  p50: {:d} {}  p90: {:d}  p99: {:d}", s.p50, res.unit, s.p90, s.p99) /> println
+	fmt("  mean: {:d}  stdev: {:d}  min: {:d}  max: {:d}", s.mean, s.stdev, s.min, s.max) /> println
+	fmt("  iters/sample: {:d}  samples: {:d}", res.itersPerSample, res.samples) /> println
 }
 
 /**
@@ -240,6 +240,6 @@ val sortByP50 = fn(results) {
 var printCompareReport = fn(report) {
 	println("Benchmark report")
 	report.results /> map(fn(r) {
-		printf("  %-15s: p50 %0.0f %s  x%s\n", r.name, r.stats.p50, r.unit, toString(r.ratio))
+		fmt("  %{:<15s}: p50 {:d} {}  x{:.1f}", r.name, r.stats.p50, r.unit, r.ratio) /> println
 	})
 }

@@ -63,11 +63,20 @@ foreign type = fn(val)
 @export
 foreign isDefined = fn(@str varName)
 
+@testWith(
+	["Hello {}", "Slug"], "Hello Slug",
+	["{1} then {0}", "A", "B"], "B then A",
+	["x={:.2f} y={:.2f}", 1.2, 3.4], "x=1.20 y=3.40",
+	["{:d}", 12.5], "12",
+	["{:,}", 1234567], "1,234,567",
+	["{:.1%}", 0.1234], "12.3%",
+	["value=\\{x\}"], "value={x}",
+	["|{:>8}|", 12.3], "|    12.3|",
+	["|{:<10s}|", "Slug"], "|Slug      |",
+	["|{:^10s}|", "Slug"], "|   Slug   |",
+)
 @export
-foreign printf = fn(@str str, ...args)
-
-@export
-foreign sprintf = fn(@str str, ...args)
+foreign fmt = fn(@str str, ...args)
 
 // get the list of keys used a map
 @testWith(

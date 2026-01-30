@@ -1,7 +1,6 @@
 package foreign
 
 import (
-	"fmt"
 	"slug/internal/dec64"
 	"slug/internal/object"
 )
@@ -83,9 +82,9 @@ func fnStdIsDefined() *object.Foreign {
 	}
 }
 
-func fnStdPrintf() *object.Foreign {
+func fnStdFmt() *object.Foreign {
 	return &object.Foreign{
-		Name: "printf",
+		Name: "fmt",
 		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
 			if len(args) < 1 {
 				return ctx.NewError("wrong number of arguments. got=%d, want>=1", len(args))
@@ -96,35 +95,13 @@ func fnStdPrintf() *object.Foreign {
 				return ctx.NewError("first argument must be a format STRING, got %s", args[0].Type())
 			}
 
-			fmtArgs := make([]interface{}, len(args)-1)
-			for i := 1; i < len(args); i++ {
-				fmtArgs[i-1] = ToNative(args[i])
-			}
-			fmt.Printf(format.Value, fmtArgs...)
-			return ctx.Nil()
-		},
-	}
-}
-
-func fnStdSprintf() *object.Foreign {
-	return &object.Foreign{
-		Name: "sprintf",
-		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
-			if len(args) < 1 {
-				return ctx.NewError("wrong number of arguments. got=%d, want>=1", len(args))
+			out, err := formatWithSpec(format.Value, args[1:])
+			if err != nil {
+				excerpt := formatExcerpt(format.Value, 40)
+				return ctx.NewError("fmt error: %s (format: %q)", err.Error(), excerpt)
 			}
 
-			format, ok := args[0].(*object.String)
-			if !ok {
-				return ctx.NewError("first argument must be a format STRING, got %s", args[0].Type())
-			}
-
-			fmtArgs := make([]interface{}, len(args)-1)
-			for i := 1; i < len(args); i++ {
-				fmtArgs[i-1] = ToNative(args[i])
-			}
-
-			return &object.String{Value: fmt.Sprintf(format.Value, fmtArgs...)}
+			return &object.String{Value: out}
 		},
 	}
 }

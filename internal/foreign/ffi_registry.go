@@ -72,8 +72,7 @@ func GetForeignFunctions() map[string]*object.Foreign {
 
 		"slug.std.type":        fnStdType(),
 		"slug.std.isDefined":   fnStdIsDefined(),
-		"slug.std.printf":      fnStdPrintf(),
-		"slug.std.sprintf":     fnStdSprintf(),
+		"slug.std.fmt":         fnStdFmt(),
 		"slug.std.update":      fnStdUpdate(),
 		"slug.std.swap":        fnStdSwap(),
 		"slug.std.parseNumber": fnStdParseNumber(),
