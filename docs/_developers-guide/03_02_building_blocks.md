@@ -252,7 +252,7 @@ fn add(@num a, @num b) { a + b }
 fn add(@str a, @str b) { a + b }
 ```
 
-Supported tags: `@num`, `@str`, `@bool`, `@list`, `@map`, `@bytes`, `@fun`, `@task`.
+Supported tags: `@num`, `@str`, `@bool`, `@list`, `@map`, `@bytes`, `@fn`, `@task`.
 
 ### Try it
 

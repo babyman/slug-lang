@@ -27,7 +27,7 @@
       "patterns": [
         {"name": "storage.modifier.slug", "match": "@export\\b"},
         {"name": "meta.annotation.test.slug", "match": "@testWith\\b"},
-        {"name": "storage.type.annotation.slug", "match": "@(?:bool|bytes|fun|list|map|num|str|symbol|task)\\b"},
+        {"name": "storage.type.annotation.slug", "match": "@(?:bool|bytes|fn|list|map|num|str|symbol|task)\\b"},
         {"name": "entity.name.tag.slug", "match": "@[A-Za-z_][A-Za-z0-9_]*"}
       ]
     },

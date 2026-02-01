@@ -11,7 +11,7 @@ var {*} = import (
 val Route = struct {
 	@str method,
 	@str pattern,
-	@fun handler,
+	@fn handler,
 }
 
 val Router = struct {
@@ -38,22 +38,22 @@ var router = fn() {
 // Basic modifiers
 // ------------------
 
-var addRoute = fn(r, @str method, @str pattern, @fun handler) {
+var addRoute = fn(r, @str method, @str pattern, @fn handler) {
   r copy { routes: r.routes :+ Route { method: method, pattern: pattern, handler: handler } }
 }
 
 @export
-var head  = fn(r, @str pattern, @fun handler) { addRoute(r, "HEAD",  pattern, handler) }
+var head  = fn(r, @str pattern, @fn handler) { addRoute(r, "HEAD",  pattern, handler) }
 
 @export
-var get  = fn(r, @str pattern, @fun handler) { addRoute(r, "GET",  pattern, handler) }
+var get  = fn(r, @str pattern, @fn handler) { addRoute(r, "GET",  pattern, handler) }
 
 @export
-var post = fn(r, @str pattern, @fun handler) { addRoute(r, "POST", pattern, handler) }
+var post = fn(r, @str pattern, @fn handler) { addRoute(r, "POST", pattern, handler) }
 
 // mount = any method, prefix
 @export
-var mount = fn(r, @str prefix, @fun handler) { addRoute(r, "*", prefix + "/*", handler) }
+var mount = fn(r, @str prefix, @fn handler) { addRoute(r, "*", prefix + "/*", handler) }
 
 @export
 var mountRouter = fn(r, @str prefix, childRouter) { mount(r, prefix, subrouter(childRouter)) }
@@ -284,7 +284,7 @@ var withRecover = fn(h) {
 // ------------------
 
 @export
-var withHeader = fn(@fun handler, @str header, @str value) {
+var withHeader = fn(@fn handler, @str header, @str value) {
 	fn(req) {
 		req /> handler /> withHeader(header, value)
 	}
@@ -295,7 +295,7 @@ var withHeader = fn(@fun handler, @str header, @str value) {
 // ------------------
 
 @export
-var withRequestId = fn(@fun handler, @fun newRequestId = nil) {
+var withRequestId = fn(@fn handler, @fn newRequestId = nil) {
 	newRequestId = if (newRequestId) {newRequestId} else {fn() { randomHexString(32) }}
 	fn(req) {
 		var rid = req.headers["x-request-id"]
@@ -322,7 +322,7 @@ var withRequestId = fn(@fun handler, @fun newRequestId = nil) {
 // ------------------
 
 @export
-var withTraceContext = fn(handler, @fun newTraceId = nil, @fun newSpanId = nil) {
+var withTraceContext = fn(handler, @fn newTraceId = nil, @fn newSpanId = nil) {
 	newTraceId = if (newTraceId) {newTraceId} else {fn() { randomHexString(32) }}
 	newSpanId = if (newSpanId) {newSpanId} else {fn() { randomHexString(16) }}
 	fn(req) {

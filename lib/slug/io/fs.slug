@@ -125,7 +125,7 @@ var readLines = fn(@num file, lines = []) {
 }
 
 @export
-var listFilesRecursive = fn(@list path, @fun filter = fn(s) {true}, acc = []) {
+var listFilesRecursive = fn(@list path, @fn filter = fn(s) {true}, acc = []) {
 	match path {
 		[] => acc
 		[h, ...t] => {

@@ -28,7 +28,7 @@ var add = fn(@bytes b) {
     b :+ 255
 }
 
-var add = fn(@fun b) {
+var add = fn(@fn b) {
     b() + 255
 }
 

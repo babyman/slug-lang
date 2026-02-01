@@ -148,7 +148,7 @@ var compute = fn(@map map, key, f) {
 	[[1,2], fn(n) {n * 2}], [2,4]
 )
 @export
-var map = fn(@list vs, @fun f, acc = []) match {
+var map = fn(@list vs, @fn f, acc = []) match {
 	[[], ...] => acc
 	[[h, ...t], ...] => recur(t, f, acc :+ h /> f())
 }
@@ -158,7 +158,7 @@ var map = fn(@list vs, @fun f, acc = []) match {
      [[1, 2, 3], fn(n) { if (n % 2 == 0) { [n] } else { [] } }], [2]
  )
  @export
- var flatMap = fn(@list vs, @fun f) {
+ var flatMap = fn(@list vs, @fn f) {
  	vs /> reduce([], fn(acc, v) {
  		match f(v) {
  			[...items] => acc + items
@@ -171,7 +171,7 @@ var map = fn(@list vs, @fun f, acc = []) match {
 	[[1,2,3,4], fn(v) { v % 2 == 0}], [2,4]
 )
 @export
-var filter = fn(@list vs, @fun f, @list acc = []) match {
+var filter = fn(@list vs, @fn f, @list acc = []) match {
 	[[], ...] => acc
 	[[h, ...t], ...] if h /> f() => recur(t, f, acc :+ h)
 	[[h, ...t], ...] => recur(t, f, acc)
@@ -183,13 +183,13 @@ var filter = fn(@list vs, @fun f, @list acc = []) match {
 	[[1,2,3], 9, fn(a,b) {a+b}], 15,
 )
 @export
-var reduce = fn(@list vs, v, @fun f) match {
+var reduce = fn(@list vs, v, @fn f) match {
 	[[], ...] => v
 	[[h, ...t], ...] => recur(t, f(v, h), f)
 }
 
 @export
-var find = fn(@list xs, @fun f) match {
+var find = fn(@list xs, @fn f) match {
 	[[], ...] => nil
 	[[h, ...t], ...] => {
 		if (f(h)) {
@@ -205,7 +205,7 @@ var find = fn(@list xs, @fun f) match {
 	[{n:"Slug"}, fn(v) {v.n}], "Slug",
 )
 @export
-var then = fn(m, @fun f) {
+var then = fn(m, @fn f) {
 	f(m)
 }
 
@@ -403,7 +403,7 @@ var equals = fn(@map m1, @map m2) {
 }
 
 @export
-var ifNil = fn(v, @fun f) match {
+var ifNil = fn(v, @fn f) match {
 	[nil, ...] => f()
 	_ => v
 }
@@ -414,7 +414,7 @@ var ifNil = fn(v, default) {
 }
 
 @export
-var nonNil = fn(v, @fun f, default = nil) match {
+var nonNil = fn(v, @fn f, default = nil) match {
 	[nil, ...] => default
 	[...] => f(v)
 }

@@ -138,7 +138,7 @@ jsonObject
 	/> fn(v) { v["profile"]["preferences"]["darkMode"] }
 	/> assertEqual(false)
 
-var applyTest = fn(in, @fun f, out, @str err) {
+var applyTest = fn(in, @fn f, out, @str err) {
 	defer onerror(err) {
 		match err {
 			{msg, ...} => {

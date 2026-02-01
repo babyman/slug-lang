@@ -63,7 +63,7 @@ contexts:
       scope: storage.modifier.slug
     - match: (@testWith)\b
       scope: meta.annotation.test.slug
-    - match: (@(?:bool|bytes|fun|list|map|num|str|symbol|task))\b
+    - match: (@(?:bool|bytes|fn|list|map|num|str|symbol|task))\b
       scope: storage.type.annotation.slug
     - match: (@[a-zA-Z][a-zA-Z0-9_]*)
       scope: entity.name.tag.slug

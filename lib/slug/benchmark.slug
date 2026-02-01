@@ -136,7 +136,7 @@ val sampleTimesPerIter = fn(workFn, iters, samples, overheadPerIter) {
 @export
 var micro = fn(
 	@str name,
-	@fun workFn,
+	@fn workFn,
 	@num warmupMs = 100,
 	@num sampleMs = 200,
 	@num samples = 20,

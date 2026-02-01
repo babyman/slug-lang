@@ -113,7 +113,7 @@ var hmacSha512 = fn(@bytes message, @bytes secret) {
 }
 
 
-var calculateHmacSignature = fn(@bytes message, @bytes secret, @num blockSize, @fun algo) {
+var calculateHmacSignature = fn(@bytes message, @bytes secret, @num blockSize, @fn algo) {
 
     if (len(secret) > blockSize) {
         secret = algo(secret)

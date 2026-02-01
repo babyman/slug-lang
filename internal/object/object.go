@@ -45,7 +45,7 @@ const (
 const (
 	IMPORT_TAG   = "@import"
 	EXPORT_TAG   = "@export"
-	FUNCTION_TAG = "@fun"
+	FUNCTION_TAG = "@fn"
 )
 
 var TypeTags = map[string]string{

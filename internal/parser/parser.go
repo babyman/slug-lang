@@ -568,8 +568,8 @@ func (p *Parser) parseSymbolLiteralFromColon() ast.Expression {
 	return &ast.SymbolLiteral{Token: p.curToken, Value: p.curToken.Literal}
 }
 
-func (p *Parser) peekTokenIsSymbolName() bool {
-	switch p.peekToken.Type {
+func tokenIsSymbolName(t token.TokenType) bool {
+	switch t {
 	case token.IDENT,
 		token.NIL,
 		token.TRUE,
@@ -598,6 +598,14 @@ func (p *Parser) peekTokenIsSymbolName() bool {
 	default:
 		return false
 	}
+}
+
+func (p *Parser) peekTokenIsSymbolName() bool {
+	return tokenIsSymbolName(p.peekToken.Type)
+}
+
+func (p *Parser) curTokenIsSymbolName() bool {
+	return tokenIsSymbolName(p.curToken.Type)
 }
 
 // Modify parseNumberLiteral to include line and column
@@ -2087,14 +2095,8 @@ func (p *Parser) parseStructSchemaField() *ast.StructField {
 	field := &ast.StructField{Token: p.curToken}
 
 	if p.curTokenIs(token.AT) {
-		if !p.expectPeek(token.IDENT) {
-			return nil
-		}
-		field.Hint = "@" + p.curToken.Literal
-		if p.peekTokenIs(token.LPAREN) {
-			p.addErrorAt(p.peekToken.Position, "struct field type hints do not accept arguments")
-			return nil
-		}
+		tag := p.parseTag()
+		field.Hint = tag.Name
 		if !p.expectPeek(token.IDENT) {
 			return nil
 		}
@@ -2347,8 +2349,8 @@ func (p *Parser) parseTag() *ast.Tag {
 	annotation := &ast.Tag{Token: p.curToken}
 	p.nextToken() // Consume '@'
 
-	// Expect identifier for the annotation name
-	if !p.curTokenIs(token.IDENT) {
+	// Expect identifier or keyword for the annotation name
+	if !p.curTokenIsSymbolName() {
 		p.addErrorAt(p.curToken.Position, "expected annotation name after '@', got %s", p.curToken.Literal)
 		return nil
 	}

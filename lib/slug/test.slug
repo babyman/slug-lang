@@ -10,7 +10,7 @@ var {*} = import(
  * Implementation uses `defer onerror` to intercept thrown payload.
  */
 @export
-var runSafe = fn(@fun f) {
+var runSafe = fn(@fn f) {
     defer onerror(err) {
         { error: err, trace: stacktrace(err) }
     }
@@ -24,7 +24,7 @@ var isAssertError = fn(v) {
 }
 
 @export
-var assertThrows = fn(@fun f, expected, @str msg = nil) {
+var assertThrows = fn(@fn f, expected, @str msg = nil) {
     var r = runSafe(f)
     if (r.error == expected) {
         true
@@ -41,7 +41,7 @@ var assertThrows = fn(@fun f, expected, @str msg = nil) {
 }
 
 @export
-var assertErrorType = fn(@fun f, expected, @str msg = nil) {
+var assertErrorType = fn(@fn f, expected, @str msg = nil) {
     var r = runSafe(f)
     if (r.error /> type() == expected) {
         true

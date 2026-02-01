@@ -8,7 +8,7 @@ var {*} = import (
     [["c","a","b"], compare], ["a","b","c"]
 )
 @export
-foreign sortWithComparator = fn(@list lst, @fun comparator)
+foreign sortWithComparator = fn(@list lst, @fn comparator)
 
 @export
 var sort = fn(@list lst) {
