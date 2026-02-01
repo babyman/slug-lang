@@ -1,0 +1,135 @@
+var {*} = import(
+	"slug.std",
+	"slug.test",
+	"slug.time",
+	"slug.channel",
+)
+
+@test
+var test_send_recv = fn() {
+	var c = chan()
+	defer close(c)
+
+	var x = spawn {
+		match recv(c) {
+			Full{value} => value
+			Empty => "closed"
+		}
+	}
+
+	send(c, 10)
+
+	(await x) /> assertEqual(10)
+}
+
+@test
+var test_close_channel = fn() {
+	var c = chan()
+
+	var x = spawn {
+		match recv(c) {
+			Full{value} => value
+			Empty => "closed"
+		}
+	}
+
+	close(c)
+
+	(await x) /> assertEqual("closed")
+}
+
+@test
+var test_buffered_channel = fn() {
+	var c = chan(1)
+	defer close(c)
+
+	// send will block if the channel is full
+	send(c, 10)
+
+	var x = spawn {
+		match recv(c) {
+			Full{value} => value
+			Empty => "closed"
+		}
+	}
+
+	(await x) /> assertEqual(10)
+}
+
+@test
+var test_select = fn() {
+	var c = chan()
+	defer close(c)
+
+	var x = spawn {
+		select {
+			recv c /> match {
+				Full{value} => value * 2
+				Empty => "closed"
+			}
+		}
+	}
+
+	send(c, 10)
+
+	(await x) /> assertEqual(20)
+}
+
+@test
+var test_select_timeout = fn() {
+	var c = chan()
+	defer close(c)
+
+	var x = spawn {
+		select {
+			recv c /> match {
+				Full{value} => value * 2
+				Empty => "closed"
+			}
+			after 50 /> fn(_) { "timeout" }
+		}
+	}
+
+	sleep(60)
+
+	(await x) /> assertEqual("timeout")
+}
+
+@test
+var test_select_default = fn() {
+	var c = chan()
+	defer close(c)
+
+	var x = spawn {
+		select {
+			recv c /> match {
+				Full{value} => value * 2
+				Empty => "closed"
+			}
+			_ /> fn(_) { "default" }
+		}
+	}
+
+	// `_` is non-blocking
+	(await x) /> assertEqual("default")
+}
+
+@test
+var test_select_send = fn() {
+	var c = chan()
+	defer close(c)
+
+	var x = spawn {
+		match recv(c) {
+			Full{value} => value
+			Empty => "closed"
+		}
+	}
+
+	var r = select {
+		send c, 10 /> fn(_) { "sent" }
+	}
+
+	assertEqual(r, "sent")
+	(await x) /> assertEqual(10)
+}
