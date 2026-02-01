@@ -53,8 +53,7 @@ const (
 	EQ     = "=="
 	NOT_EQ = "!="
 
-	ROCKET = "=>"
-	//RANGE    = ".."
+	ROCKET          = "=>"
 	ELLIPSIS        = "..."
 	NOT_IMPLEMENTED = "???"
 	CALL_CHAIN      = "/>"

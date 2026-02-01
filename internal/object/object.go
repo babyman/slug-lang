@@ -46,7 +46,6 @@ const (
 	IMPORT_TAG   = "@import"
 	EXPORT_TAG   = "@export"
 	FUNCTION_TAG = "@fun"
-	TASK_TAG     = "@task"
 )
 
 var TypeTags = map[string]string{
@@ -56,8 +55,8 @@ var TypeTags = map[string]string{
 	"@list":      LIST_OBJ,
 	"@bytes":     BYTE_OBJ,
 	"@bool":      BOOLEAN_OBJ,
+	"@task":      TASK_HANDLE_OBJ,
 	FUNCTION_TAG: FUNCTION_OBJ,
-	TASK_TAG:     TASK_HANDLE_OBJ,
 }
 
 var (
