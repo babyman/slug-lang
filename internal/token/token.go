@@ -92,10 +92,11 @@ const (
 	STRUCT    = "STRUCT"
 	COPY      = "COPY"
 	NURSERY   = "NURSERY"
+	LIMIT     = "LIMIT"
 	SPAWN     = "SPAWN"
 	AWAIT     = "AWAIT"
-	LIMIT     = "LIMIT"
 	WITHIN    = "WITHIN"
+	SELECT    = "SELECT"
 )
 
 type Token struct {
@@ -136,6 +137,7 @@ var keywords = map[string]TokenType{
 	"spawn":   SPAWN,
 	"await":   AWAIT,
 	"within":  WITHIN,
+	"select":  SELECT,
 }
 
 func LookupIdent(ident string) TokenType {

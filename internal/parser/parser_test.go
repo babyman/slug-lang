@@ -142,6 +142,68 @@ func TestIdentifierExpression(t *testing.T) {
 	}
 }
 
+func TestSelectExpressionParsing(t *testing.T) {
+	input := `
+select {
+  recv ch /> match {
+    Full{value} => value
+    Empty => :done
+  }
+  send ch, 1 /> :sent
+  after 100 /> :timeout
+  _ /> :default
+}
+`
+
+	l := lexer.New(input)
+	p := New(l, "", input)
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	if len(program.Statements) != 1 {
+		t.Fatalf("program.Statements does not contain 1 statements. got=%d", len(program.Statements))
+	}
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("stmt not *ast.ExpressionStatement. got=%T", program.Statements[0])
+	}
+
+	selectExpr, ok := stmt.Expression.(*ast.SelectExpression)
+	if !ok {
+		t.Fatalf("expression not *ast.SelectExpression. got=%T", stmt.Expression)
+	}
+
+	if len(selectExpr.Cases) != 4 {
+		t.Fatalf("selectExpr.Cases length wrong. got=%d", len(selectExpr.Cases))
+	}
+
+	if selectExpr.Cases[0].Kind != ast.SelectRecv {
+		t.Fatalf("first case kind wrong. got=%v", selectExpr.Cases[0].Kind)
+	}
+	if ident, ok := selectExpr.Cases[0].Channel.(*ast.Identifier); !ok || ident.Value != "ch" {
+		t.Fatalf("first case channel wrong. got=%T", selectExpr.Cases[0].Channel)
+	}
+
+	if selectExpr.Cases[1].Kind != ast.SelectSend {
+		t.Fatalf("second case kind wrong. got=%v", selectExpr.Cases[1].Kind)
+	}
+	if _, ok := selectExpr.Cases[1].Value.(*ast.NumberLiteral); !ok {
+		t.Fatalf("second case value wrong. got=%T", selectExpr.Cases[1].Value)
+	}
+
+	if selectExpr.Cases[2].Kind != ast.SelectAfter {
+		t.Fatalf("third case kind wrong. got=%v", selectExpr.Cases[2].Kind)
+	}
+	if _, ok := selectExpr.Cases[2].After.(*ast.NumberLiteral); !ok {
+		t.Fatalf("third case after wrong. got=%T", selectExpr.Cases[2].After)
+	}
+
+	if selectExpr.Cases[3].Kind != ast.SelectDefault {
+		t.Fatalf("fourth case kind wrong. got=%v", selectExpr.Cases[3].Kind)
+	}
+}
+
 func TestIntegerLiteralExpression(t *testing.T) {
 	input := "5;"
 

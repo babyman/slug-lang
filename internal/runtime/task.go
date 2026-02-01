@@ -195,6 +195,9 @@ func (e *Task) Eval(node ast.Node) object.Object {
 	case *ast.MatchExpression:
 		return e.evalMatchExpression(node)
 
+	case *ast.SelectExpression:
+		return e.evalSelectExpression(node)
+
 	case *ast.VarExpression:
 		variable := e.Eval(node.Value)
 		if e.isError(variable) {
@@ -1748,6 +1751,16 @@ func (e *Task) evalMatchExpression(node *ast.MatchExpression) object.Object {
 	}
 
 	// No match found
+	return object.NIL
+}
+
+func (e *Task) evalMatchExpressionWithValue(node *ast.MatchExpression, matchValue object.Object) object.Object {
+	for _, matchCase := range node.Cases {
+		result, matched := e.evalMatchCase(matchValue, matchCase)
+		if matched {
+			return result
+		}
+	}
 	return object.NIL
 }
 

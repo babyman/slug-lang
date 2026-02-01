@@ -119,6 +119,7 @@ func New(l lexer.Tokenizer, path, source string) *Parser {
 	p.registerPrefix(token.LBRACKET, p.parseListLiteral)
 	p.registerPrefix(token.LBRACE, p.parseMapLiteral)
 	p.registerPrefix(token.MATCH, p.parseMatchExpression)
+	p.registerPrefix(token.SELECT, p.parseSelectExpression)
 	p.registerPrefix(token.VAR, p.parseVarStatement)
 	p.registerPrefix(token.VAL, p.parseValStatement)
 	p.registerPrefix(token.RECUR, p.parseRecurExpression)
@@ -740,10 +741,91 @@ func (p *Parser) parseMatchExpression() ast.Expression {
 	return match
 }
 
+func (p *Parser) parseSelectExpression() ast.Expression {
+	selectExpr := &ast.SelectExpression{Token: p.curToken}
+
+	if !p.expectPeek(token.LBRACE) {
+		p.addErrorAt(selectExpr.Token.Position, "'{' expected after select expression")
+		return nil
+	}
+
+	selectExpr.Cases = []*ast.SelectCase{}
+
+	p.nextToken()
+	p.skipCaseSeparators()
+
+	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
+		selectCase := p.parseSelectCase()
+		if selectCase != nil {
+			selectExpr.Cases = append(selectExpr.Cases, selectCase)
+		}
+
+		p.nextToken()
+		p.skipCaseSeparators()
+	}
+
+	return selectExpr
+}
+
 func (p *Parser) skipCaseSeparators() {
 	for p.curTokenIs(token.NEWLINE) || p.curTokenIs(token.SEMICOLON) {
 		p.nextToken()
 	}
+}
+
+func (p *Parser) parseSelectCase() *ast.SelectCase {
+	selectCase := &ast.SelectCase{Token: p.curToken}
+
+	switch {
+	case p.curToken.Type == token.IDENT && p.curToken.Literal == "recv":
+		selectCase.Kind = ast.SelectRecv
+		p.nextToken()
+		selectCase.Channel = p.parseExpression(CALL_CHAIN)
+		if selectCase.Channel == nil {
+			return nil
+		}
+	case p.curToken.Type == token.IDENT && p.curToken.Literal == "send":
+		selectCase.Kind = ast.SelectSend
+		p.nextToken()
+		selectCase.Channel = p.parseExpression(CALL_CHAIN)
+		if selectCase.Channel == nil {
+			return nil
+		}
+		if !p.expectPeek(token.COMMA) {
+			return nil
+		}
+		p.nextToken()
+		selectCase.Value = p.parseExpression(CALL_CHAIN)
+		if selectCase.Value == nil {
+			return nil
+		}
+	case p.curToken.Type == token.IDENT && p.curToken.Literal == "after":
+		selectCase.Kind = ast.SelectAfter
+		p.nextToken()
+		selectCase.After = p.parseExpression(CALL_CHAIN)
+		if selectCase.After == nil {
+			return nil
+		}
+	case p.curToken.Type == token.UNDERSCORE:
+		selectCase.Kind = ast.SelectDefault
+	default:
+		p.addErrorAt(p.curToken.Position, "expected select case, got %s", p.curToken.Type)
+		return nil
+	}
+
+	if !p.expectPeek(token.CALL_CHAIN) {
+		return nil
+	}
+
+	p.nextToken()
+	p.skipLeadingNewlines()
+	selectCase.Handler = p.parseExpression(LOWEST)
+	if selectCase.Handler == nil {
+		p.addErrorAt(p.curToken.Position, "select case handler expected after '/>'")
+		return nil
+	}
+
+	return selectCase
 }
 
 func (p *Parser) parseMatchCase() *ast.MatchCase {
@@ -2452,6 +2534,27 @@ func (p *Parser) validateRecurInExpr(expr ast.Expression, inTail bool) {
 			}
 			if c.Body != nil {
 				p.validateRecurInBlock(c.Body, inTail)
+			}
+		}
+
+	case *ast.SelectExpression:
+		for _, c := range e.Cases {
+			if c == nil {
+				continue
+			}
+			switch c.Kind {
+			case ast.SelectRecv:
+				p.validateRecurInExpr(c.Channel, false)
+			case ast.SelectSend:
+				p.validateRecurInExpr(c.Channel, false)
+				p.validateRecurInExpr(c.Value, false)
+			case ast.SelectAfter:
+				p.validateRecurInExpr(c.After, false)
+			case ast.SelectDefault:
+				// no header expression
+			}
+			if c.Handler != nil {
+				p.validateRecurInExpr(c.Handler, inTail)
 			}
 		}
 

@@ -27,6 +27,7 @@ const (
 	MAP_OBJ           = "MAP"
 	STRUCT_SCHEMA_OBJ = "STRUCT_SCHEMA"
 	STRUCT_OBJ        = "STRUCT"
+	CHANNEL_OBJ       = "CHANNEL"
 
 	MODULE_OBJ         = "MODULE"
 	FUNCTION_OBJ       = "FUNCTION"

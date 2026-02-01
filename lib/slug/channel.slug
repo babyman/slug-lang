@@ -1,0 +1,12 @@
+
+@export
+foreign chan = fn(@num capacity = 0)
+
+@export
+foreign send = fn(channel, payload)
+
+@export
+foreign recv = fn(channel)
+
+@export
+foreign close = fn(channel)

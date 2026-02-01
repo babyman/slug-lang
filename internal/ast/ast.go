@@ -698,8 +698,10 @@ func (m *MatchExpression) String() string {
 	var out bytes.Buffer
 
 	out.WriteString("match")
-	out.WriteString(" ")
-	out.WriteString(m.Value.String())
+	if m.Value != nil {
+		out.WriteString(" ")
+		out.WriteString(m.Value.String())
+	}
 	out.WriteString(" {")
 
 	for _, c := range m.Cases {
@@ -733,6 +735,68 @@ func (m *MatchCase) String() string {
 	out.WriteString(" => ")
 	out.WriteString(m.Body.String())
 
+	return out.String()
+}
+
+type SelectCaseType int
+
+const (
+	SelectRecv SelectCaseType = iota
+	SelectSend
+	SelectAfter
+	SelectDefault
+)
+
+type SelectExpression struct {
+	Token token.Token // The 'select' token
+	Cases []*SelectCase
+}
+
+func (s *SelectExpression) expressionNode()      {}
+func (s *SelectExpression) TokenLiteral() string { return s.Token.Literal }
+func (s *SelectExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString("select {")
+	for _, c := range s.Cases {
+		out.WriteString("\n    ")
+		out.WriteString(c.String())
+	}
+	out.WriteString("\n}")
+	return out.String()
+}
+
+type SelectCase struct {
+	Token   token.Token
+	Kind    SelectCaseType
+	Channel Expression
+	Value   Expression
+	After   Expression
+	Handler Expression
+}
+
+func (s *SelectCase) expressionNode()      {}
+func (s *SelectCase) TokenLiteral() string { return s.Token.Literal }
+func (s *SelectCase) String() string {
+	var out bytes.Buffer
+	switch s.Kind {
+	case SelectRecv:
+		out.WriteString("recv ")
+		out.WriteString(s.Channel.String())
+	case SelectSend:
+		out.WriteString("send ")
+		out.WriteString(s.Channel.String())
+		out.WriteString(", ")
+		out.WriteString(s.Value.String())
+	case SelectAfter:
+		out.WriteString("after ")
+		out.WriteString(s.After.String())
+	case SelectDefault:
+		out.WriteString("_")
+	}
+	out.WriteString(" /> ")
+	if s.Handler != nil {
+		out.WriteString(s.Handler.String())
+	}
 	return out.String()
 }
 
