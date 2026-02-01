@@ -7,7 +7,7 @@ var {*} = import(
 	"slug.term.colour",
 )
 
-val colourNames = ["Black", "Red", "Green", "Yellow", "Blue", "Magenta", "Cyan", "White", ]
+val colourNames = [:Black, :Red, :Green, :Yellow, :Blue, :Magenta, :Cyan, :White, ]
 
 var pad = fn(s) {
 	s /> padRight(" ", 16)
@@ -36,7 +36,7 @@ println(
 )
 
 colourNames /> map(fn(k) {
-	var name = k /> pad
+	var name = k /> label /> pad
 	println(
 		Colour[k] + name + reset,
 		BgColour[k] + name + reset,

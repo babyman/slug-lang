@@ -49,12 +49,13 @@ const (
 )
 
 var TypeTags = map[string]string{
+	"@bool":      BOOLEAN_OBJ,
+	"@bytes":     BYTE_OBJ,
+	"@list":      LIST_OBJ,
+	"@map":       MAP_OBJ,
 	"@num":       NUMBER_OBJ,
 	"@str":       STRING_OBJ,
-	"@map":       MAP_OBJ,
-	"@list":      LIST_OBJ,
-	"@bytes":     BYTE_OBJ,
-	"@bool":      BOOLEAN_OBJ,
+	"@sym":       SYMBOL_OBJ,
 	"@task":      TASK_HANDLE_OBJ,
 	FUNCTION_TAG: FUNCTION_OBJ,
 }

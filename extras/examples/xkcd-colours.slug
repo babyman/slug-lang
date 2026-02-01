@@ -15,7 +15,7 @@ XKCD colours:
 """)
 
 XkcdColourIndex /> keys /> sort /> map(fn(n) {
-	n /> xkcd(n) /> print(reset)
+	n /> label /> xkcd(n) /> print(reset)
 })
 
 

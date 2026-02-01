@@ -79,14 +79,14 @@ var wrapWith = fn(@str str, ...s) {
 }
 
 @testWith(
-	["red",""], "red",
-	["red","bg"], "bgRed",
+	["red",""], :red,
+	["red","bg"], :bgRed,
 )
 var styleName = fn(@str base, @str style) {
 	if ( len(style) > 0 ) {
-		style + toUpper(base[0]) + base[1:]
+		sym(style + toUpper(base[0]) + base[1:])
 	} else {
-		base
+		sym(base)
 	}
 }
 
@@ -97,18 +97,18 @@ var buildStyles = fn() {
 	var effectsMap = effectNames
 		/> zip(effects)
 		/> reduce(stylesMap, fn(a, b) {
-			a /> put(b[0], [b[1]])
-				/> put(b[0] + offPostfix, [b[1] + effectOffMod])
+			a /> put(sym(b[0]), [b[1]])
+				/> put(sym(b[0] + offPostfix), [b[1] + effectOffMod])
 		})
 	colourNames
 		/> zip(colours)
 		/> reduce(effectsMap, fn(a, b) {
 			val base = b[0]
 			val part = toUpper(base[0]) + base[1:]
-			a /> put(base, [b[1]])
-				/> put(bgPrefix + part, [b[1] + bgMod])
-				/> put(brightPrefix + part, [b[1] + brightMod])
-				/> put(bgBrightPrefix + part, [b[1] + bgBrightMod])
+			a /> put(sym(base), [b[1]])
+				/> put(sym(bgPrefix + part), [b[1] + bgMod])
+				/> put(sym(brightPrefix + part), [b[1] + brightMod])
+				/> put(sym(bgBrightPrefix + part), [b[1] + bgBrightMod])
 		})
 }
 
@@ -119,7 +119,7 @@ var buildCodes = fn(@map styles, @str style = "") {
 	colourNames
 		/> reduce(codeMap, fn(a, b) {
 				val key = toUpper(b[0]) + b[1:]
-				a /> put(key, ansiCode(styles[styleName(b, style)]))
+				a /> put(sym(key), ansiCode(styles[styleName(b, style)]))
 			})
 }
 
@@ -130,8 +130,8 @@ var buildEffects = fn(@map styles) {
 	effectNames
 		/> reduce(effectMap, fn(a, b) {
 				val key = toUpper(b[0]) + b[1:]
-				a /> put(key, ansiCode(styles[b]))
-					/> put(key + offPostfix, ansiCode(styles[b + offPostfix]))
+				a /> put(sym(key), ansiCode(styles[b]))
+					/> put(sym(key) + offPostfix, ansiCode(styles[b + offPostfix]))
 			})
 }
 
@@ -252,10 +252,10 @@ var hexBgStyle = fn(@str code) { code[1:] /> hexStrToBytes /> bytesToNumbers /> 
 
 // xkcd color survey support (see https://xkcd.com/color/rgb/)
 // -----------
-var xkcdStyle = fn(@str name) { XkcdColourIndex[name] /> hexStyle }
-var xkcdBgStyle = fn(@str name) { XkcdColourIndex[name] /> hexBgStyle }
-@export var xkcdCode = fn(@str name) { name /> xkcdStyle /> ansiCode }
-@export var bgXkcdCode = fn(@str name) { name /> xkcdBgStyle /> ansiCode }
-@export var xkcd = fn(@str str, @str name) { str /> wrapWith( xkcdStyle(name) )}
-@export var bgXkcd = fn(@str str, @str name) { str /> wrapWith( xkcdBgStyle(name) )}
+var xkcdStyle = fn(@sym name) { XkcdColourIndex[name] /> hexStyle }
+var xkcdBgStyle = fn(@sym name) { XkcdColourIndex[name] /> hexBgStyle }
+@export var xkcdCode = fn(@sym name) { name /> xkcdStyle /> ansiCode }
+@export var bgXkcdCode = fn(@sym name) { name /> xkcdBgStyle /> ansiCode }
+@export var xkcd = fn(@str str, @sym name) { str /> wrapWith( xkcdStyle(name) )}
+@export var bgXkcd = fn(@str str, @sym name) { str /> wrapWith( xkcdBgStyle(name) )}
 

@@ -45,8 +45,8 @@ val TestWithTag = "@testWith"
  */
 val TestTag = "@test"
 
-val Fail = BrightColour["Red"]
-val Pass = Colour["Green"]
+val Fail = BrightColour.Red
+val Pass = Colour.Green
 val Reset = reset
 
 var timer = delta(clock)

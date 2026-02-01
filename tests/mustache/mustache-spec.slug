@@ -8,8 +8,8 @@ var {*} = import(
 	"slug.term.colour",
 )
 
-val Fail = BrightColour["Red"]
-val Pass = Colour["Green"]
+val Fail = BrightColour.Red
+val Pass = Colour.Green
 val Reset = reset
 val specDir = 'mustache/spec-1.4.3/specs'
 
