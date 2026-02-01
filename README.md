@@ -59,7 +59,6 @@ slug hello.slug
 ## Environment variables
 
 - `SLUG_HOME`: directory where Slug searches for libraries and modules.
-- `SLUG_CPU_PROFILE`: if set (e.g. `cpu.prof`), Slug writes a CPU profile to this file.
 
 ## Status
 

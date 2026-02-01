@@ -1,6 +1,6 @@
 ---
 title: Long-running loops (use `recur`)
-tags: [nursery, await, recur]
+tags: [nursery, recur]
 ---
 
 ```slug

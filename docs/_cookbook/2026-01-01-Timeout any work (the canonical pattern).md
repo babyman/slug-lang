@@ -6,9 +6,10 @@ tags: [nursery, spawn, await]
 Timeouts apply to `await`, so to timeout a call (sync or nursery), wrap it in a spawn:
 
 ```slug
+var {*} = import("slug.channel")
 nursery fn handler(req) {
     var resT = spawn { doWork(req) }
-    var res  = await resT within 2000
+    var res  = await(resT, 2000)
     res
 }
 ```

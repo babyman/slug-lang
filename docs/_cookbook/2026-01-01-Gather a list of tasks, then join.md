@@ -4,9 +4,10 @@ tags: [nursery, spawn, await]
 ---
 
 ```slug
+var {*} = import("slug.channel")
 nursery fn fetchAll(ids) {
     var tasks = ids /> map(fn(id) { spawn { fetchUser(id) } })
-    tasks /> map(fn(t) { await t })
+    tasks /> map(fn(t) { await(t) })
 }
 ```
 

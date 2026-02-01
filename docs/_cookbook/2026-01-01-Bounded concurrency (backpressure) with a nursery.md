@@ -6,10 +6,11 @@ tags: [nursery, limit, spawn, await]
 Create a nursery to limit concurrent spawns:
 
 ```slug
+var {*} = import("slug.channel")
 var loadUsers = nursery limit 10 fn(ids) {
     ids
         /> map(fn(id) { spawn { fetchUser(id) } })
-        /> map(fn(t) { await t })  // join handles
+        /> map(fn(t) { await(t) })  // join handles
 }
 ```
 

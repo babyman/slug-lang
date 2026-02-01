@@ -11,12 +11,13 @@ By default, if a task fails and you `await` it:
 Typical pattern:
 
 ```slug
+var {*} = import("slug.channel")
 nursery fn handler(req) {
     var aT = spawn { taskA() }
     var bT = spawn { taskB() }
 
-    var a = await aT;    // if this throws, nursery cancels siblings
-    var b = await bT
+    var a = await(aT);    // if this throws, nursery cancels siblings
+    var b = await(bT)
 
     {a:a, b:b}
 }

@@ -56,13 +56,14 @@ Semantics:
 `await` suspends the current task until a handle completes.
 
 ```slug
-var value = await taskHandle
+var {*} = import("slug.channel")
+var value = await(taskHandle)
 ```
 
 With a timeout:
 
 ```slug
-var value = await taskHandle within 500
+var value = await(taskHandle, 500)
 ```
 
 Notes:
@@ -77,7 +78,7 @@ Task handles are first-class values. Use `@task` with tagged dispatch:
 
 ```slug
 var awaitAll = fn(@list hs) {
-    hs /> map(fn(@task h) { await h })
+    hs /> map(fn(@task h) { await(h) })
 }
 ```
 
@@ -125,8 +126,8 @@ var showProfile = nursery limit 10 fn(id) {
     var userT  = spawn { id /> fetchUser }
     var postsT = spawn { id /> fetchPosts }
 
-    var user  = await userT  within 500
-    var posts = await postsT within 1000
+    var user  = await(userT, 500)
+    var posts = await(postsT, 1000)
 
     renderProfile(user, posts)
 }
@@ -138,7 +139,7 @@ Because `await` is syntax, use a helper for pipelines:
 
 ```slug
 var awaitWithin = fn(v, dur) {
-    await v within dur
+    await(v, dur)
 }
 
 var user = userT /> awaitWithin(500)

@@ -6,15 +6,16 @@ tags: [spawn, await]
 If you like keeping the spawn+await pattern tidy:
 
 ```slug
+var {*} = import("slug.channel")
 var withTimeout = fn(ms, f) {
-    await (spawn { f() }) within ms
+    await(spawn { f() }, ms)
 }
 ```
 
 Usage:
 
 ```slug
-var res = await withTimeout(2000, fn() { app(req) })
+var res = withTimeout(2000, fn() { app(req) })
 ```
 
 No language magic—just an idiom.
