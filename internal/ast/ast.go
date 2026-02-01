@@ -744,6 +744,7 @@ const (
 	SelectRecv SelectCaseType = iota
 	SelectSend
 	SelectAfter
+	SelectAwait
 	SelectDefault
 )
 
@@ -771,6 +772,7 @@ type SelectCase struct {
 	Channel Expression
 	Value   Expression
 	After   Expression
+	Await   Expression
 	Handler Expression
 }
 
@@ -790,11 +792,14 @@ func (s *SelectCase) String() string {
 	case SelectAfter:
 		out.WriteString("after ")
 		out.WriteString(s.After.String())
+	case SelectAwait:
+		out.WriteString("await ")
+		out.WriteString(s.Await.String())
 	case SelectDefault:
 		out.WriteString("_")
 	}
-	out.WriteString(" /> ")
 	if s.Handler != nil {
+		out.WriteString(" /> ")
 		out.WriteString(s.Handler.String())
 	}
 	return out.String()
@@ -805,6 +810,29 @@ type MatchPattern interface {
 	Node
 	patternNode()
 	String() string
+}
+
+// BindingPattern binds the whole matched value while applying a pattern.
+// Syntax: <ident> @ <pattern>
+type BindingPattern struct {
+	Token   token.Token
+	Name    *Identifier
+	Pattern MatchPattern
+}
+
+func (bp *BindingPattern) expressionNode()      {}
+func (bp *BindingPattern) patternNode()         {}
+func (bp *BindingPattern) TokenLiteral() string { return bp.Token.Literal }
+func (bp *BindingPattern) String() string {
+	var out bytes.Buffer
+	if bp.Name != nil {
+		out.WriteString(bp.Name.String())
+	}
+	out.WriteString(" @ ")
+	if bp.Pattern != nil {
+		out.WriteString(bp.Pattern.String())
+	}
+	return out.String()
 }
 
 // AllPattern  (_)

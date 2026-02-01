@@ -145,13 +145,11 @@ func TestIdentifierExpression(t *testing.T) {
 func TestSelectExpressionParsing(t *testing.T) {
 	input := `
 select {
-  recv ch /> match {
-    Full{value} => value
-    Empty => :done
-  }
+  recv ch
   send ch, 1 /> :sent
+  await h1
   after 100 /> :timeout
-  _ /> :default
+  _
 }
 `
 
@@ -174,7 +172,7 @@ select {
 		t.Fatalf("expression not *ast.SelectExpression. got=%T", stmt.Expression)
 	}
 
-	if len(selectExpr.Cases) != 4 {
+	if len(selectExpr.Cases) != 5 {
 		t.Fatalf("selectExpr.Cases length wrong. got=%d", len(selectExpr.Cases))
 	}
 
@@ -184,6 +182,9 @@ select {
 	if ident, ok := selectExpr.Cases[0].Channel.(*ast.Identifier); !ok || ident.Value != "ch" {
 		t.Fatalf("first case channel wrong. got=%T", selectExpr.Cases[0].Channel)
 	}
+	if selectExpr.Cases[0].Handler != nil {
+		t.Fatalf("first case handler expected nil. got=%T", selectExpr.Cases[0].Handler)
+	}
 
 	if selectExpr.Cases[1].Kind != ast.SelectSend {
 		t.Fatalf("second case kind wrong. got=%v", selectExpr.Cases[1].Kind)
@@ -192,15 +193,64 @@ select {
 		t.Fatalf("second case value wrong. got=%T", selectExpr.Cases[1].Value)
 	}
 
-	if selectExpr.Cases[2].Kind != ast.SelectAfter {
+	if selectExpr.Cases[2].Kind != ast.SelectAwait {
 		t.Fatalf("third case kind wrong. got=%v", selectExpr.Cases[2].Kind)
 	}
-	if _, ok := selectExpr.Cases[2].After.(*ast.NumberLiteral); !ok {
-		t.Fatalf("third case after wrong. got=%T", selectExpr.Cases[2].After)
+	if _, ok := selectExpr.Cases[2].Await.(*ast.Identifier); !ok {
+		t.Fatalf("third case await wrong. got=%T", selectExpr.Cases[2].Await)
 	}
 
-	if selectExpr.Cases[3].Kind != ast.SelectDefault {
+	if selectExpr.Cases[3].Kind != ast.SelectAfter {
 		t.Fatalf("fourth case kind wrong. got=%v", selectExpr.Cases[3].Kind)
+	}
+	if _, ok := selectExpr.Cases[3].After.(*ast.NumberLiteral); !ok {
+		t.Fatalf("fourth case after wrong. got=%T", selectExpr.Cases[3].After)
+	}
+
+	if selectExpr.Cases[4].Kind != ast.SelectDefault {
+		t.Fatalf("fifth case kind wrong. got=%v", selectExpr.Cases[4].Kind)
+	}
+	if selectExpr.Cases[4].Handler != nil {
+		t.Fatalf("fifth case handler expected nil. got=%T", selectExpr.Cases[4].Handler)
+	}
+}
+
+func TestMatchWholeValueBindingParsing(t *testing.T) {
+	input := `
+match x {
+  box @ 1 => box
+  _ => :done
+}
+`
+
+	l := lexer.New(input)
+	p := New(l, "", input)
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("stmt not *ast.ExpressionStatement. got=%T", program.Statements[0])
+	}
+
+	matchExpr, ok := stmt.Expression.(*ast.MatchExpression)
+	if !ok {
+		t.Fatalf("expression not *ast.MatchExpression. got=%T", stmt.Expression)
+	}
+
+	if len(matchExpr.Cases) != 2 {
+		t.Fatalf("matchExpr.Cases length wrong. got=%d", len(matchExpr.Cases))
+	}
+
+	binding, ok := matchExpr.Cases[0].Pattern.(*ast.BindingPattern)
+	if !ok {
+		t.Fatalf("first case pattern not *ast.BindingPattern. got=%T", matchExpr.Cases[0].Pattern)
+	}
+	if binding.Name.Value != "box" {
+		t.Fatalf("binding name wrong. got=%s", binding.Name.Value)
+	}
+	if _, ok := binding.Pattern.(*ast.LiteralPattern); !ok {
+		t.Fatalf("binding pattern wrong. got=%T", binding.Pattern)
 	}
 }
 

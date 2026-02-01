@@ -1784,6 +1784,10 @@ func (e *Task) evalMatchCase(matchValue object.Object, matchCase *ast.MatchCase)
 			return result, true
 		}
 	} else {
+		if _, ok := matchCase.Pattern.(*ast.BindingPattern); ok {
+			result = e.newErrorfWithPos(matchCase.Token.Position, "whole-value bindings require a match value")
+			return result, true
+		}
 		// Valueless match condition
 		matched = e.evaluatePatternAsCondition(matchCase.Pattern)
 	}
@@ -1818,6 +1822,17 @@ func (e *Task) patternMatches(
 ) (bool, error) {
 	env := e.CurrentEnv()
 	switch p := pattern.(type) {
+	case *ast.BindingPattern:
+		matched, err := e.patternMatches(p.Pattern, value, isConstant, isExport, isImport, pinEnv)
+		if !matched || err != nil {
+			return matched, err
+		}
+		if isConstant {
+			_, err = env.DefineConstant(p.Name.Value, value, isExport, isImport)
+			return err == nil, err
+		}
+		_, err = env.Define(p.Name.Value, value, isExport, isImport)
+		return err == nil, err
 	case *ast.WildcardPattern:
 		// Wildcard matches anything
 		return true, nil
@@ -2236,6 +2251,8 @@ func (e *Task) patternMatchesBytes(
 // evaluatePatternAsCondition evaluates patterns as conditions for valueless match
 func (e *Task) evaluatePatternAsCondition(pattern ast.MatchPattern) bool {
 	switch p := pattern.(type) {
+	case *ast.BindingPattern:
+		return e.evaluatePatternAsCondition(p.Pattern)
 	case *ast.WildcardPattern:
 		// Wildcard always matches
 		return true
@@ -2790,6 +2807,13 @@ func (e *Task) applyDocIfPresent(pattern ast.MatchPattern, doc string, hasDoc bo
 
 func (e *Task) applyDocToPattern(pattern ast.MatchPattern, doc string, env *object.Environment) {
 	switch p := pattern.(type) {
+	case *ast.BindingPattern:
+		if p.Name != nil {
+			env.SetLocalDoc(p.Name.Value, doc)
+		}
+		if p.Pattern != nil {
+			e.applyDocToPattern(p.Pattern, doc, env)
+		}
 	case *ast.IdentifierPattern:
 		env.SetLocalDoc(p.Value.Value, doc)
 	case *ast.SpreadPattern:

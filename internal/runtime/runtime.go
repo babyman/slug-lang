@@ -229,6 +229,19 @@ func predeclareTopLevel(program *ast.Program, env *object.Environment) error {
 func predeclarePattern(pat ast.MatchPattern, isConst bool, isExport bool, env *object.Environment) error {
 	switch p := pat.(type) {
 
+	case *ast.BindingPattern:
+		name := p.Name.Value
+		if isConst {
+			if _, err := env.DefineConstant(name, object.BINDING_UNINITIALIZED, isExport, false); err != nil {
+				return err
+			}
+		} else {
+			if _, err := env.Define(name, object.BINDING_UNINITIALIZED, isExport, false); err != nil {
+				return err
+			}
+		}
+		return predeclarePattern(p.Pattern, isConst, isExport, env)
+
 	case *ast.IdentifierPattern:
 		name := p.Value.Value
 		if isConst {

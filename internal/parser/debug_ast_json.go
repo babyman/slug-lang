@@ -295,6 +295,8 @@ func WalkAST(node ast.Node) interface{} {
 		return map[string]interface{}{"type": "WildcardPattern", "token": n.TokenLiteral()}
 	case *ast.AllPattern:
 		return map[string]interface{}{"type": "AllPattern", "token": n.TokenLiteral()}
+	case *ast.BindingPattern:
+		return map[string]interface{}{"type": "BindingPattern", "identifier": WalkAST(n.Name), "pattern": WalkAST(n.Pattern)}
 	case *ast.LiteralPattern:
 		return map[string]interface{}{"type": "LiteralPattern", "value": WalkAST(n.Value)}
 	case *ast.IdentifierPattern:

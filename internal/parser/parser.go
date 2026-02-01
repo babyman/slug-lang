@@ -814,6 +814,13 @@ func (p *Parser) parseSelectCase() *ast.SelectCase {
 		if selectCase.After == nil {
 			return nil
 		}
+	case p.curToken.Type == token.AWAIT:
+		selectCase.Kind = ast.SelectAwait
+		p.nextToken()
+		selectCase.Await = p.parseExpression(CALL_CHAIN)
+		if selectCase.Await == nil {
+			return nil
+		}
 	case p.curToken.Type == token.UNDERSCORE:
 		selectCase.Kind = ast.SelectDefault
 	default:
@@ -821,16 +828,15 @@ func (p *Parser) parseSelectCase() *ast.SelectCase {
 		return nil
 	}
 
-	if !p.expectPeek(token.CALL_CHAIN) {
-		return nil
-	}
-
-	p.nextToken()
-	p.skipLeadingNewlines()
-	selectCase.Handler = p.parseExpression(LOWEST)
-	if selectCase.Handler == nil {
-		p.addErrorAt(p.curToken.Position, "select case handler expected after '/>'")
-		return nil
+	if p.peekTokenIs(token.CALL_CHAIN) {
+		p.nextToken()
+		p.nextToken()
+		p.skipLeadingNewlines()
+		selectCase.Handler = p.parseExpression(LOWEST)
+		if selectCase.Handler == nil {
+			p.addErrorAt(p.curToken.Position, "select case handler expected after '/>'")
+			return nil
+		}
 	}
 
 	return selectCase
@@ -841,7 +847,22 @@ func (p *Parser) parseMatchCase() *ast.MatchCase {
 
 	// Parse the pattern
 	var pattern ast.MatchPattern
-	if p.peekTokenIs(token.COMMA) {
+	if p.curTokenIs(token.IDENT) && p.peekTokenIs(token.AT) {
+		name := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		if !p.expectPeek(token.AT) {
+			return nil
+		}
+		p.nextToken()
+		inner := p.parseMatchPattern()
+		if inner == nil {
+			return nil
+		}
+		pattern = &ast.BindingPattern{
+			Token:   name.Token,
+			Name:    name,
+			Pattern: inner,
+		}
+	} else if p.peekTokenIs(token.COMMA) {
 		// Multi-pattern case - comma-separated list of patterns
 		pattern = p.parseMultiPattern()
 	} else {
@@ -968,6 +989,8 @@ func (p *Parser) parseMultiPattern() ast.MatchPattern {
 	var isNonBinding func(mp ast.MatchPattern) bool
 	isNonBinding = func(mp ast.MatchPattern) bool {
 		switch pt := mp.(type) {
+		case *ast.BindingPattern:
+			return false
 		case *ast.WildcardPattern:
 			return true
 		case *ast.LiteralPattern:
@@ -2552,6 +2575,8 @@ func (p *Parser) validateRecurInExpr(expr ast.Expression, inTail bool) {
 				p.validateRecurInExpr(c.Value, false)
 			case ast.SelectAfter:
 				p.validateRecurInExpr(c.After, false)
+			case ast.SelectAwait:
+				p.validateRecurInExpr(c.Await, false)
 			case ast.SelectDefault:
 				// no header expression
 			}

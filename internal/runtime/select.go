@@ -15,6 +15,7 @@ type selectEvalCase struct {
 	sendValue  object.Object
 	afterValue object.Object
 	afterTimer *time.Timer
+	awaitTask  *Task
 	handler    ast.Expression
 	closedSend bool
 }
@@ -126,6 +127,25 @@ func (e *Task) evalSelectExpression(node *ast.SelectExpression) object.Object {
 				afterTimer: timer,
 				handler:    c.Handler,
 			})
+		case ast.SelectAwait:
+			taskObj := e.Eval(c.Await)
+			if e.isError(taskObj) {
+				return taskObj
+			}
+			task, ok := taskObj.(*Task)
+			if !ok {
+				return e.newErrorfWithPos(c.Token.Position, "await expects a task handle, got %s", taskObj.Type())
+			}
+			cases = append(cases, reflect.SelectCase{
+				Dir:  reflect.SelectRecv,
+				Chan: reflect.ValueOf(task.Done),
+			})
+			evals = append(evals, selectEvalCase{
+				kind:      ast.SelectAwait,
+				token:     c.Token.Position,
+				awaitTask: task,
+				handler:   c.Handler,
+			})
 		case ast.SelectDefault:
 			if defaultSeen {
 				return e.newErrorWithPos(c.Token.Position, "select cannot have multiple default cases")
@@ -198,12 +218,24 @@ func (e *Task) evalSelectExpression(node *ast.SelectExpression) object.Object {
 			val = object.NIL
 		}
 		return e.evalSelectHandler(selected.token, selected.handler, val)
+	case ast.SelectAwait:
+		if selected.awaitTask.Err != nil {
+			return selected.awaitTask.Err
+		}
+		val := selected.awaitTask.Result
+		if val == nil {
+			val = object.NIL
+		}
+		return e.evalSelectHandler(selected.token, selected.handler, val)
 	default:
 		return e.newErrorWithPos(node.Token.Position, "invalid select case")
 	}
 }
 
 func (e *Task) evalSelectHandler(pos int, handler ast.Expression, value object.Object) object.Object {
+	if handler == nil {
+		return value
+	}
 	switch h := handler.(type) {
 	case *ast.MatchExpression:
 		if h.Value != nil {

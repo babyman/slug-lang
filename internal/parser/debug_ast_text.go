@@ -206,6 +206,8 @@ func RenderASTAsText(node ast.Node, indent int) string {
 		return "_"
 	case *ast.AllPattern:
 		return "*"
+	case *ast.BindingPattern:
+		return RenderASTAsText(n.Name, 0) + " @ " + RenderASTAsText(n.Pattern, 0)
 	case *ast.IdentifierPattern:
 		return RenderASTAsText(n.Value, 0)
 	case *ast.LiteralPattern:
