@@ -63,7 +63,7 @@ contexts:
       scope: storage.modifier.slug
     - match: (@testWith)\b
       scope: meta.annotation.test.slug
-    - match: (@(?:bool|bytes|fn|list|map|num|str|symbol|task))\b
+    - match: (@(?:bool|bytes|fn|list|map|num|str|chan|sym|task))\b
       scope: storage.type.annotation.slug
     - match: (@[a-zA-Z][a-zA-Z0-9_]*)
       scope: entity.name.tag.slug
@@ -84,7 +84,17 @@ contexts:
     - match: \b(nil)\b
       scope: constant.language.nil.slug
 
-    - match: \b(fn|foreign|match|struct|copy)\b
+    # Select expression
+    - match: \bselect\b
+      scope: keyword.control.concurrent.slug
+      push: select_after_keyword
+
+    # Match expression
+    - match: \bmatch\b
+      scope: keyword.control.slug
+      push: match_after_keyword
+
+    - match: \b(fn|foreign|struct|copy)\b
       scope: keyword.control.slug
     - match: \b(if)\b
       scope: keyword.control.conditional.if.slug
@@ -99,7 +109,7 @@ contexts:
     - match: \b(defer|onsuccess|onerror)\b
       scope: keyword.control.flow.defer.slug
 
-    - match: \b(nursery|limit|spawn|await|within)\b
+    - match: \b(nursery|limit|spawn)\b
       scope: keyword.control.concurrent.slug
 
     # Built-in functions
@@ -181,11 +191,6 @@ contexts:
       captures:
         1: keyword.control.slug
       push: function_params
-
-    # Match expression
-    - match: \bmatch\b
-      scope: keyword.control.slug
-      push: match_after_keyword
 
     # Delimiters
     - match: \(
@@ -378,6 +383,21 @@ contexts:
     - match: \{
       scope: punctuation.section.braces.begin.slug
       set: match_expression
+    - include: main
+
+  select_after_keyword:
+    - match: \{
+      scope: punctuation.section.braces.begin.slug
+      set: select_block
+    - include: main
+
+  select_block:
+    - meta_scope: meta.select.slug
+    - match: \}
+      scope: punctuation.section.braces.end.slug
+      pop: true
+    - match: \b(recv|await|send|after)\b
+      scope: keyword.control.concurrent.slug
     - include: main
 
   annotation_parens:

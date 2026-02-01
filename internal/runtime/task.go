@@ -12,7 +12,6 @@ import (
 	"slug/internal/util"
 	"strings"
 	"sync"
-	"time"
 )
 
 const (
@@ -2731,40 +2730,7 @@ func (e *Task) evalAwaitExpression(node *ast.AwaitExpression) object.Object {
 		return e.newErrorfWithPos(node.Token.Position, "await expects a task handle, got %s", obj.Type())
 	}
 
-	if node.Timeout != nil {
-		timeoutVal := e.Eval(node.Timeout)
-		if e.isError(timeoutVal) {
-			return timeoutVal
-		}
-
-		var duration int64
-		if num, ok := timeoutVal.(*object.Number); ok {
-			duration = num.Value.ToInt64()
-		} else {
-			return e.newErrorfWithPos(node.Token.Position, "timeout must be a number (ms)")
-		}
-
-		timer := time.NewTimer(time.Duration(duration) * time.Millisecond)
-		defer timer.Stop()
-
-		handle.Observed = true
-		owner := handle.OwnerNursery
-		owner.RemoveChild(handle)
-
-		select {
-		case <-handle.Done:
-			// Task finished in time
-		case <-timer.C:
-			// Timeout: cancel task + raise timeout error
-			handle.Cancel(nil, fmt.Sprintf("handle %d cancelled due to await timeout", handle.ID))
-			return e.runtimeErrorAt(node.Token.Position, "timeout", map[string]object.Object{
-				"ms":     &object.Number{Value: dec64.FromInt(int(duration))},
-				"handle": &object.Number{Value: dec64.FromInt64(handle.ID)},
-			})
-		}
-	} else {
-		<-handle.Done
-	}
+	<-handle.Done
 
 	if handle.Err != nil {
 		return handle.Err

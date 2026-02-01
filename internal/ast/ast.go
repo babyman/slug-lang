@@ -391,9 +391,8 @@ func (se *SpawnExpression) String() string {
 }
 
 type AwaitExpression struct {
-	Token   token.Token // The 'await' token
-	Value   Expression  // The task handle
-	Timeout Expression  // The 'within' expression (optional)
+	Token token.Token // The 'await' token
+	Value Expression  // The task handle
 }
 
 func (ae *AwaitExpression) expressionNode()      {}
@@ -402,10 +401,6 @@ func (ae *AwaitExpression) String() string {
 	var out bytes.Buffer
 	out.WriteString("await ")
 	out.WriteString(ae.Value.String())
-	if ae.Timeout != nil {
-		out.WriteString(" within ")
-		out.WriteString(ae.Timeout.String())
-	}
 	return out.String()
 }
 

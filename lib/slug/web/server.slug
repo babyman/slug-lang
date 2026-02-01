@@ -3,6 +3,7 @@ var {*} = import (
 	"slug.std",
 	"slug.string",
 	"slug.time",
+	"slug.channel",
 	"slug.web.request",
 	"slug.web.response",
 )
@@ -110,7 +111,7 @@ var getNextRequest = fn(conn, buf, idleMs) {
 }
 
 var readWithin = fn(conn, n, ms) {
-	await (spawn { read(conn, n) }) within ms
+	await(spawn { read(conn, n) }, ms)
 }
 
 var readUntilHeaders = fn(conn, maxBytes, chunkSize, timeoutMs, buf = "") {

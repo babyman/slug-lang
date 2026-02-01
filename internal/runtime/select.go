@@ -30,6 +30,7 @@ func (e *Task) evalSelectExpression(node *ast.SelectExpression) object.Object {
 
 	cases := make([]reflect.SelectCase, 0, len(node.Cases)+1)
 	evals := make([]selectEvalCase, 0, len(node.Cases))
+	awaitTasks := make([]*Task, 0, len(node.Cases))
 	defaultSeen := false
 	readySignal := make(chan struct{})
 	close(readySignal)
@@ -115,18 +116,21 @@ func (e *Task) evalSelectExpression(node *ast.SelectExpression) object.Object {
 			if ms < 0 {
 				return e.newErrorfWithPos(c.Token.Position, "after expects a non-negative duration")
 			}
-			timer := time.NewTimer(time.Duration(ms) * time.Millisecond)
-			cases = append(cases, reflect.SelectCase{
-				Dir:  reflect.SelectRecv,
-				Chan: reflect.ValueOf(timer.C),
-			})
-			evals = append(evals, selectEvalCase{
-				kind:       ast.SelectAfter,
-				token:      c.Token.Position,
-				afterValue: afterVal,
-				afterTimer: timer,
-				handler:    c.Handler,
-			})
+			if ms > 0 {
+				// if ms == 0 no timeout is expected, use `_` default for zero timeout
+				timer := time.NewTimer(time.Duration(ms) * time.Millisecond)
+				cases = append(cases, reflect.SelectCase{
+					Dir:  reflect.SelectRecv,
+					Chan: reflect.ValueOf(timer.C),
+				})
+				evals = append(evals, selectEvalCase{
+					kind:       ast.SelectAfter,
+					token:      c.Token.Position,
+					afterValue: afterVal,
+					afterTimer: timer,
+					handler:    c.Handler,
+				})
+			}
 		case ast.SelectAwait:
 			taskObj := e.Eval(c.Await)
 			if e.isError(taskObj) {
@@ -146,6 +150,7 @@ func (e *Task) evalSelectExpression(node *ast.SelectExpression) object.Object {
 				awaitTask: task,
 				handler:   c.Handler,
 			})
+			awaitTasks = append(awaitTasks, task)
 		case ast.SelectDefault:
 			if defaultSeen {
 				return e.newErrorWithPos(c.Token.Position, "select cannot have multiple default cases")
@@ -197,6 +202,18 @@ func (e *Task) evalSelectExpression(node *ast.SelectExpression) object.Object {
 	}
 
 	selected := evals[chosen]
+	if len(awaitTasks) > 0 {
+		var keep *Task
+		if selected.kind == ast.SelectAwait {
+			keep = selected.awaitTask
+		}
+		for _, task := range awaitTasks {
+			if keep != nil && task == keep {
+				continue
+			}
+			task.Cancel(nil, "select cancelled")
+		}
+	}
 	switch selected.kind {
 	case ast.SelectRecv:
 		var val object.Object

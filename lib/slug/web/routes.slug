@@ -3,6 +3,7 @@ var {*} = import (
 	"slug.std",
 	"slug.string",
 	"slug.time",
+	"slug.channel",
 	"slug.io.fs",
 	"slug.web.request",
 	"slug.web.response",
@@ -261,7 +262,7 @@ var withLog = fn(handler) {
 var withTimeout = fn(h, ms) {
 	fn(req) {
 		var task = spawn { h(req) }
-		await task within ms
+		await(task, ms)
 	}
 }
 

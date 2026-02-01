@@ -2,6 +2,7 @@ var {*} = import (
     "slug.std",
     "slug.time",
     "slug.test",
+    "slug.channel",
 )
 
 var block = fn() {
@@ -9,14 +10,14 @@ var block = fn() {
 }
 
 var a = fn() {
-    await (spawn { block() })
+    await(spawn { block() })
 }
 
 @test
 var test_await_timeout_caught_by_defer_onerror = fn(){
 
     var b = fn() {
-        await (spawn { a() }) within 10
+        await(spawn { a() }, 10)
     }
 
     var f = nursery limit 10 fn(n) {
@@ -39,7 +40,7 @@ var test_await_timeout_caught_by_defer_onerror_in_nested_function = fn(){
 
     var b = fn() {
         defer onerror(err) { nil }
-        await (spawn { a() }) within 10
+        await(spawn { a() }, 10)
     }
 
     var f = nursery limit 10 fn(n) {

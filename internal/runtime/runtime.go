@@ -44,8 +44,6 @@ func NewRuntime(config util.Configuration) *Runtime {
 	functions := getForeignFunctions()
 	functions["slug.channel.chan"] = fnChannelChan()
 	functions["slug.channel.close"] = fnChannelClose()
-	functions["slug.channel.recv"] = fnChannelRecv()
-	functions["slug.channel.send"] = fnChannelSend()
 
 	return &Runtime{
 		Config:           config,

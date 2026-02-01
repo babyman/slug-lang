@@ -68,8 +68,12 @@ var f = nursery limit 10 fn(x, y = 2) {
 //        ^^^^^ keyword.control.flow.slug
 }
 
-await (spawn { x }) within 5
+select {
 //^^^^^ keyword.control.concurrent.slug
-//       ^^^^^ keyword.control.concurrent.slug
-//                  ^^^^^^ keyword.control.concurrent.slug
-
+  recv ch
+//^^^^ keyword.control.concurrent.slug
+  send ch, 1
+//^^^^ keyword.control.concurrent.slug
+  after 10
+//^^^^^ keyword.control.concurrent.slug
+}

@@ -1,0 +1,18 @@
+var {*} = import(
+    "slug.string",
+    "slug.std",
+    "slug.test",
+)
+
+@test
+var test_match_whole_value_binding = fn() {
+
+	var tstVal = {k: "test"}
+    var r = match tstVal {
+        v @ {k: "test"} => v
+        _               => "other"
+    }
+
+	r.k /> assertEqual("test")
+}
+

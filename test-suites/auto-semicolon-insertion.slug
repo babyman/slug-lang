@@ -2,6 +2,7 @@ var {*} = import(
     "slug.std",
     "slug.test",
     "slug.time",
+	"slug.channel",
 )
 
 @test
@@ -53,7 +54,7 @@ var asi_no_newline_call = nursery fn() {
         11
     }
 
-    (await t) /> assertEqual(11)
+    await(t) /> assertEqual(11)
 }
 
 @test

@@ -69,6 +69,7 @@ primary = literal
         | grouped
         | if_expr
         | match_expr
+        | select_expr
         | function_literal
         | list_literal
         | map_literal
@@ -76,7 +77,6 @@ primary = literal
         | recur_expr
         | nursery_expr
         | spawn_expr
-        | await_expr
         | var_expr
         | val_expr
         ;
@@ -90,7 +90,14 @@ nursery_expr = "nursery" , [ "limit" , expression ] , ( function_literal | block
 
 spawn_expr = "spawn" , ( block | prefix ) ;
 
-await_expr = "await" , prefix , [ "within" , expression ] ;
+select_expr = "select" , "{" , [ select_case , { case_sep , select_case } ] , "}" ;
+select_case = select_header , [ "/>" , expression ] ;
+select_header = "recv" , expression
+              | "send" , expression , "," , expression
+              | "after" , expression
+              | "await" , expression
+              | "_"
+              ;
 
 grouped = "(" , expression , ")" ;
 
@@ -142,6 +149,7 @@ match_pattern_list = match_pattern
                    ;
 
 match_pattern = "_"
+              | binding_pattern
               | spread_pattern
               | pinned_identifier
               | struct_pattern
@@ -151,6 +159,7 @@ match_pattern = "_"
               | identifier
               ;
 
+binding_pattern = identifier , "@" , match_pattern ;
 spread_pattern = "..." , [ identifier ] ;
 pinned_identifier = "^" , identifier ;
 

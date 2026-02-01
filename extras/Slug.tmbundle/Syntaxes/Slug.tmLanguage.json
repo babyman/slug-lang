@@ -7,6 +7,7 @@
     {"include": "#symbols"},
     {"include": "#strings"},
     {"include": "#numbers"},
+    {"include": "#select_block"},
     {"include": "#keywords"},
     {"include": "#tags"},
     {"include": "#stdlib_functions"},
@@ -61,9 +62,31 @@
         {"name": "keyword.control.slug", "match": "\\b(fn|foreign|match|struct|copy)\\b"},
         {"name": "keyword.control.conditional.slug", "match": "\\b(if|else)\\b"},
         {"name": "keyword.control.flow.slug", "match": "\\b(return|recur|throw|defer|onsuccess|onerror)\\b"},
-        {"name": "keyword.control.concurrent.slug", "match": "\\b(nursery|limit|spawn|await|within)\\b"},
+        {"name": "keyword.control.concurrent.slug", "match": "\\b(nursery|limit|spawn|select)\\b"},
         {"name": "constant.language.boolean.slug", "match": "\\b(true|false)\\b"},
         {"name": "constant.language.nil.slug", "match": "\\bnil\\b"}
+      ]
+    },
+    "select_block": {
+      "patterns": [
+        {
+          "name": "meta.select.slug",
+          "begin": "\\bselect\\b\\s*\\{",
+          "end": "\\}",
+          "patterns": [
+            {"name": "keyword.control.concurrent.slug", "match": "\\b(recv|await|send|after)\\b"},
+            {"include": "#comments"},
+            {"include": "#symbols"},
+            {"include": "#strings"},
+            {"include": "#numbers"},
+            {"include": "#keywords"},
+            {"include": "#tags"},
+            {"include": "#stdlib_functions"},
+            {"include": "#operators"},
+            {"include": "#function_calls"},
+            {"include": "#identifiers"}
+          ]
+        }
       ]
     },
     "operators": {

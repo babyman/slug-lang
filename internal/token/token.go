@@ -93,8 +93,6 @@ const (
 	NURSERY   = "NURSERY"
 	LIMIT     = "LIMIT"
 	SPAWN     = "SPAWN"
-	AWAIT     = "AWAIT"
-	WITHIN    = "WITHIN"
 	SELECT    = "SELECT"
 )
 
@@ -131,11 +129,10 @@ var keywords = map[string]TokenType{
 	"onsuccess": ONSUCCESS,
 	"onerror":   ONERROR,
 
+	// concurrency
 	"nursery": NURSERY,
 	"limit":   LIMIT,
 	"spawn":   SPAWN,
-	"await":   AWAIT,
-	"within":  WITHIN,
 	"select":  SELECT,
 }
 

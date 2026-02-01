@@ -125,7 +125,6 @@ func New(l lexer.Tokenizer, path, source string) *Parser {
 	p.registerPrefix(token.RECUR, p.parseRecurExpression)
 	p.registerPrefix(token.NURSERY, p.parseNurseryExpression)
 	p.registerPrefix(token.SPAWN, p.parseSpawnExpression)
-	p.registerPrefix(token.AWAIT, p.parseAwaitExpression)
 	p.registerPrefix(token.STRUCT, p.parseStructSchemaExpression)
 
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
@@ -591,9 +590,7 @@ func tokenIsSymbolName(t token.TokenType) bool {
 		token.COPY,
 		token.NURSERY,
 		token.SPAWN,
-		token.AWAIT,
-		token.LIMIT,
-		token.WITHIN:
+		token.LIMIT:
 		return true
 	default:
 		return false
@@ -814,7 +811,7 @@ func (p *Parser) parseSelectCase() *ast.SelectCase {
 		if selectCase.After == nil {
 			return nil
 		}
-	case p.curToken.Type == token.AWAIT:
+	case p.curToken.Type == token.IDENT && p.curToken.Literal == "await":
 		selectCase.Kind = ast.SelectAwait
 		p.nextToken()
 		selectCase.Await = p.parseExpression(CALL_CHAIN)
@@ -1764,21 +1761,6 @@ func (p *Parser) parseSpawnExpression() ast.Expression {
 		}
 	} else {
 		expr.Body = p.parseExpression(PREFIX)
-	}
-
-	return expr
-}
-
-func (p *Parser) parseAwaitExpression() ast.Expression {
-	expr := &ast.AwaitExpression{Token: p.curToken}
-	p.nextToken()
-
-	expr.Value = p.parseExpression(PREFIX)
-
-	if p.peekTokenIs(token.WITHIN) {
-		p.nextToken() // move to within
-		p.nextToken() // move to timeout value
-		expr.Timeout = p.parseExpression(LOWEST)
 	}
 
 	return expr

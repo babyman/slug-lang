@@ -51,6 +51,7 @@ const (
 var TypeTags = map[string]string{
 	"@bool":      BOOLEAN_OBJ,
 	"@bytes":     BYTE_OBJ,
+	"@chan":      CHANNEL_OBJ,
 	"@list":      LIST_OBJ,
 	"@map":       MAP_OBJ,
 	"@num":       NUMBER_OBJ,

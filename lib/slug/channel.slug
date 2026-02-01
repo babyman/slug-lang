@@ -1,12 +1,48 @@
+var {*} = import(
+	"slug.std",
+)
 
 @export
 foreign chan = fn(@num capacity = 0)
 
 @export
-foreign send = fn(channel, payload)
+foreign close = fn(@chan channel)
 
 @export
-foreign recv = fn(channel)
+var send = fn(@chan channel, payload) {
+	select {
+		send channel, payload /> fn(_) { channel }
+	}
+}
 
 @export
-foreign close = fn(channel)
+var trySend = fn(@chan channel, payload) {
+	select {
+		send channel, payload /> fn(_) { channel }
+		_
+	}
+}
+
+@export
+var recv = fn(@chan channel, @num timeout = 0) {
+	select {
+		recv channel
+		after timeout /> fn(_) { throw Error{ type: "Timeout", data: {ms: timeout, channel: channel} } }
+	}
+}
+
+@export
+var tryRecv = fn(@chan channel) {
+	select {
+		recv channel
+		_
+	}
+}
+
+@export
+var await = fn(@task handle, @num timeout = 0) {
+	select {
+		await handle
+		after timeout /> fn(_) { throw Error{ type: "Timeout", data: {ms: timeout, handle: handle} } }
+	}
+}

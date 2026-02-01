@@ -19,7 +19,7 @@ var test_send_recv = fn() {
 
 	send(c, 10)
 
-	(await x) /> assertEqual(10)
+	await(x) /> assertEqual(10)
 }
 
 @test
@@ -35,7 +35,7 @@ var test_close_channel = fn() {
 
 	close(c)
 
-	(await x) /> assertEqual("closed")
+	await(x) /> assertEqual("closed")
 }
 
 @test
@@ -53,7 +53,7 @@ var test_buffered_channel = fn() {
 		}
 	}
 
-	(await x) /> assertEqual(10)
+	await(x) /> assertEqual(10)
 }
 
 @test
@@ -72,7 +72,7 @@ var test_select = fn() {
 
 	send(c, 10)
 
-	(await x) /> assertEqual(20)
+	await(x) /> assertEqual(20)
 }
 
 @test
@@ -92,7 +92,7 @@ var test_select_timeout = fn() {
 
 	sleep(60)
 
-	(await x) /> assertEqual("timeout")
+	await(x) /> assertEqual("timeout")
 }
 
 @test
@@ -111,7 +111,7 @@ var test_select_default = fn() {
 	}
 
 	// `_` is non-blocking
-	(await x) /> assertEqual("default")
+	await(x) /> assertEqual("default")
 }
 
 @test
@@ -131,5 +131,5 @@ var test_select_send = fn() {
 	}
 
 	assertEqual(r, "sent")
-	(await x) /> assertEqual(10)
+	await(x) /> assertEqual(10)
 }

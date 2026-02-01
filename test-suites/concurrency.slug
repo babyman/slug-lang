@@ -2,6 +2,7 @@ var {*} = import(
     "slug.std",
     "slug.test",
     "slug.time",
+    "slug.channel",
 )
 
 @test
@@ -22,7 +23,7 @@ var test_await_is_valid_in_functions = fn() {
     }
 
     x /> type /> assertEqual(TASK_TYPE)
-    (await x) /> assertEqual(11)
+    await(x) /> assertEqual(11)
 }
 
 @test
@@ -37,8 +38,8 @@ var test_nursery_actions_run_in_parallel = fn() {
             sleep(100)
             10 * 10
         }
-        var i = await x within 150
-        var j = await y within 150
+        var i = await(x, 150)
+        var j = await(y, 150)
         i + j
     }
     f() /> assertEqual(111)
@@ -52,10 +53,10 @@ var test_completed_tasks_are_idempotent_and_cached = fn() {
         sleep(100)
         11
     }
-    (await t) /> assertEqual(11)
+    await(t) /> assertEqual(11)
     var time = c()
     time /> assertGreaterThanOrEqual(100) /> assertLessThan(150)
-    assertEqual(await t, 11)
+    assertEqual(await(t), 11)
     (c() - time) /> assertLessThan(5)
 }
 
@@ -71,8 +72,8 @@ var test_limit_1_forces_nursery_execution = fn() {
             sleep(100)
             10 * 10
         }
-        var i = await x within 250
-        var j = await y within 250
+        var i = await(x, 250)
+        var j = await(y, 250)
         i + j
     }
     f() /> assertEqual(111)
@@ -89,7 +90,7 @@ var test_map_reduce_operate_in_the_same_thread_nursery = fn() {
                 x
             }
         }) /> reduce(0, fn(a, h) {
-            a + await h
+            a + await(h)
         })
     }
 
@@ -105,7 +106,7 @@ var test_recur_does_not_join_threads = fn() {
         [[h, ...t], ...] => recur(t, acc :+ spawn { sleep(100); h*2 })
     }
     f([1,2,3])
-        /> reduce(0, fn(a, h) { a + await h })
+        /> reduce(0, fn(a, h) { a + await(h) })
         /> assertEqual(12)
     assertLessThan(c(), 150)
 }
@@ -116,11 +117,11 @@ var test_timeout_throws = fn() {
         var x = spawn {
             sleep(10)
         }
-        var i = await x within 1
+        var i = await(x, 1)
     }
     var r = runSafe(fn() { f() })
-    r.error["type"] /> eq("timeout")
-    r.error["ms"] /> eq(1)
+    r.error.type /> eq("Timeout")
+    r.error.data.ms /> eq(1)
 }
 
 @test
@@ -130,7 +131,7 @@ var test_defer_onerror_catches_timeouts = fn() {
         var x = spawn {
             sleep(10)
         }
-        var i = await x within 1
+        var i = await(x, 1)
     }
     f() /> eq("pass")
 }
@@ -149,7 +150,7 @@ var test_errors_cause_incomplete_tasks_to_cancel = fn() {
         }
     }
     var throwError = runSafe(fn() { f() })
-    var xldTask = runSafe(fn() { await b })
+    var xldTask = runSafe(fn() { await(b) })
     
     throwError.error /> eq("err")
 
@@ -166,7 +167,7 @@ var test_errors_are_detected_during_await = fn() {
         }
         sleep(10)
         a = a + 1
-        await x
+        await(x)
         a = a + 1
     }
     var r = runSafe(fn() { f() })
