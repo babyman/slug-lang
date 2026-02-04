@@ -18,6 +18,8 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.crypto.sha256": fnCryptoSha256(),
 		"slug.crypto.sha512": fnCryptoSha512(),
 
+		"slug.debug.ident": fnDebugIdent(),
+
 		"slug.io.db.connect":  fnIoDbConnect(),
 		"slug.io.db.query":    fnIoDbQuery(),
 		"slug.io.db.exec":     fnIoDbExec(),
