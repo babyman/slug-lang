@@ -63,7 +63,7 @@ func main() {
 
 	// 1. Resolve Script Path
 	targetName := flag.Arg(0)
-	scriptPath, source, err := resolveScript(targetName)
+	scriptPath, source, resolvedRootPath, err := resolveScript(targetName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -71,7 +71,6 @@ func main() {
 
 	// 2. Prepare Configuration
 	// RootPath is the directory of the resolved script
-	resolvedRootPath := filepath.Dir(scriptPath)
 	if rootPath != "" {
 		resolvedRootPath, _ = filepath.Abs(rootPath)
 	}
@@ -162,7 +161,7 @@ func main() {
 	}
 }
 
-func resolveScript(target string) (string, []byte, error) {
+func resolveScript(target string) (string, []byte, string, error) {
 	slugHome := os.Getenv("SLUG_HOME")
 
 	// Search order:
@@ -183,11 +182,15 @@ func resolveScript(target string) (string, []byte, error) {
 		source, err := os.ReadFile(path)
 		if err == nil {
 			absPath, _ := filepath.Abs(path)
-			return absPath, source, nil
+			root := filepath.Dir(absPath)
+			if !strings.HasPrefix(root, path) {
+				root = "."
+			}
+			return absPath, source, root, nil
 		}
 	}
 
-	return "", nil, fmt.Errorf("could not find script '%s' locally or in $SLUG_HOME/lib", target)
+	return "", nil, "", fmt.Errorf("could not find script '%s' locally or in $SLUG_HOME/lib", target)
 }
 
 func setupLogging() {
