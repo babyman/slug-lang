@@ -151,7 +151,7 @@ func fnBuiltinPrint() *object.Foreign {
 					out.WriteString(" ")
 				}
 			}
-			fmt.Print(out.String())
+			print(out.String())
 			if len(args) > 0 {
 				return args[0]
 			}
@@ -169,11 +169,9 @@ func fnBuiltinPrintLn() *object.Foreign {
 				out.WriteString(arg.Inspect())
 				if i < len(args)-1 {
 					out.WriteString(" ")
-				} else {
-					out.WriteString("\n")
 				}
 			}
-			fmt.Print(out.String())
+			println(out.String())
 			if len(args) > 0 {
 				return args[0]
 			}
@@ -249,10 +247,26 @@ func fnBuiltinArgm() *object.Foreign {
 			slugOptions := &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}
 			for k, v := range options {
 				// We treat everything as strings/bools for raw args
-				if v == "true" {
-					foreign.PutBool(slugOptions, k, true)
+				if len(v) == 1 {
+					if v[0] == "true" {
+						foreign.PutBool(slugOptions, k, true)
+					} else if v[0] == "false" {
+						foreign.PutBool(slugOptions, k, false)
+					} else {
+						foreign.PutString(slugOptions, k, v[0])
+					}
 				} else {
-					foreign.PutString(slugOptions, k, v)
+					var lst []object.Object
+					for _, s := range v {
+						if s == "true" {
+							lst = append(lst, object.TRUE)
+						} else if s == "false" {
+							lst = append(lst, object.FALSE)
+						} else {
+							lst = append(lst, &object.String{Value: s})
+						}
+					}
+					foreign.PutList(slugOptions, k, lst)
 				}
 			}
 
@@ -262,8 +276,8 @@ func fnBuiltinArgm() *object.Foreign {
 			}
 
 			res := &object.Map{Pairs: make(map[object.MapKey]object.MapPair)}
-			res.Put(&object.String{Value: "options"}, slugOptions)
-			res.Put(&object.String{Value: "positional"}, slugPos)
+			res.Put(object.InternSymbol("options"), slugOptions)
+			res.Put(object.InternSymbol("positional"), slugPos)
 			return res
 		},
 	}

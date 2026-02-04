@@ -87,8 +87,8 @@ func replaceVisibleWithSpaces(s string) string {
 	return buf.String()
 }
 
-func ParseArgs(argv []string) (map[string]string, []string) {
-	options := make(map[string]string)
+func ParseArgs(argv []string) (map[string][]string, []string) {
+	options := map[string][]string{}
 	positionals := []string{}
 
 	parsingOptions := true
@@ -108,16 +108,20 @@ func ParseArgs(argv []string) (map[string]string, []string) {
 			continue
 		}
 
+		add := func(k, v string) {
+			options[k] = append(options[k], v)
+		}
+
 		if strings.HasPrefix(arg, "--") {
 			name := arg[2:]
 			if idx := strings.IndexByte(name, '='); idx != -1 {
-				options[name[:idx]] = name[idx+1:]
+				add(name[:idx], name[idx+1:])
 			} else {
 				if i+1 < len(argv) && !strings.HasPrefix(argv[i+1], "-") {
-					options[name] = argv[i+1]
+					add(name, argv[i+1])
 					i++
 				} else {
-					options[name] = "true"
+					add(name, "true")
 				}
 			}
 			i++
@@ -125,15 +129,15 @@ func ParseArgs(argv []string) (map[string]string, []string) {
 			key := arg[1:]
 			if len(key) == 1 {
 				if i+1 < len(argv) && !strings.HasPrefix(argv[i+1], "-") {
-					options[key] = argv[i+1]
+					add(key, argv[i+1])
 					i += 2
 				} else {
-					options[key] = "true"
+					add(key, "true")
 					i++
 				}
 			} else {
 				for _, char := range key {
-					options[string(char)] = "true"
+					add(string(char), "true")
 				}
 				i++
 			}

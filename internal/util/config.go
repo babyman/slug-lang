@@ -68,7 +68,11 @@ func NewConfigStore(rootPath, slugHome string, mainModule string, argv []string)
 		if !strings.Contains(key, ".") && mainModule != "" && mainModule != "<main>" {
 			resolvedKey = mainModule + "." + key
 		}
-		store.Values[resolvedKey] = value
+		if len(value) == 1 {
+			store.Values[resolvedKey] = value[0]
+		} else {
+			store.Values[resolvedKey] = value
+		}
 	}
 
 	return store
