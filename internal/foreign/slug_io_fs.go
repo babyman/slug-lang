@@ -7,9 +7,11 @@ import (
 	"path/filepath"
 	"slug/internal/dec64"
 	"slug/internal/object"
+	"sync"
 )
 
 var (
+	ioFileMu      sync.RWMutex
 	ioFileFiles   = map[int64]*os.File{}
 	ioFileReaders = map[int64]*bufio.Reader{}
 )
@@ -295,8 +297,10 @@ func fnIoFsOpenFile() *object.Foreign {
 				return ctx.NewError("failed to open file: %s", err.Error())
 			}
 
+			ioFileMu.Lock()
 			fileID := ctx.NextHandleID()
 			ioFileFiles[fileID] = file
+			ioFileMu.Unlock()
 
 			return &object.Number{Value: dec64.FromInt64(fileID)}
 		},
@@ -316,16 +320,21 @@ func fnIoFsReadLine() *object.Foreign {
 				return ctx.NewError(err.Error())
 			}
 
+			ioFileMu.RLock()
 			file, ok := ioFileFiles[handle]
+			ioFileMu.RUnlock()
 			if !ok {
 				return ctx.NewError("invalid file handle: %d", handle)
 			}
 
+			ioFileMu.RLock()
 			reader, ok := ioFileReaders[handle]
 			if !ok {
 				reader = bufio.NewReader(file)
 				ioFileReaders[handle] = reader
 			}
+			ioFileMu.RUnlock()
+
 			line, err := reader.ReadString('\n')
 			if err != nil {
 				if err == io.EOF {
@@ -358,7 +367,9 @@ func fnIoFsWrite() *object.Foreign {
 				return ctx.NewError(err.Error())
 			}
 
+			ioFileMu.RLock()
 			file, ok := ioFileFiles[handle]
+			ioFileMu.RUnlock()
 			if !ok {
 				return ctx.NewError("invalid file handle: %d", handle)
 			}
@@ -413,7 +424,9 @@ func fnIoFsCloseFile() *object.Foreign {
 				return ctx.NewError(err.Error())
 			}
 
+			ioFileMu.RLock()
 			file, ok := ioFileFiles[handle]
+			ioFileMu.RUnlock()
 			if !ok {
 				return ctx.NewError("invalid file handle: %d", handle)
 			}
@@ -423,8 +436,11 @@ func fnIoFsCloseFile() *object.Foreign {
 				return ctx.NewError("failed to close file: %s", err.Error())
 			}
 
+			ioFileMu.Lock()
 			delete(ioFileReaders, handle)
 			delete(ioFileFiles, handle)
+			ioFileMu.Unlock()
+
 			return ctx.Nil()
 		},
 	}
