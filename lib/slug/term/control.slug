@@ -1,0 +1,16 @@
+
+/**
+ * clear the terminal
+ */
+@export
+var clear = fn() {
+	print("\033[2J\033[H")
+}
+
+/**
+ * clear the terminal and scrollback buffer
+ */
+@export
+var clearAll = fn() {
+	print("\033[3J\033[2J\033[H")
+}
