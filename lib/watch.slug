@@ -1,0 +1,164 @@
+var {*} = import(
+	"slug.std",
+	"slug.string",
+	"slug.channel",
+	"slug.time",
+	"slug.sys",
+	"slug.io.fs",
+)
+var term = import(
+	"slug.term.control",
+	"slug.term.colour",
+)
+
+val Fail = term.BrightColour.Red
+val Pass = term.Colour.Green
+val Reset = term.reset
+
+/**
+ * A utility command that can watch a directory for file changes and when detected run/rerun a command
+ */
+var watch = fn(
+	cmd,
+	roots = cfg("roots", ["."]),
+	exts = cfg("exts", [".slug", ".toml"]),
+	clear = cfg("clear", false),
+	showTime = cfg("show-time", true),
+	pollMs = cfg("poll-ms", 200),
+	debounceMs = cfg("debounce-ms", 150)
+) {
+	// restart signal channel
+	val changes = chan()
+
+	// task 1: file change detector (polling)
+	spawn {
+		fn(current) {
+			sleep(pollMs)
+			var next = snapshot(roots, exts)
+			if (changed(current, next)) {
+				send(changes, :changed)
+			}
+			recur(next)
+		}(snapshot(roots, exts))
+	}
+
+	spawn {
+		var handle = nil
+
+		var start = fn() {
+			spawn {
+				if (clear) { term.clearAll() }
+				if (showTime) { println(Pass + "▶ " + Reset + join(cmd, " ")) }
+				var d = delta(clock)
+
+				handle = spawnProc(cmd)
+				val exit = waitProc(handle)
+				handle = nil
+				val clr = if (exit == 0) {Pass} else {Fail}
+				match showTime {
+					true => fmt("{}---\n⏱  {:,d}ms exit: {}{}",clr , d(), exit, Reset)
+					_    => fmt("{}---\nexit: {}{}", clr, exit, Reset)
+				} /> println
+			}
+		}
+
+		var stop = fn() {
+			if (handle != nil) {
+				killProc(handle)
+				handle == nil
+			}
+		}
+
+		start()
+
+		fn() {
+			recv(changes)
+
+			// Debounce: keep draining changes until quiet
+			fn(debounceMs) {
+				select {
+					recv changes /> match {
+							_ => recur(debounceMs)
+						}
+					after debounceMs
+				}
+			}(debounceMs)
+
+			stop()
+			start()
+			recur()
+		}()
+	}
+}
+
+@testWith(
+	[{a:1},{}], true,
+	[{},{a:1}], true,
+	[{a:1},{a:2}], true,
+	[{},{}], false,
+	[{a:2},{a:2}], false,
+)
+var changed = fn(@map a, @map b) {
+	if (len(a) != len(b)) {
+		true
+	} else {
+		a
+		/> keys
+		/> find(fn(k) { b[k] == nil || a[k] != b[k] })
+		/> match {
+			nil => false
+			_ => true
+		}
+	}
+}
+
+var snapshot = fn(@list roots, @list exts) {
+	listFilesRecursive(roots, hasAnyExt(exts))
+	/> map(fn(v) { [v, v /> info] })
+	/> reduce({}, fn(a, b) { put(a, b[0], b[1].modTime) })
+}
+
+var hasAnyExt = fn(@list exts) {
+	fn(@str path) {
+		var c = exts
+			/> find(fn(v) { path /> endsWith(v) })
+			/> match {
+				nil => false
+				_ => true
+			}
+	}
+}
+
+var args = argm()
+
+if(args.options.v || args.options.version) {
+'''
+slug watch v1.0.0
+''' /> println
+} else if(args.options.h || args.options.help) {
+'''
+Slug Watch
+
+A file watcher utility that monitors directories for file changes and automatically
+runs or reruns a specified command when changes are detected. Useful for development
+workflows where you want to automatically rebuild, test, or restart your application
+when source files are modified.
+
+Usage:
+  slug watch [options] [--] <cmd>
+
+Options
+ -h --help      Show this screen.
+ -v --version   Show version.
+ --exts         The file extensions to monitor, supports multiple values, [default: [".slug", ".toml"]].
+ --roots        The root directories to monitor, supports multiple values, [default: ["."]].
+ --clear        Clear the terminal on restart [default: false].
+ --show-time    Show the execution time of the command [default: true].
+ --poll-ms      How often to check for file changes in milliseconds [default: 200].
+ --debounce-ms  Debounce time for file checks in milliseconds [default: 150].
+''' /> println
+} else {
+	watch(args.positional)
+}
+
+

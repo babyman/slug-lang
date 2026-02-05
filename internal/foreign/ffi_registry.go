@@ -91,10 +91,13 @@ func GetForeignFunctions() map[string]*object.Foreign {
 		"slug.string.toUpper": fnStringToUpper(),
 		"slug.string.trim":    fnStringTrim(),
 
-		"slug.sys.env":    fnSysEnv(),
-		"slug.sys.exec":   fnSysExec(),
-		"slug.sys.exit":   fnSysExit(),
-		"slug.sys.setEnv": fnSysSetEnv(),
+		"slug.sys.exit":      fnSysExit(),
+		"slug.sys.setEnv":    fnSysSetEnv(),
+		"slug.sys.env":       fnSysEnv(),
+		"slug.sys.exec":      fnSysExec(),
+		"slug.sys.spawnProc": fnSysSpawnProc(),
+		"slug.sys.waitProc":  fnSysWaitProc(),
+		"slug.sys.killProc":  fnSysKillProc(),
 
 		"slug.time.clock":      fnTimeClock(),
 		"slug.time.fmtClock":   fnTimeFmtClock(),

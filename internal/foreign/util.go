@@ -50,7 +50,7 @@ func unpackNumber(arg object.Object, argName string) (int64, error) {
 }
 
 func putObj(resultMap *object.Map, key string, val object.Object) {
-	keyStr := &object.String{Value: key}
+	keyStr := object.InternSymbol(key)
 	resultMap.Pairs[(keyStr).MapKey()] = object.MapPair{
 		Key:   keyStr,
 		Value: val,
@@ -183,6 +183,12 @@ func NativeToSlugObject(val interface{}) object.Object {
 			return object.TRUE
 		}
 		return object.FALSE
+	case []string:
+		elements := make([]object.Object, len(v))
+		for i, item := range v {
+			elements[i] = &object.String{Value: item}
+		}
+		return &object.List{Elements: elements}
 	case []interface{}:
 		elements := make([]object.Object, len(v))
 		for i, item := range v {

@@ -7,8 +7,16 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"slug/internal/dec64"
 	"slug/internal/object"
+	"sync"
+	"syscall"
 	"time"
+)
+
+var (
+	sysProcsMu sync.RWMutex
+	sysProcs   = map[int64]*exec.Cmd{}
 )
 
 func fnSysExit() *object.Foreign {
@@ -157,4 +165,168 @@ func fnSysExec() *object.Foreign {
 			return &object.List{Elements: []object.Object{stdoutObj, stderrObj}}
 		},
 	}
+}
+
+func fnSysSpawnProc() *object.Foreign {
+	return &object.Foreign{
+		Name: "spawnProc",
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return ctx.NewError("wrong number of arguments. got=%d, want=1",
+					len(args))
+			}
+
+			cmdArg := args[0]
+			if cmdArg.Type() != object.LIST_OBJ {
+				return ctx.NewError("argument must be LIST, got=%s", cmdArg.Type())
+			}
+
+			cmdList := cmdArg.(*object.List)
+			if len(cmdList.Elements) == 0 {
+				return ctx.NewError("command list must not be empty")
+			}
+
+			cmdArgs := make([]string, len(cmdList.Elements))
+			for i, elem := range cmdList.Elements {
+				if elem.Type() != object.STRING_OBJ {
+					return ctx.NewError("command argument %d must be STRING, got=%s", i, elem.Type())
+				}
+				cmdArgs[i] = elem.(*object.String).Value
+			}
+
+			cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			cmd.Stdin = os.Stdin
+
+			if err := cmd.Start(); err != nil {
+				return ctx.NewError("failed to start command: %v", err)
+			}
+
+			id := ctx.NextHandleID()
+			sysProcsMu.Lock()
+			sysProcs[id] = cmd
+			sysProcsMu.Unlock()
+
+			return &object.Number{Value: dec64.FromInt64(id)}
+		},
+	}
+}
+
+func fnSysWaitProc() *object.Foreign {
+	return &object.Foreign{
+		Name: "waitProc",
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+
+			id, err := unpackNumber(args[0], "")
+			if err != nil {
+				return ctx.NewError(err.Error())
+			}
+
+			timeoutMs, err := unpackNumber(args[1], "")
+			if err != nil {
+				return ctx.NewError(err.Error())
+			}
+
+			sysProcsMu.RLock()
+			e, ok := sysProcs[id]
+			sysProcsMu.RUnlock()
+			if !ok {
+				return ctx.NewError("invalid process ID: %d", id)
+			}
+
+			done := make(chan error, 1)
+			go func() {
+				done <- e.Wait()
+			}()
+
+			if timeoutMs > 0 {
+				select {
+				case err := <-done:
+					// finished
+					info, _ := exitInfoFromErr(err, e)
+					sysProcsMu.Lock()
+					delete(sysProcs, id)
+					sysProcsMu.Unlock()
+					return &object.Number{Value: dec64.FromInt(info)}
+				case <-time.After(time.Duration(timeoutMs) * time.Millisecond):
+					return &object.Number{Value: dec64.FromInt(-1)}
+				}
+			}
+
+			// wait forever
+			err = <-done
+			info, _ := exitInfoFromErr(err, e)
+			sysProcsMu.Lock()
+			delete(sysProcs, id)
+			sysProcsMu.Unlock()
+			return &object.Number{Value: dec64.FromInt(info)}
+		},
+	}
+}
+
+func fnSysKillProc() *object.Foreign {
+	return &object.Foreign{
+		Name: "killProc",
+		Fn: func(ctx object.EvaluatorContext, args ...object.Object) object.Object {
+
+			id, err := unpackNumber(args[0], "")
+			if err != nil {
+				return ctx.NewError(err.Error())
+			}
+
+			sysProcsMu.RLock()
+			e, ok := sysProcs[id]
+			sysProcsMu.RUnlock()
+			if !ok {
+				return ctx.NewError("invalid process ID: %d", id)
+			}
+
+			if e.Process == nil {
+				println("process already exited")
+				return ctx.NativeBoolToBooleanObject(false)
+			}
+
+			// 1. Try to terminate gracefully (SIGTERM/Interrupt)
+			_ = e.Process.Signal(os.Interrupt)
+
+			// 2. Poll for a short time to see if it exited
+			// We don't call e.Wait() here because the Slug thread is likely already calling it.
+			// Instead, we check if the process is still responsive to signals.
+			success := false
+			for i := 0; i < 10; i++ {
+				time.Sleep(50 * time.Millisecond)
+				// Signal(0) returns nil if the process is still alive,
+				// or an error if it has finished.
+				if err := e.Process.Signal(syscall.Signal(0)); err != nil {
+					success = true
+					break
+				}
+			}
+
+			if success {
+				println("terminated process")
+				return ctx.NativeBoolToBooleanObject(true)
+			}
+
+			// 3. Still running? Force kill.
+			if err := e.Process.Kill(); err != nil {
+				println("failed to kill process:", err)
+				return ctx.NativeBoolToBooleanObject(false)
+			}
+			println("killed process")
+			return ctx.NativeBoolToBooleanObject(true)
+		},
+	}
+}
+
+func exitInfoFromErr(err error, cmd *exec.Cmd) (int, bool) {
+	// Go sets ProcessState even if exit error occurs.
+	code := 0
+	if cmd.ProcessState != nil {
+		code = cmd.ProcessState.ExitCode()
+	}
+	// If err == nil, ExitCode() is still meaningful.
+	_ = err
+	return code, false
 }

@@ -329,6 +329,10 @@ func fnBuiltinCfg() *object.Foreign {
 						}
 						return object.FALSE
 					}
+				case *object.List:
+					elements := make([]object.Object, 1)
+					elements[0] = &object.String{Value: strVal}
+					return &object.List{Elements: elements}
 				}
 			}
 

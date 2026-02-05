@@ -6,5 +6,5 @@ var {*} = import(
 @test
 var testForeignFunctionErrorsAreRuntime = fn() {
     var r = runSafe(fn() { import("foo.bar") })
-    r.error["type"] /> assertEqual("error")
+    r.error.type /> assertEqual("error")
 }

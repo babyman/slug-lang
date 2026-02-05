@@ -21,3 +21,12 @@ foreign exit = fn(@num exitCode)
 //   list [stdout, stderr]
 @export
 foreign exec = fn(@str cmd, @num timeout = 0)
+
+@export
+foreign spawnProc = fn(@list cmd)  // -> ProcHandle
+
+@export
+foreign waitProc = fn(@num handle, @num timeout = 0) // exit code or -1 on timeout
+
+@export
+foreign killProc = fn(@num handle) // -> boolean
